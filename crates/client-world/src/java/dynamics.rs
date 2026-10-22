@@ -6,6 +6,30 @@ use world::java::{
     player::{Motion, Relative},
 };
 
+/// Vanilla sends changed attributes, so a fresh player starts with the hash-verified player
+/// builder's values. Generic registry defaults differ and must never substitute for these.
+pub(super) fn initial() -> domain::PlayerDynamics {
+    let attributes = java_protocol::target::PLAYER_ATTRIBUTES
+        .iter()
+        .map(|&(id, base)| {
+            let spec = java_protocol::target::ATTRIBUTES[id];
+            (
+                spec.name.to_owned(),
+                domain::Attribute {
+                    base,
+                    minimum: spec.minimum,
+                    maximum: spec.maximum,
+                    modifiers: Vec::new(),
+                },
+            )
+        })
+        .collect();
+    domain::PlayerDynamics {
+        attributes,
+        ..Default::default()
+    }
+}
+
 pub(super) fn admit(
     state: &mut WorldState,
     epoch: u64,

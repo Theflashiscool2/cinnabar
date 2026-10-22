@@ -240,7 +240,7 @@ forbidden_transitive_dependencies = ["app", "cinnabar", "launcher", "client-ui",
 [[crates]]
 name = "gameplay"
 path = "crates/gameplay"
-allowed_dependencies = ["env-compat", "simulation-clock", "actor-animation", "assets", "block-transform", "client-world", "inventory", "player-state", "protocol", "render-api", "semantic-input", "sim", "world", "protocol-ids"]
+allowed_dependencies = ["env-compat", "simulation-clock", "actor-animation", "assets", "block-transform", "client-world", "inventory", "player-state", "protocol", "render-api", "semantic-input", "sim", "world", "protocol-ids", "java-protocol"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "client-session", "client-presentation", "acceptance", "launcher", "client-ui", "chunk-pipeline", "ui", "json-ui", "render", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "bevy", "bevy_*", "wgpu*"]
 test_support_features = ["test-support"]
 

@@ -1,6 +1,22 @@
 use super::*;
 use java_protocol::session::{Command, Envelope, Event, facts};
 
+#[test]
+fn native_player_builder_defaults_preserve_exact_values_and_do_not_include_mob_attributes() {
+    let defaults = initial();
+    assert_eq!(
+        defaults.attributes["minecraft:movement_speed"].base,
+        f64::from(0.1_f32)
+    );
+    assert_eq!(
+        defaults.attributes["minecraft:jump_strength"].base,
+        f64::from(0.42_f32)
+    );
+    assert_eq!(defaults.attributes["minecraft:gravity"].base, 0.08);
+    assert!(!defaults.attributes.contains_key("minecraft:follow_range"));
+    assert!(defaults.abilities.is_none());
+}
+
 fn state() -> WorldState {
     let mut state = WorldState::default();
     state.begin(7);

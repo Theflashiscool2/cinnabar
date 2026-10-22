@@ -35,6 +35,7 @@ pub struct SemanticInputAuthorityFrame {
     pub controls: ControlSettings,
     pub session_generation: NonZeroU64,
     pub dimension: i32,
+    pub java_dimension: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,6 +44,7 @@ struct SemanticInputAuthorityIdentity {
     controls_generation: u64,
     session_generation: NonZeroU64,
     dimension: i32,
+    java_dimension: Option<u64>,
 }
 
 impl SemanticInputRuntime {
@@ -131,6 +133,7 @@ impl SemanticInputRuntime {
             controls_generation: frame.controls_generation,
             session_generation: frame.session_generation,
             dimension: frame.dimension,
+            java_dimension: frame.java_dimension,
         };
         let previous = self.authority;
         let changed = previous != Some(identity);
@@ -164,7 +167,10 @@ impl SemanticInputRuntime {
             .is_some_and(|previous| previous.session_generation != identity.session_generation)
         {
             self.release_all(ReleaseReason::SessionReplaced);
-        } else if previous.is_some_and(|previous| previous.dimension != identity.dimension) {
+        } else if previous.is_some_and(|previous| {
+            previous.dimension != identity.dimension
+                || previous.java_dimension != identity.java_dimension
+        }) {
             self.release_all(ReleaseReason::DimensionReplaced);
         }
         self.authority = Some(identity);
@@ -341,6 +347,7 @@ impl SemanticTouchTargets {
     reason = "Player authority is borrowed separately from UI state."
 )]
 pub(crate) fn synchronize_semantic_input_authority(
+    #[cfg(not(target_arch = "wasm32"))] session: Option<Res<crate::session::SessionController>>,
     mut runtime: ResMut<SemanticInputRuntime>,
     ui: Option<Res<UiRuntimeResource>>,
     focus: Res<client_state::ScreenFocus>,
@@ -348,9 +355,6 @@ pub(crate) fn synchronize_semantic_input_authority(
     client_world: Option<Res<ClientWorld>>,
     mut touch_targets: ResMut<SemanticTouchTargets>,
 ) {
-    let Some(ui) = ui.filter(|ui| ui.session_id() != 0) else {
-        return;
-    };
     let (controls_generation, controls) = settings.controls_update();
     let dimension = client_world
         .as_deref()
@@ -361,7 +365,17 @@ pub(crate) fn synchronize_semantic_input_authority(
     } else {
         InputContext::Gameplay
     };
-    let Some(session_generation) = NonZeroU64::new(ui.session_id()) else {
+    #[cfg(not(target_arch = "wasm32"))]
+    let java_scope = session
+        .as_deref()
+        .and_then(|s| s.native_java_world())
+        .and_then(|w| w.terrain.dimension())
+        .map(|d| (d.session, d.epoch));
+    #[cfg(target_arch = "wasm32")]
+    let java_scope: Option<(u64, u64)> = None;
+    let Some((session_generation, java_dimension)) =
+        input_session_scope(ui.as_deref().map_or(0, |ui| ui.session_id()), java_scope)
+    else {
         return;
     };
     // An unchanged identity is a no-op; skip cloning the bindings for it every frame.
@@ -371,6 +385,7 @@ pub(crate) fn synchronize_semantic_input_authority(
             controls_generation,
             session_generation,
             dimension,
+            java_dimension,
         })
     {
         return;
@@ -381,6 +396,7 @@ pub(crate) fn synchronize_semantic_input_authority(
         controls: controls.clone(),
         session_generation,
         dimension,
+        java_dimension,
     }) {
         Ok(true) => touch_targets.release_all(),
         Ok(false) => {}
@@ -389,6 +405,17 @@ pub(crate) fn synchronize_semantic_input_authority(
             bevy::log::warn!(?error, "rejected semantic input authority replacement");
         }
     }
+}
+
+/// A Java session owns input even while the Bedrock UI runtime has its initial zero session.
+fn input_session_scope(
+    ui_session: u64,
+    java_scope: Option<(u64, u64)>,
+) -> Option<(NonZeroU64, Option<u64>)> {
+    Some((
+        NonZeroU64::new(java_scope.map_or(ui_session, |(generation, _)| generation))?,
+        java_scope.map(|(_, epoch)| epoch),
+    ))
 }
 
 #[cfg(test)]

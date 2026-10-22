@@ -154,8 +154,8 @@ after the replies. That run retained 49 columns, positive health and four real
 keepalives before clean disconnect. Angle-only camera presentation is implemented
 but awaits a fresh graphical run; this live evidence is from the diagnostic client.
 The server sent three changed player attributes, not the complete player defaults.
-Initializing the remaining values from the pinned vanilla player builder belongs
-to the next movement slice. A direct vanilla registry comparison confirmed all
+The initial values now come from the pinned vanilla player builder's generated
+report, with server updates replacing them. A direct vanilla registry comparison confirmed all
 codec IDs and bounds, but found a rounded jump-strength default in the reference;
 generic defaults are therefore deliberately absent from the generated runtime table.
 
@@ -256,7 +256,7 @@ into seven materials, thirteen templates and 521 visible model quads across 24
 center-column sections; the sampled oak stair produced eleven source model quads.
 That run observed 49 columns and two real keepalives. `rendered_world` stayed false.
 
-The graphical experimental path loads `client.jar` and `blocks.json` from
+The graphical experimental path loads `client.jar`, `blocks.json` and `physics.bin` from
 `CINNABAR_JAVA_ASSETS` (default `.local/assets/java/<pinned-version>`).
 Build with `cargo build --locked -p cinnabar --features developer-control` and
 launch through the repository's headless client MCP. Developer builds alone accept
@@ -266,8 +266,8 @@ launcher. Production account routing still requires this fork's OAuth configurat
 The app waits for a nonempty spawn-section GPU upload before sending player-loaded;
 this is not a claim of movement or gameplay. Java loading readiness does not wait
 for a Bedrock stream or send Bedrock loading commands. Empty section publications
-use the shared zero-byte allowance. Free camera translation is withheld until native
-movement exists. Developer state exposes session/epoch, upload counts, worker
+use the shared zero-byte allowance. Native movement owns player translation; free
+camera translation is disabled. Developer state exposes session/epoch, upload counts, worker
 backlog, completion/obsolete/missing-light counts and explicit incomplete gameplay.
 
 Live rendered evidence on Linux, 2026-10-22: headless software Vulkan (lavapipe),
@@ -282,13 +282,16 @@ pillar removed while disconnected and retains the server-authoritative wall hole
 This tests server-driven rendering, not client breaking/placement or physical
 movement. No Windows/macOS, visual parity or performance qualification is claimed.
 
-## Native collision data preparation (movement integration in progress)
+## Native collision and dry-land movement
 
 `assetc java-physics` verifies the manifest-pinned vanilla server archive and each
 bundled library, compiles an original offline exporter and loads the resulting
 report through `assets::registry::java::physics`. Only the generated report is a
 client runtime input; neither the server classes nor a JVM run inside the client.
-The report's byte length and SHA-256 live in `data/target.json`. It distinguishes
+The report's byte length and SHA-256 live in `data/target.json`. The exporter also
+verifies the 36 player-builder attribute bases against the generated
+`data/player-attributes.json` manifest pin; those numeric facts initialize native
+player authority before the server sends its changed attributes. It distinguishes
 static double-precision boxes, dynamic shapes, non-air empty shapes, fluids,
 friction/speed/jump/bounce properties and blocks with special movement callbacks.
 Dynamic shapes never become empty collision. The authorized Linux fixture test
@@ -314,8 +317,45 @@ or bundled asset. JDK/compiler discovery and acquisition are explicit caller inp
 It rejects retired scopes, missing chunks, unknown states and dynamic shapes;
 an explicit 32,768-cell foreground query budget remains a provisional limit.
 Deterministic collision tests include independently evaluated vanilla diagonal
-vectors. These routines are not yet wired to the running player's movement:
-report preparation and collision tests do not establish walking or playable support.
+vectors. `sim::java::travel` applies dry-land acceleration, gravity, drag, jumping,
+standing/crouched dimensions, collision and sneak-edge protection. Tests cover
+falling, jumping, wall contact, forced crouching, missing terrain and atomic failure;
+acceleration vectors were obtained independently from the pinned vanilla server.
+
+`gameplay::java` advances the existing world-owned motion at 20 ticks/second and
+retains one outbound frame under backpressure. Corrections retire old prediction
+and force fresh pose/input baselines. Before sampling controls, a new correction
+replaces stale camera angles even if its acknowledgement has already queued;
+world publication runs after network send. The native socket checks session-owned
+dimension and correction receipts before sending input, sprint changes, position/
+rotation variants and tick-end packets. The application binds these to existing
+semantic input and camera presentation; Java dimension epochs release held input.
+Runtime loading now requires `physics.bin` alongside `client.jar` and `blocks.json`.
+Developer state exposes `native_java.motion` and `native_java_movement` diagnostics.
+Linux headless offline-fixture evidence includes walking across chunk boundaries,
+sprint-jumping, crouching, exact wall contact and climbing the two halves of an oak
+stair. Server entity data matched the stopped wall position
+`[3.5, -60, 14.699999988079071]` and stair position
+`[6.699999988079071, -59, 11.5]`. A mixed-action run answered 18 real keepalives
+with 49 resident columns, no reported decode error and a drained movement/mesh backlog.
+It exposed an angle-correction/camera ordering race. The regression fix passed a
+fresh graphical run with absolute and relative angle corrections while walking and
+sprinting: the server confirmed `0/45.000004` and `90/25.000004` degrees. That run
+answered six real keepalives before Save & Quit cleared motion, the pending frame,
+tick counters, meshes and the connection; the server reported zero players.
+Same-process reconnect advanced generation 2 to 4, rendered 49 columns without
+the test wall removed while disconnected, and answered four more keepalives.
+New input moved the player to `[0.5, -60, 14.857479884892918]`, matching server data
+exactly after stopping. Fresh inspected screenshots cover the corrected view,
+pause menu, disconnect and reconnect on Linux at 1280×720, scale 1.
+The server also resent support
+blocks once at a jump landing; this is retained in acceptance evidence rather than
+treated as an unexplained protocol success. The software-rendered process reached
+about 1.8 GiB RSS; this is an observation, not a performance or memory qualification.
+Flying, fluids,
+special block callbacks, effects, entity collision and full respawn/dimension
+movement retention remain incomplete; unsupported queries report a blocked movement
+reason, never empty collision. These changes do not establish a playable client.
 
 ## Dependency choice and notices
 

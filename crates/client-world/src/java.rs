@@ -84,6 +84,7 @@ impl WorldState {
                     return false;
                 }
                 let spawn = facts.world.spawn.clone();
+                self.player_dynamics = dynamics::initial();
                 self.bootstrap = Some(facts);
                 if let Err(error) = terrain::begin(self, &spawn) {
                     self.terrain_error = Some(error);

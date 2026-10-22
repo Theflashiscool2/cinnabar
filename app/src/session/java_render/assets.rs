@@ -16,6 +16,7 @@ use std::{
 };
 use world::java::{BiomeAppearance, Column};
 pub(super) struct Prepared {
+    pub physics: Arc<assets::registry::java::physics::Table>,
     pub graphics: Arc<Graphics>,
     pub tints: Vec<render_scene::chunk::biome_tints::BiomeTint>,
     pub unsupported_tints: BTreeSet<u32>,
@@ -47,6 +48,15 @@ fn load_inner(
     cancel: Arc<AtomicBool>,
 ) -> Result<Prepared, Box<dyn std::error::Error>> {
     use java_protocol::target;
+    let physics_bytes = std::fs::read(root.join("physics.bin"))?;
+    if physics_bytes.len() as u64 != target::PHYSICS_REPORT_BYTES {
+        return Err("Java physics report size does not match target manifest".into());
+    }
+    let physics = Arc::new(assets::registry::java::physics::Table::load(
+        &physics_bytes,
+        target::PHYSICS_REPORT_SHA256,
+        target::BLOCK_STATE_COUNT,
+    )?);
     let report = std::fs::read(root.join("blocks.json"))?;
     if report.len() != target::BLOCK_REPORT_BYTES {
         return Err("Java block report size does not match target manifest".into());
@@ -96,6 +106,7 @@ fn load_inner(
         assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
     )?);
     Ok(Prepared {
+        physics,
         graphics,
         tints,
         unsupported_tints,

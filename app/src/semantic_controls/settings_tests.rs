@@ -14,6 +14,19 @@ use super::{
     synchronize_semantic_input_authority,
 };
 
+#[test]
+fn native_input_scope_does_not_require_a_bedrock_ui_session() {
+    assert_eq!(
+        super::input_session_scope(0, Some((7, 3))),
+        Some((std::num::NonZeroU64::new(7).unwrap(), Some(3)))
+    );
+    assert_eq!(super::input_session_scope(0, None), None);
+    assert_eq!(
+        super::input_session_scope(7, None),
+        Some((std::num::NonZeroU64::new(7).unwrap(), None))
+    );
+}
+
 /// Publishes menu edits through the same settings handoff as the client shell.
 fn publish_settings(mut menu: ResMut<MenuRuntime>, settings: ResMut<RuntimeSettings>) {
     menu.sync_user_settings(Some(settings));

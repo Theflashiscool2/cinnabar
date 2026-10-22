@@ -73,6 +73,10 @@ pub(super) fn admit(
 }
 
 impl WorldState {
+    /// Prediction commands are valid only while this server correction receipt remains current.
+    pub fn motion_sequence(&self) -> u64 {
+        self.correction_sequence
+    }
     /// A full transport queue retains this command for the next frame; callers mark it only
     /// after enqueue succeeds. A retired receipt cannot clear a newer correction.
     pub fn correction_command(&self) -> Option<(u64, Command)> {

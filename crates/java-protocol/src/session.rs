@@ -5,6 +5,7 @@ pub mod dynamics;
 pub mod facts;
 mod login;
 mod motion;
+pub mod movement;
 mod play;
 mod terrain;
 use crate::{
@@ -58,6 +59,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    Move {
+        dimension_epoch: u64,
+        sequence: u64,
+        frame: movement::Frame,
+    },
     Respawn,
     AcceptRotation {
         dimension_epoch: u64,

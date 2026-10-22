@@ -31,6 +31,7 @@ use std::{path::PathBuf, time::Instant};
 
 mod client_id;
 mod java;
+pub(crate) mod java_movement;
 pub(crate) mod java_render;
 mod startup;
 
@@ -104,7 +105,6 @@ impl SessionController {
         self
     }
 
-    #[cfg(feature = "developer-control")]
     pub(crate) fn native_java_world(&self) -> Option<&client_world::java::WorldState> {
         self.java.as_ref().map(|_| &self.java_world)
     }

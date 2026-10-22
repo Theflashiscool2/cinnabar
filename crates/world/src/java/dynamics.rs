@@ -73,7 +73,8 @@ impl Attribute {
 #[derive(Default, Debug)]
 pub struct PlayerDynamics {
     pub abilities: Option<Abilities>,
-    /// Only server-admitted values. Generic registry defaults are not player defaults.
+    /// Pinned player-builder values with server-authoritative replacements. Generic registry
+    /// defaults are not player defaults; the admission owner supplies the verified initial set.
     pub attributes: BTreeMap<String, Attribute>,
     /// Velocity can arrive before the first position; this does not create a position anchor.
     pub unplaced_velocity: Option<[f64; 3]>,

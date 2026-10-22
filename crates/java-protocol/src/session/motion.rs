@@ -5,6 +5,22 @@ impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         match command {
+            Command::Move {
+                dimension_epoch,
+                sequence,
+                frame,
+            } if dimension_epoch == self.dimension_epoch
+                && sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead =>
+            {
+                for (name, payload) in movement::encode(frame)? {
+                    self.send(name, &payload).await?;
+                }
+            }
+            Command::Move { .. } => {}
             Command::AcceptRotation {
                 dimension_epoch,
                 sequence,

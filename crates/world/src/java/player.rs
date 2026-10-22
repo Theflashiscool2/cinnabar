@@ -84,7 +84,7 @@ impl Motion {
 
 /// Java's table uses double-precision indexing and table initialization, unlike Bedrock's
 /// simulation helper. Only the table values and rotation argument are rounded to float.
-fn trig(radians: f32) -> [f64; 2] {
+pub fn trig(radians: f32) -> [f64; 2] {
     const SIZE: usize = 65536;
     const SCALE: f64 = SIZE as f64 / std::f64::consts::TAU;
     static TABLE: OnceLock<Box<[f32; SIZE]>> = OnceLock::new();

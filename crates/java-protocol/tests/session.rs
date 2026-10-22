@@ -141,6 +141,11 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
         wire.read().await.unwrap(),
         [0x20, 0x42, 0xc8, 0, 0, 0x41, 0xa0, 0, 0, 0]
     );
+    // Stale prediction is fenced by the correction receipt; only the current batch arrives.
+    assert_eq!(wire.read().await.unwrap(), [0x2b, 65]);
+    assert_eq!(wire.read().await.unwrap(), [0x2a, 42, 1, 0]);
+    assert_eq!(wire.read().await.unwrap(), [0x21, 1]);
+    assert_eq!(wire.read().await.unwrap(), [0x0d]);
     // Abilities and the new packed velocity are delivered as admitted schemas, not deferred bytes.
     wire.write(&[0x41, 0, 0x3d, 0x4c, 0xcc, 0xcd, 0x3d, 0xcc, 0xcc, 0xcd])
         .await
@@ -288,6 +293,24 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .unwrap();
                     }
                     rotation = true;
+                    for sequence in [2, 3] {
+                        commands
+                            .send(session::Command::Move {
+                                dimension_epoch,
+                                sequence,
+                                frame: session::movement::Frame {
+                                    entity: 42,
+                                    position: None,
+                                    rotation: None,
+                                    on_ground: true,
+                                    horizontal_collision: false,
+                                    input: Some(65),
+                                    sprinting: Some(true),
+                                },
+                            })
+                            .await
+                            .unwrap();
+                    }
                 }
                 Event::Dynamics {
                     dimension_epoch,

@@ -11,6 +11,8 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -31,7 +33,7 @@ public final class ExportPhysics {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) throw new IllegalArgumentException("expected output path");
+        if (args.length != 2) throw new IllegalArgumentException("expected physics and player-attribute output paths");
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         try (var out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(Path.of(args[0]))))) {
@@ -59,5 +61,27 @@ public final class ExportPhysics {
                 }
             }
         }
+        exportPlayerAttributes(Path.of(args[1]));
+    }
+
+    // The player builder has different defaults and a different attribute set from the generic
+    // registry. Export the actual native values, including float-to-double widening.
+    private static void exportPlayerAttributes(Path path) throws Exception {
+        var defaults = Player.createAttributes().build();
+        var json = new StringBuilder("[\n");
+        boolean first = true;
+        for (var attribute : BuiltInRegistries.ATTRIBUTE) {
+            var holder = BuiltInRegistries.ATTRIBUTE.wrapAsHolder(attribute);
+            if (!defaults.hasAttribute(holder)) continue;
+            if (!first) json.append(",\n");
+            first = false;
+            var ranged = (RangedAttribute)attribute;
+            json.append("  {\"id\":").append(BuiltInRegistries.ATTRIBUTE.getId(attribute))
+                .append(",\"name\":\"").append(BuiltInRegistries.ATTRIBUTE.getKey(attribute))
+                .append("\",\"base\":").append(defaults.getBaseValue(holder))
+                .append(",\"minimum\":").append(ranged.getMinValue())
+                .append(",\"maximum\":").append(ranged.getMaxValue()).append('}');
+        }
+        Files.writeString(path, json.append("\n]\n"), StandardCharsets.UTF_8);
     }
 }

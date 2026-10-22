@@ -93,8 +93,8 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   and rendered launcher path; camera and admitted/server position and rotation
   agree. Seven real keepalives and clean Save & Quit were observed in the graphical
   run. Reconnect advanced generation, reset correction receipts, rendered fresh
-  terrain and answered two further keepalives. Local movement physics remains
-  unimplemented.
+  terrain and answered two further keepalives. Local movement live acceptance
+  remains pending.
 - [x] Linux offline vanilla fixture: recover a saved dead player through explicit
   respawn, admit a new dimension epoch and 49 columns, then reconnect into 49 fresh
   columns. Each session answered two real keepalives with positive authoritative
@@ -126,16 +126,28 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   `assetc java-physics`. The authorized fixture test loads that output through Rust
   and checks grass/air/stairs/water/ice/dynamic states. `sim::java` has deterministic
   clipping/stepping coverage, including independent vanilla axis-order vectors.
-  This is preparation and collision-math evidence; no player movement is wired yet.
+  This establishes preparation and collision math; movement qualification is separate.
 - [x] Decode native abilities, pinned attributes and packed velocity; admit local
   facts with session/dimension/entity fences and atomic attribute updates. Return
   resolved angle-only corrections through the ordered command queue. Preserve
   respawn attribute bases and honor modifier retention. Deterministic wire/domain
   coverage includes independent vanilla velocity vectors. Linux offline diagnostic
   acceptance confirms absolute/relative rotation replies against server entity data,
-  49 resident columns and four real keepalives. Fresh graphical angle-only evidence,
-  pinned player-default initialization, walking and remote entity synchronization
-  remain unimplemented or unverified.
+  49 resident columns and four real keepalives. Native player defaults now come from
+  the pinned vanilla builder, independently of generic codec defaults. Graphical
+  absolute/relative angle corrections under input now match server entity data;
+  a regression prevents an old camera angle from undoing an admitted correction.
+  Remote entity synchronization remains pending.
+- [x] Exercise the initial dry-land movement slice through launcher, renderer and
+  native input on the authorized Linux offline fixture: walk across chunk boundaries,
+  sprint/jump/crouch, collide with a wall, climb stairs, receive corrections and
+  disconnect/reconnect. Stopped positions match vanilla server data. Deterministic
+  tests cover tick math, collision and bounded pending-frame invalidation. The mixed
+  run observed 18 keepalives; the corrected build observed six, then four after a
+  same-process reconnect with fresh terrain and movement state. This qualifies only
+  these fixture cases, not general movement parity or a playable multiplayer client.
+- [ ] Complete movement semantics: fluids, flying, effects, special block callbacks,
+  entity collision, sprint-transition parity and full respawn/dimension retention.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face
   occlusion, nonuniform biome tinting, spatial tint callbacks, animation/transparency
   semantics, clock/weather presentation and streaming new-state asset extension.

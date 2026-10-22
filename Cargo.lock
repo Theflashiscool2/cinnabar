@@ -4384,6 +4384,7 @@ dependencies = [
  "client-world",
  "env-compat",
  "inventory 0.1.25",
+ "java-protocol",
  "meshing",
  "player-state",
  "protocol",

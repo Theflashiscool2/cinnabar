@@ -259,6 +259,7 @@ fn semantic_authority_tracks_ui_settings_session_and_dimension_transitions_in_pr
             controls: controls.clone(),
             session_generation: NonZeroU64::new(session_generation).unwrap(),
             dimension,
+            java_dimension: None,
         };
 
     runtime
@@ -312,6 +313,17 @@ fn semantic_authority_tracks_ui_settings_session_and_dimension_transitions_in_pr
         binding_release.release_reasons[Action::Jump as usize],
         Some(ReleaseReason::BindingChanged),
     );
+    // Edition entry and native dimension replacement must release input even if the
+    // Bedrock dimension and UI generation happen to have the same numeric values.
+    for java_dimension in [Some(1), Some(2), None] {
+        assert!(runtime.route_and_finalize(held_jump()).unwrap().phases[Action::Jump as usize].held);
+        let mut frame=authority(InputContext::Gameplay,2,2,1);
+        frame.java_dimension=java_dimension;
+        runtime.synchronize_authority(frame).unwrap();
+        let released=runtime.route_and_finalize(DeviceFrame::default()).unwrap();
+        assert_eq!(released.release_reasons[Action::Jump as usize],Some(ReleaseReason::DimensionReplaced));
+        assert!(!released.phases[Action::Jump as usize].held);
+    }
 }
 
 #[test]
@@ -323,6 +335,7 @@ fn pending_mouse_motion_cannot_cross_session_authority_in_production_order() {
         controls: ControlSettings::default(),
         session_generation: NonZeroU64::new(session_generation).unwrap(),
         dimension: 0,
+        java_dimension: None,
     };
 
     runtime.route_device_frame(DeviceFrame::default()).unwrap();

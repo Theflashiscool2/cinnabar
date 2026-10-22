@@ -40,6 +40,7 @@ struct Target {
     server_bytes: u64,
     block_registry_report: Registry,
     physics_report: Report,
+    player_attributes_report: Report,
 }
 #[derive(Deserialize)]
 struct Registry {
@@ -119,6 +120,7 @@ pub(super) fn generate(options: Options) -> Result<(), Box<dyn Error>> {
         return Err(format!("Java physics exporter compilation failed: {result}").into());
     }
     let generated = work.path().join("physics.bin");
+    let player_attributes = work.path().join("player-attributes.json");
     let classpath = std::env::join_paths(
         std::iter::once(work.path()).chain(jars.iter().map(PathBuf::as_path)),
     )?;
@@ -128,11 +130,17 @@ pub(super) fn generate(options: Options) -> Result<(), Box<dyn Error>> {
         .arg(classpath)
         .arg("ExportPhysics")
         .arg(&generated)
+        .arg(&player_attributes)
         .current_dir(work.path())
         .status()?;
     if !result.success() {
         return Err(format!("Java physics exporter failed: {result}").into());
     }
+    verify(
+        &player_attributes,
+        &target.player_attributes_report.sha256,
+        target.player_attributes_report.bytes,
+    )?;
     verify(
         &generated,
         &target.physics_report.sha256,

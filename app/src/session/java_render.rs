@@ -21,6 +21,7 @@ use world::java::Dimension;
 
 #[derive(Resource)]
 pub(crate) struct Presentation {
+    physics: Option<Arc<::assets::registry::java::physics::Table>>,
     dimension: Option<Dimension>,
     pending: Option<crossbeam_channel::Receiver<Result<assets::Prepared, String>>>,
     cancel: Arc<AtomicBool>,
@@ -39,6 +40,7 @@ pub(crate) struct Presentation {
 impl Default for Presentation {
     fn default() -> Self {
         Self {
+            physics: None,
             dimension: None,
             pending: None,
             cancel: Arc::new(AtomicBool::new(false)),
@@ -62,6 +64,11 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    pub(super) fn movement_physics(&self) -> Option<&::assets::registry::java::physics::Table> {
+        (self.opened && self.failure.is_none())
+            .then_some(self.physics.as_deref())
+            .flatten()
+    }
     /// Native readiness owns Java world entry; absence leaves the Bedrock gate in charge.
     pub(crate) fn world_ready(&self) -> Option<bool> {
         self.dimension.as_ref().map(|_| self.opened)
@@ -83,7 +90,7 @@ impl Presentation {
                 "waiting_light": s.metrics.waiting_light,
             })),
             "error": self.failure,
-            "movement_supported": false,
+            "movement_scope": "experimental_dry_land",
             "playable": false,
         })
     }
@@ -101,6 +108,7 @@ impl Presentation {
     reason = "the host binds separate session, view and shared render owners"
 )]
 pub(crate) fn update(
+    movement: Res<super::java_movement::Movement>,
     mut unbound: Option<ResMut<client_interaction::camera::UnboundCameraMovement>>,
     controller: Option<ResMut<SessionController>>,
     mut presentation: ResMut<Presentation>,
@@ -156,8 +164,7 @@ pub(crate) fn update(
         && p.teleport != Some(state.player_pose_revision)
     {
         let feet = Vec3::from_array(position.position.map(|n| n as f32));
-        // Standing Java eye height; pose changes belong to the upcoming native movement slice.
-        view.set_subject_position(feet + Vec3::Y * 1.62, feet);
+        view.set_subject_position(feet + Vec3::Y * movement.0.eye_height(state) as f32, feet);
         view.set_rotation(
             Quat::from_rotation_y((-position.yaw + 180.).to_radians())
                 * Quat::from_rotation_x(-position.pitch.to_radians()),
@@ -199,6 +206,7 @@ pub(crate) fn update(
         p.pending = None;
         match result {
             Ok(prepared) => {
+                p.physics = Some(prepared.physics);
                 let revision = textures.revision.saturating_add(1);
                 *textures = ChunkTextureAssets::with_revision(
                     Arc::clone(&prepared.graphics.runtime),
@@ -213,7 +221,7 @@ pub(crate) fn update(
             }
             Err(error) => {
                 p.failure = Some(format!(
-                    "Java runtime assets: {error}. Supply the pinned client.jar and blocks.json under CINNABAR_JAVA_ASSETS."
+                    "Java runtime assets: {error}. Supply the pinned client.jar, blocks.json and physics.bin under CINNABAR_JAVA_ASSETS."
                 ))
             }
         }
@@ -358,7 +366,7 @@ pub(crate) fn update(
         bevy::log::info!(
             session = dimension.session,
             epoch = dimension.epoch,
-            "Java spawn terrain uploaded by Cinnabar renderer; movement and gameplay remain unsupported"
+            "Java spawn terrain uploaded by Cinnabar renderer; experimental dry-land movement enabled, broader gameplay incomplete"
         );
     }
 }
