@@ -1,4 +1,5 @@
 //! Java terrain authority. Packet schemas stay in java-protocol; render consumers use these facts.
+pub mod dynamics;
 mod palette;
 pub mod player;
 mod store;

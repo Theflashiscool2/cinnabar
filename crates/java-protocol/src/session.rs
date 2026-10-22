@@ -1,6 +1,7 @@
 //! Native login/configuration/play owner. One future owns all ordered socket operations.
 mod configuration;
 mod crypto;
+pub mod dynamics;
 pub mod facts;
 mod login;
 mod motion;
@@ -58,6 +59,12 @@ pub enum Identity {
 #[derive(Debug)]
 pub enum Command {
     Respawn,
+    AcceptRotation {
+        dimension_epoch: u64,
+        sequence: u64,
+        yaw: f32,
+        pitch: f32,
+    },
     /// Sent only after the active dimension has actually reached renderer readiness.
     PlayerLoaded {
         dimension_epoch: u64,
@@ -101,7 +108,23 @@ pub enum Event {
         sequence: u64,
         correction: facts::Teleport,
     },
-    Respawn(facts::Spawn),
+    Respawn {
+        spawn: facts::Spawn,
+        keep_attribute_modifiers: bool,
+        keep_metadata: bool,
+    },
+    Rotation {
+        dimension_epoch: u64,
+        sequence: u64,
+        yaw: f32,
+        relative_yaw: bool,
+        pitch: f32,
+        relative_pitch: bool,
+    },
+    Dynamics {
+        dimension_epoch: u64,
+        packet: dynamics::Packet,
+    },
     KeepAlive(i64),
     Vitals(facts::Vitals),
     Death {
@@ -141,6 +164,7 @@ struct Connection {
     dead: bool,
     loaded_epoch: Option<u64>,
     pending_teleport: Option<(i32, u64)>,
+    pending_rotation: Option<u64>,
     correction_sequence: u64,
 }
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
@@ -212,6 +236,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         dead: false,
         loaded_epoch: None,
         pending_teleport: None,
+        pending_rotation: None,
         correction_sequence: 0,
     };
     tokio::time::timeout(options.login_timeout, c.login(&options))

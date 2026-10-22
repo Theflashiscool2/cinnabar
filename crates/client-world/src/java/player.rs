@@ -42,7 +42,11 @@ pub(super) fn admit(
     {
         return Err("initial relative Java teleport has no admitted player anchor");
     }
-    let motion = state.player_motion.unwrap_or_default().corrected(
+    let anchor = state.player_motion.unwrap_or_else(|| Motion {
+        velocity: state.player_dynamics.unplaced_velocity.unwrap_or_default(),
+        ..Default::default()
+    });
+    let motion = anchor.corrected(
         Motion {
             position: correction.position,
             velocity: correction.velocity,
@@ -51,6 +55,11 @@ pub(super) fn admit(
         },
         relative,
     )?;
+    state.player_pose_revision = state
+        .player_pose_revision
+        .checked_add(1)
+        .ok_or("Java player pose revision overflow")?;
+    state.player_dynamics.unplaced_velocity = None;
     state.correction_sequence = revision;
     state.player_motion = Some(motion);
     state.teleport = Some(ResolvedTeleport {
@@ -67,6 +76,17 @@ impl WorldState {
     /// A full transport queue retains this command for the next frame; callers mark it only
     /// after enqueue succeeds. A retired receipt cannot clear a newer correction.
     pub fn correction_command(&self) -> Option<(u64, Command)> {
+        if let Some((dimension_epoch, sequence, yaw, pitch)) = self.pending_rotation {
+            return Some((
+                sequence,
+                Command::AcceptRotation {
+                    dimension_epoch,
+                    sequence,
+                    yaw,
+                    pitch,
+                },
+            ));
+        }
         let correction = self.teleport.as_ref()?;
         if self.pending_correction != Some(correction.revision) {
             return None;
@@ -84,12 +104,18 @@ impl WorldState {
         ))
     }
     pub fn correction_queued(&mut self, revision: u64) {
+        if self
+            .pending_rotation
+            .is_some_and(|(_, sequence, _, _)| sequence == revision)
+        {
+            self.pending_rotation = None;
+        }
         if self.pending_correction == Some(revision) {
             self.pending_correction = None;
         }
     }
     pub fn awaiting_correction_ack(&self) -> bool {
-        self.pending_correction.is_some()
+        self.pending_correction.is_some() || self.pending_rotation.is_some()
     }
 }
 

@@ -5,11 +5,11 @@ impl Connection {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
         loop {
             let packet = tokio::select! {
-                result = tokio::time::timeout_at(deadline, self.stream.read()), if self.pending_teleport.is_none() => {
+                result = tokio::time::timeout_at(deadline, self.stream.read()), if self.pending_teleport.is_none() && self.pending_rotation.is_none() => {
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                     result.map_err(|_| Error::Timeout(Phase::Play))??
                 },
-                _ = tokio::time::sleep_until(deadline), if self.pending_teleport.is_some() => {
+                _ = tokio::time::sleep_until(deadline), if self.pending_teleport.is_some() || self.pending_rotation.is_some() => {
                     return Err(Error::TeleportAdmissionTimeout);
                 },
                 command = async {
@@ -24,7 +24,7 @@ impl Connection {
                                 deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                             }
                         }
-                        None if self.pending_teleport.is_some() => return Err(Error::ConsumerClosed),
+                        None if self.pending_teleport.is_some() || self.pending_rotation.is_some() => return Err(Error::ConsumerClosed),
                         None => self.commands = None,
                     }
                     continue;
@@ -38,6 +38,49 @@ impl Connection {
                 .ok_or(ProtocolError::Invalid("unknown play packet"))?;
             if self.common(name, &mut r).await? {
                 r.finish()?;
+                continue;
+            }
+            if let Some(packet) = dynamics::decode(name, &mut r)? {
+                r.finish()?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("player dynamics before world login").into());
+                }
+                if let dynamics::Packet::Rotation {
+                    yaw,
+                    relative_yaw,
+                    pitch,
+                    relative_pitch,
+                } = packet
+                {
+                    if self.commands.is_none() {
+                        return Err(Error::ConsumerClosed);
+                    }
+                    self.correction_sequence = self
+                        .correction_sequence
+                        .checked_add(1)
+                        .ok_or(ProtocolError::Invalid("Java correction sequence overflow"))?;
+                    self.pending_rotation = Some(self.correction_sequence);
+                    deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+                    tokio::time::timeout_at(
+                        deadline,
+                        self.emit(Event::Rotation {
+                            dimension_epoch: self.dimension_epoch,
+                            sequence: self.correction_sequence,
+                            yaw,
+                            relative_yaw,
+                            pitch,
+                            relative_pitch,
+                        }),
+                    )
+                    .await
+                    .map_err(|_| Error::TeleportAdmissionTimeout)??;
+                } else {
+                    self.emit(Event::Dynamics {
+                        dimension_epoch: self.dimension_epoch,
+                        packet,
+                    })
+                    .await?;
+                }
                 continue;
             }
             if let Some(context) = self.terrain
@@ -126,10 +169,18 @@ impl Connection {
                 "ClientboundRespawnPacket" => {
                     self.dead = false;
                     let spawn = facts::Spawn::read(&mut r)?;
-                    r.byte()?;
+                    let keep = r.byte()?;
+                    if keep & !3 != 0 {
+                        return Err(ProtocolError::Invalid("Java respawn keep flags").into());
+                    }
                     self.terrain = Some(self.terrain_context(&spawn)?);
                     self.dimension_epoch += 1;
-                    self.emit(Event::Respawn(spawn)).await?;
+                    self.emit(Event::Respawn {
+                        spawn,
+                        keep_attribute_modifiers: keep & 1 != 0,
+                        keep_metadata: keep & 2 != 0,
+                    })
+                    .await?;
                 }
                 "ClientboundStartConfigurationPacket" => {
                     return Err(Error::Unsupported(
@@ -207,13 +258,11 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundMoveEntityPosRotPacket",
     "ClientboundMoveMinecartPacket",
     "ClientboundMoveEntityRotPacket",
-    "ClientboundPlayerAbilitiesPacket",
     "ClientboundPlayerCombatEndPacket",
     "ClientboundPlayerCombatEnterPacket",
     "ClientboundPlayerInfoRemovePacket",
     "ClientboundPlayerInfoUpdatePacket",
     "ClientboundPlayerLookAtPacket",
-    "ClientboundPlayerRotationPacket",
     "ClientboundRecipeBookAddPacket",
     "ClientboundRecipeBookRemovePacket",
     "ClientboundRecipeBookSettingsPacket",
@@ -235,7 +284,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetDisplayObjectivePacket",
     "ClientboundSetEntityDataPacket",
     "ClientboundSetEntityLinkPacket",
-    "ClientboundSetEntityMotionPacket",
     "ClientboundSetEquipmentPacket",
     "ClientboundSetExperiencePacket",
     "ClientboundSetHeldSlotPacket",
@@ -261,7 +309,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundTickingStatePacket",
     "ClientboundTickingStepPacket",
     "ClientboundUpdateAdvancementsPacket",
-    "ClientboundUpdateAttributesPacket",
     "ClientboundUpdateMobEffectPacket",
     "ClientboundUpdateRecipesPacket",
     "ClientboundProjectilePowerPacket",

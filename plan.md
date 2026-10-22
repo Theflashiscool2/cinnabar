@@ -127,6 +127,15 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   and checks grass/air/stairs/water/ice/dynamic states. `sim::java` has deterministic
   clipping/stepping coverage, including independent vanilla axis-order vectors.
   This is preparation and collision-math evidence; no player movement is wired yet.
+- [x] Decode native abilities, pinned attributes and packed velocity; admit local
+  facts with session/dimension/entity fences and atomic attribute updates. Return
+  resolved angle-only corrections through the ordered command queue. Preserve
+  respawn attribute bases and honor modifier retention. Deterministic wire/domain
+  coverage includes independent vanilla velocity vectors. Linux offline diagnostic
+  acceptance confirms absolute/relative rotation replies against server entity data,
+  49 resident columns and four real keepalives. Fresh graphical angle-only evidence,
+  pinned player-default initialization, walking and remote entity synchronization
+  remain unimplemented or unverified.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face
   occlusion, nonuniform biome tinting, spatial tint callbacks, animation/transparency
   semantics, clock/weather presentation and streaming new-state asset extension.

@@ -25,5 +25,13 @@
     "bytes": 4790976,
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportPhysics.java",
     "path": "physics.bin"
+  },
+  "attribute_schema": {
+    "path": "data/AttributeType.java",
+    "sha256": "b42621ea77ddd4adb5ebe1d0cf821e4077a8ccefb96bfd59bf5caa415316a3a4",
+    "count": 40,
+    "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/attribute/AttributeType.java",
+    "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
+    "official_registry_report_path": "reports/registries.json"
   }
 }

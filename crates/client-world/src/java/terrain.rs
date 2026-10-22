@@ -39,7 +39,9 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
     });
     state.teleport = None;
     state.player_motion = None;
+    state.player_dynamics.unplaced_velocity = None;
     state.pending_correction = None;
+    state.pending_rotation = None;
     Ok(())
 }
 fn palette<T: Copy + From<u32>>(p: wire::Palette) -> Result<domain::Palette<T>, &'static str> {

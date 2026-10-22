@@ -132,6 +132,33 @@ new correction receipt to the camera. Physics and outbound movement remain separ
 unfinished work. Deterministic coverage checks encrypted wire ordering, cancellation,
 timeouts, correction precision and stale receipts.
 
+Player abilities, attributes and packed `LpVec3` velocity now have typed decoders and
+local-player admission. The attribute ID table is generated from the hash-pinned
+`AttributeType.java` reference; all 40 IDs were checked against the official registry
+report whose hash is recorded in the target manifest. Generic attribute defaults
+are not substituted for server-supplied player values. Remote entity dynamics remain
+explicitly deferred until their lifecycle owner exists. Velocity before initial
+position does not invent a spawn anchor. Respawn retains attribute bases and obeys
+the server's modifier-retention flag; metadata retention is recorded but entity
+metadata itself is not implemented.
+
+Angle-only corrections use the same bounded, ordered admission deadline and receipt
+fence as teleports. Their resolved rotation is returned in Java's rotation packet;
+camera updates use a domain pose revision independent of teleport IDs. Independent
+vanilla velocity vectors, malformed payloads, encrypted rotation-response ordering,
+attribute arithmetic, admission atomicity and stale identities have deterministic
+coverage. This does not establish client walking or general entity synchronization.
+Linux offline vanilla diagnostics also admitted absolute rotation `90/25`, relative
+`+15/-10`, and a return to `0/0`; server entity data confirmed `90/25` and `105/15`
+after the replies. That run retained 49 columns, positive health and four real
+keepalives before clean disconnect. Angle-only camera presentation is implemented
+but awaits a fresh graphical run; this live evidence is from the diagnostic client.
+The server sent three changed player attributes, not the complete player defaults.
+Initializing the remaining values from the pinned vanilla player builder belongs
+to the next movement slice. A direct vanilla registry comparison confirmed all
+codec IDs and bounds, but found a rounded jump-strength default in the reference;
+generic defaults are therefore deliberately absent from the generated runtime table.
+
 Linux offline vanilla acceptance on 2026-10-22 also exercised real corrections:
 the diagnostic client admitted two relative teleports (wire flags `255`), an
 absolute return, 49 columns and three keepalives. In the headless graphical client,

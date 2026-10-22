@@ -133,6 +133,21 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     resolved.extend(90f32.to_be_bytes());
     resolved.extend((-45f32).to_be_bytes());
     assert_eq!(wire.read().await.unwrap(), resolved);
+    // Independent official report: angle-only correction 74, rotation response 32.
+    wire.write(&[0x4a, 0x41, 0x20, 0, 0, 1, 0x41, 0xa0, 0, 0, 0])
+        .await
+        .unwrap();
+    assert_eq!(
+        wire.read().await.unwrap(),
+        [0x20, 0x42, 0xc8, 0, 0, 0x41, 0xa0, 0, 0, 0]
+    );
+    // Abilities and the new packed velocity are delivered as admitted schemas, not deferred bytes.
+    wire.write(&[0x41, 0, 0x3d, 0x4c, 0xcc, 0xcd, 0x3d, 0xcc, 0xcc, 0xcd])
+        .await
+        .unwrap();
+    wire.write(&[0x67, 42, 0xf1, 0xff, 0, 0, 0xff, 0xff])
+        .await
+        .unwrap();
     // Official protocol-777 report: death 69, client command 12, respawn 84.
     wire.write(&[0x45, 42, 8, 0, 4, b't', b'e', b's', b't'])
         .await
@@ -173,6 +188,8 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let mut bootstrap = false;
     let mut position = false;
     let mut keepalives = 0;
+    let mut dynamics = 0;
+    let mut rotation = false;
     tokio::time::timeout(Duration::from_secs(10), async {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
@@ -242,12 +259,64 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .unwrap();
                     }
                 }
+                Event::Rotation {
+                    dimension_epoch,
+                    sequence,
+                    yaw,
+                    relative_yaw,
+                    pitch,
+                    relative_pitch,
+                } => {
+                    assert_eq!(
+                        (yaw, relative_yaw, pitch, relative_pitch),
+                        (10., true, 20., false)
+                    );
+                    assert_eq!(sequence, 3);
+                    for (epoch, receipt) in [
+                        (99, sequence),
+                        (dimension_epoch, 2),
+                        (dimension_epoch, sequence),
+                    ] {
+                        commands
+                            .send(session::Command::AcceptRotation {
+                                dimension_epoch: epoch,
+                                sequence: receipt,
+                                yaw: 100.,
+                                pitch: 20.,
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    rotation = true;
+                }
+                Event::Dynamics {
+                    dimension_epoch,
+                    packet,
+                } => {
+                    assert_eq!(dimension_epoch, 1);
+                    match packet {
+                        session::dynamics::Packet::Abilities(a) => {
+                            assert!(!a.flying && !a.creative)
+                        }
+                        session::dynamics::Packet::Velocity { entity, velocity } => {
+                            assert_eq!(entity, 42);
+                            assert_eq!(velocity, [1., 0., -1.]);
+                        }
+                        _ => panic!("unexpected dynamics"),
+                    }
+                    dynamics += 1;
+                }
                 Event::Death { player_id, message } => {
                     assert_eq!(player_id, 42);
                     assert_eq!(message, java_protocol::nbt::Value::String("test".into()));
                     commands.send(session::Command::Respawn).await.unwrap();
                 }
-                Event::Respawn(_) => {
+                Event::Respawn {
+                    keep_attribute_modifiers,
+                    keep_metadata,
+                    ..
+                } => {
+                    assert!(!keep_attribute_modifiers && !keep_metadata);
                     for epoch in [1, 2, 2] {
                         commands
                             .send(session::Command::PlayerLoaded {
@@ -287,6 +356,8 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     );
     assert!(bootstrap && position);
     assert_eq!(keepalives, 2);
+    assert!(rotation);
+    assert_eq!(dynamics, 2);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

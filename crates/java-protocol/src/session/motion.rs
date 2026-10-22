@@ -5,6 +5,27 @@ impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         match command {
+            Command::AcceptRotation {
+                dimension_epoch,
+                sequence,
+                yaw,
+                pitch,
+            } if dimension_epoch == self.dimension_epoch
+                && self.pending_rotation == Some(sequence) =>
+            {
+                if !yaw.is_finite() || !pitch.is_finite() {
+                    return Err(ProtocolError::Invalid("nonfinite admitted Java rotation").into());
+                }
+                let mut payload = Vec::with_capacity(9);
+                payload.extend(yaw.to_be_bytes());
+                payload.extend(pitch.to_be_bytes());
+                payload.push(0); // Vanilla's immediate correction reply has both ground flags false.
+                self.send("ServerboundMovePlayerRotPacket", &payload)
+                    .await?;
+                self.pending_rotation = None;
+                return Ok(true);
+            }
+            Command::AcceptRotation { .. } => {}
             Command::AcceptTeleport {
                 dimension_epoch,
                 sequence,
@@ -30,6 +51,7 @@ impl Connection {
                 if dimension_epoch == self.dimension_epoch
                     && self.bootstrapped
                     && self.pending_teleport.is_none()
+                    && self.pending_rotation.is_none()
                     && self.loaded_epoch != Some(dimension_epoch) =>
             {
                 self.send("ServerboundPlayerLoadedPacket", &[]).await?;

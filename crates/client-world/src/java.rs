@@ -1,5 +1,6 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
 mod biomes;
+mod dynamics;
 pub mod player;
 mod terrain;
 use java_protocol::session::{
@@ -21,7 +22,11 @@ pub struct WorldState {
     pub bootstrap: Option<Box<Bootstrap>>,
     pub teleport: Option<player::ResolvedTeleport>,
     pub player_motion: Option<world::java::player::Motion>,
+    pub player_dynamics: world::java::dynamics::PlayerDynamics,
+    pub player_pose_revision: u64,
+    pub deferred_entity_dynamics: u64,
     pending_correction: Option<u64>,
+    pending_rotation: Option<(u64, u64, f32, f32)>,
     correction_sequence: u64,
     pub respawn: Option<Spawn>,
     pub keepalives: u64,
@@ -51,7 +56,9 @@ impl WorldState {
                     self.biomes.clear();
                     self.teleport = None;
                     self.player_motion = None;
+                    self.player_dynamics = Default::default();
                     self.pending_correction = None;
+                    self.pending_rotation = None;
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                 }
@@ -95,8 +102,59 @@ impl WorldState {
                 }
             },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
+            Event::Dynamics {
+                dimension_epoch,
+                packet,
+            } => match dynamics::admit(self, dimension_epoch, packet) {
+                Ok(accepted) => return accepted,
+                Err(error) => {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+            },
             Event::Death { player_id, message } => self.death = Some((player_id, message)),
-            Event::Respawn(spawn) => {
+            Event::Rotation {
+                dimension_epoch,
+                sequence,
+                yaw,
+                relative_yaw,
+                pitch,
+                relative_pitch,
+            } => {
+                if sequence <= self.correction_sequence {
+                    return false;
+                }
+                match dynamics::admit(
+                    self,
+                    dimension_epoch,
+                    java_protocol::session::dynamics::Packet::Rotation {
+                        yaw,
+                        relative_yaw,
+                        pitch,
+                        relative_pitch,
+                    },
+                ) {
+                    Ok(false) => return false,
+                    Err(error) => {
+                        self.terrain_error = Some(error);
+                        return false;
+                    }
+                    Ok(true) => {}
+                }
+                let motion = self.player_motion.expect("admitted rotation");
+                self.correction_sequence = sequence;
+                self.pending_rotation = Some((dimension_epoch, sequence, motion.yaw, motion.pitch));
+            }
+            Event::Respawn {
+                spawn,
+                keep_attribute_modifiers,
+                ..
+            } => {
+                if !keep_attribute_modifiers {
+                    for attribute in self.player_dynamics.attributes.values_mut() {
+                        attribute.modifiers.clear();
+                    }
+                }
                 self.death = None;
                 self.vitals = None;
                 if let Err(error) = terrain::begin(self, &spawn) {
