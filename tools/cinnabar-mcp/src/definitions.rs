@@ -151,7 +151,7 @@ pub fn definitions() -> Value {
         crash,
         {
             "name": "state",
-            "description": "Position, rotation (Bedrock degrees), health, dimension, loaded chunk columns, nearby actors (nearest first), screen stack, menu, sign-in status (signed_in, checking or signed_out), camera and recording status, and game time.",
+            "description": "Position, rotation (Bedrock degrees), health, dimension, loaded chunk columns, nearby actors (nearest first), screen stack, menu, sign-in status (signed_in, checking or signed_out), camera and recording status, and game time. Native Java reports its own protocol/terrain/GPU-upload diagnostics under native_java and native_java_render; those explicitly distinguish uploaded terrain from playable support.",
             "inputSchema": { "type": "object", "properties": {} }
         },
         {

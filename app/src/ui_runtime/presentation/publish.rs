@@ -41,6 +41,8 @@ pub(crate) fn platform_safe_area_insets() -> SafeArea {
 /// Resources beyond Bevy's sixteen-parameter limit.
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct PublishExtras<'w, 's> {
+    #[cfg(not(target_arch = "wasm32"))]
+    java_presentation: Option<Res<'w, crate::session::java_render::Presentation>>,
     frame_poll: Res<'w, WorldStreamFramePoll>,
     #[cfg(not(target_arch = "wasm32"))]
     menu_runtime: Res<'w, client_shell::menu::MenuRuntime>,
@@ -92,6 +94,8 @@ pub(crate) fn prepare_ui_runtime(
     mut hand: crate::presentation::viewmodel::ViewmodelPublish,
 ) {
     let PublishExtras {
+        #[cfg(not(target_arch = "wasm32"))]
+        java_presentation,
         frame_poll,
         #[cfg(not(target_arch = "wasm32"))]
         menu_runtime,
@@ -214,6 +218,16 @@ pub(crate) fn prepare_ui_runtime(
         &mut diagnostics_input,
         &network,
         loading::LoadingObservation {
+            native_world_ready: {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    java_presentation.as_ref().and_then(|p| p.world_ready())
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    None
+                }
+            },
             restart,
             menu_visible,
             snapshot: visibility_diagnostics.snapshot(),

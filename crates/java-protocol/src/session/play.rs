@@ -18,6 +18,11 @@ impl Connection {
                     match command {
                         Some(Command::Respawn) if self.dead => self.send("ServerboundClientCommandPacket", &[0]).await?,
                         Some(Command::Respawn) => {},
+                        Some(Command::PlayerLoaded{dimension_epoch}) if dimension_epoch==self.dimension_epoch && self.bootstrapped && self.loaded_epoch!=Some(dimension_epoch) => {
+                            self.send("ServerboundPlayerLoadedPacket", &[]).await?;
+                            self.loaded_epoch=Some(dimension_epoch);
+                        },
+                        Some(Command::PlayerLoaded{..})=>{},
                         None => self.commands = None,
                     }
                     continue;

@@ -11,6 +11,16 @@ use client_state::{ClientFrameSet, ModCameraInputSet, RuntimeSettings, SemanticI
 
 pub mod aim_assist;
 
+/// Host permission for camera translation without gameplay physics. Network sessions can
+/// withhold it until their movement owner is ready, rather than becoming a free-flight demo.
+#[derive(Resource)]
+pub struct UnboundCameraMovement(pub bool);
+impl Default for UnboundCameraMovement {
+    fn default() -> Self {
+        Self(true)
+    }
+}
+
 #[cfg(test)]
 #[path = "camera/input_locks_tests.rs"]
 mod input_locks_tests;
@@ -21,24 +31,25 @@ pub struct CameraInputPlugin;
 
 impl Plugin for CameraInputPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                apply_runtime_camera_settings
-                    .after(ClientFrameSet::SemanticFinalize)
-                    .before(FlyCameraUpdateSet),
-                (update_perspective, update_look, update_movement)
-                    .chain()
-                    .in_set(FlyCameraUpdateSet),
-            ),
-        )
-        .configure_sets(
-            Update,
-            ModCameraInputSet
-                .in_set(FlyCameraUpdateSet)
-                .after(update_look)
-                .before(update_movement),
-        );
+        app.init_resource::<UnboundCameraMovement>()
+            .add_systems(
+                Update,
+                (
+                    apply_runtime_camera_settings
+                        .after(ClientFrameSet::SemanticFinalize)
+                        .before(FlyCameraUpdateSet),
+                    (update_perspective, update_look, update_movement)
+                        .chain()
+                        .in_set(FlyCameraUpdateSet),
+                ),
+            )
+            .configure_sets(
+                Update,
+                ModCameraInputSet
+                    .in_set(FlyCameraUpdateSet)
+                    .after(update_look)
+                    .before(update_movement),
+            );
     }
 }
 
@@ -117,6 +128,7 @@ pub fn update_look(
 /// Borrows current owner facts and forwards them at the existing system boundary.
 #[allow(clippy::too_many_arguments)]
 pub fn update_movement(
+    unbound: Option<Res<UnboundCameraMovement>>,
     player: Option<Res<client_state::PlayerRuntime>>,
     input: Res<SemanticInputSnapshot>,
     time: Res<Time>,
@@ -126,6 +138,9 @@ pub fn update_movement(
     settings: Res<CameraSettingsAuthority>,
     view: ResMut<LocalViewPose>,
 ) {
+    if unbound.is_some_and(|policy| !policy.0) {
+        return;
+    }
     client_presentation::camera::update_movement(
         client_presentation::observations::InputObservation(input.snapshot()),
         player

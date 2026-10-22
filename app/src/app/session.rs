@@ -2,6 +2,15 @@ use super::*;
 
 /// Orders transfer, failure recovery and acceptance completion after frame publication.
 pub(crate) fn configure_finish_system(app: &mut App) {
+    app.init_resource::<crate::session::java_render::Presentation>()
+        .add_systems(
+            Update,
+            crate::session::java_render::update
+                .after(drive_session)
+                .after(drive_world_stream)
+                .before(ChunkRenderApplySet)
+                .in_set(ClientFrameSet::WorldPublication),
+        );
     #[cfg(feature = "acceptance")]
     app.add_systems(
         Update,

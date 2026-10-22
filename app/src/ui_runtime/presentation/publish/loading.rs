@@ -11,6 +11,7 @@ use super::*;
 use client_session::PacketSendError;
 
 pub(super) struct LoadingObservation {
+    pub native_world_ready: Option<bool>,
     pub restart: bool,
     pub menu_visible: bool,
     pub snapshot: VisibilityDiagnosticSnapshot,
@@ -43,6 +44,13 @@ pub(super) fn prepare_loading(
     }
     if observation.menu_visible && !client_world.dimension_transfer.active() {
         presentation.set_loading_stage(None);
+        diagnostics.set_startup_probe_enabled(false);
+        return;
+    }
+    if let Some(ready) = observation.native_world_ready {
+        // Java acknowledges readiness through its native command owner. It has no Bedrock
+        // stream and must neither wait for one nor emit Bedrock finish-loading commands.
+        presentation.set_loading_stage((!ready).then_some(LoadingStage::BuildingTerrain));
         diagnostics.set_startup_probe_enabled(false);
         return;
     }

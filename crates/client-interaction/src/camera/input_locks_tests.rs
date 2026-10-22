@@ -231,8 +231,7 @@ fn server_input_locks_stop_rebound_keyboard_look() {
     });
 }
 
-#[test]
-fn server_input_locks_gate_non_physics_fly_movement() {
+fn movement_fixture() -> App {
     let mut router = SemanticInputRouter::default();
     router
         .route(DeviceFrame {
@@ -260,6 +259,27 @@ fn server_input_locks_gate_non_physics_fly_movement() {
     .init_resource::<CameraSettingsAuthority>()
     .add_systems(Update, update_movement);
     app.world_mut().spawn(FlyCamera::default());
+    app
+}
+#[test]
+fn native_session_can_withhold_unbound_camera_translation_without_faking_physics() {
+    let mut app = movement_fixture();
+    app.insert_resource(UnboundCameraMovement(false));
+    app.update();
+    assert_eq!(
+        app.world().resource::<LocalViewPose>().eye_translation(),
+        Vec3::Y
+    );
+    app.insert_resource(UnboundCameraMovement::default());
+    app.update();
+    assert_ne!(
+        app.world().resource::<LocalViewPose>().eye_translation(),
+        Vec3::Y
+    );
+}
+#[test]
+fn server_input_locks_gate_non_physics_fly_movement() {
+    let mut app = movement_fixture();
     for (bits, blocked) in [(ClientInputLock::Movement as u32, true), (0, false)] {
         app.world_mut()
             .resource_mut::<client_state::PlayerRuntime>()

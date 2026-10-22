@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+meshing = { path = "../../crates/meshing" }
 assets = { path = "../../crates/assets" }
 java-protocol = { path = "../../crates/java-protocol" }
 client-session = { path = "../../crates/client-session" }

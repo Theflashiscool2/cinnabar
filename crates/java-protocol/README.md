@@ -2,7 +2,8 @@
 
 This crate owns Java wire framing, discovery, authentication and the ordered
 login/configuration/play connection. It uses native TCP, independently of the
-Bedrock Go core. It does not implement a rendered or playable Java world.
+Bedrock Go core. Native terrain now reaches the existing Cinnabar renderer through
+the owners below; a playable Java client remains unimplemented.
 
 The exact supported release and protocol, official server checksum, and pinned
 protocol-data revisions live in [data/target.json](data/target.json).
@@ -26,8 +27,8 @@ mismatched pong is an error. Offline, timeout and malformed replies stay distinc
 The app routes Java joins to `client-session::java::Session`, which owns a
 bounded event FIFO and abortable task. Retirement cancels preparation and socket
 work; `client-world::java::WorldState` rejects old generations before mutation.
-The launcher shows the actual protocol state and bootstrap facts, explicitly
-stating that world rendering is unavailable. Cancel, retry and server switching
+The launcher shows actual protocol state and bootstrap facts while native terrain
+loads, then shows server terrain after the spawn upload reaches the GPU. Cancel, retry and server switching
 use the existing session lifecycle. Java credentials have their own namespace;
 Bedrock credentials and transports are never reused as Java identities.
 
@@ -113,11 +114,11 @@ the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, relative teleports before movement integration, mid-session reconfiguration and tag replacement fail
-clearly. Entity/inventory decoding, movement, chat signing, interactions,
-Java assets and rendering remain subsequent work. No modded-server or proxy
-compatibility is claimed. Unknown state packet IDs are protocol errors.
+clearly. Entity/inventory decoding, movement, chat signing and interactions remain
+unimplemented. Native assets/mesh publication have the limited offline rendered
+evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
 
-## Terrain admission (rendering not yet integrated)
+## Terrain admission and native graphics (experimental)
 
 `terrain` follows the manifest-pinned MCProtocolLib `MinecraftTypes`,
 `ClientboundLevelChunkWithLightPacket`, `ClientboundSectionBlocksUpdatePacket`,
@@ -164,8 +165,67 @@ terrain epoch 2 with 49 columns and health 20, and a second session independentl
 admitted 49 columns. Each answered two real keepalives. A separate four-keepalive
 run admitted four block updates, including a console dirt placement and subsequent
 server grass spread; the sampled state resolved to `minecraft:grass_block`,
-`snowy=false`. No graphical world or input loop was exercised. Online mode still
+`snowy=false`. Those diagnostic runs exercised no graphical world or input loop. Online mode still
 requires this fork's OAuth application and legitimate user sign-in.
+
+`target.json` also pins the official client archive's SHA-1, SHA-256 and byte length.
+`assets::registry::java` reads its ZIP entries without extracting paths, resolves
+variants/multipart selectors and weighted positional choices, model inheritance,
+texture indirection, cuboid geometry, XYZ/model-element rotations and UV lock.
+It compiles real PNGs, uniform animation timelines and alpha materials into the
+existing graphics tables. Java state IDs stay in a separate native catalog; no
+Bedrock visual/runtime IDs or Geyser mappings are used. Runtime resources stay
+outside source control. Parsing budgets and unsupported material/tint/animation
+semantics produce explicit errors instead of invisible blocks.
+
+Behavior references are the pinned client's `Variant`, `MultiPartModel`,
+`TextureSlots`, `CuboidModelElement`, `FaceBakery`, `BlockColors`,
+`AnimationMetadataSection`, `BiomeSpecialEffects` and `ColorMapColorUtil` classes.
+The Rust implementation is original; game class/source files are not distributed.
+Smooth Java AO/light interpolation, fluids, partial-face occlusion, nonuniform
+biome blending, spatial tint callbacks, per-face UV-region transparency classification,
+variable-duration texture animation and server clock/weather presentation remain
+incomplete. Graphics buffers currently rebuild for a collected initial
+state set; streaming new state identities needs an incremental resource extension.
+
+`meshing::java` consumes immutable domain snapshots and produces shared Cinnabar
+mesh buffers, sampling the server's separate sky/block light nibbles.
+`chunk-pipeline::java` bounds concurrent jobs/results, carries neighbor revision
+keys and rejects obsolete work. Unknown light remains pending until new authority
+arrives. Its uniform-biome path preserves the actual native registry index and
+fails explicitly when Java Voronoi/blend processing is required.
+
+For CPU mesh acceptance, add `--client-assets CLIENT_JAR --compile-terrain` to the
+command above. Linux offline vanilla acceptance compiled five real state identities
+into seven materials, thirteen templates and 521 visible model quads across 24
+center-column sections; the sampled oak stair produced eleven source model quads.
+That run observed 49 columns and two real keepalives. `rendered_world` stayed false.
+
+The graphical experimental path loads `client.jar` and `blocks.json` from
+`CINNABAR_JAVA_ASSETS` (default `.local/assets/java/<pinned-version>`).
+Build with `cargo build --locked -p cinnabar --features developer-control` and
+launch through the repository's headless client MCP. Developer builds alone accept
+`CINNABAR_JAVA_OFFLINE_FIXTURE=NativeFixture`; the protocol owner restricts this
+identity to explicit loopback fixtures. Select an actual saved Java row in the
+launcher. Production account routing still requires this fork's OAuth configuration.
+The app waits for a nonempty spawn-section GPU upload before sending player-loaded;
+this is not a claim of movement or gameplay. Java loading readiness does not wait
+for a Bedrock stream or send Bedrock loading commands. Empty section publications
+use the shared zero-byte allowance. Free camera translation is withheld until native
+movement exists. Developer state exposes session/epoch, upload counts, worker
+backlog, completion/obsolete/missing-light counts and explicit incomplete gameplay.
+
+Live rendered evidence on Linux, 2026-10-22: headless software Vulkan (lavapipe),
+1280×720 at scale 1, actual saved-server selection, offline vanilla login/configuration/
+play, 49 columns and three real keepalives. Fresh inspected frames show grass,
+stone, dirt and an oriented oak stair using the pinned runtime assets. A server
+console dirt removal appears as the matching wall hole through incremental updates.
+Save & Quit clears the native task/presentation records; the server reports zero
+players. A same-client reconnect advances generation 2 to 4, renders another 49
+columns and observes three more actual keepalives. Its fresh frame omits a stone
+pillar removed while disconnected and retains the server-authoritative wall hole.
+This tests server-driven rendering, not client breaking/placement or physical
+movement. No Windows/macOS, visual parity or performance qualification is claimed.
 
 ## Dependency choice and notices
 

@@ -10,6 +10,20 @@ pub(super) fn connect(
     menu.begin_join_progress(&intent.address, false);
     menu.show_connecting();
     session.controller.connecting = true;
+    #[cfg(feature = "developer-control")]
+    if let Ok(name) = std::env::var("CINNABAR_JAVA_OFFLINE_FIXTURE") {
+        match intent.address.parse() {
+            Ok(address) => {
+                session.controller.java = Some(client_session::java::Session::spawn(
+                    java_protocol::session::Options::fixture(address, name, generation),
+                ))
+            }
+            Err(error) => session
+                .controller
+                .fail_join(menu, format!("Invalid Java fixture address: {error}")),
+        }
+        return;
+    }
     let root = menu
         .layout()
         .auth_cache()
@@ -40,7 +54,7 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
             let state = &controller.java_world;
             let message = if let Some(bootstrap) = &state.bootstrap {
                 format!(
-                    "Java {}: play protocol reached; world {}, dimension {}, {} registries, {} keepalives. World rendering is not implemented. Cancel to disconnect.",
+                    "Java {}: play protocol reached; world {}, dimension {}, {} registries, {} keepalives. Native terrain loading; gameplay is incomplete. Cancel to disconnect.",
                     java_protocol::target::GAME_VERSION,
                     bootstrap.world.spawn.world,
                     bootstrap.world.spawn.dimension_type,

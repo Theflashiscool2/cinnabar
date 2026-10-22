@@ -5209,6 +5209,7 @@ dependencies = [
  "java-protocol",
  "launcher",
  "launcher-host",
+ "meshing",
  "serde_json",
  "tokio",
  "tokio-util",

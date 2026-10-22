@@ -31,6 +31,7 @@ use std::{path::PathBuf, time::Instant};
 
 mod client_id;
 mod java;
+pub(crate) mod java_render;
 mod startup;
 
 use client_session::MAX_TRANSFER_CHAIN_HOPS;
@@ -101,6 +102,11 @@ impl SessionController {
     pub(crate) fn with_kept_packs(mut self, kept: &'static CompiledStacks) -> Self {
         self.kept_packs = kept;
         self
+    }
+
+    #[cfg(feature = "developer-control")]
+    pub(crate) fn native_java_world(&self) -> Option<&client_world::java::WorldState> {
+        self.java.as_ref().map(|_| &self.java_world)
     }
 
     /// Names a direct `--address` session's destination.

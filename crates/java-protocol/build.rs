@@ -58,6 +58,12 @@ fn main() {
         report["bytes"].as_u64().unwrap(),
         report["states"].as_u64().unwrap()
     );
+    let client = &target["client_assets"];
+    code += &format!(
+        "pub const CLIENT_ASSETS_SHA256:&str={:?};\npub const CLIENT_ASSETS_BYTES:u64={};\n",
+        client["sha256"].as_str().unwrap(),
+        client["bytes"].as_u64().unwrap()
+    );
     for (state, directions) in tables {
         code += &format!("pub mod {state} {{\n");
         for (direction, packets) in directions {

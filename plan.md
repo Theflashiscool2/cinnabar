@@ -45,7 +45,8 @@ The native foundation targets the single Java release/protocol pinned in
 [`crates/java-protocol/data/target.json`](crates/java-protocol/data/target.json).
 Saved-server edition routing, cancellable background discovery, separate Java
 account storage, login/configuration and typed play bootstrap are implemented.
-The app exposes a truthful protocol diagnostic; no Java terrain is rendered.
+The app renders an experimental native terrain slice through the existing renderer.
+A playable input loop is not implemented or verified.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
 
 - [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
@@ -87,8 +88,32 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   health. A separate four-keepalive run admitted four incremental block changes:
   a server console dirt placement subsequently became a server-confirmed grass
   block with `snowy=false`. These runs establish terrain authority, not rendering.
-- [ ] Connect Java assets and mesh publication to the renderer. Models, textures,
-  collision, player input and the launcher-to-renderer loop remain unimplemented.
+- [x] Load the hash-pinned official client archive at runtime; resolve blockstate
+  variants/multipart, model parents, textures, cuboids, rotations/UV lock and uniform
+  animation timelines into shared GPU resources without assigning Bedrock IDs.
+  Tests cover identity isolation, texture/frame ordering, inheritance and transforms.
+- [x] Linux offline fixture: native server terrain and five states compiled through
+  real runtime assets into 521 visible model quads across the center column's 24
+  sections, including an oak stair. Two real keepalives were observed. This is CPU
+  mesh evidence, not a rendered frame.
+- [x] Linux headless Vulkan (software lavapipe), 1280×720, scale 1: select the saved
+  Java row, enter play and render the authorized vanilla fixture using real grass,
+  stone, dirt and oriented oak-stair assets. Inspect fresh frames before/after a
+  server-console block removal; the wall hole appears through native updates.
+  Observe three real keepalives in each of two graphical sessions. Save & Quit
+  clears native upload/work records; reconnect advances generation 2→4 and renders
+  fresh terrain after an offline server edit, without the removed pillar.
+  This does not establish client block interaction,
+  visual parity, frame pacing or cross-platform acceptance.
+- [x] Bound native mesh workers/results and reject stale session/dimension/column/halo
+  results. Empty sections use zero-byte publication permits. Java world entry uses
+  its GPU upload readiness and native player-loaded command, independently of the
+  Bedrock loading gate; both loading paths have focused regression coverage.
+- [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face
+  occlusion, nonuniform biome tinting, spatial tint callbacks, animation/transparency
+  semantics, clock/weather presentation and streaming new-state asset extension.
+  The present slice requires a proven uniform biome field. Collision and player
+  input remain incomplete; unbound camera translation is disabled in Java sessions.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 

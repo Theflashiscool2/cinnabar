@@ -1,4 +1,11 @@
 //! Java block-state identity and properties from a hash-pinned official data-generator report.
+pub mod catalog;
+pub mod geometry;
+pub mod graphics;
+pub mod models;
+pub mod selectors;
+pub mod source;
+pub mod textures;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, sync::Arc};

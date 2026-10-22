@@ -60,3 +60,15 @@ impl Column {
         self.revision
     }
 }
+
+/// Native biome appearance received in Java's configuration registry. IDs are list positions.
+#[derive(Clone, Debug)]
+pub struct BiomeAppearance {
+    pub name: String,
+    pub temperature: f32,
+    pub downfall: f32,
+    pub grass_color: Option<[u8; 3]>,
+    pub foliage_color: Option<[u8; 3]>,
+    pub water_color: [u8; 3],
+    pub grass_modifier: Option<String>,
+}

@@ -1,4 +1,5 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
+mod biomes;
 mod terrain;
 use java_protocol::session::{
     Envelope, Event, Phase,
@@ -9,6 +10,7 @@ pub struct WorldState {
     generation: u64,
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
+    pub biomes: Vec<world::java::BiomeAppearance>,
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
     pub block_updates: u64,
@@ -42,6 +44,7 @@ impl WorldState {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
                     self.bootstrap = None;
+                    self.biomes.clear();
                     self.teleport = None;
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
@@ -49,6 +52,22 @@ impl WorldState {
             }
             Event::Bootstrap(facts) => {
                 if facts.generation != self.generation {
+                    return false;
+                }
+                if let Some(entries) = facts
+                    .configuration
+                    .registries
+                    .get("minecraft:worldgen/biome")
+                {
+                    match biomes::read(entries) {
+                        Ok(biomes) => self.biomes = biomes,
+                        Err(error) => {
+                            self.terrain_error = Some(error);
+                            return false;
+                        }
+                    }
+                } else {
+                    self.terrain_error = Some("Java biome registry missing");
                     return false;
                 }
                 let spawn = facts.world.spawn.clone();

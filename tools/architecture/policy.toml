@@ -2217,5 +2217,30 @@ reason = "Terrain-atlas carried-grass colour source; this selects authored inven
 [[crates]]
 name = "java-connect"
 path = "tools/java-connect"
-allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host", "assets"]
+allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host", "assets", "meshing"]
 forbidden_dependencies = ["bevy", "wgpu"]
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/graphics.rs"
+literal = "minecraft:grass_block"
+reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/graphics.rs"
+literal = "minecraft:short_grass"
+reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/graphics.rs"
+literal = "minecraft:fern"
+reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/graphics.rs"
+literal = "minecraft:bush"
+reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/graphics.rs"
+literal = "minecraft:air"
+reason = "Native Java empty-model admission: only Java air identities may be invisible; all other empty models require a special renderer. Tested with distinct native state IDs, without Bedrock facts."

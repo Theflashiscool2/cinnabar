@@ -4,6 +4,7 @@ pub mod biome;
 pub mod biome_lattice;
 mod chunk;
 mod classifier;
+pub mod java;
 mod model_ray;
 pub mod occlusion;
 mod output_memory;

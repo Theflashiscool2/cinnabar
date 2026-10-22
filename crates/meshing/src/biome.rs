@@ -98,6 +98,22 @@ pub struct PackedBiomeRecord {
 }
 
 impl PackedBiomeRecord {
+    /// Shared GPU descriptor for a proven uniform tint field, independent of wire edition.
+    pub fn uniform(tint_index: u32) -> Option<Self> {
+        if tint_index == NO_UNIFORM_TINT {
+            return None;
+        }
+        let mut words = FALLBACK_BIOME_WORDS;
+        words[1] = tint_index;
+        words[DESCRIPTOR_WORDS + 1] = tint_index;
+        for slot in 0..BIOME_NEIGHBOUR_SLOT_COUNT {
+            words[2 + slot] = DESCRIPTOR_WORDS as u32;
+        }
+        Some(Self {
+            words: Arc::from(words),
+        })
+    }
+
     /// Builds a center-only record; absent neighbours use biome zero.
     #[must_use]
     pub fn from_storage(

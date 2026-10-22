@@ -393,6 +393,13 @@ pub(super) fn snapshot(world: &World) -> Value {
         })),
     });
     // Keep added diagnostics outside the large snapshot macro's expansion budget.
+    snapshot["native_java"] = json!(world.get_resource::<crate::session::SessionController>().and_then(|c|c.native_java_world()).map(|state|json!({"generation":state.generation(),"phase":state.phase,"columns":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"keepalives":state.keepalives,"teleport":state.teleport,"vitals":state.vitals,"deferred_packets":state.deferred_packets})));
+    snapshot["native_java_render"] = json!(
+        world
+            .get_resource::<crate::session::java_render::Presentation>()
+            .map(|p| p.diagnostic())
+    );
+
     snapshot["chat"] = json!(world.get_resource::<UiRuntimeResource>().map(|ui| {
         let messages = ui.chat().messages();
         messages

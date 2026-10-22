@@ -8,6 +8,47 @@ use protocol::{
 use render_model::VisibilityKeyDigest;
 
 #[test]
+fn native_world_entry_uses_its_own_readiness_and_never_finishes_bedrock_loading() {
+    let mut client_world = ClientWorld::default();
+    let runtime = UiRuntime::new(7);
+    let mut presentation =
+        UiPresentationRuntime::new(ui_engine::test_support::fixture_font()).unwrap();
+    let (network, _receiver) = NetworkHandle::<PackApplication>::with_command_capacity(1);
+    let mut diagnostics = VisibilityDiagnosticsInput::default();
+    let mut fatal_error = None;
+    for ready in [false, true, false] {
+        prepare_loading(
+            &mut client_world,
+            &mut fatal_error,
+            &mut presentation,
+            &runtime,
+            &mut diagnostics,
+            &network,
+            LoadingObservation {
+                native_world_ready: Some(ready),
+                restart: false,
+                menu_visible: false,
+                snapshot: VisibilityDiagnosticSnapshot::default(),
+                visible_rendered: 0,
+                cohort: None,
+                render_work_drained: false,
+                pipelines_ready: true,
+                now: Duration::ZERO,
+            },
+        );
+        assert_eq!(
+            presentation.loading_stage(),
+            (!ready).then_some(LoadingStage::BuildingTerrain)
+        );
+        assert!(!presentation.startup_mut().completion_queued);
+        assert!(client_world.stream.is_none());
+    }
+    // The capacity-one Bedrock command queue is still empty after Java readiness transitions.
+    assert!(network.finish_loading());
+    assert!(fatal_error.is_none());
+}
+
+#[test]
 fn sparse_startup_waits_for_mesh_acknowledgement_and_a_fresh_gpu_frame() {
     let mut stream = chunk_pipeline::WorldStream::new(WorldBootstrap {
         dimension: 0,
@@ -51,6 +92,7 @@ fn sparse_startup_waits_for_mesh_acknowledgement_and_a_fresh_gpu_frame() {
             &mut diagnostics,
             &network,
             LoadingObservation {
+                native_world_ready: None,
                 restart: false,
                 menu_visible: false,
                 snapshot: VisibilityDiagnosticSnapshot {
@@ -215,6 +257,7 @@ fn release_local_terrain(
             &mut diagnostics,
             &network,
             LoadingObservation {
+                native_world_ready: None,
                 restart: frame_generation == 10,
                 menu_visible: false,
                 snapshot: VisibilityDiagnosticSnapshot {

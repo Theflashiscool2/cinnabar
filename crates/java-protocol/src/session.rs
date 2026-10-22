@@ -55,6 +55,10 @@ pub enum Identity {
 #[derive(Debug)]
 pub enum Command {
     Respawn,
+    /// Sent only after the active dimension has actually reached renderer readiness.
+    PlayerLoaded {
+        dimension_epoch: u64,
+    },
 }
 pub struct Options {
     pub address: Address,
@@ -119,6 +123,7 @@ struct Connection {
     dimension_epoch: u64,
     commands: Option<mpsc::Receiver<Command>>,
     dead: bool,
+    loaded_epoch: Option<u64>,
 }
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
 /// every in-flight read/write and its socket. Login deadlines do not limit the play lifetime.
@@ -187,6 +192,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         dimension_epoch: 0,
         commands: options.commands.take(),
         dead: false,
+        loaded_epoch: None,
     };
     tokio::time::timeout(options.login_timeout, c.login(&options))
         .await

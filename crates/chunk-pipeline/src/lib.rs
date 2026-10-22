@@ -1,6 +1,7 @@
 //! Bounded terrain scheduling and publication for an ordered client world.
 
 mod culling;
+pub mod java;
 #[cfg(target_arch = "wasm32")]
 pub mod jobs;
 mod stream;

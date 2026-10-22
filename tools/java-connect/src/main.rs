@@ -82,6 +82,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(registry)
         })
         .transpose()?;
+    let registry = registry.map(std::sync::Arc::new);
+    let mut models = get("--client-assets")
+        .map(|path| -> Result<_, Box<dyn std::error::Error>> {
+            let registry = registry
+                .as_ref()
+                .ok_or("--client-assets requires --block-report")?;
+            let source = assets::registry::java::source::Jar::open(
+                std::path::Path::new(&path),
+                target::CLIENT_ASSETS_SHA256,
+                target::CLIENT_ASSETS_BYTES,
+            )?;
+            Ok(assets::registry::java::catalog::BlockModels::new(
+                std::sync::Arc::clone(registry),
+                Box::new(source),
+            ))
+        })
+        .transpose()?;
     let mut state = client_world::java::WorldState::default();
     for generation in 1..=reconnects {
         state.begin(generation);
@@ -120,8 +137,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if state.admit(event) && let Some(log)=log{output(log)?;}
                         if let Some(error)=state.terrain_error { session.shutdown().await; return Err(error.into()); }
                         if state.bootstrap.is_some() && state.teleport.is_some() && state.keepalives>=keepalives && state.death.is_none() && state.vitals.as_ref().is_some_and(|v| v.health>0.) && state.terrain.len()>=required_chunks {
+                            let model_quads = if let (Some(position),Some(models))=(sample,models.as_mut()) {
+                                let id=state.terrain.block(position).ok_or("inspected Java block has no admitted terrain")?;
+                                Some(models.block(id.0,position)?.iter().map(|part|part.len()).sum::<usize>())
+                            } else {None};
+                            let meshes = if args.iter().any(|s|s=="--compile-terrain") {
+                                Some(compile_terrain(&state,models.as_mut().ok_or("--compile-terrain requires --client-assets")?)?)
+                            }else{None};
                             let block=sample.map(|position| { let id=state.terrain.block(position); let facts=id.and_then(|id|registry.as_ref()?.state(id.0)); serde_json::json!({"position":position,"state_id":id.map(|id|id.0),"name":facts.map(|f| &*f.name),"properties":facts.map(|f| &f.properties)}) });
-                            output(serde_json::json!({"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"block_updates":state.block_updates,"block_sample":block,"vitals":state.vitals,"dimension_epoch":state.terrain.dimension().map(|d|d.epoch),"rendered_world":false}))?;
+                            output(serde_json::json!({"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"block_updates":state.block_updates,"block_sample":block,"model_quads":model_quads,"compiled_terrain":meshes,"vitals":state.vitals,"dimension_epoch":state.terrain.dimension().map(|d|d.epoch),"rendered_world":false}))?;
                             session.shutdown().await;break;
                         }
                     },
@@ -156,4 +180,35 @@ async fn account(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         _ => return Err("unknown Java account command".into()),
     }
     Ok(())
+}
+
+/// Exercises server authority through native model compilation and the actual shared mesh format.
+fn compile_terrain(
+    state: &client_world::java::WorldState,
+    models: &mut assets::registry::java::catalog::BlockModels,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let ids = state
+        .terrain
+        .columns()
+        .flat_map(|(_, c)| c.sections.iter())
+        .flat_map(|s| (0..s.blocks.len()).filter_map(|i| s.blocks.get(i)))
+        .map(|id| id.0)
+        .collect::<std::collections::BTreeSet<_>>();
+    let count = ids.len();
+    let graphics = assets::registry::java::graphics::compile(models, ids, 2048)?;
+    let center = state.terrain.center.ok_or("no server chunk center")?;
+    let snapshot = meshing::java::Snapshot::capture(&state.terrain, center)
+        .ok_or("center column not resident")?;
+    let mut quads = 0;
+    let mut sections = 0;
+    for y in (snapshot.dimension.min_y / 16)
+        ..((snapshot.dimension.min_y + snapshot.dimension.height) / 16)
+    {
+        let mesh = meshing::java::mesh(&snapshot, y, &graphics)?;
+        quads += mesh.model_draw_refs().len();
+        sections += 1;
+    }
+    Ok(
+        serde_json::json!({"native_states":count,"center":center,"sections":sections,"model_draw_quads":quads,"materials":graphics.runtime.material_count(),"templates":graphics.runtime.model_templates().len(),"texture_pages":graphics.runtime.texture_pages().len()}),
+    )
 }

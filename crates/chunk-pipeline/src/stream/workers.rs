@@ -29,7 +29,7 @@ const LIGHT_MAX_WAIT: Duration = Duration::from_millis(16);
 
 /// Work classes in scheduling order: mesh gates chunks appearing, decode feeds it, light and summaries trail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Lane {
+pub(crate) enum Lane {
     Mesh,
     Decode,
     Light,
@@ -186,7 +186,7 @@ impl Shared {
 }
 
 /// World queues; native light jobs run on the lowered-priority background share.
-pub(super) struct WorldPool {
+pub(crate) struct WorldPool {
     shared: Arc<Shared>,
     size: PoolSize,
 }
@@ -211,7 +211,7 @@ pub fn on_idle_world_cores<T: Send>(work: impl FnOnce() -> T + Send) -> T {
     }
 }
 
-pub(super) static WORKERS: LazyLock<WorldPool> = LazyLock::new(|| {
+pub(crate) static WORKERS: LazyLock<WorldPool> = LazyLock::new(|| {
     #[cfg(not(target_arch = "wasm32"))]
     let cores = std::thread::available_parallelism().map_or(1, usize::from);
     #[cfg(target_arch = "wasm32")]
@@ -252,7 +252,7 @@ impl WorldPool {
     }
 
     /// Accepts a finite job without running it on the submitting thread.
-    pub(super) fn spawn(&self, lane: Lane, job: impl FnOnce() + Send + 'static) {
+    pub(crate) fn spawn(&self, lane: Lane, job: impl FnOnce() + Send + 'static) {
         #[cfg(feature = "tracy")]
         let _zone = tracing::info_span!("stream.queue_submit", ?lane, jobs = 1).entered();
         let queued_at = self.observed_at();
