@@ -163,6 +163,7 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     }
     spawn.extend([0, 0, 0, 0, 0]); // zero LpVec3, angles and object data.
     wire.write(&spawn).await.unwrap();
+    wire.write(&[101, 99, 16, 8, 1, 255]).await.unwrap(); // Native baby metadata.
     wire.write(&[54, 99, 1, 0x10, 0, 0, 0, 0, 0]).await.unwrap();
     wire.write(&[78, 1, 99]).await.unwrap();
     // Official protocol-777 report: death 69, client command 12, respawn 84.
@@ -354,6 +355,16 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             assert_eq!(s.position, [1., 64., 2.]);
                             entities.push("spawn");
                         }
+                        Packet::Metadata(p) => {
+                            assert_eq!(p.id, 99);
+                            assert!(p.unsupported.is_none());
+                            assert_eq!(p.entries.len(), 1);
+                            assert_eq!(
+                                p.entries[0].value,
+                                session::entities::metadata::Value::Bool(true)
+                            );
+                            entities.push("metadata");
+                        }
                         Packet::Move {
                             id,
                             delta,
@@ -424,7 +435,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(keepalives, 2);
     assert!(rotation);
     assert_eq!(dynamics, 2);
-    assert_eq!(entities, ["spawn", "move", "remove"]);
+    assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

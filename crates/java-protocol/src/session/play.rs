@@ -287,7 +287,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetCursorItemPacket",
     "ClientboundSetDefaultSpawnPositionPacket",
     "ClientboundSetDisplayObjectivePacket",
-    "ClientboundSetEntityDataPacket",
     "ClientboundSetEntityLinkPacket",
     "ClientboundSetEquipmentPacket",
     "ClientboundSetExperiencePacket",

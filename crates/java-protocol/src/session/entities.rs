@@ -1,6 +1,7 @@
 //! Target-pinned entity lifecycle schemas. World identity and interpolation are domain-owned.
 use crate::{ProtocolError as Error, target, wire::Reader};
 use serde::Serialize;
+pub mod metadata;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Spawn {
@@ -40,6 +41,7 @@ pub enum Position {
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
     Spawn(Spawn),
+    Metadata(metadata::Packet),
     Remove(Vec<i32>),
     Move {
         id: i32,
@@ -79,6 +81,7 @@ pub enum Packet {
 /// Decodes only identified lifecycle packets. Callers must check complete payload consumption.
 pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
+        "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
         "ClientboundAddEntityPacket" => {
             let id = r.var()?;
             let uuid = r.uuid()?.into_bytes();

@@ -394,15 +394,30 @@ and zero-axis precision; tests cover atomic failure, ID reuse and retired scopes
 The encrypted/compressed session fixture checks ordered spawn/move/remove delivery.
 Scoped protocol/domain tests, application-inclusive clippy with tests and the
 architecture gate pass on Linux; full workspace/merge and other-platform gates
-have not run for this slice.
+have not run for this slice. Subsequent metadata tests passed 52 protocol unit tests,
+three encrypted/session fixtures, 17 client-world Java tests and 14 world Java tests.
 
 A Linux offline vanilla diagnostic run admitted 31 spawns, 990 movement packets
 (768 nonzero), 56 position paths and 12 removal packets, with three real keepalives.
 A tagged pig spawned at `[3.5,-60,8.5]`, received a server position path ending at
 `[5.5,-60,9.5]`, then disappeared through its removal event. This verifies wire and
-domain admission only. Metadata, native actor models/presentation, player-list
-identity/skins and equipment are still in progress; remote entities are not yet
-rendered. Passenger relationships retain scoped lifetimes with deterministic
+domain admission only. Metadata serializer ordering and native pig/player/item
+accessor schemas now come from pinned references and the original runtime exporter.
+Pig appearance resolves through received configuration registries, including the
+runtime-derived default variant. A later Linux offline run changed a tagged pig
+from temperate/adult to cold/baby/glowing through server commands; admitted facts
+matched variant, texture identifiers, age flag, glow flag and health while three
+real keepalives and 49 chunks were observed. The encrypted fixture also covers
+metadata delivery. Local metadata follows respawn retention without creating a
+second local-player entity. Invalid updates are atomic and stale epochs are rejected.
+
+Complex item components, nonempty particle metadata, profiles and inline painting
+holders remain unimplemented. Their known passive metadata notification produces an
+explicit, persistent incomplete-entity diagnostic; no parsed prefix is admitted.
+Other entity accessor schemas remain incomplete. Correctly framed unused accessor
+values (including names/equipment-related metadata) do not imply implemented visuals.
+Native actor frame publication, player-list identity/skins, equipment and animations
+are still pending; remote entities are not yet rendered. Passenger relationships retain scoped lifetimes with deterministic
 replacement/cycle coverage, but mounted motion and seat presentation are unsupported.
 
 ## Dependency choice and notices

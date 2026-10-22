@@ -113,6 +113,7 @@ public final class ExportEntities {
         JsonArray poses = new JsonArray();
         for (Pose pose : Pose.values()) poses.add(pose.name().toLowerCase(Locale.ROOT));
         facts.add("poses", poses);
+        facts.addProperty("pig_default_variant", net.minecraft.world.entity.animal.pig.PigVariants.DEFAULT.identifier().toString());
         Files.writeString(Path.of(args[1]), JSON.toJson(facts)+"\n");
     }
 }

@@ -16,6 +16,7 @@ pub struct WorldState {
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
     pub entities: world::java::entities::Entities,
+    pub player_visual: world::java::entities::visual::Visual,
     pub biomes: Vec<world::java::BiomeAppearance>,
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
@@ -66,6 +67,7 @@ impl WorldState {
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                     self.entities = Default::default();
+                    self.player_visual = Default::default();
                 }
             }
             Event::Bootstrap(facts) => {
@@ -164,12 +166,15 @@ impl WorldState {
             Event::Respawn {
                 spawn,
                 keep_attribute_modifiers,
-                ..
+                keep_metadata,
             } => {
                 if !keep_attribute_modifiers {
                     for attribute in self.player_dynamics.attributes.values_mut() {
                         attribute.modifiers.clear();
                     }
+                }
+                if !keep_metadata {
+                    self.player_visual = Default::default();
                 }
                 self.death = None;
                 self.vitals = None;

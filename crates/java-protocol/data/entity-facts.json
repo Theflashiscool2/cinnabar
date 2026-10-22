@@ -1,0 +1,1949 @@
+{
+  "types": [
+    {
+      "id": 0,
+      "name": "minecraft:acacia_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 1,
+      "name": "minecraft:acacia_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 2,
+      "name": "minecraft:allay",
+      "update_interval": 2,
+      "dimensions": [
+        0.35,
+        0.6,
+        0.36
+      ]
+    },
+    {
+      "id": 3,
+      "name": "minecraft:area_effect_cloud",
+      "update_interval": 2147483647,
+      "dimensions": [
+        6.0,
+        0.5,
+        0.425
+      ]
+    },
+    {
+      "id": 4,
+      "name": "minecraft:armadillo",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        0.65,
+        0.26
+      ]
+    },
+    {
+      "id": 5,
+      "name": "minecraft:armor_stand",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        1.975,
+        1.7775
+      ]
+    },
+    {
+      "id": 6,
+      "name": "minecraft:arrow",
+      "update_interval": 20,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.13
+      ]
+    },
+    {
+      "id": 7,
+      "name": "minecraft:axolotl",
+      "update_interval": 3,
+      "dimensions": [
+        0.75,
+        0.42,
+        0.2751
+      ]
+    },
+    {
+      "id": 8,
+      "name": "minecraft:bamboo_chest_raft",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 9,
+      "name": "minecraft:bamboo_raft",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 10,
+      "name": "minecraft:bat",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        0.9,
+        0.45
+      ]
+    },
+    {
+      "id": 11,
+      "name": "minecraft:bee",
+      "update_interval": 3,
+      "dimensions": [
+        0.55,
+        0.5,
+        0.3
+      ]
+    },
+    {
+      "id": 12,
+      "name": "minecraft:birch_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 13,
+      "name": "minecraft:birch_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 14,
+      "name": "minecraft:blaze",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.8,
+        1.53
+      ]
+    },
+    {
+      "id": 15,
+      "name": "minecraft:block_display",
+      "update_interval": 1,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 16,
+      "name": "minecraft:bogged",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.99,
+        1.74
+      ]
+    },
+    {
+      "id": 17,
+      "name": "minecraft:breeze",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.77,
+        1.3452
+      ]
+    },
+    {
+      "id": 18,
+      "name": "minecraft:breeze_wind_charge",
+      "update_interval": 10,
+      "dimensions": [
+        0.3125,
+        0.3125,
+        0.0
+      ]
+    },
+    {
+      "id": 19,
+      "name": "minecraft:camel",
+      "update_interval": 3,
+      "dimensions": [
+        1.7,
+        2.375,
+        2.275
+      ]
+    },
+    {
+      "id": 20,
+      "name": "minecraft:camel_husk",
+      "update_interval": 3,
+      "dimensions": [
+        1.7,
+        2.375,
+        2.275
+      ]
+    },
+    {
+      "id": 21,
+      "name": "minecraft:cat",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        0.7,
+        0.35
+      ]
+    },
+    {
+      "id": 22,
+      "name": "minecraft:cave_spider",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        0.5,
+        0.45
+      ]
+    },
+    {
+      "id": 23,
+      "name": "minecraft:cherry_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 24,
+      "name": "minecraft:cherry_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 25,
+      "name": "minecraft:chest_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 26,
+      "name": "minecraft:chicken",
+      "update_interval": 3,
+      "dimensions": [
+        0.4,
+        0.7,
+        0.644
+      ]
+    },
+    {
+      "id": 27,
+      "name": "minecraft:cod",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        0.3,
+        0.195
+      ]
+    },
+    {
+      "id": 28,
+      "name": "minecraft:copper_golem",
+      "update_interval": 3,
+      "dimensions": [
+        0.49,
+        0.98,
+        0.8125
+      ]
+    },
+    {
+      "id": 29,
+      "name": "minecraft:command_block_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 30,
+      "name": "minecraft:cow",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.4,
+        1.3
+      ]
+    },
+    {
+      "id": 31,
+      "name": "minecraft:creaking",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        2.7,
+        2.3
+      ]
+    },
+    {
+      "id": 32,
+      "name": "minecraft:creeper",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.7,
+        1.445
+      ]
+    },
+    {
+      "id": 33,
+      "name": "minecraft:cushion",
+      "update_interval": 2147483647,
+      "dimensions": [
+        1.0,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 34,
+      "name": "minecraft:dark_oak_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 35,
+      "name": "minecraft:dark_oak_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 36,
+      "name": "minecraft:dolphin",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        0.6,
+        0.3
+      ]
+    },
+    {
+      "id": 37,
+      "name": "minecraft:donkey",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.5,
+        1.425
+      ]
+    },
+    {
+      "id": 38,
+      "name": "minecraft:dragon_fireball",
+      "update_interval": 10,
+      "dimensions": [
+        1.0,
+        1.0,
+        0.85
+      ]
+    },
+    {
+      "id": 39,
+      "name": "minecraft:drowned",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.74
+      ]
+    },
+    {
+      "id": 40,
+      "name": "minecraft:egg",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 41,
+      "name": "minecraft:elder_guardian",
+      "update_interval": 3,
+      "dimensions": [
+        1.9975,
+        1.9975,
+        0.99875
+      ]
+    },
+    {
+      "id": 42,
+      "name": "minecraft:enderman",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        2.9,
+        2.55
+      ]
+    },
+    {
+      "id": 43,
+      "name": "minecraft:endermite",
+      "update_interval": 3,
+      "dimensions": [
+        0.4,
+        0.3,
+        0.13
+      ]
+    },
+    {
+      "id": 44,
+      "name": "minecraft:ender_dragon",
+      "update_interval": 3,
+      "dimensions": [
+        16.0,
+        8.0,
+        6.8
+      ]
+    },
+    {
+      "id": 45,
+      "name": "minecraft:ender_pearl",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 46,
+      "name": "minecraft:end_crystal",
+      "update_interval": 2147483647,
+      "dimensions": [
+        2.0,
+        2.0,
+        1.7
+      ]
+    },
+    {
+      "id": 47,
+      "name": "minecraft:evoker",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.6575
+      ]
+    },
+    {
+      "id": 48,
+      "name": "minecraft:evoker_fangs",
+      "update_interval": 2,
+      "dimensions": [
+        0.5,
+        0.8,
+        0.68
+      ]
+    },
+    {
+      "id": 49,
+      "name": "minecraft:experience_bottle",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 50,
+      "name": "minecraft:experience_orb",
+      "update_interval": 20,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.425
+      ]
+    },
+    {
+      "id": 51,
+      "name": "minecraft:eye_of_ender",
+      "update_interval": 4,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 52,
+      "name": "minecraft:falling_block",
+      "update_interval": 20,
+      "dimensions": [
+        0.98,
+        0.98,
+        0.83300006
+      ]
+    },
+    {
+      "id": 53,
+      "name": "minecraft:fireball",
+      "update_interval": 10,
+      "dimensions": [
+        1.0,
+        1.0,
+        0.85
+      ]
+    },
+    {
+      "id": 54,
+      "name": "minecraft:firework_rocket",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 55,
+      "name": "minecraft:fox",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        0.7,
+        0.4
+      ]
+    },
+    {
+      "id": 56,
+      "name": "minecraft:frog",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.425
+      ]
+    },
+    {
+      "id": 57,
+      "name": "minecraft:furnace_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 58,
+      "name": "minecraft:ghast",
+      "update_interval": 3,
+      "dimensions": [
+        4.0,
+        4.0,
+        2.6
+      ]
+    },
+    {
+      "id": 59,
+      "name": "minecraft:happy_ghast",
+      "update_interval": 3,
+      "dimensions": [
+        4.0,
+        4.0,
+        2.6
+      ]
+    },
+    {
+      "id": 60,
+      "name": "minecraft:giant",
+      "update_interval": 3,
+      "dimensions": [
+        3.6,
+        12.0,
+        10.44
+      ]
+    },
+    {
+      "id": 61,
+      "name": "minecraft:glow_item_frame",
+      "update_interval": 2147483647,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "id": 62,
+      "name": "minecraft:glow_squid",
+      "update_interval": 3,
+      "dimensions": [
+        0.8,
+        0.8,
+        0.4
+      ]
+    },
+    {
+      "id": 63,
+      "name": "minecraft:goat",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.3,
+        1.105
+      ]
+    },
+    {
+      "id": 64,
+      "name": "minecraft:guardian",
+      "update_interval": 3,
+      "dimensions": [
+        0.85,
+        0.85,
+        0.425
+      ]
+    },
+    {
+      "id": 65,
+      "name": "minecraft:hoglin",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.4,
+        1.19
+      ]
+    },
+    {
+      "id": 66,
+      "name": "minecraft:hopper_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 67,
+      "name": "minecraft:horse",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.6,
+        1.52
+      ]
+    },
+    {
+      "id": 68,
+      "name": "minecraft:husk",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.74
+      ]
+    },
+    {
+      "id": 69,
+      "name": "minecraft:illusioner",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.6575
+      ]
+    },
+    {
+      "id": 70,
+      "name": "minecraft:interaction",
+      "update_interval": 3,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 71,
+      "name": "minecraft:iron_golem",
+      "update_interval": 3,
+      "dimensions": [
+        1.4,
+        2.7,
+        2.295
+      ]
+    },
+    {
+      "id": 72,
+      "name": "minecraft:item",
+      "update_interval": 20,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 73,
+      "name": "minecraft:item_display",
+      "update_interval": 1,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 74,
+      "name": "minecraft:item_frame",
+      "update_interval": 2147483647,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.0
+      ]
+    },
+    {
+      "id": 75,
+      "name": "minecraft:jungle_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 76,
+      "name": "minecraft:jungle_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 77,
+      "name": "minecraft:leash_knot",
+      "update_interval": 2147483647,
+      "dimensions": [
+        0.375,
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "id": 78,
+      "name": "minecraft:lightning_bolt",
+      "update_interval": 2147483647,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 79,
+      "name": "minecraft:llama",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.87,
+        1.7765
+      ]
+    },
+    {
+      "id": 80,
+      "name": "minecraft:llama_spit",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 81,
+      "name": "minecraft:magma_cube",
+      "update_interval": 3,
+      "dimensions": [
+        0.52,
+        0.52,
+        0.325
+      ]
+    },
+    {
+      "id": 82,
+      "name": "minecraft:mangrove_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 83,
+      "name": "minecraft:mangrove_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 84,
+      "name": "minecraft:mannequin",
+      "update_interval": 2,
+      "dimensions": [
+        0.6,
+        1.8,
+        1.62
+      ]
+    },
+    {
+      "id": 85,
+      "name": "minecraft:marker",
+      "update_interval": 3,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 86,
+      "name": "minecraft:minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 87,
+      "name": "minecraft:mooshroom",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.4,
+        1.3
+      ]
+    },
+    {
+      "id": 88,
+      "name": "minecraft:mule",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.6,
+        1.52
+      ]
+    },
+    {
+      "id": 89,
+      "name": "minecraft:nautilus",
+      "update_interval": 3,
+      "dimensions": [
+        0.875,
+        0.95,
+        0.2751
+      ]
+    },
+    {
+      "id": 90,
+      "name": "minecraft:oak_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 91,
+      "name": "minecraft:oak_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 92,
+      "name": "minecraft:ocelot",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 93,
+      "name": "minecraft:ominous_item_spawner",
+      "update_interval": 3,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 94,
+      "name": "minecraft:painting",
+      "update_interval": 2147483647,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.425
+      ]
+    },
+    {
+      "id": 95,
+      "name": "minecraft:pale_oak_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 96,
+      "name": "minecraft:pale_oak_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 97,
+      "name": "minecraft:panda",
+      "update_interval": 3,
+      "dimensions": [
+        1.3,
+        1.25,
+        1.0625
+      ]
+    },
+    {
+      "id": 98,
+      "name": "minecraft:parched",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.99,
+        1.74
+      ]
+    },
+    {
+      "id": 99,
+      "name": "minecraft:parrot",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        0.9,
+        0.54
+      ]
+    },
+    {
+      "id": 100,
+      "name": "minecraft:phantom",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        0.5,
+        0.175
+      ]
+    },
+    {
+      "id": 101,
+      "name": "minecraft:pig",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        0.9,
+        0.765
+      ]
+    },
+    {
+      "id": 102,
+      "name": "minecraft:piglin",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.79
+      ]
+    },
+    {
+      "id": 103,
+      "name": "minecraft:piglin_brute",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.79
+      ]
+    },
+    {
+      "id": 104,
+      "name": "minecraft:pillager",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.6575
+      ]
+    },
+    {
+      "id": 105,
+      "name": "minecraft:polar_bear",
+      "update_interval": 3,
+      "dimensions": [
+        1.4,
+        1.4,
+        1.19
+      ]
+    },
+    {
+      "id": 106,
+      "name": "minecraft:poplar_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 107,
+      "name": "minecraft:poplar_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 108,
+      "name": "minecraft:splash_potion",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 109,
+      "name": "minecraft:lingering_potion",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 110,
+      "name": "minecraft:pufferfish",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        0.7,
+        0.455
+      ]
+    },
+    {
+      "id": 111,
+      "name": "minecraft:rabbit",
+      "update_interval": 3,
+      "dimensions": [
+        0.49,
+        0.6,
+        0.59
+      ]
+    },
+    {
+      "id": 112,
+      "name": "minecraft:ravager",
+      "update_interval": 3,
+      "dimensions": [
+        1.95,
+        2.2,
+        1.8700001
+      ]
+    },
+    {
+      "id": 113,
+      "name": "minecraft:salmon",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        0.4,
+        0.26
+      ]
+    },
+    {
+      "id": 114,
+      "name": "minecraft:sheep",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.3,
+        1.235
+      ]
+    },
+    {
+      "id": 115,
+      "name": "minecraft:shulker",
+      "update_interval": 3,
+      "dimensions": [
+        1.0,
+        1.0,
+        0.5
+      ]
+    },
+    {
+      "id": 116,
+      "name": "minecraft:shulker_bullet",
+      "update_interval": 3,
+      "dimensions": [
+        0.3125,
+        0.3125,
+        0.265625
+      ]
+    },
+    {
+      "id": 117,
+      "name": "minecraft:silverfish",
+      "update_interval": 3,
+      "dimensions": [
+        0.4,
+        0.3,
+        0.13
+      ]
+    },
+    {
+      "id": 118,
+      "name": "minecraft:skeleton",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.99,
+        1.74
+      ]
+    },
+    {
+      "id": 119,
+      "name": "minecraft:skeleton_horse",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.6,
+        1.52
+      ]
+    },
+    {
+      "id": 120,
+      "name": "minecraft:slime",
+      "update_interval": 3,
+      "dimensions": [
+        0.52,
+        0.52,
+        0.325
+      ]
+    },
+    {
+      "id": 121,
+      "name": "minecraft:small_fireball",
+      "update_interval": 10,
+      "dimensions": [
+        0.3125,
+        0.3125,
+        0.265625
+      ]
+    },
+    {
+      "id": 122,
+      "name": "minecraft:sniffer",
+      "update_interval": 3,
+      "dimensions": [
+        1.9,
+        1.75,
+        1.05
+      ]
+    },
+    {
+      "id": 123,
+      "name": "minecraft:snowball",
+      "update_interval": 10,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    },
+    {
+      "id": 124,
+      "name": "minecraft:snow_golem",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        1.9,
+        1.7
+      ]
+    },
+    {
+      "id": 125,
+      "name": "minecraft:spawner_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 126,
+      "name": "minecraft:spectral_arrow",
+      "update_interval": 20,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.13
+      ]
+    },
+    {
+      "id": 127,
+      "name": "minecraft:spider",
+      "update_interval": 3,
+      "dimensions": [
+        1.4,
+        0.9,
+        0.65
+      ]
+    },
+    {
+      "id": 128,
+      "name": "minecraft:spruce_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 129,
+      "name": "minecraft:spruce_chest_boat",
+      "update_interval": 3,
+      "dimensions": [
+        1.375,
+        0.5625,
+        0.5625
+      ]
+    },
+    {
+      "id": 130,
+      "name": "minecraft:squid",
+      "update_interval": 3,
+      "dimensions": [
+        0.8,
+        0.8,
+        0.4
+      ]
+    },
+    {
+      "id": 131,
+      "name": "minecraft:stray",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.99,
+        1.74
+      ]
+    },
+    {
+      "id": 132,
+      "name": "minecraft:strider",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.7,
+        1.445
+      ]
+    },
+    {
+      "id": 133,
+      "name": "minecraft:sulfur_cube",
+      "update_interval": 3,
+      "dimensions": [
+        0.49,
+        0.49,
+        0.175
+      ]
+    },
+    {
+      "id": 134,
+      "name": "minecraft:tadpole",
+      "update_interval": 3,
+      "dimensions": [
+        0.4,
+        0.3,
+        0.19500001
+      ]
+    },
+    {
+      "id": 135,
+      "name": "minecraft:text_display",
+      "update_interval": 1,
+      "dimensions": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "id": 136,
+      "name": "minecraft:tnt",
+      "update_interval": 10,
+      "dimensions": [
+        0.98,
+        0.98,
+        0.15
+      ]
+    },
+    {
+      "id": 137,
+      "name": "minecraft:tnt_minecart",
+      "update_interval": 3,
+      "dimensions": [
+        0.98,
+        0.7,
+        0.595
+      ]
+    },
+    {
+      "id": 138,
+      "name": "minecraft:trader_llama",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        1.87,
+        1.7765
+      ]
+    },
+    {
+      "id": 139,
+      "name": "minecraft:trident",
+      "update_interval": 20,
+      "dimensions": [
+        0.5,
+        0.5,
+        0.13
+      ]
+    },
+    {
+      "id": 140,
+      "name": "minecraft:tropical_fish",
+      "update_interval": 3,
+      "dimensions": [
+        0.5,
+        0.4,
+        0.26
+      ]
+    },
+    {
+      "id": 141,
+      "name": "minecraft:turtle",
+      "update_interval": 3,
+      "dimensions": [
+        1.2,
+        0.4,
+        0.34
+      ]
+    },
+    {
+      "id": 142,
+      "name": "minecraft:vex",
+      "update_interval": 3,
+      "dimensions": [
+        0.4,
+        0.8,
+        0.51875
+      ]
+    },
+    {
+      "id": 143,
+      "name": "minecraft:villager",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.62
+      ]
+    },
+    {
+      "id": 144,
+      "name": "minecraft:vindicator",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.6575
+      ]
+    },
+    {
+      "id": 145,
+      "name": "minecraft:wandering_trader",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.62
+      ]
+    },
+    {
+      "id": 146,
+      "name": "minecraft:warden",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        2.9,
+        2.4650002
+      ]
+    },
+    {
+      "id": 147,
+      "name": "minecraft:wind_charge",
+      "update_interval": 10,
+      "dimensions": [
+        0.3125,
+        0.3125,
+        0.0
+      ]
+    },
+    {
+      "id": 148,
+      "name": "minecraft:witch",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.62
+      ]
+    },
+    {
+      "id": 149,
+      "name": "minecraft:wither",
+      "update_interval": 3,
+      "dimensions": [
+        0.9,
+        3.5,
+        2.9750001
+      ]
+    },
+    {
+      "id": 150,
+      "name": "minecraft:wither_skeleton",
+      "update_interval": 3,
+      "dimensions": [
+        0.7,
+        2.4,
+        2.1
+      ]
+    },
+    {
+      "id": 151,
+      "name": "minecraft:wither_skull",
+      "update_interval": 10,
+      "dimensions": [
+        0.3125,
+        0.3125,
+        0.265625
+      ]
+    },
+    {
+      "id": 152,
+      "name": "minecraft:wolf",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        0.85,
+        0.68
+      ]
+    },
+    {
+      "id": 153,
+      "name": "minecraft:zoglin",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.4,
+        1.19
+      ]
+    },
+    {
+      "id": 154,
+      "name": "minecraft:zombie",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.74
+      ]
+    },
+    {
+      "id": 155,
+      "name": "minecraft:zombie_horse",
+      "update_interval": 3,
+      "dimensions": [
+        1.3964844,
+        1.6,
+        1.52
+      ]
+    },
+    {
+      "id": 156,
+      "name": "minecraft:zombie_nautilus",
+      "update_interval": 3,
+      "dimensions": [
+        0.875,
+        0.95,
+        0.2751
+      ]
+    },
+    {
+      "id": 157,
+      "name": "minecraft:zombie_villager",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.74
+      ]
+    },
+    {
+      "id": 158,
+      "name": "minecraft:zombified_piglin",
+      "update_interval": 3,
+      "dimensions": [
+        0.6,
+        1.95,
+        1.79
+      ]
+    },
+    {
+      "id": 159,
+      "name": "minecraft:player",
+      "update_interval": 2,
+      "dimensions": [
+        0.6,
+        1.8,
+        1.62
+      ]
+    },
+    {
+      "id": 160,
+      "name": "minecraft:fishing_bobber",
+      "update_interval": 5,
+      "dimensions": [
+        0.25,
+        0.25,
+        0.2125
+      ]
+    }
+  ],
+  "metadata": {
+    "pig": [
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SHARED_FLAGS_ID",
+        "index": 0,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_AIR_SUPPLY_ID",
+        "index": 1,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME",
+        "index": 2,
+        "serializer": 6
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME_VISIBLE",
+        "index": 3,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SILENT",
+        "index": 4,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_NO_GRAVITY",
+        "index": 5,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_POSE",
+        "index": 6,
+        "serializer": 20
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_TICKS_FROZEN",
+        "index": 7,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_LIVING_ENTITY_FLAGS",
+        "index": 8,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_HEALTH_ID",
+        "index": 9,
+        "serializer": 3
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_PARTICLES",
+        "index": 10,
+        "serializer": 17
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_AMBIENCE_ID",
+        "index": 11,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_ARROW_COUNT_ID",
+        "index": 12,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_STINGER_COUNT_ID",
+        "index": 13,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "SLEEPING_POS_ID",
+        "index": 14,
+        "serializer": 11
+      },
+      {
+        "owner": "net.minecraft.world.entity.Mob",
+        "name": "DATA_MOB_FLAGS_ID",
+        "index": 15,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.AgeableMob",
+        "name": "DATA_BABY_ID",
+        "index": 16,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.AgeableMob",
+        "name": "AGE_LOCKED",
+        "index": 17,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.animal.pig.Pig",
+        "name": "DATA_BOOST_TIME",
+        "index": 18,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.animal.pig.Pig",
+        "name": "DATA_VARIANT_ID",
+        "index": 19,
+        "serializer": 28
+      },
+      {
+        "owner": "net.minecraft.world.entity.animal.pig.Pig",
+        "name": "DATA_SOUND_VARIANT_ID",
+        "index": 20,
+        "serializer": 29
+      }
+    ],
+    "player": [
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SHARED_FLAGS_ID",
+        "index": 0,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_AIR_SUPPLY_ID",
+        "index": 1,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME",
+        "index": 2,
+        "serializer": 6
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME_VISIBLE",
+        "index": 3,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SILENT",
+        "index": 4,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_NO_GRAVITY",
+        "index": 5,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_POSE",
+        "index": 6,
+        "serializer": 20
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_TICKS_FROZEN",
+        "index": 7,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_LIVING_ENTITY_FLAGS",
+        "index": 8,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_HEALTH_ID",
+        "index": 9,
+        "serializer": 3
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_PARTICLES",
+        "index": 10,
+        "serializer": 17
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_AMBIENCE_ID",
+        "index": 11,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_ARROW_COUNT_ID",
+        "index": 12,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_STINGER_COUNT_ID",
+        "index": 13,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "SLEEPING_POS_ID",
+        "index": 14,
+        "serializer": 11
+      },
+      {
+        "owner": "net.minecraft.world.entity.Avatar",
+        "name": "DATA_PLAYER_MAIN_HAND",
+        "index": 15,
+        "serializer": 42
+      },
+      {
+        "owner": "net.minecraft.world.entity.Avatar",
+        "name": "DATA_PLAYER_MODE_CUSTOMISATION",
+        "index": 16,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.player.Player",
+        "name": "DATA_PLAYER_ABSORPTION_ID",
+        "index": 17,
+        "serializer": 3
+      },
+      {
+        "owner": "net.minecraft.world.entity.player.Player",
+        "name": "DATA_SCORE_ID",
+        "index": 18,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.player.Player",
+        "name": "DATA_SHOULDER_PARROT_LEFT",
+        "index": 19,
+        "serializer": 19
+      },
+      {
+        "owner": "net.minecraft.world.entity.player.Player",
+        "name": "DATA_SHOULDER_PARROT_RIGHT",
+        "index": 20,
+        "serializer": 19
+      }
+    ],
+    "item": [
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SHARED_FLAGS_ID",
+        "index": 0,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_AIR_SUPPLY_ID",
+        "index": 1,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME",
+        "index": 2,
+        "serializer": 6
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME_VISIBLE",
+        "index": 3,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SILENT",
+        "index": 4,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_NO_GRAVITY",
+        "index": 5,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_POSE",
+        "index": 6,
+        "serializer": 20
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_TICKS_FROZEN",
+        "index": 7,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.item.ItemEntity",
+        "name": "DATA_ITEM",
+        "index": 8,
+        "serializer": 7
+      }
+    ]
+  },
+  "poses": [
+    "standing",
+    "fall_flying",
+    "sleeping",
+    "swimming",
+    "spin_attack",
+    "crouching",
+    "long_jumping",
+    "dying",
+    "croaking",
+    "using_tongue",
+    "sitting",
+    "roaring",
+    "sniffing",
+    "emerging",
+    "digging",
+    "sliding",
+    "shooting",
+    "inhaling"
+  ],
+  "pig_default_variant": "minecraft:temperate"
+}

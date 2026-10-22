@@ -56,9 +56,15 @@
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "entity_facts_report": {
-    "path": "entity-facts.json",
-    "bytes": 35326,
-    "sha256": "c1bb08b177f4e02a408c2d018deb1328a26b9400b8aa0066f828b1d884d27386",
+    "path": "data/entity-facts.json",
+    "bytes": 35374,
+    "sha256": "0684496b27d286c8c6c42d97c6d5cc47d050c0ccc1b0c9563fae0b4e3aa8e146",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
+  },
+  "metadata_schema": {
+    "path": "data/MetadataTypes.java",
+    "sha256": "abf23d7315236f777d6654f138eb2fef1cb65b081016403aff8bb809b2f141ab",
+    "count": 44,
+    "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/metadata/MetadataTypes.java"
   }
 }

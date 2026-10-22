@@ -138,3 +138,82 @@ fn respawn_and_new_session_retire_entities_before_queued_old_updates() {
     s.begin(8);
     assert_eq!(s.entities.iter().count(), 0);
 }
+
+#[test]
+fn native_metadata_selects_registry_appearance_and_rejects_partial_or_stale_updates() {
+    let mut s = state();
+    assert!(s.admit(event(1, spawn())));
+    let original = s.entities.get(99).unwrap();
+    assert_eq!(
+        original.visual.pig.as_ref().unwrap().name.as_ref(),
+        "minecraft:temperate"
+    );
+    assert!(!original.visual.baby && !original.visual.invisible());
+    // Independent target indexes and registry order: cold=0, pose crouching=5.
+    let update = || {
+        decoded(
+            "ClientboundSetEntityDataPacket",
+            &[99, 0, 0, 32, 16, 8, 1, 19, 28, 0, 255],
+        )
+    };
+    assert!(!s.admit(event(9, update())));
+    assert!(!s.entities.get(99).unwrap().visual.baby);
+    assert!(s.admit(event(1, update())));
+    let visual = &s.entities.get(99).unwrap().visual;
+    assert!(visual.baby && visual.invisible());
+    assert_eq!(
+        visual.pig.as_ref().unwrap().model,
+        world::java::entities::visual::PigModel::Cold
+    );
+    // A malformed accessor after a valid prefix cannot partially change admitted state.
+    assert!(!s.admit(event(
+        1,
+        decoded(
+            "ClientboundSetEntityDataPacket",
+            &[99, 0, 0, 0, 19, 8, 1, 255]
+        )
+    )));
+    assert!(s.entities.get(99).unwrap().visual.invisible());
+    // An unsupported payload produces an explicit gap which later delta packets cannot erase.
+    assert!(s.admit(event(
+        1,
+        decoded(
+            "ClientboundSetEntityDataPacket",
+            &[99, 0, 0, 0, 10, 17, 1, 255]
+        )
+    )));
+    assert!(s.entities.get(99).unwrap().visual.incomplete.is_some());
+    assert!(s.entities.get(99).unwrap().visual.invisible());
+    assert!(s.admit(event(1, update())));
+    assert!(s.entities.get(99).unwrap().visual.incomplete.is_some());
+    assert!(s.admit(event(1, spawn())));
+    assert!(s.entities.get(99).unwrap().visual.incomplete.is_none());
+}
+
+#[test]
+fn local_metadata_stays_out_of_remote_store_and_obeys_respawn_retention() {
+    for keep_metadata in [false, true] {
+        let mut s = state();
+        assert!(s.admit(event(
+            1,
+            decoded("ClientboundSetEntityDataPacket", &[42, 0, 0, 32, 255])
+        )));
+        assert!(s.player_visual.invisible());
+        assert!(s.entities.get(42).is_none());
+        let spawn = s.bootstrap.as_ref().unwrap().world.spawn.clone();
+        assert!(s.admit(Envelope {
+            generation: 7,
+            event: Event::Respawn {
+                spawn,
+                keep_attribute_modifiers: false,
+                keep_metadata
+            }
+        }));
+        assert_eq!(s.player_visual.invisible(), keep_metadata);
+        assert!(!s.admit(event(
+            1,
+            decoded("ClientboundSetEntityDataPacket", &[42, 0, 0, 0, 255])
+        )));
+        assert_eq!(s.player_visual.invisible(), keep_metadata);
+    }
+}

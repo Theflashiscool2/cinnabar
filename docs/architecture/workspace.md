@@ -132,6 +132,12 @@ admits it before issuing a resolved teleport acknowledgement. The Java socket fe
 the reply by dimension and correction receipt and preserves packet order while
 waiting. Camera presentation observes the admitted correction without becoming a
 second player authority.
+`world::java::entities::visual` owns native appearance facts, including explicit
+incomplete metadata and registry-resolved pig variants. `client-world` validates
+wire accessor/serializer pairs using hash-pinned generated schemas. Local player
+metadata stays separate from remote entity lifetimes and follows respawn retention.
+The protocol owner's original entity-facts report contains identifiers, dimensions,
+update intervals and schema facts; exported model geometry stays outside the checkout.
 `world::java::dynamics` owns admitted abilities and attribute arithmetic. The
 `client-world` boundary resolves the hash-pinned protocol attribute IDs, isolates
 local identity, and retains partial velocity without fabricating a position.

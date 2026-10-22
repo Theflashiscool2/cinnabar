@@ -11,6 +11,7 @@ fn spawn(id: i32, uuid: u8) -> Spawn {
         },
         head_yaw: 0.,
         object_data: 0,
+        visual: Default::default(),
     }
 }
 

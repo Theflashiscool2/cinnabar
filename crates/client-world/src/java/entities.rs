@@ -1,5 +1,6 @@
 //! Admits native entity facts without publishing packet-library types to presentation.
 use super::WorldState;
+mod metadata;
 use java_protocol::session::{entities as wire, facts::Relative as Flag};
 use std::sync::Arc;
 use world::java::{
@@ -23,10 +24,16 @@ pub(super) fn admit(
         .world
         .entity_id;
     match packet {
+        wire::Packet::Metadata(packet) => metadata::admit(state, scope, own, packet),
         wire::Packet::Spawn(s) => {
             if s.id == own {
                 return Err("Java remote spawn reuses local player identity");
             }
+            let pig = if s.kind == java_protocol::target::ENTITY_PIG {
+                Some(metadata::default_pig(state)?)
+            } else {
+                None
+            };
             state.entities.spawn(
                 scope,
                 domain::Spawn {
@@ -41,6 +48,10 @@ pub(super) fn admit(
                     },
                     head_yaw: s.head_yaw,
                     object_data: s.data,
+                    visual: domain::visual::Visual {
+                        pig,
+                        ..Default::default()
+                    },
                 },
             )
         }

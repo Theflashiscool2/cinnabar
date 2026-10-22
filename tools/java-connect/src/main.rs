@@ -56,6 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if keepalives == 0 || reconnects == 0 || timeout == 0 {
         return Err("Acceptance requires positive keepalive, session and timeout counts".into());
     }
+    let inspect_entity = get("--inspect-entity")
+        .map(|s| uuid::Uuid::parse_str(&s))
+        .transpose()?;
     let required_chunks: usize = get("--require-chunks")
         .unwrap_or_else(|| "1".into())
         .parse()?;
@@ -149,7 +152,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 Some(compile_terrain(&state,models.as_mut().ok_or("--compile-terrain requires --client-assets")?)?)
                             }else{None};
                             let block=sample.map(|position| { let id=state.terrain.block(position); let facts=id.and_then(|id|registry.as_ref()?.state(id.0)); serde_json::json!({"position":position,"state_id":id.map(|id|id.0),"name":facts.map(|f| &*f.name),"properties":facts.map(|f| &f.properties)}) });
-                            output(serde_json::json!({"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"block_updates":state.block_updates,"block_sample":block,"model_quads":model_quads,"compiled_terrain":meshes,"vitals":state.vitals,"dimension_epoch":state.terrain.dimension().map(|d|d.epoch),"rendered_world":false}))?;
+                            let entity = inspect_entity.map(|id| {
+                                let entity = state.entities.iter().find(|e| e.uuid == id.into_bytes()).ok_or("inspected Java entity is not resident")?;
+                                let v = &entity.visual;
+                                Ok::<_, &'static str>(serde_json::json!({
+                                    "uuid": id, "network_id": entity.network_id, "incarnation": entity.identity.incarnation,
+                                    "kind": entity.kind, "position": entity.motion.position, "baby": v.baby,
+                                    "pose": v.pose, "flags": v.flags, "health": v.health,
+                                    "pig_variant": v.pig.as_ref().map(|p| &p.name),
+                                    "adult_texture": v.pig.as_ref().map(|p| &p.adult_texture),
+                                    "baby_texture": v.pig.as_ref().map(|p| &p.baby_texture),
+                                    "metadata_incomplete": v.incomplete.as_ref().map(|g| &g.serializer),
+                                }))
+                            }).transpose()?;
+                            output(serde_json::json!({"entity_sample":entity,"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"block_updates":state.block_updates,"block_sample":block,"model_quads":model_quads,"compiled_terrain":meshes,"vitals":state.vitals,"dimension_epoch":state.terrain.dimension().map(|d|d.epoch),"rendered_world":false}))?;
                             session.shutdown().await;break;
                         }
                     },

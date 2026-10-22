@@ -1,5 +1,6 @@
 //! Native entity authority, independent of ECS and packet-library types.
 use super::player::{Motion, Relative};
+pub mod visual;
 use std::{collections::BTreeMap, sync::Arc};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -41,6 +42,7 @@ pub struct Spawn {
     pub motion: Motion,
     pub head_yaw: f32,
     pub object_data: i32,
+    pub visual: visual::Visual,
 }
 
 #[derive(Clone, Debug)]
@@ -58,8 +60,9 @@ pub struct Entity {
     pub revision: u64,
     /// Independent of ordinary updates so coalesced rotations cannot hide a teleport.
     pub teleport_revision: u64,
-    /// Ordered server-supplied intermediate positions, relative to this update's tick origin.
+    /// Ordered intermediate positions; each tick offset is measured from the preceding step.
     pub path: Arc<[PositionStep]>,
+    pub visual: visual::Visual,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -186,7 +189,10 @@ impl Entities {
         if !self.accepts(scope.0, scope.1) {
             return Ok(false);
         }
-        if !spawn.motion.is_finite() || !spawn.head_yaw.is_finite() {
+        if !spawn.motion.is_finite()
+            || !spawn.head_yaw.is_finite()
+            || spawn.visual.health.is_some_and(|h| !h.is_finite())
+        {
             return Err("nonfinite native entity spawn");
         }
         let incarnation = self
@@ -217,6 +223,7 @@ impl Entities {
                 revision,
                 teleport_revision: 1,
                 path: Arc::from([]),
+                visual: spawn.visual,
             },
         );
         self.next_incarnation = incarnation;
@@ -271,7 +278,8 @@ impl Entities {
         {
             return Err("native entity lifetime changes require a new spawn");
         }
-        if !next.motion.is_finite()
+        if next.visual.health.is_some_and(|health| !health.is_finite())
+            || !next.motion.is_finite()
             || !next.head_yaw.is_finite()
             || !next.delta_base.into_iter().all(f64::is_finite)
             || !next

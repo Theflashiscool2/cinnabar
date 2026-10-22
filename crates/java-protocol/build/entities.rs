@@ -1,7 +1,7 @@
 //! Derives native entity registry names from the target-pinned maintained schema.
 use sha2::{Digest, Sha256};
 
-pub fn generate(code: &mut String, target: &serde_json::Value) {
+pub fn generate(code: &mut String, target: &serde_json::Value) -> Vec<String> {
     let pin = &target["entity_schema"];
     let path = pin["path"].as_str().unwrap();
     println!("cargo:rerun-if-changed={path}");
@@ -28,4 +28,12 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
     let unique: std::collections::BTreeSet<_> = names.iter().collect();
     assert_eq!(unique.len(), names.len());
     *code += &format!("pub const ENTITY_TYPES: &[&str] = &{names:?};\n");
+    for name in &names {
+        let symbol = name
+            .strip_prefix("minecraft:")
+            .unwrap()
+            .to_ascii_uppercase();
+        *code += &format!("pub const ENTITY_{symbol}: &str = {name:?};\n");
+    }
+    names
 }

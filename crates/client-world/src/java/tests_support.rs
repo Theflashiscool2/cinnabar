@@ -67,6 +67,40 @@ pub(super) fn state() -> WorldState {
                 ),
             }],
         );
+    let pig = |name: &str, model: Option<&str>| {
+        use java_protocol::nbt::Value;
+        let mut fields = std::collections::BTreeMap::from([
+            (
+                "asset_id".into(),
+                Value::String(format!("minecraft:entity/pig/pig_{name}")),
+            ),
+            (
+                "baby_asset_id".into(),
+                Value::String(format!("minecraft:entity/pig/pig_{name}_baby")),
+            ),
+        ]);
+        if let Some(model) = model {
+            fields.insert("model".into(), Value::String(model.into()));
+        }
+        facts::RegistryEntry {
+            name: format!("minecraft:{name}"),
+            value: Value::Compound(fields),
+        }
+    };
+    state
+        .bootstrap
+        .as_mut()
+        .unwrap()
+        .configuration
+        .registries
+        .insert(
+            "minecraft:pig_variant".into(),
+            vec![
+                pig("cold", Some("cold")),
+                pig("temperate", None),
+                pig("warm", None),
+            ],
+        );
     state.entities.begin(7, 1);
     state
 }
