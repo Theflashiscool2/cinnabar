@@ -21,6 +21,21 @@ impl<'a> Reader<'a> {
     pub fn var(&mut self) -> Result<i32, Error> {
         codec::read_varint(&mut self.0)
     }
+    /// Reads an unsigned bit pattern in Java's ten-byte VarLong representation.
+    pub fn varlong(&mut self) -> Result<u64, Error> {
+        let mut value = 0u64;
+        for index in 0..10 {
+            let byte = self.byte()?;
+            if index == 9 && byte > 1 {
+                return Err(Error::Invalid("Java VarLong overflow"));
+            }
+            value |= u64::from(byte & 127) << (index * 7);
+            if byte & 128 == 0 {
+                return Ok(value);
+            }
+        }
+        Err(Error::Invalid("Java VarLong overflow"))
+    }
     pub fn count(&mut self, limit: usize) -> Result<usize, Error> {
         let n = usize::try_from(self.var()?).map_err(|_| Error::Invalid("negative count"))?;
         if n > limit || n > self.0.len() {

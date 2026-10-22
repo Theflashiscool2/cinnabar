@@ -16,9 +16,11 @@ pub(super) fn connect(
         .parent()
         .expect("authentication directory")
         .join("java");
-    session.controller.java = Some(client_session::java::Session::run(move |events| {
-        launcher_host::java::run(intent.address, generation, root, events)
-    }));
+    session.controller.java = Some(client_session::java::Session::run(
+        move |events, commands| {
+            launcher_host::java::run(intent.address, generation, root, events, commands)
+        },
+    ));
 }
 pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
     let controller = &mut *session.controller;
@@ -32,6 +34,7 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         let display = !matches!(
             event.event,
             java_protocol::session::Event::DeferredPlay { .. }
+                | java_protocol::session::Event::Terrain { .. }
         );
         if controller.java_world.admit(event) && display {
             let state = &controller.java_world;
@@ -53,6 +56,12 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
             };
             menu.set_java_diagnostic(message);
         }
+    }
+    if let Some(error) = controller.java_world.terrain_error {
+        java.cancel();
+        controller.java = None;
+        controller.fail_join(menu, error.to_owned());
+        return;
     }
     if let Some(result) = java.result() {
         controller.java = None;

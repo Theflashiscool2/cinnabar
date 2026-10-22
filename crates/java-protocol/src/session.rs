@@ -4,6 +4,7 @@ mod crypto;
 pub mod facts;
 mod login;
 mod play;
+mod terrain;
 use crate::{
     ProtocolError,
     address::{self, Address},
@@ -50,12 +51,18 @@ pub enum Identity {
     Online(auth::Account),
     OfflineFixture { name: String },
 }
+/// User intent for this connection only; transport replies do not enter this queue.
+#[derive(Debug)]
+pub enum Command {
+    Respawn,
+}
 pub struct Options {
     pub address: Address,
     pub identity: Identity,
     pub generation: u64,
     pub connect_timeout: Duration,
     pub login_timeout: Duration,
+    pub commands: Option<mpsc::Receiver<Command>>,
 }
 impl Options {
     pub fn fixture(address: Address, name: String, generation: u64) -> Self {
@@ -65,6 +72,7 @@ impl Options {
             generation,
             connect_timeout: Duration::from_secs(10),
             login_timeout: Duration::from_secs(30),
+            commands: None,
         }
     }
 }
@@ -75,6 +83,15 @@ pub enum Event {
     Teleport(facts::Teleport),
     Respawn(facts::Spawn),
     KeepAlive(i64),
+    Vitals(facts::Vitals),
+    Death {
+        player_id: i32,
+        message: crate::nbt::Value,
+    },
+    Terrain {
+        dimension_epoch: u64,
+        packet: Box<crate::terrain::Packet>,
+    },
     /// Known wire packets not yet admitted to gameplay; diagnostics retain the distinction.
     DeferredPlay {
         name: String,
@@ -97,6 +114,11 @@ struct Connection {
     cookies: BTreeMap<String, Vec<u8>>,
     configuration_bytes: usize,
     bootstrapped: bool,
+    terrain: Option<crate::terrain::Context>,
+    dimensions: Vec<crate::terrain::Context>,
+    dimension_epoch: u64,
+    commands: Option<mpsc::Receiver<Command>>,
+    dead: bool,
 }
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
 /// every in-flight read/write and its socket. Login deadlines do not limit the play lifetime.
@@ -107,7 +129,7 @@ pub async fn run(
 ) -> Result<(), Error> {
     tokio::select! {biased;_=cancel.cancelled()=>Err(Error::Cancelled),result=run_inner(options,events)=>result}
 }
-async fn run_inner(options: Options, events: mpsc::Sender<Envelope>) -> Result<(), Error> {
+async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Result<(), Error> {
     let profile = match &options.identity {
         Identity::Online(account) => {
             if !account.valid_at(auth::unix_now()) {
@@ -160,6 +182,11 @@ async fn run_inner(options: Options, events: mpsc::Sender<Envelope>) -> Result<(
         cookies: BTreeMap::new(),
         configuration_bytes: 0,
         bootstrapped: false,
+        terrain: None,
+        dimensions: Vec::new(),
+        dimension_epoch: 0,
+        commands: options.commands.take(),
+        dead: false,
     };
     tokio::time::timeout(options.login_timeout, c.login(&options))
         .await

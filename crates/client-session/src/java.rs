@@ -1,5 +1,5 @@
 //! Native Java task ownership. This path never constructs a Bedrock NetworkHandle.
-use java_protocol::session::{self, Envelope, Options};
+use java_protocol::session::{self, Command, Envelope, Options};
 use std::{future::Future, sync::OnceLock};
 use tokio::{
     runtime::Runtime,
@@ -23,6 +23,7 @@ pub struct Session {
     events: mpsc::Receiver<Envelope>,
     result: oneshot::Receiver<Result<(), String>>,
     task: JoinHandle<()>,
+    commands: mpsc::Sender<Command>,
 }
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -38,11 +39,14 @@ impl Session {
     pub fn prepare(
         options: impl Future<Output = Result<Options, String>> + Send + 'static,
     ) -> Self {
-        Self::run(move |tx| async move {
+        Self::run(move |tx, commands| async move {
             match options.await {
-                Ok(options) => session::run(options, tx, Default::default())
-                    .await
-                    .map_err(|e| e.to_string()),
+                Ok(mut options) => {
+                    options.commands = Some(commands);
+                    session::run(options, tx, Default::default())
+                        .await
+                        .map_err(|e| e.to_string())
+                }
                 Err(error) => Err(error),
             }
         })
@@ -50,20 +54,26 @@ impl Session {
     /// Owns a connection runner and all of its authorization/cancellation supervision.
     pub fn run<F, Fut>(runner: F) -> Self
     where
-        F: FnOnce(mpsc::Sender<Envelope>) -> Fut + Send + 'static,
+        F: FnOnce(mpsc::Sender<Envelope>, mpsc::Receiver<Command>) -> Fut + Send + 'static,
         Fut: Future<Output = Result<(), String>> + Send + 'static,
     {
         let (tx, events) = mpsc::channel(32);
+        let (commands, input) = mpsc::channel(32);
         let (done, result) = oneshot::channel();
         let task = runtime().spawn(async move {
-            let outcome = runner(tx).await;
+            let outcome = runner(tx, input).await;
             let _ = done.send(outcome);
         });
         Self {
             events,
             result,
             task,
+            commands,
         }
+    }
+    /// Reports full/retired input queues instead of dropping required intent silently.
+    pub fn command(&self, command: Command) -> Result<(), mpsc::error::TrySendError<Command>> {
+        self.commands.try_send(command)
     }
     pub async fn next(&mut self) -> Option<Envelope> {
         self.events.recv().await

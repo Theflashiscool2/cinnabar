@@ -73,7 +73,23 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
 - [ ] Qualify SRV behavior against an authorized DNS/proxy fixture and custom-pack
   admission limits. Mid-session reconfiguration, tag replacement, relative teleports,
   required resource packs and interactive server consent/dialogs are unsupported.
-- [ ] Implement and qualify Java chunks, entities, movement, signed chat, inventory,
+- [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light
+  masks, incremental block/biome/light updates and unloads into `world::java`.
+  Preserve Java IDs and invalidate snapshots on session/dimension/column/neighbour
+  replacement. Pin and verify the official generated block-state/property report.
+  Deterministic coverage includes malformed/truncated palettes, signed coordinates,
+  light mask consistency, and obsolete publication rejection.
+- [x] Handle death/health facts and explicit respawn intent. Partial encrypted reads
+  survive input dispatch; independent wire coverage checks the respawn request.
+- [x] Linux offline vanilla fixture: recover a saved dead player through explicit
+  respawn, admit a new dimension epoch and 49 columns, then reconnect into 49 fresh
+  columns. Each session answered two real keepalives with positive authoritative
+  health. A separate four-keepalive run admitted four incremental block changes:
+  a server console dirt placement subsequently became a server-confirmed grass
+  block with `snowy=false`. These runs establish terrain authority, not rendering.
+- [ ] Connect Java assets and mesh publication to the renderer. Models, textures,
+  collision, player input and the launcher-to-renderer loop remain unimplemented.
+- [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 
 ## Phase 0 — End-to-end acceptance

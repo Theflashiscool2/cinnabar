@@ -5,5 +5,12 @@
   "codec_source": "https://github.com/GeyserMC/MCProtocolLib/tree/b4fa8b23064bb85d7c7966cc2cd6bf369c9c1405",
   "official_manifest": "https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json",
   "server_sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
-  "java_runtime_major": 25
+  "java_runtime_major": 25,
+  "block_registry_report": {
+    "sha256": "7a0de8aaf7b04d00c40b8ffdc4cfe75184cff2e821d336a020573201867105a4",
+    "bytes": 7330564,
+    "states": 35723,
+    "generator": "net.minecraft.data.Main --reports",
+    "path": "reports/blocks.json"
+  }
 }

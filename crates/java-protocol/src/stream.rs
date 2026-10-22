@@ -20,6 +20,10 @@ pub struct Stream<S> {
     threshold: Option<usize>,
     encrypt: Option<cfb8::Encryptor<aes::Aes128>>,
     decrypt: Option<cfb8::Decryptor<aes::Aes128>>,
+    read_length: usize,
+    read_prefix: usize,
+    read_frame: Vec<u8>,
+    read_offset: usize,
 }
 impl<S: AsyncRead + AsyncWrite + Unpin> Stream<S> {
     pub fn new(io: S) -> Self {
@@ -28,6 +32,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream<S> {
             threshold: None,
             encrypt: None,
             decrypt: None,
+            read_length: 0,
+            read_prefix: 0,
+            read_frame: Vec::new(),
+            read_offset: 0,
         }
     }
     pub fn compression(&mut self, threshold: i32) {
@@ -37,34 +45,44 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream<S> {
         self.encrypt = Some(cfb8::Encryptor::new(key.into(), key.into()));
         self.decrypt = Some(cfb8::Decryptor::new(key.into(), key.into()));
     }
-    async fn read_bytes(&mut self, bytes: &mut [u8]) -> Result<(), Error> {
-        self.io.read_exact(bytes).await?;
-        if let Some(cipher) = &mut self.decrypt {
-            for byte in bytes {
-                let mut block = [*byte].into();
-                cipher.decrypt_block_mut(&mut block);
-                *byte = block[0];
-            }
-        }
-        Ok(())
-    }
-    /// Cancellation is terminal: drop this entire stream if a read/write is interrupted.
+    /// Cancellation-safe reads retain framing and cipher progress in this stream. A cancelled
+    /// write is still terminal: its caller must drop the stream rather than retrying bytes.
     pub async fn read(&mut self) -> Result<Vec<u8>, Error> {
-        let mut length = 0;
-        for index in 0..codec::FRAME_LENGTH_BYTES {
+        while self.read_frame.is_empty() {
             let mut byte = [0];
-            self.read_bytes(&mut byte).await?;
-            length |= usize::from(byte[0] & 127) << (index * 7);
+            if self.io.read(&mut byte).await? == 0 {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
+            }
+            decrypt_bytes(&mut self.decrypt, &mut byte);
+            self.read_length |= usize::from(byte[0] & 127) << (self.read_prefix * 7);
+            self.read_prefix += 1;
             if byte[0] & 128 == 0 {
-                if length == 0 || length > codec::MAX_FRAME_BYTES {
+                if self.read_length == 0 || self.read_length > codec::MAX_FRAME_BYTES {
                     return Err(ProtocolError::InvalidFrameLength.into());
                 }
-                let mut frame = vec![0; length];
-                self.read_bytes(&mut frame).await?;
-                return decode(frame, self.threshold);
+                self.read_frame.resize(self.read_length, 0);
+            } else if self.read_prefix == codec::FRAME_LENGTH_BYTES {
+                return Err(ProtocolError::InvalidFrameLength.into());
             }
         }
-        Err(ProtocolError::InvalidFrameLength.into())
+        while self.read_offset < self.read_frame.len() {
+            let n = self
+                .io
+                .read(&mut self.read_frame[self.read_offset..])
+                .await?;
+            if n == 0 {
+                return Err(std::io::Error::from(std::io::ErrorKind::UnexpectedEof).into());
+            }
+            decrypt_bytes(
+                &mut self.decrypt,
+                &mut self.read_frame[self.read_offset..self.read_offset + n],
+            );
+            self.read_offset += n;
+        }
+        self.read_length = 0;
+        self.read_prefix = 0;
+        self.read_offset = 0;
+        decode(std::mem::take(&mut self.read_frame), self.threshold)
     }
     pub async fn write(&mut self, body: &[u8]) -> Result<(), Error> {
         let mut frame = encode(body, self.threshold)?;
@@ -78,6 +96,15 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream<S> {
         self.io.write_all(&frame).await?;
         self.io.flush().await?;
         Ok(())
+    }
+}
+fn decrypt_bytes(cipher: &mut Option<cfb8::Decryptor<aes::Aes128>>, bytes: &mut [u8]) {
+    if let Some(cipher) = cipher {
+        for byte in bytes {
+            let mut block = [*byte].into();
+            cipher.decrypt_block_mut(&mut block);
+            *byte = block[0];
+        }
     }
 }
 fn decode(frame: Vec<u8>, threshold: Option<usize>) -> Result<Vec<u8>, Error> {
@@ -132,6 +159,28 @@ fn encode(body: &[u8], threshold: Option<usize>) -> Result<Vec<u8>, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn input_during_partial_encrypted_read_keeps_both_cipher_positions() {
+        use std::{future::Future, task::Poll};
+        let (socket, mut peer) = tokio::io::duplex(32);
+        let mut wire = Stream::new(socket);
+        wire.encryption(&[0x13; 16]);
+        peer.write_all(&[0xc8, 0xb4]).await.unwrap();
+        {
+            let mut read = std::pin::pin!(wire.read());
+            std::future::poll_fn(|cx| {
+                assert!(read.as_mut().poll(cx).is_pending());
+                Poll::Ready(())
+            })
+            .await;
+        }
+        wire.write(&[9]).await.unwrap();
+        peer.write_all(&[0x9d, 0x64, 0xeb, 0x30, 0x62])
+            .await
+            .unwrap();
+        assert_eq!(wire.read().await.unwrap(), [0, 1, 2]);
+        assert_eq!(wire.read().await.unwrap(), [5, 6]);
+    }
     #[test]
     fn compression_threshold_and_corruption() {
         for threshold in [0, 1, 16, 17] {

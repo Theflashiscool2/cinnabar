@@ -105,15 +105,67 @@ Configuration retains registries, tags and features, requests complete registry
 values by accepting no known packs, responds to keepalives/pings/cookies and
 acknowledges completion. Play publishes the authenticated profile, server-session
 UUID, authoritative entity/world/dimension identities and registry facts, then
-position and respawn facts. It answers teleports, keepalives, pings and chunk-batch
-flow control. Deferred world/visual packets are explicitly outside admitted state;
+position, death, health/food and respawn facts. Explicit respawn input uses a bounded
+connection-owned queue; interrupted reads retain prefix/body/cipher progress. It answers
+teleports, keepalives, pings and chunk-batch flow control. Terrain packets decode off
+the rendering thread; entity/inventory notifications remain outside admitted state;
 the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, relative teleports before movement integration, mid-session reconfiguration and tag replacement fail
-clearly. Chunk/entity/inventory decoding, movement, chat signing, interactions,
+clearly. Entity/inventory decoding, movement, chat signing, interactions,
 Java assets and rendering remain subsequent work. No modded-server or proxy
 compatibility is claimed. Unknown state packet IDs are protocol errors.
+
+## Terrain admission (rendering not yet integrated)
+
+`terrain` follows the manifest-pinned MCProtocolLib `MinecraftTypes`,
+`ClientboundLevelChunkWithLightPacket`, `ClientboundSectionBlocksUpdatePacket`,
+`ClientboundChunksBiomesPacket` and `ClientboundLightUpdatePacket` schemas.
+The selected release has block **and fluid** counts, fixed-size palette long arrays
+without length prefixes, and byte-array light masks. Heightmaps are typed long
+arrays, not the older NBT heightmap compound. Network block-entity NBT remains typed.
+
+`client-world::java` admits those packets into `world::java::Terrain`: Java-only
+block/biome IDs, compact Y/Z/X palettes, full columns, light/biome updates, block
+changes and unloads. Negative coordinates use Euclidean chunk division. Missing
+terrain/light is unknown, not air or fullbright. Session/dimension epochs and
+column/neighbour revisions reject obsolete publications. Respawn clears terrain
+and position before admitting the new world. Nonresident incremental updates do
+not invent columns and are counted. Block replacement invalidates old block-entity
+facts and heightmaps; incremental heightmap rebuilding remains unimplemented.
+
+The official server's `net.minecraft.data.Main --reports` generates `reports/blocks.json`.
+Its SHA-256, byte count and state count are pinned in `data/target.json`.
+`assets::registry::java::BlockRegistry` verifies that report before admitting identities,
+defaults and properties. It is **not** a collision/model registry. Keep the generated
+report and game jar outside git. After obtaining the pinned server under its EULA:
+
+```sh
+java -DbundlerMainClass=net.minecraft.data.Main -jar server.jar --reports --output REPORT_DIR
+cargo build --locked -p java-connect
+# Use the actual Java row in a saved-server file; fixture identities are loopback-only.
+target/debug/java-connect --servers SERVERS_JSON --index 0 \
+  --offline-fixture NativeFixture --block-report REPORT_DIR/reports/blocks.json \
+  --inspect-block -5,-61,-8 --require-chunks 1 --keepalives 2 --reconnect 2
+```
+
+Pass `--inspect-block` and its comma-separated position as separate arguments.
+`--respawn-on-death` explicitly requests server respawn for the diagnostic fixture;
+it is not enabled by default. Acceptance requires live terrain, a position,
+positive authoritative health and the requested real keepalive count. Reported
+terrain payload bytes exclude allocator overhead, NBT, registries and renderer data;
+they are not a process-memory measurement. Provisional dimension/admission budgets
+still require custom-dimension qualification. No mesh, collision, movement, model,
+texture or graphical-world acceptance is implied by this diagnostic.
+
+Live Linux offline evidence on 2026-10-22: a saved dead player respawned, entered
+terrain epoch 2 with 49 columns and health 20, and a second session independently
+admitted 49 columns. Each answered two real keepalives. A separate four-keepalive
+run admitted four block updates, including a console dirt placement and subsequent
+server grass spread; the sampled state resolved to `minecraft:grass_block`,
+`snowy=false`. No graphical world or input loop was exercised. Online mode still
+requires this fork's OAuth application and legitimate user sign-in.
 
 ## Dependency choice and notices
 

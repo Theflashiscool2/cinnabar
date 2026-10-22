@@ -69,6 +69,7 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
         generation,
         connect_timeout: Duration::from_secs(10),
         login_timeout: Duration::from_secs(45),
+        commands: None,
     })
 }
 
@@ -181,8 +182,10 @@ pub async fn run(
     generation: u64,
     root: PathBuf,
     events: tokio::sync::mpsc::Sender<java_protocol::session::Envelope>,
+    commands: tokio::sync::mpsc::Receiver<java_protocol::session::Command>,
 ) -> Result<(), String> {
-    let options = prepare(address, generation, root.clone()).await?;
+    let mut options = prepare(address, generation, root.clone()).await?;
+    options.commands = Some(commands);
     let id = match &options.identity {
         Identity::Online(account) => account.profile.id,
         _ => unreachable!("online preparation"),

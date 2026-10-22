@@ -180,3 +180,20 @@ impl Bootstrap {
         Ok(())
     }
 }
+
+/// Server-authoritative vital values; no client-side hunger or damage inference.
+#[derive(Clone, Debug, Serialize)]
+pub struct Vitals {
+    pub health: f32,
+    pub food: i32,
+    pub saturation: f32,
+}
+impl Vitals {
+    pub fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
+        Ok(Self {
+            health: r.f32()?,
+            food: r.var()?,
+            saturation: r.f32()?,
+        })
+    }
+}

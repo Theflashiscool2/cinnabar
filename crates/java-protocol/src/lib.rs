@@ -15,6 +15,7 @@ pub mod status;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod stream;
 pub mod target;
+pub mod terrain;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod transport;
 pub mod wire;

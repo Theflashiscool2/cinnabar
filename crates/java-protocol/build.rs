@@ -51,6 +51,13 @@ fn main() {
     assert_eq!(tables.len(), 5, "pinned codec state inventory changed");
     let mut code =
         format!("pub const GAME_VERSION:&str={version:?};\npub const PROTOCOL:i32={protocol};\n");
+    let report = &target["block_registry_report"];
+    code += &format!(
+        "pub const BLOCK_REPORT_SHA256:&str={:?};\npub const BLOCK_REPORT_BYTES:usize={};\npub const BLOCK_STATE_COUNT:usize={};\n",
+        report["sha256"].as_str().unwrap(),
+        report["bytes"].as_u64().unwrap(),
+        report["states"].as_u64().unwrap()
+    );
     for (state, directions) in tables {
         code += &format!("pub mod {state} {{\n");
         for (direction, packets) in directions {

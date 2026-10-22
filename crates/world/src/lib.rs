@@ -1,4 +1,4 @@
-//! Client-side Bedrock world model.
+//! Client-side world models; Java and Bedrock retain distinct registry identities.
 //!
 //! Chunk block data remains palette + packed indices at runtime. The decoder
 //! intentionally never creates flat per-block arrays.
@@ -11,6 +11,7 @@ mod chunk_grid;
 mod collision_revision;
 mod dimension;
 mod error;
+pub mod java;
 mod light;
 mod light_solver;
 mod mesh_neighbourhood;

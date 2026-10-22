@@ -1,3 +1,4 @@
+pub mod java;
 use std::{collections::HashSet, str};
 
 use crate::AssetError;

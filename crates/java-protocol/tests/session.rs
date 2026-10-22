@@ -66,8 +66,21 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     text("minecraft:dimension_type", &mut registry);
     registry.push(1);
     text("minecraft:overworld", &mut registry);
-    registry.extend([1, 10, 0]);
+    registry.extend([1, 10]);
+    for (name, value) in [("min_y", -64i32), ("height", 384i32)] {
+        registry.push(3);
+        registry.extend((name.len() as u16).to_be_bytes());
+        registry.extend(name.bytes());
+        registry.extend(value.to_be_bytes());
+    }
+    registry.push(0);
     wire.write(&registry).await.unwrap();
+    let mut biome = vec![7];
+    text("minecraft:worldgen/biome", &mut biome);
+    biome.push(1);
+    text("minecraft:plains", &mut biome);
+    biome.extend([1, 10, 0]);
+    wire.write(&biome).await.unwrap();
     let mut features = vec![0x0d, 1];
     text("minecraft:vanilla", &mut features);
     wire.write(&features).await.unwrap();
@@ -94,6 +107,16 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     }
     acknowledgement.extend([0; 8]);
     assert_eq!(wire.read().await.unwrap(), acknowledgement);
+    // Official protocol-777 report: death 69, client command 12, respawn 84.
+    wire.write(&[0x45, 42, 8, 0, 4, b't', b'e', b's', b't'])
+        .await
+        .unwrap();
+    assert_eq!(wire.read().await.unwrap(), [0x0c, 0]);
+    let mut respawn = vec![0x54, 0];
+    text("minecraft:overworld", &mut respawn);
+    respawn.extend(0i64.to_be_bytes());
+    respawn.extend([0, 255, 0, 1, 0, 0, 63, 0]);
+    wire.write(&respawn).await.unwrap();
     for token in [123i64, 456] {
         let mut keep = vec![0x2d];
         keep.extend(token.to_be_bytes());
@@ -115,11 +138,10 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let (tx, mut rx) = mpsc::channel(32);
     let cancel = CancellationToken::new();
     let child = cancel.clone();
-    let client = tokio::spawn(session::run(
-        Options::fixture(address, "Fixture".into(), 7),
-        tx,
-        child,
-    ));
+    let (commands, input) = mpsc::channel(2);
+    let mut options = Options::fixture(address, "Fixture".into(), 7);
+    options.commands = Some(input);
+    let client = tokio::spawn(session::run(options, tx, child));
     let mut phases = Vec::new();
     let mut bootstrap = false;
     let mut position = false;
@@ -137,6 +159,11 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                 Event::Teleport(p) => {
                     assert_eq!(p.position, [1., 64., 2.]);
                     position = true
+                }
+                Event::Death { player_id, message } => {
+                    assert_eq!(player_id, 42);
+                    assert_eq!(message, java_protocol::nbt::Value::String("test".into()));
+                    commands.send(session::Command::Respawn).await.unwrap();
                 }
                 Event::KeepAlive(_) => {
                     keepalives += 1;

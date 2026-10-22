@@ -56,6 +56,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if keepalives == 0 || reconnects == 0 || timeout == 0 {
         return Err("Acceptance requires positive keepalive, session and timeout counts".into());
     }
+    let required_chunks: usize = get("--require-chunks")
+        .unwrap_or_else(|| "1".into())
+        .parse()?;
+    let sample: Option<[i32; 3]> = get("--inspect-block")
+        .map(|s| -> Result<[i32; 3], Box<dyn std::error::Error>> {
+            s.split(',')
+                .map(str::parse)
+                .collect::<Result<Vec<i32>, _>>()?
+                .try_into()
+                .map_err(|_| "--inspect-block requires x,y,z".into())
+        })
+        .transpose()?;
+    let registry = get("--block-report")
+        .map(|path| -> Result<_, Box<dyn std::error::Error>> {
+            let bytes = std::fs::read(path)?;
+            if bytes.len() != target::BLOCK_REPORT_BYTES {
+                return Err("Java block report size differs from target pin".into());
+            }
+            let registry =
+                assets::registry::java::BlockRegistry::load(&bytes, target::BLOCK_REPORT_SHA256)?;
+            if registry.len() != target::BLOCK_STATE_COUNT {
+                return Err("Java block registry count differs from target pin".into());
+            }
+            Ok(registry)
+        })
+        .transpose()?;
     let mut state = client_world::java::WorldState::default();
     for generation in 1..=reconnects {
         state.begin(generation);
@@ -69,8 +95,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let address = server.address.clone();
             let root =
                 PathBuf::from(get("--accounts").ok_or("Online mode requires --accounts DIR")?);
-            client_session::java::Session::run(move |events| {
-                launcher_host::java::run(address, generation, root, events)
+            client_session::java::Session::run(move |events, commands| {
+                launcher_host::java::run(address, generation, root, events, commands)
             })
         };
         let deadline = tokio::time::sleep(Duration::from_secs(timeout));
@@ -78,16 +104,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         loop {
             tokio::select! {
                 _=tokio::signal::ctrl_c()=>{session.shutdown().await;return Err("Acceptance cancelled".into());},
-                _=&mut deadline=>{session.shutdown().await;return Err("Acceptance timed out before bootstrap/position/keepalive evidence".into());},
+                _=&mut deadline=>{
+                    output(serde_json::json!({"timeout_generation":generation,"keepalives":state.keepalives,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"vitals":state.vitals,"death":state.death.is_some(),"deferred_types":state.deferred_types}))?;
+                    session.shutdown().await;return Err("Acceptance timed out before live terrain/position/vitals/keepalive evidence".into());
+                },
                 event=session.next()=>match event{
                     Some(event)=>{
+                        if (matches!(event.event,java_protocol::session::Event::Death{..}) || matches!(&event.event,java_protocol::session::Event::Vitals(v) if v.health <= 0.)) && args.iter().any(|s|s=="--respawn-on-death") {
+                            session.command(java_protocol::session::Command::Respawn)?;
+                        }
                         let log=match &event.event {
-                            java_protocol::session::Event::DeferredPlay{..}=>None,
+                            java_protocol::session::Event::DeferredPlay{..}|java_protocol::session::Event::Terrain{..}=>None,
                             _=>Some(serde_json::to_value(&event)?),
                         };
                         if state.admit(event) && let Some(log)=log{output(log)?;}
-                        if state.bootstrap.is_some() && state.teleport.is_some() && state.keepalives>=keepalives {
-                            output(serde_json::json!({"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"rendered_world":false}))?;
+                        if let Some(error)=state.terrain_error { session.shutdown().await; return Err(error.into()); }
+                        if state.bootstrap.is_some() && state.teleport.is_some() && state.keepalives>=keepalives && state.death.is_none() && state.vitals.as_ref().is_some_and(|v| v.health>0.) && state.terrain.len()>=required_chunks {
+                            let block=sample.map(|position| { let id=state.terrain.block(position); let facts=id.and_then(|id|registry.as_ref()?.state(id.0)); serde_json::json!({"position":position,"state_id":id.map(|id|id.0),"name":facts.map(|f| &*f.name),"properties":facts.map(|f| &f.properties)}) });
+                            output(serde_json::json!({"accepted_generation":generation,"keepalives":state.keepalives,"deferred_packets":state.deferred_packets,"deferred_types":state.deferred_types,"decoded_chunks":state.decoded_chunks,"resident_chunks":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"block_updates":state.block_updates,"block_sample":block,"vitals":state.vitals,"dimension_epoch":state.terrain.dimension().map(|d|d.epoch),"rendered_world":false}))?;
                             session.shutdown().await;break;
                         }
                     },

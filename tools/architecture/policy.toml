@@ -2217,5 +2217,5 @@ reason = "Terrain-atlas carried-grass colour source; this selects authored inven
 [[crates]]
 name = "java-connect"
 path = "tools/java-connect"
-allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host"]
+allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host", "assets"]
 forbidden_dependencies = ["bevy", "wgpu"]

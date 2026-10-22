@@ -1,4 +1,5 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
+mod terrain;
 use java_protocol::session::{
     Envelope, Event, Phase,
     facts::{Bootstrap, Spawn, Teleport},
@@ -6,6 +7,13 @@ use java_protocol::session::{
 #[derive(Default, Debug)]
 pub struct WorldState {
     generation: u64,
+    dimension_epoch: u64,
+    pub terrain: world::java::Terrain,
+    pub terrain_error: Option<&'static str>,
+    pub decoded_chunks: u64,
+    pub block_updates: u64,
+    pub vitals: Option<java_protocol::session::facts::Vitals>,
+    pub death: Option<(i32, java_protocol::nbt::Value)>,
     pub phase: Option<Phase>,
     pub bootstrap: Option<Box<Bootstrap>>,
     pub teleport: Option<Teleport>,
@@ -36,16 +44,42 @@ impl WorldState {
                     self.bootstrap = None;
                     self.teleport = None;
                     self.respawn = None;
+                    self.terrain = world::java::Terrain::default();
                 }
             }
             Event::Bootstrap(facts) => {
                 if facts.generation != self.generation {
                     return false;
                 }
+                let spawn = facts.world.spawn.clone();
                 self.bootstrap = Some(facts);
+                if let Err(error) = terrain::begin(self, &spawn) {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
             }
             Event::Teleport(position) => self.teleport = Some(position),
-            Event::Respawn(spawn) => self.respawn = Some(spawn),
+            Event::Vitals(vitals) => self.vitals = Some(vitals),
+            Event::Death { player_id, message } => self.death = Some((player_id, message)),
+            Event::Respawn(spawn) => {
+                self.death = None;
+                self.vitals = None;
+                if let Err(error) = terrain::begin(self, &spawn) {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+                self.respawn = Some(spawn);
+            }
+            Event::Terrain {
+                dimension_epoch,
+                packet,
+            } => match terrain::admit(self, dimension_epoch, *packet) {
+                Ok(accepted) => return accepted,
+                Err(error) => {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+            },
             Event::KeepAlive(_) => {
                 if self.phase == Some(Phase::Play) {
                     self.keepalives = self.keepalives.saturating_add(1);
@@ -63,6 +97,37 @@ impl WorldState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn late_terrain_packet_cannot_cross_a_dimension_epoch() {
+        let mut state = WorldState::default();
+        state.begin(7);
+        state.terrain.begin(world::java::Dimension {
+            session: 7,
+            epoch: 2,
+            name: "minecraft:overworld".into(),
+            min_y: -64,
+            height: 384,
+        });
+        assert!(!state.admit(Envelope {
+            generation: 7,
+            event: Event::Terrain {
+                dimension_epoch: 1,
+                packet: Box::new(java_protocol::terrain::Packet::Center { x: 55, z: 33 })
+            }
+        }));
+        assert_eq!(state.terrain.center, None);
+        assert!(state.admit(Envelope {
+            generation: 7,
+            event: Event::Terrain {
+                dimension_epoch: 2,
+                packet: Box::new(java_protocol::terrain::Packet::Center { x: -1, z: -2 })
+            }
+        }));
+        assert_eq!(state.terrain.center, Some([-1, -2]));
+        state.begin(8);
+        assert!(state.terrain.is_empty());
+        assert!(state.terrain.dimension().is_none());
+    }
     #[test]
     fn old_generation_cannot_mutate_new_world() {
         let mut state = WorldState::default();

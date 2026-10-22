@@ -2,10 +2,27 @@
 use super::*;
 impl Connection {
     pub(super) async fn play(&mut self) -> Result<(), Error> {
+        let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
         loop {
-            let packet = tokio::time::timeout(Duration::from_secs(120), self.stream.read())
-                .await
-                .map_err(|_| Error::Timeout(Phase::Play))??;
+            let packet = tokio::select! {
+                result = tokio::time::timeout_at(deadline, self.stream.read()) => {
+                    deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                    result.map_err(|_| Error::Timeout(Phase::Play))??
+                },
+                command = async {
+                    match &mut self.commands {
+                        Some(commands) => commands.recv().await,
+                        None => std::future::pending().await,
+                    }
+                } => {
+                    match command {
+                        Some(Command::Respawn) if self.dead => self.send("ServerboundClientCommandPacket", &[0]).await?,
+                        Some(Command::Respawn) => {},
+                        None => self.commands = None,
+                    }
+                    continue;
+                }
+            };
             let mut r = Reader(&packet);
             let id = r.var()?;
             let name = usize::try_from(id)
@@ -16,6 +33,17 @@ impl Connection {
                 r.finish()?;
                 continue;
             }
+            if let Some(context) = self.terrain
+                && let Some(packet) = context.decode(name, &mut r)?
+            {
+                r.finish()?;
+                self.emit(Event::Terrain {
+                    dimension_epoch: self.dimension_epoch,
+                    packet: Box::new(packet),
+                })
+                .await?;
+                continue;
+            }
             match *name {
                 "ClientboundDelimiterPacket" => {}
                 "ClientboundLoginPacket" => {
@@ -24,6 +52,9 @@ impl Connection {
                     }
                     let world = facts::World::read(&mut r)?;
                     r.finish()?;
+                    self.prepare_terrain()?;
+                    self.terrain = Some(self.terrain_context(&world.spawn)?);
+                    self.dimension_epoch += 1;
                     let bootstrap = Bootstrap {
                         generation: self.generation,
                         profile: self.profile.clone(),
@@ -66,9 +97,23 @@ impl Connection {
                         .await?;
                 }
                 "ClientboundChunkBatchStartPacket" => {}
+                "ClientboundSetHealthPacket" => {
+                    let vitals = facts::Vitals::read(&mut r)?;
+                    self.dead = vitals.health <= 0.;
+                    self.emit(Event::Vitals(vitals)).await?;
+                }
+                "ClientboundPlayerCombatKillPacket" => {
+                    let player_id = r.var()?;
+                    let message = crate::nbt::read(&mut r)?;
+                    self.dead = true;
+                    self.emit(Event::Death { player_id, message }).await?;
+                }
                 "ClientboundRespawnPacket" => {
+                    self.dead = false;
                     let spawn = facts::Spawn::read(&mut r)?;
                     r.byte()?;
+                    self.terrain = Some(self.terrain_context(&spawn)?);
+                    self.dimension_epoch += 1;
                     self.emit(Event::Respawn(spawn)).await?;
                 }
                 "ClientboundStartConfigurationPacket" => {
@@ -111,10 +156,8 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundBlockDestructionPacket",
     "ClientboundBlockEntityDataPacket",
     "ClientboundBlockEventPacket",
-    "ClientboundBlockUpdatePacket",
     "ClientboundBossEventPacket",
     "ClientboundChangeDifficultyPacket",
-    "ClientboundChunksBiomesPacket",
     "ClientboundClearTitlesPacket",
     "ClientboundCommandSuggestionsPacket",
     "ClientboundCommandsPacket",
@@ -136,16 +179,13 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundEntityPositionSyncPacket",
     "ClientboundExplodePacket",
     "ClientboundAddTransientBlockPacket",
-    "ClientboundForgetLevelChunkPacket",
     "ClientboundGameEventPacket",
     "ClientboundGameRuleValuesPacket",
     "ClientboundGameTestHighlightPosPacket",
     "ClientboundHurtAnimationPacket",
     "ClientboundInitializeBorderPacket",
-    "ClientboundLevelChunkWithLightPacket",
     "ClientboundLevelEventPacket",
     "ClientboundLevelParticlesPacket",
-    "ClientboundLightUpdatePacket",
     "ClientboundLowDiskSpaceWarningPacket",
     "ClientboundMapItemDataPacket",
     "ClientboundMoveEntityPosPacket",
@@ -166,7 +206,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundRemoveMobEffectPacket",
     "ClientboundResetScorePacket",
     "ClientboundRotateHeadPacket",
-    "ClientboundSectionBlocksUpdatePacket",
     "ClientboundSelectAdvancementsTabPacket",
     "ClientboundServerDataPacket",
     "ClientboundSetActionBarTextPacket",
@@ -176,8 +215,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetBorderWarningDelayPacket",
     "ClientboundSetBorderWarningDistancePacket",
     "ClientboundSetCameraPacket",
-    "ClientboundSetChunkCacheCenterPacket",
-    "ClientboundSetChunkCacheRadiusPacket",
     "ClientboundSetCursorItemPacket",
     "ClientboundSetDefaultSpawnPositionPacket",
     "ClientboundSetDisplayObjectivePacket",
@@ -186,7 +223,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetEntityMotionPacket",
     "ClientboundSetEquipmentPacket",
     "ClientboundSetExperiencePacket",
-    "ClientboundSetHealthPacket",
     "ClientboundSetHeldSlotPacket",
     "ClientboundSetObjectivePacket",
     "ClientboundSetPassengersPacket",
