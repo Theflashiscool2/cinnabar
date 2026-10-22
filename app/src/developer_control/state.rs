@@ -414,12 +414,14 @@ pub(super) fn snapshot(world: &World) -> Value {
         snapshot["native_java"]["entities"] = json!({
             "count": state.entities.iter().count(),
             "revision": state.entities.revision(),
+            "pending_interpolation_steps": state.entities.pending_presentation_steps(),
             "unknown_updates": state.entities.unknown_updates,
             // Diagnostic sample only; the authoritative store retains every admitted entity.
             "sample": state.entities.iter().take(16).map(|e| json!({
                 "network_id":e.network_id,"incarnation":e.identity.incarnation,"kind":e.kind.as_ref(),
                 "position":e.motion.position,"rotation":[e.motion.yaw,e.motion.pitch],
                 "teleport_revision":e.teleport_revision,"path_steps":e.path.len(),
+                "completed_visual_pose":e.presentation.as_ref().map(|p| { let s=p.sample(1.);json!({"position":s.pose.position,"yaw":s.pose.yaw,"body_yaw":s.body_yaw,"head_yaw":s.head_yaw,"walk_position":s.walk_position,"walk_speed":s.walk_speed,"pending_steps":p.track.pending_steps()}) }),
             })).collect::<Vec<_>>(),
         });
     }

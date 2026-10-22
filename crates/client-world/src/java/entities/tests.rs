@@ -35,6 +35,54 @@ fn decoded(name: &str, bytes: &[u8]) -> wire::Packet {
 }
 
 #[test]
+fn native_motion_packets_seed_and_queue_presentation_but_metadata_and_velocity_do_not() {
+    let mut s = state();
+    s.admit(event(1, spawn()));
+    let position = s.entities.get(99).unwrap().motion.position;
+    let packet = |position| wire::Packet::Position {
+        id: 99,
+        path: wire::Position::Linear(position),
+        rotation: [0., 0.],
+        on_ground: true,
+    };
+    assert_eq!(s.entities.pending_presentation_steps(), 0);
+    assert!(s.admit(event(1, packet(position))));
+    assert_eq!(
+        s.entities.pending_presentation_steps(),
+        1,
+        "unchanged first target seeds the native handler"
+    );
+    for _ in 0..4 {
+        s.entities.tick_presentation();
+    }
+    for x in [1., 2.] {
+        assert!(s.admit(event(1, packet([x, 64., position[2]]))));
+    }
+    assert_eq!(s.entities.pending_presentation_steps(), 2);
+    assert!(s.admit(event(
+        1,
+        decoded("ClientboundSetEntityDataPacket", &[99, 16, 8, 1, 255])
+    )));
+    assert!(s.admit(Envelope {
+        generation: 7,
+        event: Event::Dynamics {
+            dimension_epoch: 1,
+            packet: dynamics::Packet::Velocity {
+                entity: 99,
+                velocity: [1.; 3]
+            }
+        }
+    }));
+    assert_eq!(s.entities.pending_presentation_steps(), 2);
+    assert!(!s.admit(event(2, packet([99.; 3]))));
+    s.entities.tick_presentation();
+    let e = s.entities.get(99).unwrap();
+    assert_eq!(e.motion.position, [2., 64., position[2]]);
+    assert!(e.presentation.as_ref().unwrap().track.current.position[0] < 1.);
+    assert_eq!(e.motion.velocity, [1.; 3]);
+}
+
+#[test]
 fn ordered_wire_deltas_reach_native_entity_authority_without_mutating_local_player() {
     let mut s = state();
     assert!(s.admit(event(1, spawn())));

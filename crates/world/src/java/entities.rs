@@ -1,5 +1,7 @@
 //! Native entity authority, independent of ECS and packet-library types.
 use super::player::{Motion, Relative};
+pub mod animation;
+pub mod interpolation;
 pub mod visual;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -43,6 +45,8 @@ pub struct Spawn {
     pub head_yaw: f32,
     pub object_data: i32,
     pub visual: visual::Visual,
+    /// Present only for an entity presentation schema implemented by the native consumer.
+    pub interpolation_interval: Option<u32>,
 }
 
 #[derive(Clone, Debug)]
@@ -63,6 +67,7 @@ pub struct Entity {
     /// Ordered intermediate positions; each tick offset is measured from the preceding step.
     pub path: Arc<[PositionStep]>,
     pub visual: visual::Visual,
+    pub presentation: Option<animation::Mob>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -92,6 +97,37 @@ impl Entities {
     }
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+    /// Advances cosmetic native tracks without changing authoritative motion or delta anchors.
+    pub fn tick_presentation(&mut self) {
+        let riders = self
+            .passengers
+            .values()
+            .flat_map(|p| p.members.iter())
+            .filter_map(|p| match p {
+                Passenger::Entity { identity, .. } => Some(*identity),
+                Passenger::LocalPlayer(_) => None,
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        for entity in self.entries.values_mut() {
+            if let Some(presentation) = &mut entity.presentation {
+                presentation.tick(
+                    entity.visual.baby,
+                    entity.visual.health.is_none_or(|h| h > 0.),
+                    riders.contains(&entity.identity),
+                    self.passengers
+                        .get(&entity.network_id)
+                        .is_some_and(|p| !p.members.is_empty()),
+                );
+            }
+        }
+    }
+    pub fn pending_presentation_steps(&self) -> usize {
+        self.entries
+            .values()
+            .filter_map(|e| e.presentation.as_ref())
+            .map(|p| p.track.pending_steps())
+            .sum()
     }
     pub fn passengers(&self, vehicle: i32) -> Option<&Passengers> {
         self.passengers.get(&vehicle)
@@ -203,6 +239,10 @@ impl Entities {
             .revision
             .checked_add(1)
             .ok_or("Java entity revision overflow")?;
+        let presentation = spawn
+            .interpolation_interval
+            .map(|interval| animation::Mob::new(spawn.motion.into(), spawn.head_yaw, interval))
+            .transpose()?;
         self.detach(spawn.network_id);
         self.entries.insert(
             spawn.network_id,
@@ -224,6 +264,7 @@ impl Entities {
                 teleport_revision: 1,
                 path: Arc::from([]),
                 visual: spawn.visual,
+                presentation,
             },
         );
         self.next_incarnation = incarnation;
@@ -291,12 +332,37 @@ impl Entities {
             return Err("nonfinite native entity update");
         }
         next.revision = revision;
+        if let Some(presentation) = &next.presentation {
+            let previous = old
+                .presentation
+                .as_ref()
+                .map_or(0, |p| p.track.pending_steps());
+            if previous != presentation.track.pending_steps()
+                && self.pending_presentation_steps() - previous + presentation.track.pending_steps()
+                    > interpolation::MAX_PENDING_STEPS
+            {
+                return Err("native interpolation exceeds provisional resident work budget");
+            }
+        }
         self.entries.insert(id, next);
         self.revision = revision;
         Ok(true)
     }
 }
 impl Entity {
+    /// Called for each decoded position/rotation packet, including unchanged targets.
+    /// Metadata/velocity updates must not restart this cosmetic timeline.
+    pub fn queue_presentation_motion(&mut self) -> Result<(), &'static str> {
+        if let Some(presentation) = &mut self.presentation {
+            presentation.retarget(self.motion.into(), &self.path)?;
+        }
+        Ok(())
+    }
+    pub fn queue_presentation_head(&mut self) {
+        if let Some(presentation) = &mut self.presentation {
+            presentation.head_to(self.head_yaw);
+        }
+    }
     /// Replaces interpolation with a native teleport, including relative velocity/angle rules.
     pub fn teleport(
         &mut self,
@@ -314,6 +380,9 @@ impl Entity {
         self.path = Arc::from([]);
         self.on_ground = on_ground;
         self.teleport_revision = revision;
+        if let Some(presentation) = &mut self.presentation {
+            presentation.snap(self.motion.into());
+        }
         Ok(())
     }
 }

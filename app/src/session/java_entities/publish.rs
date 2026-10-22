@@ -14,24 +14,25 @@ fn empty() -> ActorPresentationBatch {
     reason = "host binding of separate connection and renderer resources"
 )]
 pub(crate) fn update(
-    controller: Option<Res<SessionController>>,
+    controller: Option<ResMut<SessionController>>,
     terrain: Option<Res<java_render::Presentation>>,
     presentation: Option<ResMut<Presentation>>,
     mut prepared: ResMut<PreparedActorPublication>,
     mut scene: ResMut<ActorRenderScene>,
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
+    time: Res<Time<bevy::time::Real>>,
 ) {
-    let (Some(controller), Some(terrain), Some(mut presentation)) =
+    let (Some(mut controller), Some(terrain), Some(mut presentation)) =
         (controller, terrain, presentation)
     else {
         return;
     };
     let p = &mut *presentation;
-    let state = &controller.java_world;
-    let scope = controller
-        .java
-        .as_ref()
+    let active = controller.java.is_some();
+    let state = &mut controller.java_world;
+    let scope = active
+        .then_some(())
         .and(state.terrain.dimension())
         .map(|d| (d.session, d.epoch));
     if p.scope != scope {
@@ -43,13 +44,25 @@ pub(crate) fn update(
         }
         p.scope = scope;
     }
-    if controller.java.is_none() {
+    if !active {
         return;
     }
     let Some(scope) = scope else {
         prepared.replace_scene(empty(), state.generation(), 0., 0);
         return;
     };
+    p.elapsed = p.elapsed.saturating_add(time.delta());
+    // Preserve excess elapsed time for later frames instead of silently skipping native ticks.
+    for _ in 0..4 {
+        if p.elapsed < simulation_clock::TICK_DURATION {
+            break;
+        }
+        p.elapsed -= simulation_clock::TICK_DURATION;
+        state.entities.tick_presentation();
+        p.ticks = p.ticks.saturating_add(1);
+    }
+    let fraction =
+        (p.elapsed.as_secs_f64() / simulation_clock::TICK_DURATION.as_secs_f64()).min(1.) as f32;
     p.published = 0;
     p.unsupported = 0;
     p.unknown_light = 0;
@@ -158,23 +171,37 @@ pub(crate) fn update(
                 p.failure = Some(format!("unprepared native entity texture {texture}"));
                 break;
             };
-            let Some(light) = light(&state.terrain, e.motion.position) else {
+            let Some(motion) = &e.presentation else {
+                p.unsupported += 1;
+                continue;
+            };
+            let sampled = motion.sample(fraction);
+            let Some(light) = light(&state.terrain, sampled.pose.position) else {
                 p.unknown_light += 1;
                 continue;
             };
-            let angles = [
-                e.motion.pitch.to_radians(),
-                ((e.head_yaw - e.motion.yaw + 180.).rem_euclid(360.) - 180.).to_radians(),
-            ];
+            let angles = sampled.rotations();
             if p.poses
                 .get(&e.identity)
                 .is_none_or(|old| !Arc::ptr_eq(&old.model, model) || old.angles != angles)
             {
-                let Some(head) = model.bone("root/head") else {
-                    p.failure = Some("native pig head bone missing".into());
+                let names = [
+                    "root/head",
+                    "root/right_hind_leg",
+                    "root/left_hind_leg",
+                    "root/right_front_leg",
+                    "root/left_front_leg",
+                ];
+                let Some(bones) = names
+                    .map(|name| model.bone(name))
+                    .into_iter()
+                    .collect::<Option<Vec<_>>>()
+                else {
+                    p.failure = Some("native pig animation bone missing".into());
                     break;
                 };
-                match model.pose(&[(head, [angles[0], angles[1], 0.])]) {
+                let rotations = bones.into_iter().zip(angles).collect::<Vec<_>>();
+                match model.pose(&rotations) {
                     Ok(bones) => {
                         let bounds = match model.posed_bounds(&bones) {
                             Ok(bounds) => bounds,
@@ -215,8 +242,8 @@ pub(crate) fn update(
                 layer: render_model::ACTOR_LAYER_BODY,
             };
             let matrix = Mat4::from_rotation_translation(
-                Quat::from_rotation_y(-e.motion.yaw.to_radians()),
-                Vec3::from_array(e.motion.position.map(|v| v as f32)),
+                Quat::from_rotation_y(-sampled.body_yaw.to_radians()),
+                Vec3::from_array(sampled.pose.position.map(|v| v as f32)),
             )
             .to_cols_array_2d();
             batch.submissions.push(ActorRigSubmission {

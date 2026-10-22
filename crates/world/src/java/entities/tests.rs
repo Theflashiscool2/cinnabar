@@ -12,7 +12,51 @@ fn spawn(id: i32, uuid: u8) -> Spawn {
         head_yaw: 0.,
         object_data: 0,
         visual: Default::default(),
+        interpolation_interval: Some(3),
     }
+}
+
+#[test]
+fn native_presentation_keeps_ordered_targets_without_changing_world_authority() {
+    let mut entities = Entities::default();
+    entities.begin(7, 1);
+    entities.spawn((7, 1), spawn(42, 1)).unwrap();
+    for position in [[3., 64., -0.10003], [3., 64., 3.]] {
+        entities
+            .update((7, 1), 42, |e| {
+                e.motion.position = position;
+                e.delta_base = position;
+                e.queue_presentation_motion()
+            })
+            .unwrap();
+    }
+    assert_eq!(entities.pending_presentation_steps(), 2);
+    let before = entities.get(42).unwrap().motion;
+    let anchor = entities.get(42).unwrap().delta_base;
+    entities.tick_presentation();
+    let entity = entities.get(42).unwrap();
+    assert_eq!(entity.motion, before);
+    assert_eq!(entity.delta_base, anchor);
+    assert_eq!(
+        entity.presentation.as_ref().unwrap().track.current.position[2],
+        -0.10003
+    );
+    entities.spawn((7, 1), spawn(42, 2)).unwrap();
+    assert_eq!(entities.pending_presentation_steps(), 0);
+    assert_eq!(
+        entities
+            .get(42)
+            .unwrap()
+            .presentation
+            .as_ref()
+            .unwrap()
+            .track
+            .current
+            .position,
+        spawn(42, 2).motion.position
+    );
+    entities.begin(7, 2);
+    assert_eq!(entities.pending_presentation_steps(), 0);
 }
 
 #[test]

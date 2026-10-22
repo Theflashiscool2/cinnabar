@@ -52,6 +52,15 @@ pub(super) fn admit(
                         pig,
                         ..Default::default()
                     },
+                    interpolation_interval: (s.kind == java_protocol::target::ENTITY_PIG).then(
+                        || {
+                            let id = java_protocol::target::ENTITY_TYPES
+                                .iter()
+                                .position(|&name| name == s.kind)
+                                .expect("decoded entity type");
+                            java_protocol::target::ENTITY_SPECS[id].update_interval
+                        },
+                    ),
                 },
             )
         }
@@ -87,7 +96,7 @@ pub(super) fn admit(
                 e.motion.pitch = pitch;
             }
             e.on_ground = on_ground;
-            Ok(())
+            e.queue_presentation_motion()
         }),
         wire::Packet::Rotate {
             id,
@@ -97,10 +106,12 @@ pub(super) fn admit(
             e.motion.yaw = yaw;
             e.motion.pitch = pitch;
             e.on_ground = on_ground;
-            Ok(())
+            e.path = Arc::from([]);
+            e.queue_presentation_motion()
         }),
         wire::Packet::HeadYaw { id, yaw } => state.entities.update(scope, id, |e| {
             e.head_yaw = yaw;
+            e.queue_presentation_head();
             Ok(())
         }),
         wire::Packet::Position {
@@ -132,7 +143,7 @@ pub(super) fn admit(
             e.motion.yaw = yaw;
             e.motion.pitch = pitch;
             e.on_ground = on_ground;
-            Ok(())
+            e.queue_presentation_motion()
         }),
         wire::Packet::Teleport {
             id,

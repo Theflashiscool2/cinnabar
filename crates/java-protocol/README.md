@@ -442,8 +442,34 @@ keepalives with 49 resident columns. Actor regression tests passed 155 cases; fi
 existing external-fixture/benchmark tests were skipped. Scoped application-inclusive
 clippy with tests, formatting, architecture and the developer client build passed.
 Full workspace/merge gates, Windows and macOS have not run for this slice.
-This is a narrow native entity slice: positions are authoritative without smoothing,
-head rotation is posed, but walking animation, shadows, glow outlines, death animation,
+
+Native pig presentation retains ordered position paths and interpolates them on a
+20 Hz timeline independently of authoritative positions and delta-decoding anchors.
+The domain owner supplies wrapped body/head rotation and quadruped walking poses;
+the application samples those poses for the existing actor renderer. Independent
+vectors from the pinned runtime cover stepped turns, head/body control and walking
+phases. Admission tests cover coalesced updates, stale epochs and metadata/velocity
+updates that must not restart interpolation. A provisional global budget of 262,144
+pending steps fails explicitly rather than dropping movement; larger workloads are
+unqualified. At most four ticks run per rendered frame, retaining excess elapsed
+time and exposing the backlog in diagnostics.
+
+Linux headless lavapipe acceptance at 1280×720, scale 1, records a real vanilla
+AI walk toward the fixture player. Successive rendered frames show alternating
+leg poses. In-flight diagnostics distinguish interpolated positions from wire
+targets; the queue drains and the stopped position matches the server within
+wire quantization. Removal clears the body and pose cache. Save & Quit clears
+the clock, scope and terrain work; reconnect advances generation 2→4 and renders
+the replacement pig with a fresh gait. The first session answered 14 keepalives
+and the reconnect answered two. Eleven domain and six admission tests, scoped
+application-inclusive clippy with tests, formatting, architecture and the developer
+build pass. This run does not qualify frame budgets or Windows/macOS behavior.
+The developer-control `in_world` wait still checks Bedrock state; inspect
+`native_java_render.spawn_terrain_uploaded` and an actual rendered frame for Java.
+
+This remains a narrow native entity slice. Remote entity teleports currently snap
+and reset their delta anchor; vanilla short/relative teleport semantics still need
+correction and qualification. Tick-rate changes/freezing, shadows, glow outlines, death animation,
 player-list identity/skins, equipment and other entity models remain unsupported.
 Lighting currently samples the authoritative feet cell. These limitations remain
 visible in diagnostics and do not establish entity visual parity or a playable client.

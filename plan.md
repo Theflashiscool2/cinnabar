@@ -157,7 +157,16 @@ server evidence; complex metadata and entity frame publication remain incomplete
   offline rendered frames show adult/baby variants, server rotation, growth and removal.
   Final-build reconnect advances generation, clears cached poses and renders one
   surviving pig without ghosts; both sessions answered two keepalives. Other entity
-  types, interpolation, gait, shadows, glow and general lighting parity remain open.
+  types, shadows, glow and general lighting parity remain open.
+- [x] Exercise native pig interpolation and quadruped gait through the Linux offline renderer.
+  Ordered domain tracks, body/head control and walking poses have independent pinned
+  runtime vectors and admission coverage. Presentation never overwrites authority
+  or delta anchors. A real AI walk produces alternating rendered leg poses and a
+  drained interpolation queue. Removal clears the body and cached pose; Save & Quit
+  clears clocks/queues and reconnect renders the replacement pig with a fresh gait.
+  The first session answered 14 keepalives and the reconnect answered two.
+  Remote short/relative teleports,
+  server tick-rate changes and mounted animation remain incomplete.
 - [x] Exercise native numeric HUD publication on the Linux offline vanilla fixture:
   health, food, synchronized armor and XP match server queries and rendered frames.
   Equipment removal clears armor; mode changes control status/hand visibility. The

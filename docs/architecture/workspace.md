@@ -143,8 +143,11 @@ common GPU rig contract, with a distinct catalog namespace. The application's na
 entity adapter prepares assets off-frame and binds scoped domain facts to complete
 `PreparedActorPublication` batches. Edition selection guards the shared actor catalog;
 pose caches use session/dimension/incarnation lifetimes. The initial visible slice is
-pig bodies with authoritative positions; animation and other entity renderers remain
-incomplete. `world::java::hud` owns native status snapshots; `client-world` resolves
+pig bodies with presentation-only interpolation and quadruped gait. The domain
+entity owner retains ordered visual targets separately from authoritative motion
+and delta anchors; the host advances its clock and samples poses for publication.
+Other entity renderers and full animation/teleport semantics remain incomplete.
+`world::java::hud` owns native status snapshots; `client-world` resolves
 wire game modes, experience and attributes before `client-ui` projects them into
 its shared HUD store. Native mode visibility stays explicit, and projection rejects
 retired sessions/dimensions. The application selects the edition's respawn queue.
