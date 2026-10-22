@@ -37,6 +37,9 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         min_y: int("min_y")?,
         height: int("height")?,
     });
+    state
+        .entities
+        .begin(state.generation, state.dimension_epoch);
     state.teleport = None;
     state.player_motion = None;
     state.player_dynamics.unplaced_velocity = None;

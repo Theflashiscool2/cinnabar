@@ -407,6 +407,17 @@ pub(super) fn snapshot(world: &World) -> Value {
             |m| json!({"position":m.position,"velocity":m.velocity,"yaw":m.yaw,"pitch":m.pitch})
         ));
         snapshot["native_java"]["pose_revision"] = json!(state.player_pose_revision);
+        snapshot["native_java"]["entities"] = json!({
+            "count": state.entities.iter().count(),
+            "revision": state.entities.revision(),
+            "unknown_updates": state.entities.unknown_updates,
+            // Diagnostic sample only; the authoritative store retains every admitted entity.
+            "sample": state.entities.iter().take(16).map(|e| json!({
+                "network_id":e.network_id,"incarnation":e.identity.incarnation,"kind":e.kind.as_ref(),
+                "position":e.motion.position,"rotation":[e.motion.yaw,e.motion.pitch],
+                "teleport_revision":e.teleport_revision,"path_steps":e.path.len(),
+            })).collect::<Vec<_>>(),
+        });
     }
     snapshot["native_java_render"] = json!(
         world

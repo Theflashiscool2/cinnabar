@@ -169,6 +169,9 @@ impl Controller {
         if abilities.flying {
             return Err("Native Java flying movement is not implemented".into());
         }
+        if state.entities.local_vehicle().is_some() {
+            return Err("Native Java mounted movement is not implemented".into());
+        }
         let mut input = controls.travel;
         input.sprint &= !input.crouch
             && input.forward > 0.8

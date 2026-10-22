@@ -46,7 +46,8 @@ The native foundation targets the single Java release/protocol pinned in
 Saved-server edition routing, cancellable background discovery, separate Java
 account storage, login/configuration and typed play bootstrap are implemented.
 The app renders an experimental native terrain slice through the existing renderer.
-A playable input loop is not implemented or verified.
+Dry-land movement has narrow Linux offline fixture coverage; the complete playable
+loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
 
 - [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
@@ -137,7 +138,8 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   the pinned vanilla builder, independently of generic codec defaults. Graphical
   absolute/relative angle corrections under input now match server entity data;
   a regression prevents an old camera angle from undoing an admitted correction.
-  Remote entity synchronization remains pending.
+  Remote entity authority now admits scoped spawn, motion, teleport and removal;
+  metadata and rendered entity synchronization remain pending.
 - [x] Exercise the initial dry-land movement slice through launcher, renderer and
   native input on the authorized Linux offline fixture: walk across chunk boundaries,
   sprint/jump/crouch, collide with a wall, climb stairs, receive corrections and

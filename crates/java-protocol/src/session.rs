@@ -2,6 +2,7 @@
 mod configuration;
 mod crypto;
 pub mod dynamics;
+pub mod entities;
 pub mod facts;
 mod login;
 mod motion;
@@ -130,6 +131,10 @@ pub enum Event {
     Dynamics {
         dimension_epoch: u64,
         packet: dynamics::Packet,
+    },
+    Entities {
+        dimension_epoch: u64,
+        packet: entities::Packet,
     },
     KeepAlive(i64),
     Vitals(facts::Vitals),

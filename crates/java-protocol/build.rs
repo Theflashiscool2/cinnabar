@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, env, fs, path::PathBuf};
 #[path = "build/attributes.rs"]
 mod attributes;
+#[path = "build/entities.rs"]
+mod entities;
 
 fn main() {
     println!("cargo:rerun-if-changed=data/target.json");
@@ -54,6 +56,7 @@ fn main() {
     let mut code =
         format!("pub const GAME_VERSION:&str={version:?};\npub const PROTOCOL:i32={protocol};\n");
     attributes::generate(&mut code, &target);
+    entities::generate(&mut code, &target);
     let report = &target["block_registry_report"];
     code += &format!(
         "pub const BLOCK_REPORT_SHA256:&str={:?};\npub const BLOCK_REPORT_BYTES:usize={};\npub const BLOCK_STATE_COUNT:usize={};\n",

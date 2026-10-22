@@ -40,6 +40,18 @@ impl Connection {
                 r.finish()?;
                 continue;
             }
+            if let Some(packet) = entities::decode(name, &mut r)? {
+                r.finish()?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("entity before Java world login").into());
+                }
+                self.emit(Event::Entities {
+                    dimension_epoch: self.dimension_epoch,
+                    packet,
+                })
+                .await?;
+                continue;
+            }
             if let Some(packet) = dynamics::decode(name, &mut r)? {
                 r.finish()?;
                 if !self.bootstrapped {
@@ -215,7 +227,6 @@ impl Connection {
 /// Passive notifications in the pinned codec require no transport response. They remain
 /// unvalidated observations, not admitted gameplay state. Interactive/unknown packets fail.
 const OPTIONAL_OBSERVATIONS: &[&str] = &[
-    "ClientboundAddEntityPacket",
     "ClientboundAnimatePacket",
     "ClientboundAwardStatsPacket",
     "ClientboundBlockChangedAckPacket",
@@ -242,7 +253,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundDeleteChatPacket",
     "ClientboundDisguisedChatPacket",
     "ClientboundEntityEventPacket",
-    "ClientboundEntityPositionSyncPacket",
     "ClientboundExplodePacket",
     "ClientboundAddTransientBlockPacket",
     "ClientboundGameEventPacket",
@@ -254,10 +264,7 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundLevelParticlesPacket",
     "ClientboundLowDiskSpaceWarningPacket",
     "ClientboundMapItemDataPacket",
-    "ClientboundMoveEntityPosPacket",
-    "ClientboundMoveEntityPosRotPacket",
     "ClientboundMoveMinecartPacket",
-    "ClientboundMoveEntityRotPacket",
     "ClientboundPlayerCombatEndPacket",
     "ClientboundPlayerCombatEnterPacket",
     "ClientboundPlayerInfoRemovePacket",
@@ -266,10 +273,8 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundRecipeBookAddPacket",
     "ClientboundRecipeBookRemovePacket",
     "ClientboundRecipeBookSettingsPacket",
-    "ClientboundRemoveEntitiesPacket",
     "ClientboundRemoveMobEffectPacket",
     "ClientboundResetScorePacket",
-    "ClientboundRotateHeadPacket",
     "ClientboundSelectAdvancementsTabPacket",
     "ClientboundServerDataPacket",
     "ClientboundSetActionBarTextPacket",
@@ -288,7 +293,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetExperiencePacket",
     "ClientboundSetHeldSlotPacket",
     "ClientboundSetObjectivePacket",
-    "ClientboundSetPassengersPacket",
     "ClientboundSetPlayerInventoryPacket",
     "ClientboundSetPlayerTeamPacket",
     "ClientboundSetScorePacket",
@@ -305,7 +309,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundTabListPacket",
     "ClientboundTagQueryPacket",
     "ClientboundTakeItemEntityPacket",
-    "ClientboundTeleportEntityPacket",
     "ClientboundTickingStatePacket",
     "ClientboundTickingStepPacket",
     "ClientboundUpdateAdvancementsPacket",

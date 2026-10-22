@@ -123,7 +123,15 @@ pub(super) fn admit(
                 .ok_or("Java player pose revision overflow")?;
             state.player_motion = Some(motion);
         }
-        wire::Packet::Attributes { .. } | wire::Packet::Velocity { .. } => {
+        wire::Packet::Velocity { entity, velocity } => {
+            return state
+                .entities
+                .update((state.generation(), epoch), entity, |e| {
+                    e.motion.velocity = velocity;
+                    Ok(())
+                });
+        }
+        wire::Packet::Attributes { .. } => {
             // Remote lifecycle is still unsupported. Do not admit remote IDs as the local player.
             state.deferred_entity_dynamics = state.deferred_entity_dynamics.saturating_add(1);
         }

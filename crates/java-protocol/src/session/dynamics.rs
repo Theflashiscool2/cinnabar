@@ -137,7 +137,7 @@ fn identifier(value: String) -> Result<String, Error> {
 }
 
 /// LpVec3's first two bytes precede a big-endian 32-bit word; its optional scale is unsigned.
-fn velocity(r: &mut Reader<'_>) -> Result<[f64; 3], Error> {
+pub(super) fn velocity(r: &mut Reader<'_>) -> Result<[f64; 3], Error> {
     let first = r.byte()?;
     if first == 0 {
         return Ok([0.; 3]);

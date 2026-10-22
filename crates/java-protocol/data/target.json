@@ -40,5 +40,13 @@
     "sha256": "e562c1ae492c9f46e3c4d1f5a734531bd04f29f948f8944dfedf36b9b57985eb",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportPhysics.java",
     "count": 36
+  },
+  "entity_schema": {
+    "path": "data/EntityType.java",
+    "sha256": "618799516d64348aab3a843e47e9736ea07afd344e6cccddccbf7153883ebdaf",
+    "count": 161,
+    "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/type/EntityType.java",
+    "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
+    "official_registry_report_path": "reports/registries.json"
   }
 }

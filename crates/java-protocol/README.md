@@ -357,6 +357,29 @@ special block callbacks, effects, entity collision and full respawn/dimension
 movement retention remain incomplete; unsupported queries report a blocked movement
 reason, never empty collision. These changes do not establish a playable client.
 
+## Entity lifecycle work in progress
+
+The target manifest also pins 161 native entity identities, checked against the
+official registry report. Lifecycle schemas cover spawn, linear/stepped relative
+motion, position paths, rotation/head rotation, teleport and removal. Native world
+admission separates network IDs from session/dimension/incarnation identities,
+retains the exact delta anchor and preserves teleport receipts across coalesced
+rotation updates. Independent vanilla delta vectors cover negative rounding ties
+and zero-axis precision; tests cover atomic failure, ID reuse and retired scopes.
+The encrypted/compressed session fixture checks ordered spawn/move/remove delivery.
+Scoped protocol/domain tests, application-inclusive clippy with tests and the
+architecture gate pass on Linux; full workspace/merge and other-platform gates
+have not run for this slice.
+
+A Linux offline vanilla diagnostic run admitted 31 spawns, 990 movement packets
+(768 nonzero), 56 position paths and 12 removal packets, with three real keepalives.
+A tagged pig spawned at `[3.5,-60,8.5]`, received a server position path ending at
+`[5.5,-60,9.5]`, then disappeared through its removal event. This verifies wire and
+domain admission only. Metadata, native actor models/presentation, player-list
+identity/skins and equipment are still in progress; remote entities are not yet
+rendered. Passenger relationships retain scoped lifetimes with deterministic
+replacement/cycle coverage, but mounted motion and seat presentation are unsupported.
+
 ## Dependency choice and notices
 
 The starter's 15 tests covered status only and were rerun before extension.

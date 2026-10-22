@@ -17,73 +17,8 @@ fn native_player_builder_defaults_preserve_exact_values_and_do_not_include_mob_a
     assert!(defaults.abilities.is_none());
 }
 
-fn state() -> WorldState {
-    let mut state = WorldState::default();
-    state.begin(7);
-    state.dimension_epoch = 1;
-    let spawn = facts::Spawn {
-        dimension_type: 0,
-        world: "minecraft:overworld".into(),
-        hashed_seed: 0,
-        game_mode: 0,
-        previous_game_mode: -1,
-        debug: false,
-        flat: true,
-        last_death: None,
-        portal_cooldown: 0,
-        sea_level: 63,
-    };
-    state.bootstrap = Some(Box::new(facts::Bootstrap {
-        generation: 7,
-        profile: java_protocol::auth::Profile {
-            id: Default::default(),
-            name: "Fixture".into(),
-        },
-        server_session: Default::default(),
-        configuration: Default::default(),
-        world: facts::World {
-            entity_id: 42,
-            hardcore: false,
-            worlds: vec![spawn.world.clone()],
-            max_players: 2,
-            view_distance: 2,
-            simulation_distance: 2,
-            reduced_debug: false,
-            respawn_screen: true,
-            limited_crafting: false,
-            spawn,
-            online_mode: false,
-            secure_chat: false,
-        },
-    }));
-    state.terrain.begin(world::java::Dimension {
-        session: 7,
-        epoch: 1,
-        name: "minecraft:overworld".into(),
-        min_y: -64,
-        height: 384,
-    });
-    state
-        .bootstrap
-        .as_mut()
-        .unwrap()
-        .configuration
-        .registries
-        .insert(
-            "minecraft:dimension_type".into(),
-            vec![facts::RegistryEntry {
-                name: "minecraft:overworld".into(),
-                value: java_protocol::nbt::Value::Compound(
-                    [
-                        ("min_y".into(), java_protocol::nbt::Value::Int(-64)),
-                        ("height".into(), java_protocol::nbt::Value::Int(384)),
-                    ]
-                    .into(),
-                ),
-            }],
-        );
-    state
-}
+use crate::java::tests_support::state;
+
 fn event(generation: u64, dimension_epoch: u64, packet: wire::Packet) -> Envelope {
     Envelope {
         generation,
@@ -105,10 +40,11 @@ fn velocity_requires_current_scope_and_identity_without_inventing_a_spawn() {
     let mut s = state();
     assert!(!s.admit(event(6, 1, velocity(42))));
     assert!(!s.admit(event(7, 2, velocity(42))));
-    assert!(s.admit(event(7, 1, velocity(99))));
+    assert!(!s.admit(event(7, 1, velocity(99))));
     assert!(s.player_motion.is_none());
     assert!(s.player_dynamics.unplaced_velocity.is_none());
-    assert_eq!(s.deferred_entity_dynamics, 1);
+    assert_eq!(s.entities.unknown_updates, 1);
+    assert!(s.entities.get(99).is_none());
     assert!(s.admit(event(7, 1, velocity(42))));
     assert!(s.player_motion.is_none());
     assert_eq!(s.player_dynamics.unplaced_velocity, Some([1., 2., 3.]));

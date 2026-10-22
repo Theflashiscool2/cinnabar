@@ -153,6 +153,18 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     wire.write(&[0x67, 42, 0xf1, 0xff, 0, 0, 0xff, 0xff])
         .await
         .unwrap();
+    // Official protocol-777 report: add_entity=1, move_entity_pos=54, remove_entities=78.
+    // The encrypted/compressed stream must preserve lifecycle order into the bounded queue.
+    let mut spawn = vec![1, 99];
+    spawn.extend([0x33; 16]);
+    spawn.push(101); // minecraft:pig, independently checked against the official registry report.
+    for n in [1f64, 64., 2.] {
+        spawn.extend(n.to_be_bytes());
+    }
+    spawn.extend([0, 0, 0, 0, 0]); // zero LpVec3, angles and object data.
+    wire.write(&spawn).await.unwrap();
+    wire.write(&[54, 99, 1, 0x10, 0, 0, 0, 0, 0]).await.unwrap();
+    wire.write(&[78, 1, 99]).await.unwrap();
     // Official protocol-777 report: death 69, client command 12, respawn 84.
     wire.write(&[0x45, 42, 8, 0, 4, b't', b'e', b's', b't'])
         .await
@@ -195,6 +207,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let mut keepalives = 0;
     let mut dynamics = 0;
     let mut rotation = false;
+    let mut entities = Vec::new();
     tokio::time::timeout(Duration::from_secs(10), async {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
@@ -329,6 +342,36 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                     }
                     dynamics += 1;
                 }
+                Event::Entities {
+                    dimension_epoch,
+                    packet,
+                } => {
+                    use session::entities::{Delta, Packet};
+                    assert_eq!(dimension_epoch, 1);
+                    match packet {
+                        Packet::Spawn(s) => {
+                            assert_eq!((s.id, s.kind, s.uuid), (99, "minecraft:pig", [0x33; 16]));
+                            assert_eq!(s.position, [1., 64., 2.]);
+                            entities.push("spawn");
+                        }
+                        Packet::Move {
+                            id,
+                            delta,
+                            on_ground,
+                            ..
+                        } => {
+                            assert_eq!(id, 99);
+                            assert_eq!(delta, Delta::Linear([4096, 0, 0]));
+                            assert!(on_ground);
+                            entities.push("move");
+                        }
+                        Packet::Remove(ids) => {
+                            assert_eq!(ids, [99]);
+                            entities.push("remove");
+                        }
+                        _ => panic!("unexpected entity fixture"),
+                    }
+                }
                 Event::Death { player_id, message } => {
                     assert_eq!(player_id, 42);
                     assert_eq!(message, java_protocol::nbt::Value::String("test".into()));
@@ -381,6 +424,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(keepalives, 2);
     assert!(rotation);
     assert_eq!(dynamics, 2);
+    assert_eq!(entities, ["spawn", "move", "remove"]);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

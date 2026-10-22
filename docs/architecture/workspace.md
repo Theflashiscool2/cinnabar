@@ -131,8 +131,11 @@ second player authority.
 `client-world` boundary resolves the hash-pinned protocol attribute IDs, isolates
 local identity, and retains partial velocity without fabricating a position.
 Angle-only corrections share the ordered acknowledgement fence; camera pose
-revisions are distinct from teleport receipts. Remote entity dynamics remain
-deferred, and generic registry defaults never stand in for player attributes.
+revisions are distinct from teleport receipts. `world::java::entities` owns native
+entity lifetimes and motion; `client-world::java::entities` admits decoded packet
+facts with separate network IDs and scoped incarnations. Remote velocity targets
+that store, while remote attributes and metadata remain incomplete. Generic
+registry defaults never stand in for player attributes.
 The target manifest pins original generated player-builder facts. Asset preparation
 regenerates and verifies them from the pinned server; admission initializes them
 before applying changed server attributes. Native dimension epochs also fence

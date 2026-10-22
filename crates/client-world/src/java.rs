@@ -1,8 +1,11 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
 mod biomes;
 mod dynamics;
+mod entities;
 pub mod player;
 mod terrain;
+#[cfg(test)]
+mod tests_support;
 use java_protocol::session::{
     Envelope, Event, Phase,
     facts::{Bootstrap, Spawn},
@@ -12,6 +15,7 @@ pub struct WorldState {
     generation: u64,
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
+    pub entities: world::java::entities::Entities,
     pub biomes: Vec<world::java::BiomeAppearance>,
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
@@ -61,6 +65,7 @@ impl WorldState {
                     self.pending_rotation = None;
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
+                    self.entities = Default::default();
                 }
             }
             Event::Bootstrap(facts) => {
@@ -103,6 +108,16 @@ impl WorldState {
                 }
             },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
+            Event::Entities {
+                dimension_epoch,
+                packet,
+            } => match entities::admit(self, dimension_epoch, packet) {
+                Ok(accepted) => return accepted,
+                Err(error) => {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+            },
             Event::Dynamics {
                 dimension_epoch,
                 packet,
