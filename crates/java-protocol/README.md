@@ -380,7 +380,7 @@ Use Java 25 with `javac`, or supply `--java /path/to/java` and
 fixture tests reproduced both entity report hashes and the existing collision and
 player-attribute hashes after the exporter infrastructure was shared. Loader tests
 reject incorrect provenance, duplicate parts and invalid normals. These checks
-establish prepared model data only; native entity frame publication is pending.
+establish prepared model provenance; rendered acceptance is described below.
 
 ## Entity lifecycle work in progress
 
@@ -416,9 +416,38 @@ holders remain unimplemented. Their known passive metadata notification produces
 explicit, persistent incomplete-entity diagnostic; no parsed prefix is admitted.
 Other entity accessor schemas remain incomplete. Correctly framed unused accessor
 values (including names/equipment-related metadata) do not imply implemented visuals.
-Native actor frame publication, player-list identity/skins, equipment and animations
-are still pending; remote entities are not yet rendered. Passenger relationships retain scoped lifetimes with deterministic
-replacement/cycle coverage, but mounted motion and seat presentation are unsupported.
+Native pig bodies now publish through Cinnabar's existing actor renderer. An off-frame,
+cancellable worker validates `models.json` and the pinned client archive, compiles
+native hierarchies into ordinary GPU bone transforms and prepares registry-selected
+textures. The actor catalog uses a separate Java GPU namespace, not Bedrock entity
+IDs. Session/dimension/incarnation fences retire cached poses and pending workers;
+only the active edition prepares the shared actor scene. Model changes replace the
+pose and culling bounds; removed entities leave the next complete frame batch.
+
+To exercise this slice, place the exported `models.json` beside `client.jar`,
+`blocks.json` and `physics.bin` in `CINNABAR_JAVA_ASSETS`, build the client as above,
+and select the saved Java fixture entry. Developer state exposes
+`native_java_entities`: published bodies, unsupported entities, missing light,
+pending glow outlines and preparation errors. Missing or invalid resources fail
+explicitly rather than substituting unrelated artwork.
+
+Linux headless lavapipe frames at 1280×720, scale 1, show the authorized vanilla
+fixture's temperate adult and cold baby pigs on actual server terrain. Server
+rotation, a baby-to-adult change and removal changed the rendered bodies correctly.
+The final build also moved a pig through server updates, then Save & Quit cleared
+all cached poses. Same-process reconnect advanced generation from 2 to 4 and rendered
+one surviving pig without the removed body. Both sessions answered two real
+keepalives with 49 resident columns. Actor regression tests passed 155 cases; five
+existing external-fixture/benchmark tests were skipped. Scoped application-inclusive
+clippy with tests, formatting, architecture and the developer client build passed.
+Full workspace/merge gates, Windows and macOS have not run for this slice.
+This is a narrow native entity slice: positions are authoritative without smoothing,
+head rotation is posed, but walking animation, shadows, glow outlines, death animation,
+player-list identity/skins, equipment and other entity models remain unsupported.
+Lighting currently samples the authoritative feet cell. These limitations remain
+visible in diagnostics and do not establish entity visual parity or a playable client.
+Passenger relationships retain scoped lifetimes with deterministic replacement/cycle
+coverage, but mounted motion and seat presentation are unsupported.
 
 ## Dependency choice and notices
 

@@ -419,6 +419,11 @@ pub(super) fn snapshot(world: &World) -> Value {
             })).collect::<Vec<_>>(),
         });
     }
+    snapshot["native_java_entities"] = json!(
+        world
+            .get_resource::<crate::session::java_entities::Presentation>()
+            .map(|p| p.diagnostic())
+    );
     snapshot["native_java_render"] = json!(
         world
             .get_resource::<crate::session::java_render::Presentation>()

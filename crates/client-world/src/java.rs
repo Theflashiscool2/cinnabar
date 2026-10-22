@@ -45,6 +45,13 @@ impl WorldState {
             ..Self::default()
         };
     }
+    /// Domain-owned configured appearances for native resource preparation.
+    pub fn pig_appearances(
+        &self,
+    ) -> Result<Vec<std::sync::Arc<world::java::entities::visual::PigAppearance>>, &'static str>
+    {
+        entities::appearances(self)
+    }
     pub fn generation(&self) -> u64 {
         self.generation
     }

@@ -31,6 +31,7 @@ use std::{path::PathBuf, time::Instant};
 
 mod client_id;
 mod java;
+pub(crate) mod java_entities;
 pub(crate) mod java_movement;
 pub(crate) mod java_render;
 mod startup;

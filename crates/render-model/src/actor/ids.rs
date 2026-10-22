@@ -93,3 +93,10 @@ pub const fn skin_rig_id(slot: u32) -> EntityRigId {
 pub const fn item_mesh_rig_id(mesh_index: u32) -> EntityRigId {
     EntityRigId(ITEM_MESH_RIG_ID_BASE + mesh_index)
 }
+
+/// Isolated geometry namespace for native Java models; these are GPU IDs, never protocol IDs.
+pub fn java_model_rig_id(model_index: u32) -> Option<EntityRigId> {
+    const BASE: u32 = 0x1000_0000;
+    const _: () = assert!(assets::MAX_ENTITY_RIG_BINDINGS < BASE as usize);
+    (model_index < BASE).then(|| EntityRigId(BASE + model_index))
+}

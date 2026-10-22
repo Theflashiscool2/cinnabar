@@ -138,6 +138,13 @@ wire accessor/serializer pairs using hash-pinned generated schemas. Local player
 metadata stays separate from remote entity lifetimes and follows respawn retention.
 The protocol owner's original entity-facts report contains identifiers, dimensions,
 update intervals and schema facts; exported model geometry stays outside the checkout.
+`render-model::actor::java_geometry` converts verified native hierarchies into the
+common GPU rig contract, with a distinct catalog namespace. The application's native
+entity adapter prepares assets off-frame and binds scoped domain facts to complete
+`PreparedActorPublication` batches. Edition selection guards the shared actor catalog;
+pose caches use session/dimension/incarnation lifetimes. The initial visible slice is
+pig bodies with authoritative positions; animation and other entity renderers remain
+incomplete.
 `world::java::dynamics` owns admitted abilities and attribute arithmetic. The
 `client-world` boundary resolves the hash-pinned protocol attribute IDs, isolates
 local identity, and retains partial velocity without fabricating a position.

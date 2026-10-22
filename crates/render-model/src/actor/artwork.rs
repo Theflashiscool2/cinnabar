@@ -1,5 +1,6 @@
 //! Immutable startup artwork pages. Pixel decoding and hashing never run per frame.
 use assets::RuntimeActorCatalog;
+mod entity_pages;
 use sha2::Digest;
 
 use crate::EntityRigId;

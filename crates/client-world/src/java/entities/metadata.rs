@@ -145,3 +145,14 @@ fn apply(
     }
     Ok(())
 }
+
+pub(super) fn appearances(state: &WorldState) -> Result<Vec<Arc<PigAppearance>>, &'static str> {
+    state
+        .bootstrap
+        .as_ref()
+        .and_then(|b| b.configuration.registries.get("minecraft:pig_variant"))
+        .ok_or("missing Java pig variant registry")?
+        .iter()
+        .map(pig)
+        .collect()
+}

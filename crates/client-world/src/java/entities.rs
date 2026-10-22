@@ -173,3 +173,9 @@ pub(super) fn admit(
 
 #[cfg(test)]
 mod tests;
+
+pub(super) fn appearances(
+    state: &WorldState,
+) -> Result<Vec<Arc<domain::visual::PigAppearance>>, &'static str> {
+    metadata::appearances(state)
+}

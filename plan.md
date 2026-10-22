@@ -142,7 +142,8 @@ server evidence; complex metadata and entity frame publication remain incomplete
   absolute/relative angle corrections under input now match server entity data;
   a regression prevents an old camera angle from undoing an admitted correction.
   Remote entity authority now admits scoped spawn, motion, teleport and removal;
-  metadata and rendered entity synchronization remain pending.
+  pig/player/item metadata schemas are pinned; complex metadata remains explicitly
+  incomplete. The shared renderer now presents registry-selected native pig bodies.
 - [x] Exercise the initial dry-land movement slice through launcher, renderer and
   native input on the authorized Linux offline fixture: walk across chunk boundaries,
   sprint/jump/crouch, collide with a wall, climb stairs, receive corrections and
@@ -151,6 +152,12 @@ server evidence; complex metadata and entity frame publication remain incomplete
   run observed 18 keepalives; the corrected build observed six, then four after a
   same-process reconnect with fresh terrain and movement state. This qualifies only
   these fixture cases, not general movement parity or a playable multiplayer client.
+- [x] Publish native pig hierarchies and registry-selected textures through the existing
+  actor renderer, with off-frame asset preparation and scoped pose ownership. Linux
+  offline rendered frames show adult/baby variants, server rotation, growth and removal.
+  Final-build reconnect advances generation, clears cached poses and renders one
+  surviving pig without ghosts; both sessions answered two keepalives. Other entity
+  types, interpolation, gait, shadows, glow and general lighting parity remain open.
 - [ ] Complete movement semantics: fluids, flying, effects, special block callbacks,
   entity collision, sprint-transition parity and full respawn/dimension retention.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face

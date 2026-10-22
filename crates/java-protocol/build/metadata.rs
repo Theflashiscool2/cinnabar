@@ -15,6 +15,13 @@ fn load(pin: &serde_json::Value) -> Vec<u8> {
     bytes
 }
 pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[String]) {
+    let models = &target["entity_models_report"];
+    *code += &format!(
+        "pub const ENTITY_MODELS_REPORT_SHA256: &str = {:?};\npub const ENTITY_MODELS_REPORT_PATH: &str = {:?};\npub const ENTITY_MODELS_REPORT_BYTES: u64 = {};\n",
+        models["sha256"].as_str().unwrap(),
+        models["path"].as_str().unwrap(),
+        models["bytes"].as_u64().unwrap()
+    );
     let source = String::from_utf8(load(&target["metadata_schema"])).unwrap();
     let names = source
         .lines()

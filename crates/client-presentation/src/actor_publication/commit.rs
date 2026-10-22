@@ -18,6 +18,27 @@ impl PreparedActorPublication {
         }
     }
 
+    /// Replaces the complete prepared scene from an edition-owned authority adapter.
+    /// The caller supplies render-domain inputs and owns fencing of its session/dimension.
+    pub fn replace_scene(
+        &mut self,
+        batch: ActorPresentationBatch,
+        session: u64,
+        partial_tick: f32,
+        unrigged: usize,
+    ) {
+        let count = batch.submissions.len();
+        self.0 = Some(PendingActorPublication::new(
+            batch,
+            partial_tick,
+            None,
+            false,
+            (Some(session), 0),
+            count,
+            unrigged,
+        ));
+    }
+
     #[cfg(any(test, feature = "test-support"))]
     pub fn submissions(&self) -> Option<&[render_model::ActorRigSubmission]> {
         self.0

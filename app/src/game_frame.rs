@@ -1,4 +1,5 @@
 //! Common world, movement, camera and actor frame registrations for platform hosts.
+use crate::session::java_entities::uses_bedrock_actor_authority;
 use crate::{
     local_player::{
         publish_local_player_frame, resolve_camera_pose, resolve_local_player_presentation,
@@ -71,8 +72,9 @@ pub(crate) fn configure_actor_render_systems(app: &mut App) {
         .add_systems(
             Update,
             (
-                prepare_actor_render_frame,
-                crate::block_entities::prepare_spawner_actors,
+                prepare_actor_render_frame.run_if(uses_bedrock_actor_authority),
+                crate::block_entities::prepare_spawner_actors.run_if(uses_bedrock_actor_authority),
+                crate::session::java_entities::publish::update,
             )
                 .chain()
                 .in_set(ClientFrameSet::ActorFinalization),
