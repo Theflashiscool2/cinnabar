@@ -23,6 +23,7 @@ mod home_promo_tests;
 pub mod inbox;
 mod input;
 mod invite;
+mod java;
 mod join_requests;
 mod realm_membership;
 pub use join_requests::open_join_requests_from_key;
@@ -34,6 +35,7 @@ mod presence_targets;
 mod reconnect;
 mod renderer;
 pub mod screen_focus;
+mod server_draft;
 #[cfg(test)]
 mod server_input_tests;
 mod services;
@@ -118,6 +120,10 @@ pub struct MenuRuntime {
     name: ui::ChatEditor,
     address: ui::ChatEditor,
     port: ui::ChatEditor,
+    server_edition: launcher::menu::ServerEdition,
+    java_discovery: Option<launcher_host::java::Discovery>,
+    java_targets: Vec<String>,
+    java_next_probe: std::time::Instant,
     skin_name: ui::ChatEditor,
     friend_query: ui::ChatEditor,
     settings_query: ui::ChatEditor,
@@ -315,6 +321,7 @@ impl MenuRuntime {
 
     pub fn observe_session(&mut self, status: SessionStatus) {
         self.session = status;
+        self.poll_java_discovery();
     }
 
     pub fn layout(&self) -> &InstallLayout {
@@ -349,7 +356,13 @@ impl MenuRuntime {
     /// The queued join, once the saved account's check has settled (bounded) and any
     /// sign-in helper the join does not outlive has finished cleaning up.
     pub fn take_join_intent(&mut self) -> Option<JoinIntent> {
-        if self.external.is_some() {
+        if self.external.is_some()
+            || self
+                .intents
+                .join
+                .as_ref()
+                .is_some_and(|join| join.edition == launcher::menu::ServerEdition::Java)
+        {
             return self.intents.join.take();
         }
         let helper_outlives_join = match self.settle_join_sign_in(std::time::Instant::now()) {
@@ -370,6 +383,7 @@ impl MenuRuntime {
 
     /// A cancelled join drops any queued join and returns to the play screen.
     pub fn cancel_join(&mut self) {
+        self.feeds.java_diagnostic = None;
         self.intents.join = None;
         self.intents.join_sign_in_deadline = None;
         self.intents.join_sign_in_check = false;
@@ -599,6 +613,7 @@ impl MenuRuntime {
                 self.editing = None;
                 self.name.clear();
                 self.address.clear();
+                self.server_edition = launcher::menu::ServerEdition::Bedrock;
                 self.port.set_text(DEFAULT_PORT);
                 self.enter(MenuScreen::AddServer);
                 self.focus_field(MenuField::Name);
@@ -607,8 +622,9 @@ impl MenuRuntime {
                 if index < self.servers.len() {
                     self.servers[index].last_joined_unix = now_unix();
                     let address = self.servers[index].address.clone();
+                    let edition = self.servers[index].edition;
                     self.save_servers();
-                    self.request_connect(address);
+                    self.request_edition_connect(address, edition);
                 }
             }
             MenuAction::PlayFeatured(index) => {
@@ -674,6 +690,18 @@ impl MenuRuntime {
                     }
                 }
             }
+            MenuAction::SelectServerEdition(edition) => {
+                let old_default = self.server_edition.default_port().to_string();
+                if self.port.as_str().is_empty() || self.port.as_str() == old_default {
+                    self.port
+                        .set_text(if edition == launcher::menu::ServerEdition::Java {
+                            ""
+                        } else {
+                            DEFAULT_PORT
+                        });
+                }
+                self.server_edition = edition;
+            }
             MenuAction::AddName
             | MenuAction::AddAddress
             | MenuAction::AddPort
@@ -687,7 +715,7 @@ impl MenuRuntime {
             }
             MenuAction::AddSaveConnect => {
                 if self.save_draft() {
-                    self.request_connect(self.draft_endpoint());
+                    self.request_edition_connect(self.draft_endpoint(), self.server_edition);
                 }
             }
             MenuAction::AddBack => self.go_back(),
@@ -716,10 +744,17 @@ impl MenuRuntime {
             }
             MenuAction::EditSaved(index) => {
                 if let Some(server) = self.servers.get(index) {
+                    self.server_edition = server.edition;
                     self.name.set_text(&server.name);
-                    let (address, port) = split_address(&server.address);
-                    self.address.set_text(&address);
-                    self.port.set_text(&port);
+                    if server.edition == launcher::menu::ServerEdition::Java {
+                        // Preserve explicit-port/SRV identity, including bracketed IPv6.
+                        self.address.set_text(&server.address);
+                        self.port.clear();
+                    } else {
+                        let (address, port) = split_address(&server.address);
+                        self.address.set_text(&address);
+                        self.port.set_text(&port);
+                    }
                     self.enter(MenuScreen::AddServer);
                     self.editing = Some(index);
                     self.focus_field(MenuField::Name);
@@ -804,91 +839,6 @@ impl MenuRuntime {
         }
     }
 
-    /// The draft's `host:port`; a host typed with its own port keeps it.
-    fn draft_endpoint(&self) -> String {
-        let host = self.address.as_str().trim();
-        let port = self.port.as_str().trim();
-        let own_port = host.contains("]:")
-            || host.split_once(':').is_some_and(|(_, rest)| {
-                !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit())
-            });
-        match (
-            own_port || host.is_empty(),
-            port.is_empty(),
-            host.contains(':'),
-        ) {
-            (true, _, _) | (_, true, _) => host.to_owned(),
-            (false, false, true) => format!("[{host}]:{port}"),
-            (false, false, false) => format!("{host}:{port}"),
-        }
-    }
-
-    fn save_draft(&mut self) -> bool {
-        let name = self.name.as_str().trim();
-        let endpoint = self.draft_endpoint();
-        let address = endpoint.trim();
-        if name.is_empty() || address.is_empty() {
-            self.message = Some("Enter a server name and address.".to_owned());
-            return false;
-        }
-        let server = SavedServer {
-            name: name.to_owned(),
-            address: address.to_owned(),
-            favorite: false,
-            last_joined_unix: 0,
-        };
-        let saved = if let Some(index) = self.editing.filter(|&index| index < self.servers.len()) {
-            let existing = &mut self.servers[index];
-            existing.name = server.name;
-            existing.address = server.address;
-            index
-        } else if let Some(index) = self
-            .servers
-            .iter()
-            .position(|existing| existing.address.eq_ignore_ascii_case(&server.address))
-        {
-            let existing = &mut self.servers[index];
-            *existing = SavedServer {
-                favorite: existing.favorite,
-                last_joined_unix: existing.last_joined_unix,
-                ..server
-            };
-            index
-        } else {
-            self.servers.push(server);
-            self.servers.len() - 1
-        };
-        // The server just saved replaces whichever one was selected before.
-        self.feeds.select_saved(saved);
-        if let Some(external) = &mut self.external {
-            external.preferences_dirty = true;
-            return true;
-        }
-        if let Err(error) = self.saves.save(&self.servers) {
-            self.message = Some(format!("Could not save server: {error}"));
-            return false;
-        }
-        true
-    }
-
-    /// Queues the list for writing; a schema refusal leaves only the log.
-    fn save_servers(&mut self) {
-        if let Some(external) = &mut self.external {
-            external.preferences_dirty = true;
-            return;
-        }
-        if let Err(error) = self.saves.save(&self.servers) {
-            bevy::log::warn!("saved servers not written: {error:#}");
-        }
-    }
-
-    /// Surfaces a saved-server write that failed on the worker.
-    pub fn poll_saves(&mut self) {
-        if let Some(error) = self.saves.take_error() {
-            self.message = Some(format!("Could not save servers: {error}"));
-        }
-    }
-
     /// Joins the live event's venue, or opens the Servers tab when it routes there.
     fn open_live_event(&mut self) {
         let Some(event) = self.feeds.home.live_event.clone() else {
@@ -903,6 +853,7 @@ impl MenuRuntime {
 
     /// Queues a join to `address` for the session controller.
     pub fn request_connect(&mut self, address: String) {
+        self.feeds.java_diagnostic = None;
         if self.external.is_some() {
             self.request_external_connect(address);
             return;
@@ -923,6 +874,7 @@ impl MenuRuntime {
         self.remember_retry_target(&address, auth_cache.as_deref(), false);
         self.local_world_joined = false;
         self.intents.join = Some(JoinIntent {
+            edition: launcher::menu::ServerEdition::Bedrock,
             address,
             auth_cache,
             local_world: false,

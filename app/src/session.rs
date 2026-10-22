@@ -30,6 +30,7 @@ use {
 use std::{path::PathBuf, time::Instant};
 
 mod client_id;
+mod java;
 mod startup;
 
 use client_session::MAX_TRANSFER_CHAIN_HOPS;
@@ -42,6 +43,8 @@ use client_state::{JoinIntent, SessionStatus};
 
 #[derive(Debug, Resource)]
 pub(crate) struct SessionController {
+    java: Option<client_session::java::Session>,
+    java_world: client_world::java::WorldState,
     core: CoreProcessGuard, // declared first: the core stops before the directories below go
     /// Identity-checked owner of the live session's runtime directory.
     directory: Option<SessionDirectoryGuard>,
@@ -75,6 +78,8 @@ impl SessionController {
     /// Adopts `core`, already started for a direct `--address` session.
     pub(crate) fn new(core: CoreProcessGuard) -> Self {
         Self {
+            java: None,
+            java_world: Default::default(),
             core,
             directory: None,
             join: None,
@@ -282,6 +287,7 @@ impl SessionResources<'_> {
     fn retire(&mut self) -> u64 {
         *self.network = NetworkHandle::<PackApplication>::disconnected();
         let controller = &mut *self.controller;
+        controller.java = None;
         let directory = controller.directory.take();
         let join = controller.join.take();
         controller
@@ -292,6 +298,7 @@ impl SessionResources<'_> {
         controller.destination_identity = None;
         controller.local_world = false;
         let generation = controller.next_generation();
+        controller.java_world.begin(generation);
         if let (Some(far), Some(stream)) = (
             self.far_terrain.as_mut(),
             self.state.client_world.stream.as_mut(),
@@ -317,12 +324,17 @@ fn attempt_connect(
     cache: &BlobCache,
     intent: JoinIntent,
 ) {
+    if intent.edition == launcher::menu::ServerEdition::Java {
+        java::connect(menu, session, intent);
+        return;
+    }
     let profile = bridge::join_profile::JoinProfile::current();
     if profile.id().is_none() {
         bridge::join_profile::JoinProfile::begin();
     }
     bridge::join_profile::JoinProfile::current().mark("session_controller");
     let JoinIntent {
+        edition: _,
         address,
         auth_cache,
         local_world,
@@ -644,6 +656,7 @@ fn drive_intents(
         session.controller.begin_fresh_transfer_chain();
         attempt_connect(menu, session, cache, intent);
     }
+    java::poll(menu, session);
     poll_join(commands, menu, session, cache);
 }
 
@@ -736,6 +749,7 @@ fn follow_transfer(
         session,
         cache,
         JoinIntent {
+            edition: launcher::menu::ServerEdition::Bedrock,
             address: address.clone(),
             auth_cache,
             local_world: false,

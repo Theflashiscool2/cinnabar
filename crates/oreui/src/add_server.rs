@@ -120,7 +120,8 @@ fn draw_layout(
     let mut content_height = field_height * if stacked { 3.0 } else { 2.0 }
         + canvas.r(if stacked { 3.2 } else { 1.6 })
         + canvas.r(0.8)
-        + hint_height;
+        + hint_height
+        + canvas.r(6.0);
     let error_height = view
         .message
         .as_deref()
@@ -193,7 +194,24 @@ fn draw_layout(
         "My server",
         MenuAction::AddName,
     )?;
-    let address_top = top + field_height + canvas.r(1.6);
+    let edition_top = top + field_height + canvas.r(0.8);
+    widgets::button(
+        canvas,
+        view,
+        [
+            span[0],
+            edition_top,
+            field_right,
+            edition_top + canvas.r(4.4),
+        ],
+        Variant::Secondary,
+        view.server_edition.label(),
+        Some(MenuAction::SelectServerEdition(match view.server_edition {
+            launcher::menu::ServerEdition::Bedrock => launcher::menu::ServerEdition::Java,
+            launcher::menu::ServerEdition::Java => launcher::menu::ServerEdition::Bedrock,
+        })),
+    )?;
+    let address_top = top + field_height + canvas.r(7.6);
     let port_width = canvas.r(10.8);
     let address_right = if stacked {
         field_right

@@ -62,6 +62,7 @@ fn entry(line: &str) -> Option<SavedServer> {
     }
     let address = format!("{host}:{port}");
     (address.len() <= MAX_SERVER_ADDRESS_BYTES).then_some(SavedServer {
+        edition: Default::default(),
         name: name.to_owned(),
         address,
         favorite: false,

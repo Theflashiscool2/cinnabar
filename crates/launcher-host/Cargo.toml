@@ -16,6 +16,7 @@ reads = [
 test-support = []
 
 [dependencies]
+java-protocol = { path = "../java-protocol" }
 cosmetics = { path = "../cosmetics" }
 anyhow.workspace = true
 bridge = { path = "../bridge" }

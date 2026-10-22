@@ -571,6 +571,14 @@ impl MenuRuntime {
             }
             MenuScreen::AddServer => {
                 let mut actions = vec![
+                    MenuAction::SelectServerEdition(match self.server_edition {
+                        launcher::menu::ServerEdition::Bedrock => {
+                            launcher::menu::ServerEdition::Java
+                        }
+                        launcher::menu::ServerEdition::Java => {
+                            launcher::menu::ServerEdition::Bedrock
+                        }
+                    }),
                     MenuAction::AddName,
                     MenuAction::AddAddress,
                     MenuAction::AddPort,

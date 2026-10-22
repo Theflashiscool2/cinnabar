@@ -810,6 +810,7 @@ mod review_tests {
         view.server_tab = MenuServerTab::Saved;
         view.servers = (0..40)
             .map(|index| SavedServer {
+                edition: Default::default(),
                 name: index.to_string(),
                 address: "example.test".into(),
                 favorite: false,

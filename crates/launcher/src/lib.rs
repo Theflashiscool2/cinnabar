@@ -51,3 +51,6 @@ mod embedding_tests {
         assert_eq!(super::window_title(Some("Zeno Client")), "Zeno Client");
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod java_accounts;

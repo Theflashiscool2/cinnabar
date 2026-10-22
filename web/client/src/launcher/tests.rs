@@ -234,6 +234,7 @@ fn launcher_preferences_round_trip_and_bound_untrusted_storage() {
     let mut preferences = Preferences {
         gui_scale_offset: 1,
         servers: vec![::launcher::menu::view::SavedServer {
+            edition: Default::default(),
             name: "Fixture".into(),
             address: "example.invalid".into(),
             favorite: true,
@@ -255,6 +256,7 @@ fn launcher_preferences_round_trip_and_bound_untrusted_storage() {
     preferences
         .servers
         .push(::launcher::menu::view::SavedServer {
+            edition: Default::default(),
             name: String::new(),
             address: "example.invalid".into(),
             favorite: false,

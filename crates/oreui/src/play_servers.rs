@@ -248,11 +248,16 @@ fn selection(view: &MenuView, featured: usize) -> Option<Selection> {
 /// pong is offline.
 fn ping_label(ping: Option<&PingInfo>, exact: bool) -> std::borrow::Cow<'static, str> {
     if let Some(ping) = ping.filter(|p| p.online && exact) {
-        return format!("{} ms", ping.ping_ms).into();
+        return if ping.ping_ms == u32::MAX {
+            "Latency unknown".into()
+        } else {
+            format!("{} ms", ping.ping_ms).into()
+        };
     }
     match ping {
         None => "Loading ping",
         Some(ping) if !ping.online => "Offline",
+        Some(ping) if ping.ping_ms == u32::MAX => "Latency unknown",
         Some(ping) if ping.ping_ms < 80 => "Low ping",
         Some(ping) if ping.ping_ms < 160 => "Medium ping",
         Some(_) => "High ping",
@@ -268,6 +273,7 @@ mod tests {
     fn the_first_experience_shows_until_a_server_is_picked() {
         let mut view = launcher::menu::MenuView::new(true, "Steve".to_owned());
         view.servers = vec![launcher::menu::SavedServer {
+            edition: Default::default(),
             name: "Home".to_owned(),
             address: "127.0.0.1:19132".to_owned(),
             favorite: false,

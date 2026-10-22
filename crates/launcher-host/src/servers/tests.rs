@@ -22,6 +22,7 @@ fn unique_directory(label: &str) -> PathBuf {
 
 fn sample_server(name: &str, address: &str) -> SavedServer {
     SavedServer {
+        edition: Default::default(),
         name: name.to_owned(),
         address: address.to_owned(),
         favorite: true,

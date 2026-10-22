@@ -127,12 +127,14 @@ pub fn fixture_view(dir: &std::path::Path) -> MenuView {
     .into();
     view.servers = vec![
         SavedServer {
+            edition: Default::default(),
             name: "Home server".to_owned(),
             address: "192.168.1.20:19132".to_owned(),
             favorite: false,
             last_joined_unix: 0,
         },
         SavedServer {
+            edition: Default::default(),
             name: "Test".to_owned(),
             address: "test.example.net:19132".to_owned(),
             favorite: true,

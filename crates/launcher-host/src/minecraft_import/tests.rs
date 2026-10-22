@@ -346,6 +346,7 @@ fn changed_pack_catalog_requires_a_fresh_preview() {
 fn merged_servers_preserve_large_valid_lists() {
     let incoming = (0..600)
         .map(|index| SavedServer {
+            edition: Default::default(),
             name: "n".repeat(launcher::menu::MAX_SERVER_NAME_BYTES),
             address: format!(
                 "{index:03}.{}",

@@ -103,6 +103,7 @@ fn grow(view: &mut MenuView) {
     let saved = view.servers[0].clone();
     view.servers = (0..300)
         .map(|index| launcher::menu::SavedServer {
+            edition: Default::default(),
             name: format!("Server {index}"),
             address: format!("10.0.{}.{}:19132", index / 250, index % 250),
             ..saved.clone()

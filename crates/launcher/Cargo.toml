@@ -23,6 +23,8 @@ shaderpacks = ["shader-pack-options"]
 shader-pack-options = ["dep:shaderpack"]
 
 [dependencies]
+uuid.workspace = true
+java-protocol = { path = "../java-protocol" }
 cosmetics = { path = "../cosmetics" }
 bridge = { path = "../bridge" }
 json-ui = { path = "../json-ui" }

@@ -11,6 +11,7 @@ fn extra_large_servers_keeps_scrolled_group_drag_inside_small_windows() {
                 let mut view = MenuView::new(true, "Fixture".into());
                 view.screen = MenuScreen::Servers;
                 view.servers = vec![launcher::menu::SavedServer {
+                    edition: Default::default(),
                     name: "Fixture server".into(),
                     address: "fixture.test:19132".into(),
                     favorite: false,

@@ -7,6 +7,7 @@ use super::MenuRuntime;
 #[derive(Debug)]
 pub(super) struct RetryTarget {
     address: String,
+    pub(super) edition: launcher::menu::ServerEdition,
     auth_cache: Option<PathBuf>,
     account_id: Option<String>,
     featured: bool,
@@ -59,6 +60,7 @@ impl MenuRuntime {
             .is_some_and(|target| target.address == address && target.featured);
         self.retry_target = (!local_world).then(|| RetryTarget {
             address: address.to_owned(),
+            edition: launcher::menu::ServerEdition::Bedrock,
             auth_cache: auth_cache.map(Path::to_path_buf),
             account_id: self.feeds.account_active_id.clone(),
             featured,
@@ -71,10 +73,11 @@ impl MenuRuntime {
             && self.disconnect_message.is_some()
             && !self.is_connecting()
             && !self.local_world_joined
-            && !self.account_change_pending()
             && self.retry_target.as_ref().is_some_and(|target| {
-                target.account_id == self.feeds.account_active_id
-                    && target.auth_cache == self.launcher_auth_cache()
+                target.edition == launcher::menu::ServerEdition::Java
+                    || (!self.account_change_pending()
+                        && target.account_id == self.feeds.account_active_id
+                        && target.auth_cache == self.launcher_auth_cache())
             })
     }
 
@@ -88,7 +91,8 @@ impl MenuRuntime {
             return;
         }
         let address = self.retry_target.as_ref().unwrap().address.clone();
-        self.request_connect(address);
+        let edition = self.retry_target.as_ref().unwrap().edition;
+        self.request_edition_connect(address, edition);
         self.focused = 0;
         self.hovered = None;
     }

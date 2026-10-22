@@ -27,3 +27,5 @@ pub mod minecraft_import;
 pub mod mod_updates;
 
 pub mod cosmetics;
+
+pub mod java;

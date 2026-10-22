@@ -129,7 +129,14 @@ impl MenuRuntime {
                 self.featured
                     .iter()
                     .map(|server| server.address.as_str())
-                    .chain(self.servers.iter().map(|server| server.address.as_str())),
+                    .chain(
+                        self.servers
+                            .iter()
+                            .filter(|server| {
+                                server.edition == launcher::menu::ServerEdition::Bedrock
+                            })
+                            .map(|server| server.address.as_str()),
+                    ),
             )
         } else {
             Vec::new()

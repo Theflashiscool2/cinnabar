@@ -280,6 +280,7 @@ fn add_server_focus_skips_disabled_actions_and_tracks_the_footer_order() {
     assert_eq!(
         menu.focus_actions(),
         vec![
+            MenuAction::SelectServerEdition(launcher::menu::ServerEdition::Java),
             MenuAction::AddName,
             MenuAction::AddAddress,
             MenuAction::AddPort,
@@ -291,6 +292,7 @@ fn add_server_focus_skips_disabled_actions_and_tracks_the_footer_order() {
     assert_eq!(
         menu.focus_actions(),
         vec![
+            MenuAction::SelectServerEdition(launcher::menu::ServerEdition::Java),
             MenuAction::AddName,
             MenuAction::AddAddress,
             MenuAction::AddPort,
@@ -666,6 +668,7 @@ fn pointer_opened_dialogs_accept_keyboard_confirmation_and_navigation() {
     for remove_saved in [false, true] {
         let mut menu = MenuRuntime::new(true, 2, "Player".into());
         menu.servers.push(launcher::menu::view::SavedServer {
+            edition: Default::default(),
             name: "Local".to_owned(),
             address: "127.0.0.1:19132".to_owned(),
             favorite: false,

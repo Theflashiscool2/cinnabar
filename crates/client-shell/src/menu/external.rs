@@ -168,6 +168,7 @@ impl MenuRuntime {
         self.remember_session_origin();
         self.remember_retry_target(&address, None, false);
         self.intents.join = Some(client_state::JoinIntent {
+            edition: launcher::menu::ServerEdition::Bedrock,
             address,
             auth_cache: None,
             local_world: false,

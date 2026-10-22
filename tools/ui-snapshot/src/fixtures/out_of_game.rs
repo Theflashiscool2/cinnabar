@@ -115,6 +115,7 @@ pub(super) fn remove_server() -> Fixture {
         unreachable!()
     };
     view.servers.push(launcher::menu::SavedServer {
+        edition: Default::default(),
         name: "Example server".into(),
         address: "example.invalid".into(),
         favorite: false,
@@ -337,5 +338,35 @@ pub(super) const WORLD_FORM_STATES: &[State] = &[
         size: SIZE,
         gui_scale: GUI_SCALE,
         fixture: world_edit_advanced,
+    },
+];
+
+/// Anonymous Java launcher fixtures; these images are UI evidence, never live session evidence.
+pub(super) const JAVA_STATES: &[State] = &[
+    State {
+        name: "java-add-server",
+        size: SIZE,
+        gui_scale: GUI_SCALE,
+        fixture: || {
+            let mut view = menu();
+            view.screen = MenuScreen::AddServer;
+            view.server_edition = launcher::menu::ServerEdition::Java;
+            view.name = "Local Java fixture".into();
+            view.address = "localhost".into();
+            view.port = String::new();
+            Fixture::Menu(Box::new(view))
+        },
+    },
+    State {
+        name: "java-connection-diagnostic",
+        size: SIZE,
+        gui_scale: GUI_SCALE,
+        fixture: || {
+            let mut view = menu();
+            view.connecting = true;
+            view.screen = MenuScreen::Play;
+            view.feeds.java_diagnostic=Some("Java play protocol reached; world minecraft:overworld, dimension 0, 32 registries, 2 keepalives. World rendering is not implemented. Cancel to disconnect.".into());
+            Fixture::Menu(Box::new(view))
+        },
     },
 ];

@@ -26,6 +26,7 @@ fn view() -> MenuView {
         },
     );
     view.servers = vec![launcher::menu::SavedServer {
+        edition: Default::default(),
         name: "Home".into(),
         address: "home.test:19132".into(),
         favorite: false,

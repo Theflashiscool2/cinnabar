@@ -2,6 +2,8 @@
 
 use json_ui::vanilla::Reference;
 pub mod auth;
+mod edition;
+pub use edition::ServerEdition;
 pub mod death;
 pub mod dialogs;
 pub mod disconnect;
@@ -166,6 +168,7 @@ pub enum MenuAction {
     SettingsSearchSection(u8),
     AddSave,
     AddSaveConnect,
+    SelectServerEdition(ServerEdition),
     AddBack,
     SettingsScale(i8),
     SettingsScalePicker,

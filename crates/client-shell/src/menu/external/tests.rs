@@ -69,6 +69,7 @@ fn external_preferences_emit_only_edits_and_surface_storage_failures() {
     menu.use_external_services(vec![], 0);
     assert!(menu.take_external_preferences().is_none());
     menu.servers.push(SavedServer {
+        edition: Default::default(),
         name: "Fixture".into(),
         address: "example.invalid".into(),
         favorite: false,

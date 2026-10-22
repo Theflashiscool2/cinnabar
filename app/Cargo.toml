@@ -59,6 +59,7 @@ reports = []
 mimalloc = ["dep:mimalloc"]
 
 [dependencies]
+java-protocol = { path = "../crates/java-protocol" }
 tokio.workspace = true
 image.workspace = true
 server-experience = { path = "../crates/server-experience", default-features = false, features = ["data"] }

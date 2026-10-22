@@ -423,7 +423,7 @@ fn lease(path: &Path) -> io::Result<File> {
     Ok(file)
 }
 
-fn try_lease(path: &Path) -> io::Result<File> {
+pub(crate) fn try_lease(path: &Path) -> io::Result<File> {
     let file = open_lock(path)?;
     file.try_lock().map_err(|error| match error {
         std::fs::TryLockError::WouldBlock => io::Error::new(
@@ -449,7 +449,7 @@ fn open_lock(path: &Path) -> io::Result<File> {
     options.open(path)
 }
 
-fn private_directory(path: &Path) -> io::Result<()> {
+pub(crate) fn private_directory(path: &Path) -> io::Result<()> {
     fs::create_dir_all(path)?;
     if !fs::symlink_metadata(path)?.is_dir() {
         return Err(invalid("account directory is not a directory"));
@@ -511,7 +511,7 @@ fn protect_windows(path: &Path) -> io::Result<()> {
     }
 }
 
-fn read_private(path: &Path) -> io::Result<Vec<u8>> {
+pub(crate) fn read_private(path: &Path) -> io::Result<Vec<u8>> {
     read_private_bounded(path, MAX_FILE_BYTES)
 }
 
@@ -557,7 +557,7 @@ fn remove_optional(path: &Path) -> io::Result<()> {
     }
 }
 
-fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
+pub(crate) fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     write_private_bounded(path, bytes, MAX_FILE_BYTES)
 }
 

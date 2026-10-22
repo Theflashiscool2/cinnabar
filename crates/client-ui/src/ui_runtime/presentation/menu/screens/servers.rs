@@ -426,6 +426,7 @@ mod review_tests {
     fn review_saved_server_text_reserves_the_action_region() {
         let view = launcher::menu::MenuView::new(true, "Test".into());
         let server = SavedServer {
+            edition: Default::default(),
             name: "Long server name ".repeat(50),
             address: "example.test".into(),
             favorite: false,

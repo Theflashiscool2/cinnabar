@@ -176,7 +176,7 @@ fn entry(
         let caption = view
             .feeds
             .pings
-            .get(&server.address)
+            .get(&server.ping_key())
             .filter(|p| !p.motd.is_empty())
             .map_or(server.address.as_str(), |p| p.motd.as_str());
         return server_text(

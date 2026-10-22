@@ -801,3 +801,53 @@ fn failed_server_loads_do_not_authorize_replacing_the_original_list() {
         std::fs::remove_dir_all(root).unwrap();
     }
 }
+
+#[test]
+fn real_carrier_java_edition_click_persistence_and_native_route() {
+    use launcher::menu::ServerEdition;
+    for dpi in [1.0, 2.0] {
+        let Some(mut h) = Harness::new(dpi) else {
+            return;
+        };
+        h.app
+            .world_mut()
+            .resource_mut::<MenuRuntime>()
+            .activate(MenuAction::Navigate(MenuScreen::Servers));
+        h.app.update();
+        h.click(MenuAction::PlayAddServer);
+        h.click(MenuAction::SelectServerEdition(ServerEdition::Java));
+        for (action, value) in [
+            (MenuAction::AddName, "Java fixture"),
+            (MenuAction::AddAddress, "localhost"),
+        ] {
+            h.click(action);
+            h.select_all();
+            h.paste(value);
+        }
+        assert!(
+            h.app
+                .world()
+                .resource::<MenuRuntime>()
+                .view()
+                .port
+                .is_empty()
+        );
+        snapshot::write(
+            &h.app.world().resource::<Frame>().0,
+            &format!("java-server-input-{dpi}"),
+        );
+        h.click(MenuAction::AddSaveConnect);
+        let mut menu = h.app.world_mut().resource_mut::<MenuRuntime>();
+        let join = menu
+            .take_join_intent()
+            .expect("Java routes without Bedrock authentication");
+        assert_eq!(join.edition, ServerEdition::Java);
+        assert_eq!(join.address, "localhost");
+        assert!(join.auth_cache.is_none());
+        menu.saves.flush();
+        let saved = load_servers(&menu.layout.server_file()).servers;
+        assert_eq!(saved.len(), 1);
+        assert_eq!(saved[0].edition, ServerEdition::Java);
+        assert_eq!(saved[0].address, "localhost");
+    }
+}

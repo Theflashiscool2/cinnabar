@@ -331,7 +331,7 @@ pub(super) fn saved_details(
     ping_strip(
         canvas,
         strip,
-        view.feeds.pings.get(&server.address),
+        view.feeds.pings.get(&server.ping_key()),
         view.settings_options.exact_server_ping(),
     )?;
     let y = strip[3] + canvas.r(1.2);

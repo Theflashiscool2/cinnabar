@@ -17,12 +17,24 @@ use ui::IconRef;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SavedServer {
+    #[serde(default)]
+    pub edition: super::ServerEdition,
     pub name: String,
     pub address: String,
     #[serde(default)]
     pub favorite: bool,
     #[serde(default)]
     pub last_joined_unix: u64,
+}
+
+impl SavedServer {
+    /// Status caches include edition so a Java response cannot overwrite a Bedrock pong.
+    pub fn ping_key(&self) -> String {
+        match self.edition {
+            super::ServerEdition::Bedrock => self.address.clone(),
+            super::ServerEdition::Java => format!("java://{}", self.address),
+        }
+    }
 }
 
 /// One local world for the play screen's worlds tab, supplied by the local
@@ -169,6 +181,7 @@ impl MenuProfile {
 /// by address, the profile, and the featured server the info panel shows.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct MenuFeeds {
+    pub java_diagnostic: Option<String>,
     pub accounts: Vec<crate::accounts::AccountProfile>,
     pub account_active_id: Option<String>,
     pub account_error: Option<String>,
@@ -431,6 +444,7 @@ pub struct MenuView {
     pub name: String,
     pub address: String,
     pub port: String,
+    pub server_edition: super::ServerEdition,
     /// The friends drawer's editable gamertag filter.
     pub friend_query: String,
     /// Transient text filtering settings across categories.
@@ -706,6 +720,7 @@ impl MenuView {
             name: String::new(),
             address: String::new(),
             port: String::new(),
+            server_edition: Default::default(),
             macro_commands: None,
             message: None,
             death_reason: String::new(),

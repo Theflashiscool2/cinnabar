@@ -1,0 +1,9 @@
+{
+  "game_version": "26.3",
+  "protocol": 777,
+  "release_source": "https://github.com/misode/mcmeta/tree/d96c75fec200c4580dd75e033a76341521165461",
+  "codec_source": "https://github.com/GeyserMC/MCProtocolLib/tree/b4fa8b23064bb85d7c7966cc2cd6bf369c9c1405",
+  "official_manifest": "https://piston-meta.mojang.com/v1/packages/61fff1316bd50312624a858bbb5eb18fa45208ed/26.3.json",
+  "server_sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "java_runtime_major": 25
+}

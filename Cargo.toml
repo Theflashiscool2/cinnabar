@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "tools/java-connect",
     "app",
     "packaging/android/client",
     "crates/acceptance",
@@ -49,6 +50,7 @@ members = [
     "examples/mods/render-sample",
     "examples/mods/screen-probe",
     "crates/protocol",
+    "crates/java-protocol",
     "crates/protocol-ids",
     "crates/resource-pack",
     "crates/server-experience",

@@ -90,6 +90,7 @@ pub struct ConsentInput(pub bool);
 /// A join requested by the menu and consumed by the session controller.
 #[derive(Debug)]
 pub struct JoinIntent {
+    pub edition: launcher::menu::ServerEdition,
     pub address: String,
     pub auth_cache: Option<std::path::PathBuf>,
     /// Joins the launcher core's opened local world instead of the address.

@@ -54,3 +54,6 @@ pub use actor_store::{DisplayActorStore, MAX_DISPLAY_ACTORS};
 #[cfg(test)]
 #[global_allocator]
 static ALLOCATOR: test_alloc::CountingAllocator = test_alloc::CountingAllocator;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod java;

@@ -91,6 +91,13 @@ pub(super) fn join(
                 launcher::menu::LocalWorldAction::Back,
             )),
         )
+    } else if let Some(diagnostic) = &view.feeds.java_diagnostic {
+        (
+            "Java connection diagnostic".to_owned(),
+            diagnostic.clone(),
+            None,
+            Some(MenuAction::AddBack),
+        )
     } else {
         let shown = join_progress::shown(&view.feeds.join, &tr);
         (

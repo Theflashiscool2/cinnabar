@@ -50,3 +50,6 @@ static ALLOCATOR: test_alloc::CountingAllocator = test_alloc::CountingAllocator;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use session::{NetworkConfig, packet_log, spawn_network};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod java;

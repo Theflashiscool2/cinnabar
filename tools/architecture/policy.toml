@@ -79,6 +79,12 @@ allowed_dependencies = ["bridge"]
 forbidden_dependencies = ["bevy", "protocol", "client-session", "wgpu"]
 
 [[crates]]
+name = "java-protocol"
+path = "crates/java-protocol"
+allowed_dependencies = []
+forbidden_dependencies = ["protocol", "bridge", "bevy", "wgpu"]
+
+[[crates]]
 name = "protocol-ids"
 path = "crates/protocol-ids"
 allowed_dependencies = []
@@ -168,7 +174,7 @@ test_support_features = ["test-support"]
 [[crates]]
 name = "client-world"
 path = "crates/client-world"
-allowed_dependencies = ["simulation-clock", "actor-animation", "render-api", "render-model", "assets", "protocol", "world", "test-time", "protocol-ids", "inventory"]
+allowed_dependencies = ["java-protocol", "simulation-clock", "actor-animation", "render-api", "render-model", "assets", "protocol", "world", "test-time", "protocol-ids", "inventory"]
 forbidden_dependencies = ["asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "chunk-pipeline", "meshing", "bevy", "wgpu"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "chunk-pipeline", "meshing", "ui", "json-ui", "render", "bevy", "bevy_*", "wgpu*"]
 
@@ -241,7 +247,7 @@ test_support_features = ["test-support"]
 [[crates]]
 name = "client-session"
 path = "crates/client-session"
-allowed_dependencies = ["simulation-clock", "render-api", "bridge", "crash-report", "protocol", "server-experience", "world", "protocol-ids"]
+allowed_dependencies = ["java-protocol", "simulation-clock", "render-api", "bridge", "crash-report", "protocol", "server-experience", "world", "protocol-ids"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "gameplay", "client-presentation", "acceptance", "launcher", "client-ui", "client-world", "chunk-pipeline", "inventory", "player-state", "semantic-input", "ui", "json-ui", "render", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "pack-runtime", "bevy", "bevy_*", "wgpu*"]
 test_support_features = ["test-support"]
 
@@ -249,7 +255,7 @@ test_support_features = ["test-support"]
 name = "launcher"
 path = "crates/launcher"
 test_support_features = ["test-support"]
-allowed_dependencies = ["cosmetics", "assets", "bridge", "json-ui", "render-api", "resource-pack", "semantic-input", "shaderpack", "ui", "update-manifest"]
+allowed_dependencies = ["java-protocol", "cosmetics", "assets", "bridge", "json-ui", "render-api", "resource-pack", "semantic-input", "shaderpack", "ui", "update-manifest"]
 forbidden_dependencies = ["protocol", "server-experience"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "client-ui", "player-state", "inventory", "client-world", "world", "sim", "render", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "bevy", "bevy_*", "wgpu*"]
 
@@ -266,7 +272,7 @@ test_support_features = ["test-support"]
 [[crates]]
 name = "client-state"
 path = "crates/client-state"
-allowed_dependencies = ["rich-presence", "player-state", "semantic-input", "ui"]
+allowed_dependencies = ["launcher", "rich-presence", "player-state", "semantic-input", "ui"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "client-ui", "client-presentation", "client-audio", "client-runtime", "client-interaction", "client-shell", "client-extensions", "acceptance", "client-session", "gameplay", "launcher-host", "render", "pack-runtime", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler"]
 max_rust_lines = 4000
 contract_only = true
@@ -414,7 +420,7 @@ forbidden_transitive_dependencies = ["client-world", "chunk-pipeline", "protocol
 [[crates]]
 name = "app"
 path = "app"
-allowed_dependencies = ["cosmetics", "test-alloc", "pack-json", "env-compat", "simulation-clock", "actor-animation", "render-scene", "client-shell", "client-interaction", "client-runtime", "client-extensions", "client-state", "first-run", "bootstrap-ui", "crash-monitor", "launcher-host", "bridge", "crash-report", "experience-sdk", "mod-api", "mod-render", "acceptance", "assets", "block-transform", "chunk-pipeline", "far-terrain", "client-presentation", "client-session", "client-ui", "client-world", "developer-control", "diagnostics", "gameplay", "gilrs", "inventory", "json-ui", "launcher", "libc", "meshing", "mimalloc", "mod-host", "objc2", "objc2-app-kit", "objc2-foundation", "objc2-quartz-core", "oreui", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "particles", "player-state", "protocol", "raw-window-handle", "render", "render-api", "render-model", "shaderpack", "resource-pack", "rich-presence", "semantic-input", "server-experience", "sim", "tracing-chrome", "tracing-tracy", "ui", "ui-engine", "ui-screens", "mod-ui", "update-manifest", "world", "test-time", "pack-runtime", "client-audio", "protocol-ids"]
+allowed_dependencies = ["java-protocol", "cosmetics", "test-alloc", "pack-json", "env-compat", "simulation-clock", "actor-animation", "render-scene", "client-shell", "client-interaction", "client-runtime", "client-extensions", "client-state", "first-run", "bootstrap-ui", "crash-monitor", "launcher-host", "bridge", "crash-report", "experience-sdk", "mod-api", "mod-render", "acceptance", "assets", "block-transform", "chunk-pipeline", "far-terrain", "client-presentation", "client-session", "client-ui", "client-world", "developer-control", "diagnostics", "gameplay", "gilrs", "inventory", "json-ui", "launcher", "libc", "meshing", "mimalloc", "mod-host", "objc2", "objc2-app-kit", "objc2-foundation", "objc2-quartz-core", "oreui", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "particles", "player-state", "protocol", "raw-window-handle", "render", "render-api", "render-model", "shaderpack", "resource-pack", "rich-presence", "semantic-input", "server-experience", "sim", "tracing-chrome", "tracing-tracy", "ui", "ui-engine", "ui-screens", "mod-ui", "update-manifest", "world", "test-time", "pack-runtime", "client-audio", "protocol-ids"]
 forbidden_dependencies = ["asset-compiler"]
 forbidden_transitive_dependencies = ["asset-compiler"]
 
@@ -1304,7 +1310,7 @@ exports = [
 [[crates]]
 name = "launcher-host"
 path = "crates/launcher-host"
-allowed_dependencies = ["cosmetics", "bridge", "crash-report", "launcher", "protocol", "resource-pack", "server-experience", "test-time", "update-manifest", "update-installer"]
+allowed_dependencies = ["java-protocol", "cosmetics", "bridge", "crash-report", "launcher", "protocol", "resource-pack", "server-experience", "test-time", "update-manifest", "update-installer"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "client-ui", "render", "bevy", "bevy_*", "wgpu*"]
 test_support_features = ["test-support"]
 
@@ -2207,3 +2213,9 @@ test_support_features = ["test-support"]
 path = "app/src/runtime/network/item_icons/tints.rs"
 literal = "grass_carried"
 reason = "Terrain-atlas carried-grass colour source; this selects authored inventory tint metadata, not a block identity."
+
+[[crates]]
+name = "java-connect"
+path = "tools/java-connect"
+allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host"]
+forbidden_dependencies = ["bevy", "wgpu"]

@@ -19,6 +19,7 @@ pub(super) fn servers_view() -> MenuView {
     view.servers = ["saved", "other"]
         .into_iter()
         .map(|name| SavedServer {
+            edition: Default::default(),
             name: name.into(),
             address: format!("{name}.test:19132"),
             favorite: false,

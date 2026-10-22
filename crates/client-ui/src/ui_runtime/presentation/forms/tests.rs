@@ -759,6 +759,7 @@ fn the_server_list_builds_only_visible_rows() {
         view.screen = launcher::menu::MenuScreen::Servers;
         view.servers = (0..count)
             .map(|index| launcher::menu::SavedServer {
+                edition: Default::default(),
                 name: format!("Server {index}"),
                 address: format!("10.0.0.{}:19132", index % 250),
                 favorite: false,

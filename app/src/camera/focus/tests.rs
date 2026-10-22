@@ -700,6 +700,7 @@ fn explicit_join_keeps_return_authorization_across_loading() {
             launcher_host::servers::save_servers(
                 &menu.layout().server_file(),
                 &[launcher::menu::view::SavedServer {
+                    edition: Default::default(),
                     name: "local fixture".into(),
                     address: "127.0.0.1".into(),
                     favorite: false,

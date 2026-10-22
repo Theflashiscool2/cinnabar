@@ -8,6 +8,7 @@ fn menu() -> MenuRuntime {
     let mut menu = MenuRuntime::new(true, 2, "Fixture".into());
     menu.catalog_started = true;
     menu.servers = vec![SavedServer {
+        edition: Default::default(),
         name: "Saved".into(),
         address: "saved.example.test:19132".into(),
         favorite: false,

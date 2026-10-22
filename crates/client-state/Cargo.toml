@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+launcher = { path = "../launcher" }
 bevy.workspace = true
 player-state = { path = "../player-state" }
 semantic-input = { path = "../input" }
