@@ -40,6 +40,14 @@ impl Connection {
                 r.finish()?;
                 continue;
             }
+            if let Some(packet) = hud::decode(name, &mut r)? {
+                r.finish()?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("status before Java world login").into());
+                }
+                self.emit(Event::Hud(packet)).await?;
+                continue;
+            }
             if let Some(packet) = entities::decode(name, &mut r)? {
                 r.finish()?;
                 if !self.bootstrapped {
@@ -255,7 +263,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundEntityEventPacket",
     "ClientboundExplodePacket",
     "ClientboundAddTransientBlockPacket",
-    "ClientboundGameEventPacket",
     "ClientboundGameRuleValuesPacket",
     "ClientboundGameTestHighlightPosPacket",
     "ClientboundHurtAnimationPacket",
@@ -289,7 +296,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetDisplayObjectivePacket",
     "ClientboundSetEntityLinkPacket",
     "ClientboundSetEquipmentPacket",
-    "ClientboundSetExperiencePacket",
     "ClientboundSetHeldSlotPacket",
     "ClientboundSetObjectivePacket",
     "ClientboundSetPlayerInventoryPacket",

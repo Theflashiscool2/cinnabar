@@ -144,7 +144,10 @@ entity adapter prepares assets off-frame and binds scoped domain facts to comple
 `PreparedActorPublication` batches. Edition selection guards the shared actor catalog;
 pose caches use session/dimension/incarnation lifetimes. The initial visible slice is
 pig bodies with authoritative positions; animation and other entity renderers remain
-incomplete.
+incomplete. `world::java::hud` owns native status snapshots; `client-world` resolves
+wire game modes, experience and attributes before `client-ui` projects them into
+its shared HUD store. Native mode visibility stays explicit, and projection rejects
+retired sessions/dimensions. The application selects the edition's respawn queue.
 `world::java::dynamics` owns admitted abilities and attribute arithmetic. The
 `client-world` boundary resolves the hash-pinned protocol attribute IDs, isolates
 local identity, and retains partial velocity without fabricating a position.

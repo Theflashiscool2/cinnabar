@@ -66,5 +66,19 @@
     "sha256": "abf23d7315236f777d6654f138eb2fef1cb65b081016403aff8bb809b2f141ab",
     "count": 44,
     "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/metadata/MetadataTypes.java"
+  },
+  "hud_schema": {
+    "game_modes": {
+      "path": "data/GameMode.java",
+      "sha256": "93aa5b440f85dd45dab4744a5ce88826d327ed3fca0849cb97eb86e2a25e3d71",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/player/GameMode.java",
+      "count": 4
+    },
+    "game_events": {
+      "path": "data/GameEvent.java",
+      "sha256": "a7847f97476988d901dbbcd6f147bc70b5658093ace6e141634b013262b5b949",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/level/notify/GameEvent.java",
+      "count": 14
+    }
   }
 }

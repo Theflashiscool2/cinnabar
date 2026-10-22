@@ -23,6 +23,7 @@ pub mod interaction;
 pub mod inventory_actions;
 pub mod inventory_drag;
 pub mod inventory_ingress;
+pub mod java_hud;
 
 mod food;
 mod furnace_options;
@@ -178,6 +179,7 @@ pub struct UiRuntime {
     dropped_unsent_chat_messages: u64,
     block_cracks: crate::block_cracks::BlockCracks,
     gameplay_hud: GameplayHudState,
+    java_hud: Option<world::java::hud::Snapshot>,
     item_activation: Option<item_activation::ItemActivation>,
     pending_totem_snapshots: VecDeque<(u64, Option<u32>)>,
     activation_clock: item_activation::ActivationClock,
@@ -289,6 +291,7 @@ impl UiRuntime {
             dropped_unsent_chat_messages: 0,
             block_cracks: crate::block_cracks::BlockCracks::default(),
             gameplay_hud: GameplayHudState::default(),
+            java_hud: None,
             item_activation: None,
             pending_totem_snapshots: VecDeque::new(),
             activation_clock: item_activation::ActivationClock::default(),
@@ -672,6 +675,7 @@ impl UiRuntime {
         self.player_roster = Default::default();
         self.player_list_held = false;
         self.hud.clear();
+        self.java_hud = None;
         self.death_reason = Arc::from("");
         self.death_rules = protocol::DeathRules::default();
         self.chat.clear();

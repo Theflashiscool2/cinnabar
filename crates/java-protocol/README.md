@@ -109,14 +109,15 @@ UUID, authoritative entity/world/dimension identities and registry facts, then
 position, death, health/food and respawn facts. Explicit respawn input uses a bounded
 connection-owned queue; interrupted reads retain prefix/body/cipher progress. It answers
 teleports, keepalives, pings and chunk-batch flow control. Terrain packets decode off
-the rendering thread; entity/inventory notifications remain outside admitted state;
+the rendering thread. Entity lifecycle and selected metadata have domain admission;
+inventory notifications remain outside admitted state;
 the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, an initial relative teleport without an admitted anchor,
 mid-session reconfiguration and tag replacement fail
-clearly. Entity/inventory decoding, movement, chat signing and interactions remain
-unimplemented. Native assets/mesh publication have the limited offline rendered
+clearly. Inventory, chat signing and interactions remain unimplemented. Native
+movement, entity and terrain presentation have the limited offline rendered
 evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
 
 `world::java::player::Motion` owns double-precision position/velocity and correction
@@ -128,19 +129,19 @@ correction receipt fence stale replies, including reused server teleport IDs.
 An unadmitted correction has a ten-second deadline; cancellation still closes the
 transport. This deadline is an explicit implementation budget, not a vanilla parity
 claim. The application retains a full-queue reply for a later frame and applies each
-new correction receipt to the camera. Physics and outbound movement remain separate,
-unfinished work. Deterministic coverage checks encrypted wire ordering, cancellation,
+new correction receipt to the camera. The dry-land movement slice below adds
+physics and outbound movement; other movement semantics remain incomplete. Deterministic coverage checks encrypted wire ordering, cancellation,
 timeouts, correction precision and stale receipts.
 
 Player abilities, attributes and packed `LpVec3` velocity now have typed decoders and
 local-player admission. The attribute ID table is generated from the hash-pinned
 `AttributeType.java` reference; all 40 IDs were checked against the official registry
 report whose hash is recorded in the target manifest. Generic attribute defaults
-are not substituted for server-supplied player values. Remote entity dynamics remain
-explicitly deferred until their lifecycle owner exists. Velocity before initial
+are not substituted for server-supplied player values. Remote velocity and movement now target scoped entity lifetimes; remote attributes
+remain deferred. Velocity before initial
 position does not invent a spawn anchor. Respawn retains attribute bases and obeys
-the server's modifier-retention flag; metadata retention is recorded but entity
-metadata itself is not implemented.
+the server's modifier-retention flag. Local metadata follows respawn retention;
+pig/player/item schemas are admitted with the explicit complex-value gaps below.
 
 Angle-only corrections use the same bounded, ordered admission deadline and receipt
 fence as teleports. Their resolved rotation is returned in Java's rotation packet;
@@ -151,8 +152,8 @@ coverage. This does not establish client walking or general entity synchronizati
 Linux offline vanilla diagnostics also admitted absolute rotation `90/25`, relative
 `+15/-10`, and a return to `0/0`; server entity data confirmed `90/25` and `105/15`
 after the replies. That run retained 49 columns, positive health and four real
-keepalives before clean disconnect. Angle-only camera presentation is implemented
-but awaits a fresh graphical run; this live evidence is from the diagnostic client.
+keepalives before clean disconnect. This particular run is diagnostic evidence; the later graphical correction and
+walking acceptance is described below.
 The server sent three changed player attributes, not the complete player defaults.
 The initial values now come from the pinned vanilla player builder's generated
 report, with server updates replacing them. A direct vanilla registry comparison confirmed all
@@ -448,6 +449,44 @@ Lighting currently samples the authoritative feet cell. These limitations remain
 visible in diagnostics and do not establish entity visual parity or a playable client.
 Passenger relationships retain scoped lifetimes with deterministic replacement/cycle
 coverage, but mounted motion and seat presentation are unsupported.
+
+## Native status HUD and respawn
+
+The target manifest now pins the maintained game-mode and game-event enums. Native
+experience and game-mode notifications decode in the protocol owner. `client-world`
+projects admitted health/food, attribute-derived maximum health/armor, experience
+and mode into `world::java::hud::Snapshot`; UI rendering consumes that domain
+snapshot rather than synthetic Bedrock attributes or packet-library types.
+Session/dimension checks reject stale projections and replacement players clear
+unknown vital/experience values. The existing respawn intent now selects the native
+command queue for Java. Status-row and hand visibility use the native mode explicitly.
+HUD capture preserves Java's synchronized armor instead of replacing it with the
+Bedrock inventory-derived value. The unimplemented native attack-charge indicator
+stays absent.
+
+The authorized Linux offline vanilla fixture was exercised through the launcher and
+existing JSON-UI renderer at 1280×720, scale 1, with software Vulkan. Server queries,
+MCP state and fresh frames agree on health 13, food 18, armor 6, level 7 and experience
+progress 0.47619048. Removing the chestplate removes the armor row. Mode changes hide
+survival stats, and spectator mode hides the hand. A server kill opens the real death
+screen; its Respawn button returns health/food 20 and level 0, replaces dimension
+epoch 1 with 2, and reloads terrain. Save & Quit clears the native HUD projection,
+terrain work and entity poses. Same-process reconnect uses a fresh session generation.
+This run is offline-mode evidence only, not online or cross-platform acceptance.
+
+Focused tests cover independent wire vectors, encrypted/compressed event ordering,
+stale HUD lifetimes, malformed values and death state. The capture regression first
+reproduced the armor overwrite, then passed alongside existing Bedrock armor tests.
+Scoped clippy, architecture and formatting checks pass. The graphical link initially
+failed at the workspace disk limit; after removing inactive caches, relinking passed.
+No full-workspace merge gate or hardware frame-budget qualification ran for this slice.
+
+This is numeric status through the existing presentation, not Java HUD visual parity.
+Absorption, effects, air,
+Java damage flashes, signed chat, immediate-respawn rule changes and inventory
+presentation remain incomplete. The pinned client's `Hud.extractPlayerHealth`,
+`LivingEntity.getArmorValue` and `FoodData` were consulted for ceil health, floor
+armor and food display units; no Mojang source or art is redistributed.
 
 ## Dependency choice and notices
 

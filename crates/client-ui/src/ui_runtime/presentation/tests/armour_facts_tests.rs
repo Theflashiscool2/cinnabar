@@ -1,6 +1,50 @@
 use super::*;
 use crate::ui_runtime::presentation::publish::capture_hud_frame;
 
+#[test]
+fn native_hud_capture_keeps_server_armor_without_a_bedrock_inventory() {
+    let player = player_state::PlayerState::new(1);
+    let mut runtime = UiRuntime::new(1);
+    let mut presentation = armour_presentation();
+    assert!(runtime.publish_java_hud(world::java::hud::Snapshot {
+        session: 1,
+        epoch: 1,
+        mode: Some(world::java::hud::GameMode::Survival),
+        hardcore: false,
+        health: Some(13.),
+        maximum_health: Some(20.),
+        food: Some(9),
+        saturation: Some(0.),
+        armor: Some(6.),
+        experience: None,
+    }));
+    capture_hud_frame(
+        &player,
+        &mut runtime,
+        &mut presentation,
+        None,
+        semantic_input::PerspectiveMode::FirstPerson,
+        0,
+        Default::default(),
+    );
+    assert_eq!(runtime.hud().armor(), BoundedStat::new(6, 20));
+    assert_eq!(runtime.hud().health(), BoundedStat::new(13, 20));
+    assert_eq!(runtime.hud().hunger(), BoundedStat::new(9, 20));
+    assert_eq!(presentation.hud_frame().attack_indicator_charge, None);
+    runtime.begin_session(2);
+    let player = player_state::PlayerState::new(2);
+    capture_hud_frame(
+        &player,
+        &mut runtime,
+        &mut presentation,
+        None,
+        semantic_input::PerspectiveMode::FirstPerson,
+        0,
+        Default::default(),
+    );
+    assert_eq!(runtime.hud().armor(), BoundedStat::new(0, 20));
+}
+
 /// Builds a small original-art HUD so the production armour renderer needs no local packs.
 fn armour_presentation() -> UiPresentationRuntime {
     use assets::{HudTexture, HudTextureRole, UiAtlasPage, UiFile};

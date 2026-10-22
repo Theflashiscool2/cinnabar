@@ -2,6 +2,7 @@
 mod biomes;
 mod dynamics;
 mod entities;
+mod hud;
 pub mod player;
 mod terrain;
 #[cfg(test)]
@@ -17,6 +18,7 @@ pub struct WorldState {
     pub terrain: world::java::Terrain,
     pub entities: world::java::entities::Entities,
     pub player_visual: world::java::entities::visual::Visual,
+    pub status: world::java::hud::State,
     pub biomes: Vec<world::java::BiomeAppearance>,
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
@@ -64,6 +66,7 @@ impl WorldState {
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
+                    self.status = Default::default();
                     self.bootstrap = None;
                     self.biomes.clear();
                     self.teleport = None;
@@ -117,6 +120,7 @@ impl WorldState {
                 }
             },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
+            Event::Hud(packet) => hud::admit(self, packet),
             Event::Entities {
                 dimension_epoch,
                 packet,

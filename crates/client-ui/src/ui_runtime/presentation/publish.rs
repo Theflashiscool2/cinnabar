@@ -24,12 +24,15 @@ pub fn capture_hud_frame(
     runtime.sync_anvil_name(player_runtime);
     // Inventory capture precedes lectern opening and screen selection. Selected-item
     // and sleep observations run after item capture, immediately before publication.
-    let armor = observations::armor(
-        player_runtime,
-        runtime,
-        stream.map(|stream| stream.authority()),
-    );
-    runtime.set_derived_armor(armor);
+    // Java armor comes from its synchronized attribute, not Bedrock item protection facts.
+    if runtime.java_hud().is_none() {
+        let armor = observations::armor(
+            player_runtime,
+            runtime,
+            stream.map(|stream| stream.authority()),
+        );
+        runtime.set_derived_armor(armor);
+    }
     let mount_health = runtime.gameplay_hud().mount_unique_id().and_then(|unique| {
         stream.and_then(|stream| stream.authority().actor_health_by_unique(unique))
     });
@@ -145,7 +148,7 @@ pub fn capture_hud_frame(
     frame.selected_item_name = equipment.selected_item_name;
     frame.holding_filled_map = equipment.holding_filled_map;
     frame.mount_jump = mount_jump;
-    frame.attack_indicator_charge = Some(1.0);
+    frame.attack_indicator_charge = runtime.java_hud().is_none().then_some(1.0);
     observations::note_diagnostics(runtime, presentation);
     (equipment.held_item_icon, equipment.offhand_icon)
 }

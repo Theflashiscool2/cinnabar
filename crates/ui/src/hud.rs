@@ -347,6 +347,11 @@ impl HudStore {
         self.experience
     }
 
+    /// Retires experience when a replacement player has not supplied it yet.
+    pub fn clear_experience(&mut self) {
+        self.experience = None;
+    }
+
     /// Sets the local player's experience bar state, clamping progress to 0.0..=1.0.
     pub fn set_experience(&mut self, level: u32, progress: f32) {
         let progress = if progress.is_finite() {

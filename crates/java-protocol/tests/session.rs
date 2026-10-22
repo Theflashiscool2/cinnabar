@@ -166,6 +166,11 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     wire.write(&[101, 99, 16, 8, 1, 255]).await.unwrap(); // Native baby metadata.
     wire.write(&[54, 99, 1, 0x10, 0, 0, 0, 0, 0]).await.unwrap();
     wire.write(&[78, 1, 99]).await.unwrap();
+    // Independent official report IDs: set_experience=105, game_event=39.
+    wire.write(&[105, 0x3f, 0, 0, 0, 12, 0xac, 2])
+        .await
+        .unwrap();
+    wire.write(&[39, 3, 0x40, 0, 0, 0]).await.unwrap();
     // Official protocol-777 report: death 69, client command 12, respawn 84.
     wire.write(&[0x45, 42, 8, 0, 4, b't', b'e', b's', b't'])
         .await
@@ -209,10 +214,23 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let mut dynamics = 0;
     let mut rotation = false;
     let mut entities = Vec::new();
+    let mut hud = Vec::new();
     tokio::time::timeout(Duration::from_secs(10), async {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
             match envelope.event {
+                Event::Hud(session::hud::Packet::Experience {
+                    progress,
+                    level,
+                    total,
+                }) => {
+                    assert_eq!((progress, level, total), (0.5, 12, 300));
+                    hud.push("experience");
+                }
+                Event::Hud(session::hud::Packet::GameMode(mode)) => {
+                    assert_eq!(mode, session::hud::GameMode::Adventure);
+                    hud.push("mode");
+                }
                 Event::Phase(p) => phases.push(p),
                 Event::Bootstrap(b) => {
                     assert_eq!(b.world.entity_id, 42);
@@ -436,6 +454,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert!(rotation);
     assert_eq!(dynamics, 2);
     assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
+    assert_eq!(hud, ["experience", "mode"]);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

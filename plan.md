@@ -158,6 +158,15 @@ server evidence; complex metadata and entity frame publication remain incomplete
   Final-build reconnect advances generation, clears cached poses and renders one
   surviving pig without ghosts; both sessions answered two keepalives. Other entity
   types, interpolation, gait, shadows, glow and general lighting parity remain open.
+- [x] Exercise native numeric HUD publication on the Linux offline vanilla fixture:
+  health, food, synchronized armor and XP match server queries and rendered frames.
+  Equipment removal clears armor; mode changes control status/hand visibility. The
+  real death screen sends native Respawn and receives fresh health/food/XP and terrain
+  in a new dimension epoch. Save & Quit/reconnect retires the projection and advances
+  the session generation. A failing-then-passing capture regression protects Java
+  armor from the Bedrock inventory projection; existing Bedrock armor tests pass.
+- [ ] Complete HUD semantics and presentation: effects, air, absorption, damage/death
+  presentation, immediate-respawn rules, attack cooldown, chat and visual parity.
 - [ ] Complete movement semantics: fluids, flying, effects, special block callbacks,
   entity collision, sprint-transition parity and full respawn/dimension retention.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face

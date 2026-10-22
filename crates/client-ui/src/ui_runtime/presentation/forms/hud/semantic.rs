@@ -130,11 +130,8 @@ impl SemanticHud {
         hide_effects: bool,
     ) -> bool {
         let model = &mut self.model;
-        let survival = player.facts.survival_stats_visible();
-        let hotbar = player
-            .facts
-            .player_game_mode()
-            .is_none_or(|mode| mode.shows_hotbar());
+        let survival = runtime.shows_survival_stats(player);
+        let hotbar = runtime.mode_shows_hotbar(player);
         let experience = runtime.hud().experience();
         let riding = survival && frame.mount_health.is_some();
         let bubbles = survival

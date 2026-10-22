@@ -407,6 +407,10 @@ pub(super) fn snapshot(world: &World) -> Value {
             |m| json!({"position":m.position,"velocity":m.velocity,"yaw":m.yaw,"pitch":m.pitch})
         ));
         snapshot["native_java"]["pose_revision"] = json!(state.player_pose_revision);
+        snapshot["native_java"]["player_entity"] =
+            json!(state.bootstrap.as_ref().map(|b| b.world.entity_id));
+        snapshot["native_java"]["attributes"] = json!(state.player_dynamics.attributes.iter().map(|(name, attribute)| (name, json!({"base":attribute.base,"value":attribute.value().ok(),"modifiers":attribute.modifiers.iter().map(|m|json!({"name":m.name,"amount":m.amount,"operation":format!("{:?}",m.operation)})).collect::<Vec<_>>()}))).collect::<std::collections::BTreeMap<_,_>>());
+        snapshot["native_java"]["deferred_entity_dynamics"] = json!(state.deferred_entity_dynamics);
         snapshot["native_java"]["entities"] = json!({
             "count": state.entities.iter().count(),
             "revision": state.entities.revision(),
@@ -424,6 +428,16 @@ pub(super) fn snapshot(world: &World) -> Value {
             .get_resource::<crate::session::java_entities::Presentation>()
             .map(|p| p.diagnostic())
     );
+    snapshot["native_java_hud"] = json!(world.get_resource::<UiRuntimeResource>().map(|ui| {
+        let stat = |s: Option<ui::BoundedStat>| s.map(|s| [s.current(), s.maximum(), s.scale()]);
+        json!({
+            "ui_session":ui.session_id(), "scope":ui.java_hud().map(|s| [s.session,s.epoch]),
+            "mode":ui.java_hud().and_then(|s|s.mode).map(|m|format!("{m:?}")),
+            "health":stat(ui.hud().health()),"food":stat(ui.hud().hunger()),"armor":stat(ui.hud().armor()),
+            "experience":ui.hud().experience().map(|xp|json!({"level":xp.level,"progress":xp.progress})),
+            "alive":ui.local_player_alive(),"visual_parity":false,
+        })
+    }));
     snapshot["native_java_render"] = json!(
         world
             .get_resource::<crate::session::java_render::Presentation>()

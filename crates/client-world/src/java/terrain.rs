@@ -40,6 +40,10 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
     state
         .entities
         .begin(state.generation, state.dimension_epoch);
+    state.status.mode = Some(super::hud::mode(
+        java_protocol::session::hud::GameMode::from_id(i32::from(spawn.game_mode)),
+    ));
+    state.status.experience = None;
     state.teleport = None;
     state.player_motion = None;
     state.player_dynamics.unplaced_velocity = None;

@@ -57,7 +57,9 @@ pub(crate) fn configure_actor_render_systems(app: &mut App) {
             Update,
             (
                 advance_actor_frame,
-                crate::runtime::network::publish_local_actor_damage,
+                crate::runtime::network::publish_local_actor_damage
+                    .run_if(uses_bedrock_actor_authority),
+                crate::session::java_hud::update,
             )
                 .chain()
                 .in_set(ClientFrameSet::ActorPreparation),

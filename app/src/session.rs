@@ -32,6 +32,7 @@ use std::{path::PathBuf, time::Instant};
 mod client_id;
 mod java;
 pub(crate) mod java_entities;
+pub(crate) mod java_hud;
 pub(crate) mod java_movement;
 pub(crate) mod java_render;
 mod startup;
@@ -622,6 +623,11 @@ fn drive_intents(
     session: &mut SessionResources<'_>,
 ) {
     menu.send_respawn_request(|| {
+        if let Some(java) = &session.controller.java {
+            return java
+                .command(java_protocol::session::Command::Respawn)
+                .is_ok();
+        }
         let Some(runtime_id) = session
             .state
             .runtime

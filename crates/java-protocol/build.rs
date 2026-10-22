@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, env, fs, path::PathBuf};
 mod attributes;
 #[path = "build/entities.rs"]
 mod entities;
+#[path = "build/hud.rs"]
+mod hud;
 #[path = "build/metadata.rs"]
 mod metadata;
 
@@ -60,6 +62,7 @@ fn main() {
     attributes::generate(&mut code, &target);
     let entity_names = entities::generate(&mut code, &target);
     metadata::generate(&mut code, &target, &entity_names);
+    hud::generate(&mut code, &target);
     let report = &target["block_registry_report"];
     code += &format!(
         "pub const BLOCK_REPORT_SHA256:&str={:?};\npub const BLOCK_REPORT_BYTES:usize={};\npub const BLOCK_STATE_COUNT:usize={};\n",

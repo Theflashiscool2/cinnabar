@@ -83,10 +83,7 @@ pub(in super::super) fn capture(
         INVERT_CROSSHAIR_OPTION, THIRD_PERSON_CROSSHAIR_OPTION,
     };
     let now_tick = runtime.estimated_server_tick(frame.now_millis);
-    let mode_allows_hotbar = player_runtime
-        .facts
-        .player_game_mode()
-        .is_none_or(|mode| mode.shows_hotbar());
+    let mode_allows_hotbar = runtime.mode_shows_hotbar(player_runtime);
     let mut paint = HudPaint {
         effects: effects(runtime, now_tick),
         java_effects: java_effects(runtime, now_tick),
@@ -105,7 +102,7 @@ pub(in super::super) fn capture(
         },
         ..HudPaint::default()
     };
-    if !player_runtime.facts.survival_stats_visible() {
+    if !runtime.shows_survival_stats(player_runtime) {
         return paint;
     }
     if let Some(rows) = heart_rows(runtime) {
