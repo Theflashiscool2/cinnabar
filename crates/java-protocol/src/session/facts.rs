@@ -59,6 +59,25 @@ pub struct Teleport {
     pub pitch: f32,
     pub relative: u32,
 }
+/// Protocol-777 Relative bit order, verified against the pinned client's Relative enum.
+#[derive(Clone, Copy)]
+#[repr(u8)]
+pub enum Relative {
+    X,
+    Y,
+    Z,
+    Yaw,
+    Pitch,
+    VelocityX,
+    VelocityY,
+    VelocityZ,
+    RotateVelocity,
+}
+impl Relative {
+    pub const fn mask(self) -> u32 {
+        1 << self as u8
+    }
+}
 pub fn registry(r: &mut Reader<'_>) -> Result<(String, Vec<RegistryEntry>), Error> {
     let name = r.string(32767)?;
     let count = r.count(262144)?;
@@ -152,15 +171,22 @@ impl World {
     }
 }
 impl Teleport {
+    pub fn is_relative(&self, component: Relative) -> bool {
+        self.relative & component.mask() != 0
+    }
     pub fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
-        Ok(Self {
+        let position = Self {
             id: r.var()?,
             position: [r.f64()?, r.f64()?, r.f64()?],
             velocity: [r.f64()?, r.f64()?, r.f64()?],
             yaw: r.f32()?,
             pitch: r.f32()?,
             relative: r.i32()? as u32,
-        })
+        };
+        if position.relative & !(Relative::RotateVelocity.mask() * 2 - 1) != 0 {
+            return Err(Error::Invalid("unknown Java player relative flags"));
+        }
+        Ok(position)
     }
 }
 impl Bootstrap {

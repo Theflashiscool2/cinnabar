@@ -1,5 +1,6 @@
 //! Java terrain authority. Packet schemas stay in java-protocol; render consumers use these facts.
 mod palette;
+pub mod player;
 mod store;
 pub use store::{PublicationKey, Terrain};
 #[cfg(test)]

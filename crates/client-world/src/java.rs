@@ -1,9 +1,10 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
 mod biomes;
+pub mod player;
 mod terrain;
 use java_protocol::session::{
     Envelope, Event, Phase,
-    facts::{Bootstrap, Spawn, Teleport},
+    facts::{Bootstrap, Spawn},
 };
 #[derive(Default, Debug)]
 pub struct WorldState {
@@ -18,7 +19,10 @@ pub struct WorldState {
     pub death: Option<(i32, java_protocol::nbt::Value)>,
     pub phase: Option<Phase>,
     pub bootstrap: Option<Box<Bootstrap>>,
-    pub teleport: Option<Teleport>,
+    pub teleport: Option<player::ResolvedTeleport>,
+    pub player_motion: Option<world::java::player::Motion>,
+    pending_correction: Option<u64>,
+    correction_sequence: u64,
     pub respawn: Option<Spawn>,
     pub keepalives: u64,
     pub deferred_packets: u64,
@@ -46,6 +50,8 @@ impl WorldState {
                     self.bootstrap = None;
                     self.biomes.clear();
                     self.teleport = None;
+                    self.player_motion = None;
+                    self.pending_correction = None;
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                 }
@@ -77,7 +83,17 @@ impl WorldState {
                     return false;
                 }
             }
-            Event::Teleport(position) => self.teleport = Some(position),
+            Event::Teleport {
+                dimension_epoch,
+                sequence,
+                correction,
+            } => match player::admit(self, dimension_epoch, sequence, correction) {
+                Ok(accepted) => return accepted,
+                Err(error) => {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+            },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
             Event::Death { player_id, message } => self.death = Some((player_id, message)),
             Event::Respawn(spawn) => {

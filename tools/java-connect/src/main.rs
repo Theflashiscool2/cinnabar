@@ -135,6 +135,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             _=>Some(serde_json::to_value(&event)?),
                         };
                         if state.admit(event) && let Some(log)=log{output(log)?;}
+                        if let Some((revision, command)) = state.correction_command() {
+                            session.command(command)?;
+                            state.correction_queued(revision);
+                        }
                         if let Some(error)=state.terrain_error { session.shutdown().await; return Err(error.into()); }
                         if state.bootstrap.is_some() && state.teleport.is_some() && state.keepalives>=keepalives && state.death.is_none() && state.vitals.as_ref().is_some_and(|v| v.health>0.) && state.terrain.len()>=required_chunks {
                             let model_quads = if let (Some(position),Some(models))=(sample,models.as_mut()) {

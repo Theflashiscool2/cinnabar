@@ -3,6 +3,7 @@ mod configuration;
 mod crypto;
 pub mod facts;
 mod login;
+mod motion;
 mod play;
 mod terrain;
 use crate::{
@@ -45,19 +46,30 @@ pub enum Error {
     Unsupported(&'static str),
     #[error("Java session consumer closed")]
     ConsumerClosed,
+    #[error("Java play: player authority did not acknowledge a teleport before its deadline")]
+    TeleportAdmissionTimeout,
 }
 /// Offline identities are allowed only when the caller explicitly requests a loopback fixture.
 pub enum Identity {
     Online(auth::Account),
     OfflineFixture { name: String },
 }
-/// User intent for this connection only; transport replies do not enter this queue.
+/// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
     Respawn,
     /// Sent only after the active dimension has actually reached renderer readiness.
     PlayerLoaded {
         dimension_epoch: u64,
+    },
+    /// The resolved player position, after the domain owner applies relative correction fields.
+    AcceptTeleport {
+        dimension_epoch: u64,
+        sequence: u64,
+        id: i32,
+        position: [f64; 3],
+        yaw: f32,
+        pitch: f32,
     },
 }
 pub struct Options {
@@ -84,7 +96,11 @@ impl Options {
 pub enum Event {
     Phase(Phase),
     Bootstrap(Box<Bootstrap>),
-    Teleport(facts::Teleport),
+    Teleport {
+        dimension_epoch: u64,
+        sequence: u64,
+        correction: facts::Teleport,
+    },
     Respawn(facts::Spawn),
     KeepAlive(i64),
     Vitals(facts::Vitals),
@@ -124,6 +140,8 @@ struct Connection {
     commands: Option<mpsc::Receiver<Command>>,
     dead: bool,
     loaded_epoch: Option<u64>,
+    pending_teleport: Option<(i32, u64)>,
+    correction_sequence: u64,
 }
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
 /// every in-flight read/write and its socket. Login deadlines do not limit the play lifetime.
@@ -193,6 +211,8 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         commands: options.commands.take(),
         dead: false,
         loaded_epoch: None,
+        pending_teleport: None,
+        correction_sequence: 0,
     };
     tokio::time::timeout(options.login_timeout, c.login(&options))
         .await

@@ -72,7 +72,8 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   2560×1440). Java selection, persistence and join routing pass alongside existing
   Bedrock server-form tests. A signed-in graphical connection remains blocked above.
 - [ ] Qualify SRV behavior against an authorized DNS/proxy fixture and custom-pack
-  admission limits. Mid-session reconfiguration, tag replacement, relative teleports,
+  admission limits. Mid-session reconfiguration, tag replacement, initial relative
+  teleports without an admitted player anchor,
   required resource packs and interactive server consent/dialogs are unsupported.
 - [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light
   masks, incremental block/biome/light updates and unloads into `world::java`.
@@ -82,6 +83,18 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   light mask consistency, and obsolete publication rejection.
 - [x] Handle death/health facts and explicit respawn intent. Partial encrypted reads
   survive input dispatch; independent wire coverage checks the respawn request.
+- [x] Resolve subsequent relative player corrections in the world domain before
+  acknowledgement, preserving double precision and rotated velocity semantics.
+  Fence replies by session, dimension and correction receipt; retain full-queue
+  replies and reject stale/reused-ID acknowledgements. Deterministic encrypted-wire,
+  timeout/cancel and authority tests cover this boundary, including a bit-exact
+  rotated-velocity vector from the pinned vanilla implementation. Linux offline
+  live evidence covers relative and absolute corrections in both the diagnostic
+  and rendered launcher path; camera and admitted/server position and rotation
+  agree. Seven real keepalives and clean Save & Quit were observed in the graphical
+  run. Reconnect advanced generation, reset correction receipts, rendered fresh
+  terrain and answered two further keepalives. Local movement physics remains
+  unimplemented.
 - [x] Linux offline vanilla fixture: recover a saved dead player through explicit
   respawn, admit a new dimension epoch and 49 columns, then reconnect into 49 fresh
   columns. Each session answered two real keepalives with positive authoritative

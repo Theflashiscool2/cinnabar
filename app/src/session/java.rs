@@ -42,6 +42,16 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         return;
     };
     for _ in 0..64 {
+        if let Some((revision, command)) = controller.java_world.correction_command() {
+            match java.command(command) {
+                Ok(()) => controller.java_world.correction_queued(revision),
+                Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => break,
+                Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                    controller.java_world.terrain_error = Some("Java correction transport closed");
+                    break;
+                }
+            }
+        }
         let Some(event) = java.poll() else {
             break;
         };

@@ -31,7 +31,7 @@ pub(crate) struct Presentation {
     removals: BTreeSet<[i32; 3]>,
     allowance: PublicationAllowance,
     frame: u64,
-    teleport: Option<i32>,
+    teleport: Option<u64>,
     opened: bool,
     next_generation: u64,
     uploaded: BTreeSet<[i32; 3]>,
@@ -153,17 +153,17 @@ pub(crate) fn update(
     };
     let state = &mut controller.java_world;
     if let Some(position) = &state.teleport
-        && p.teleport != Some(position.id)
+        && p.teleport != Some(position.revision)
     {
-        let feet = Vec3::from_array(position.position.map(|n| n as f32));
+        let feet = Vec3::from_array(position.motion.position.map(|n| n as f32));
         // Standing Java eye height; pose changes belong to the upcoming native movement slice.
         view.set_subject_position(feet + Vec3::Y * 1.62, feet);
         view.set_rotation(
-            Quat::from_rotation_y((-position.yaw + 180.).to_radians())
-                * Quat::from_rotation_x(-position.pitch.to_radians()),
+            Quat::from_rotation_y((-position.motion.yaw + 180.).to_radians())
+                * Quat::from_rotation_x(-position.motion.pitch.to_radians()),
         );
         view.reanchor_camera();
-        p.teleport = Some(position.id);
+        p.teleport = Some(position.revision);
     }
     if p.failure.is_none()
         && p.stream.is_none()
@@ -331,7 +331,7 @@ pub(crate) fn update(
         }
     }
     let spawn_ready = state.teleport.as_ref().is_some_and(|t| {
-        let section = t.position.map(|v| (v.floor() as i32).div_euclid(16));
+        let section = t.motion.position.map(|v| (v.floor() as i32).div_euclid(16));
         p.uploaded.contains(&section)
     });
     if let Some(error) = &p.failure {
@@ -341,7 +341,7 @@ pub(crate) fn update(
             p.opened = false;
         }
         menu.set_java_diagnostic(format!("Java terrain incomplete: {error}"));
-    } else if !p.opened && spawn_ready {
+    } else if !p.opened && spawn_ready && !state.awaiting_correction_ack() {
         // Actual nonempty spawn terrain reached GPU upload; this does not claim gameplay support.
         if let Some(java) = &controller.java
             && java

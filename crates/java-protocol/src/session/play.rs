@@ -5,9 +5,12 @@ impl Connection {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
         loop {
             let packet = tokio::select! {
-                result = tokio::time::timeout_at(deadline, self.stream.read()) => {
+                result = tokio::time::timeout_at(deadline, self.stream.read()), if self.pending_teleport.is_none() => {
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                     result.map_err(|_| Error::Timeout(Phase::Play))??
+                },
+                _ = tokio::time::sleep_until(deadline), if self.pending_teleport.is_some() => {
+                    return Err(Error::TeleportAdmissionTimeout);
                 },
                 command = async {
                     match &mut self.commands {
@@ -16,13 +19,12 @@ impl Connection {
                     }
                 } => {
                     match command {
-                        Some(Command::Respawn) if self.dead => self.send("ServerboundClientCommandPacket", &[0]).await?,
-                        Some(Command::Respawn) => {},
-                        Some(Command::PlayerLoaded{dimension_epoch}) if dimension_epoch==self.dimension_epoch && self.bootstrapped && self.loaded_epoch!=Some(dimension_epoch) => {
-                            self.send("ServerboundPlayerLoadedPacket", &[]).await?;
-                            self.loaded_epoch=Some(dimension_epoch);
-                        },
-                        Some(Command::PlayerLoaded{..})=>{},
+                        Some(command) => {
+                            if self.command(command).await? {
+                                deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                            }
+                        }
+                        None if self.pending_teleport.is_some() => return Err(Error::ConsumerClosed),
                         None => self.commands = None,
                     }
                     continue;
@@ -77,21 +79,29 @@ impl Connection {
                         return Err(ProtocolError::Invalid("position before world login").into());
                     }
                     let position = facts::Teleport::read(&mut r)?;
-                    let mut reply = Vec::new();
-                    if position.relative != 0 {
-                        return Err(Error::Unsupported(
-                            "relative teleports before movement integration",
-                        ));
+                    r.finish()?;
+                    if self.commands.is_none() {
+                        return Err(Error::ConsumerClosed);
                     }
-                    codec::write_varint(position.id, &mut reply);
-                    for coordinate in position.position {
-                        reply.extend(coordinate.to_be_bytes());
-                    }
-                    reply.extend(position.yaw.to_be_bytes());
-                    reply.extend(position.pitch.to_be_bytes());
-                    self.send("ServerboundAcceptTeleportationPacket", &reply)
-                        .await?;
-                    self.emit(Event::Teleport(position)).await?;
+                    self.correction_sequence = self
+                        .correction_sequence
+                        .checked_add(1)
+                        .ok_or(ProtocolError::Invalid("Java correction sequence overflow"))?;
+                    self.pending_teleport = Some((position.id, self.correction_sequence));
+                    // Backpressure preserves correction order: no subsequent play packet is
+                    // admitted until this correction reaches the player owner and its reply.
+                    deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+                    tokio::time::timeout_at(
+                        deadline,
+                        self.emit(Event::Teleport {
+                            dimension_epoch: self.dimension_epoch,
+                            sequence: self.correction_sequence,
+                            correction: position,
+                        }),
+                    )
+                    .await
+                    .map_err(|_| Error::TeleportAdmissionTimeout)??;
+                    continue;
                 }
                 "ClientboundChunkBatchFinishedPacket" => {
                     let size = r.var()?;

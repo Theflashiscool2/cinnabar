@@ -113,10 +113,38 @@ the rendering thread; entity/inventory notifications remain outside admitted sta
 the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
-or interactive dialogs, relative teleports before movement integration, mid-session reconfiguration and tag replacement fail
+or interactive dialogs, an initial relative teleport without an admitted anchor,
+mid-session reconfiguration and tag replacement fail
 clearly. Entity/inventory decoding, movement, chat signing and interactions remain
 unimplemented. Native assets/mesh publication have the limited offline rendered
 evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
+
+`world::java::player::Motion` owns double-precision position/velocity and correction
+math. `client-world::java` resolves absolute/relative corrections against that current
+authority, including rotated relative velocity. The socket pauses ordered packet
+admission until the resolved pose is returned through its bounded command queue;
+it never acknowledges raw relative coordinates. Session, dimension and a monotonic
+correction receipt fence stale replies, including reused server teleport IDs.
+An unadmitted correction has a ten-second deadline; cancellation still closes the
+transport. This deadline is an explicit implementation budget, not a vanilla parity
+claim. The application retains a full-queue reply for a later frame and applies each
+new correction receipt to the camera. Physics and outbound movement remain separate,
+unfinished work. Deterministic coverage checks encrypted wire ordering, cancellation,
+timeouts, correction precision and stale receipts.
+
+Linux offline vanilla acceptance on 2026-10-22 also exercised real corrections:
+the diagnostic client admitted two relative teleports (wire flags `255`), an
+absolute return, 49 columns and three keepalives. In the headless graphical client,
+the saved Java row reached the rendered world; a server relative teleport changed
+feet from `[6.5, -60, 10.5]` to `[7.5, -60, 12.5]` with yaw/pitch `90/25`.
+Admitted facts, camera and server entity data agreed, and fresh before/after frames
+were inspected at 1280×720, scale 1, Vulkan lavapipe. An absolute return also replaced
+the camera pose; seven real keepalives were observed before Save & Quit cleared
+the native presentation and the server reported zero players. This is server
+correction evidence, not local movement physics, entity rendering or gameplay.
+Rejoining in the same client advanced generation `2→4`, reset the correction
+receipt to the new connection, rendered 49 fresh columns and answered two more
+keepalives without restoring the retired pose.
 
 ## Terrain admission and native graphics (experimental)
 

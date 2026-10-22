@@ -12,7 +12,10 @@ use tokio_util::sync::CancellationToken;
 fn text(s: &str, out: &mut Vec<u8>) {
     codec::write_string(s, 32767, out).unwrap();
 }
-async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, encrypted: bool) {
+async fn through_initial_position(
+    listener: TcpListener,
+    encrypted: bool,
+) -> Stream<tokio::net::TcpStream> {
     let (socket, _) = listener.accept().await.unwrap();
     let mut wire = Stream::new(socket);
     let handshake = wire.read().await.unwrap();
@@ -101,6 +104,10 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     }
     position.extend([0; 12]);
     wire.write(&position).await.unwrap();
+    wire
+}
+async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, encrypted: bool) {
+    let mut wire = through_initial_position(listener, encrypted).await;
     let mut acknowledgement = vec![0, 7];
     for coordinate in [1f64, 64., 2.] {
         acknowledgement.extend(coordinate.to_be_bytes());
@@ -109,6 +116,23 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     assert_eq!(wire.read().await.unwrap(), acknowledgement);
     // Independent official protocol-777 report: player_loaded is 44, with no payload.
     assert_eq!(wire.read().await.unwrap(), [0x2c]);
+    // Relative correction arrives after the renderer acknowledgement. Resolved coordinates
+    // must come back from the player authority, not be echoed from this delta packet.
+    let mut relative = vec![0x49, 7];
+    for n in [2f64, -1., 4., 25., 0., 0.] {
+        relative.extend(n.to_be_bytes());
+    }
+    relative.extend(90f32.to_be_bytes());
+    relative.extend((-45f32).to_be_bytes());
+    relative.extend(0x1ffi32.to_be_bytes());
+    wire.write(&relative).await.unwrap();
+    let mut resolved = vec![0, 7];
+    for n in [3f64, 63., 6.] {
+        resolved.extend(n.to_be_bytes());
+    }
+    resolved.extend(90f32.to_be_bytes());
+    resolved.extend((-45f32).to_be_bytes());
+    assert_eq!(wire.read().await.unwrap(), resolved);
     // Official protocol-777 report: death 69, client command 12, respawn 84.
     wire.write(&[0x45, 42, 8, 0, 4, b't', b'e', b's', b't'])
         .await
@@ -159,9 +183,56 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                     assert_eq!(b.server_session, uuid::Uuid::from_bytes([0x22; 16]));
                     bootstrap = true
                 }
-                Event::Teleport(p) => {
+                Event::Teleport {
+                    dimension_epoch,
+                    sequence,
+                    correction: p,
+                } => {
+                    assert_eq!(dimension_epoch, 1);
+                    if sequence == 2 {
+                        assert_eq!(p.id, 7);
+                        commands
+                            .send(session::Command::AcceptTeleport {
+                                dimension_epoch,
+                                sequence: 1,
+                                id: 7,
+                                position: [1., 64., 2.],
+                                yaw: 0.,
+                                pitch: 0.,
+                            })
+                            .await
+                            .unwrap();
+                        assert_eq!(p.position, [2., -1., 4.]);
+                        assert_eq!(p.relative, 0x1ff);
+                        commands
+                            .send(session::Command::AcceptTeleport {
+                                dimension_epoch,
+                                sequence,
+                                id: p.id,
+                                position: [3., 63., 6.],
+                                yaw: 90.,
+                                pitch: -45.,
+                            })
+                            .await
+                            .unwrap();
+                        continue;
+                    }
                     assert_eq!(p.position, [1., 64., 2.]);
                     position = true;
+                    // Retired epoch, wrong id, then the admitted pose. Only the last is sent.
+                    for (epoch, id) in [(99, 7), (1, 99), (1, 7)] {
+                        commands
+                            .send(session::Command::AcceptTeleport {
+                                dimension_epoch: epoch,
+                                sequence,
+                                id,
+                                position: p.position,
+                                yaw: p.yaw,
+                                pitch: p.pitch,
+                            })
+                            .await
+                            .unwrap();
+                    }
                     for epoch in [99, 1, 1] {
                         commands
                             .send(session::Command::PlayerLoaded {
@@ -237,4 +308,50 @@ async fn wrong_state_packet_fails_without_play() {
     .await;
     assert!(matches!(result, Err(session::Error::Protocol(_))));
     server.await.unwrap();
+}
+
+#[tokio::test]
+async fn unapplied_correction_times_out_and_cancellation_closes_waiting_transport() {
+    for cancelled in [false, true] {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let server = tokio::spawn(async move {
+            let mut wire = through_initial_position(listener, false).await;
+            assert!(
+                wire.read().await.is_err(),
+                "no acknowledgement before domain admission"
+            );
+        });
+        let (tx, mut rx) = mpsc::channel(32);
+        let (_commands, input) = mpsc::channel(2);
+        let cancel = CancellationToken::new();
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                if matches!(rx.recv().await.unwrap().event, Event::Teleport { .. }) {
+                    break;
+                }
+            }
+        })
+        .await
+        .unwrap();
+        if cancelled {
+            cancel.cancel();
+            assert!(matches!(
+                client.await.unwrap(),
+                Err(session::Error::Cancelled)
+            ));
+        } else {
+            tokio::time::pause();
+            tokio::time::advance(Duration::from_secs(11)).await;
+            assert!(matches!(
+                client.await.unwrap(),
+                Err(session::Error::TeleportAdmissionTimeout)
+            ));
+            tokio::time::resume();
+        }
+        server.await.unwrap();
+    }
 }

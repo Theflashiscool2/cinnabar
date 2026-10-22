@@ -38,6 +38,8 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         height: int("height")?,
     });
     state.teleport = None;
+    state.player_motion = None;
+    state.pending_correction = None;
     Ok(())
 }
 fn palette<T: Copy + From<u32>>(p: wire::Palette) -> Result<domain::Palette<T>, &'static str> {
