@@ -39,6 +39,43 @@ treating an inherited entry as new work. Missing acceptance evidence means a fea
 is not fully qualified; it does not mean the feature is unimplemented. This cleanup
 closes no gate and provides no new runtime or performance evidence.
 
+## Native Java Edition support — experimental
+
+The native foundation targets the single Java release/protocol pinned in
+[`crates/java-protocol/data/target.json`](crates/java-protocol/data/target.json).
+Saved-server edition routing, cancellable background discovery, separate Java
+account storage, login/configuration and typed play bootstrap are implemented.
+The app exposes a truthful protocol diagnostic; no Java terrain is rendered.
+See [the module contract](crates/java-protocol/README.md) for limits and commands.
+
+- [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
+  native task owner and keep Bedrock authentication/transport independent.
+- [x] Implement bounded discovery with original virtual hostname, DNS/SRV,
+  optional latency after valid status, and explicit version compatibility.
+- [x] Implement native framing, compression, encryption primitives, login/configuration,
+  complete registry transfer and generation-scoped player/world/dimension handoff.
+- [x] Implement configured Microsoft device flow, Java service/profile checks,
+  refresh, protected persistence, logout/account switching and session join.
+  Fake-service coverage is not evidence of online-mode service acceptance.
+- [x] Local vanilla acceptance on 2026-10-22: two successive sessions completed
+  login/configuration/play, admitted 32 registries and initial world/position facts,
+  and each answered two actual keepalives before explicit teardown. The offline
+  fixture was checksum verified, loopback bound, whitelisted and EULA authorized.
+  This establishes protocol handoff, not a playable/rendered Java world.
+- [ ] Qualify online mode. No OAuth application is configured for this fork;
+  registered/approved public-client configuration, user sign-in and Java entitlement
+  are required. No unrelated application ID is borrowed.
+- [x] Validate launcher edition form and diagnostic with rendered fixtures and input
+  regressions. CPU frames were inspected on Linux at 1280×720, GUI scale 2;
+  native pointer/keyboard input tests passed at DPI 1 and 2 (1280×720 and
+  2560×1440). Java selection, persistence and join routing pass alongside existing
+  Bedrock server-form tests. A signed-in graphical connection remains blocked above.
+- [ ] Qualify SRV behavior against an authorized DNS/proxy fixture and custom-pack
+  admission limits. Mid-session reconfiguration, tag replacement, relative teleports,
+  required resource packs and interactive server consent/dialogs are unsupported.
+- [ ] Implement and qualify Java chunks, entities, movement, signed chat, inventory,
+  interactions, assets and rendering. Deferred notifications are not gameplay state.
+
 ## Phase 0 — End-to-end acceptance
 
 - [ ] Complete a sustained streamed-world acceptance run: join, move at speed, and
