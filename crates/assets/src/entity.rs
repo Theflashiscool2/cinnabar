@@ -8,6 +8,7 @@ mod geometry;
 pub use engine_variables::EngineVariable;
 pub mod interactions;
 pub mod item_use;
+pub mod java;
 mod molang_program;
 pub mod placement;
 mod query_manifest;

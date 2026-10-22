@@ -112,6 +112,11 @@ and pack carriers remain local inputs.
 Its state catalog remains separate from shared GPU model/material resources.
 `assetc java-physics` exports native collision/surface facts from the verified pinned
 server; `assets::registry::java::physics` validates the report before admission.
+`assetc java-entities` exports hash-pinned local model hierarchies and checks native
+entity-schema facts using the same verified offline runtime preparation. It does
+not start an official client. `assets::entity::java` owns the native hierarchy
+loader; model coordinates stay explicit until render-model admission. Exported
+geometry and textures remain runtime assets, never source-controlled carriers.
 `sim::java` owns native double-precision collision, separate from Bedrock arithmetic.
 `sim::java::travel` owns dry-land tick math. `gameplay::java` borrows the single
 world motion authority, tracks tick/send baselines and retains one pending outbound

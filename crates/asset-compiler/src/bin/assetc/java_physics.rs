@@ -4,9 +4,8 @@ use serde::Deserialize;
 use std::{
     error::Error,
     fs,
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 const TARGET: &str = include_str!("../../../../java-protocol/data/target.json");
@@ -35,9 +34,6 @@ pub(super) struct Options {
 #[derive(Deserialize)]
 struct Target {
     game_version: String,
-    java_runtime_major: u32,
-    server_sha256: String,
-    server_bytes: u64,
     block_registry_report: Registry,
     physics_report: Report,
     player_attributes_report: Report,
@@ -58,84 +54,16 @@ pub(super) fn generate(options: Options) -> Result<(), Box<dyn Error>> {
         return Err("Java physics preparation requires explicit --accept-eula".into());
     }
     let target: Target = serde_json::from_str(TARGET)?;
-    verify(&options.server, &target.server_sha256, target.server_bytes)?;
-    // Preserve caller-relative executable paths when the exporter runs in its isolated directory.
-    let java = if options.java.components().count() > 1 {
-        options.java.canonicalize()?
-    } else {
-        options.java.clone()
-    };
-    let work = tempfile::tempdir()?;
-    let mut archive = zip::ZipArchive::new(fs::File::open(&options.server)?)?;
-    let mut jars = Vec::new();
-    for folder in ["versions", "libraries"] {
-        let mut list = String::new();
-        archive
-            .by_name(&format!("META-INF/{folder}.list"))?
-            .read_to_string(&mut list)?;
-        if folder == "versions" && list.lines().count() != 1 {
-            return Err("Java server must contain exactly one pinned version".into());
-        }
-        for line in list.lines() {
-            let fields = line.split('\t').collect::<Vec<_>>();
-            let [hash, name, path] = fields.as_slice() else {
-                return Err("invalid Java bundled library inventory".into());
-            };
-            if folder == "versions" && *name != target.game_version {
-                return Err("Java bundled version does not match target".into());
-            }
-            // ZIP paths are lookup keys only. Files are written under generated flat names.
-            let jar = work.path().join(format!("library-{}.jar", jars.len()));
-            let mut entry = archive.by_name(&format!("META-INF/{folder}/{path}"))?;
-            let length = entry.size();
-            std::io::copy(&mut entry, &mut fs::File::create(&jar)?)?;
-            verify(&jar, hash, length)?;
-            jars.push(jar);
-        }
-    }
-    let source = work.path().join("ExportPhysics.java");
-    fs::write(&source, EXPORTER)?;
-    let classpath = std::env::join_paths(&jars)?;
-    let release = target.java_runtime_major.to_string();
-    let mut compiler = if let Some(jar) = options.compiler_jar {
-        let mut command = Command::new(&java);
-        command
-            .args(["-Xmx512m", "-jar"])
-            .arg(jar)
-            .args(["-source", &release, "-target", &release]);
-        command
-    } else {
-        let mut command = Command::new(&options.javac);
-        command.args(["--release", &release]);
-        command
-    };
-    let result = compiler
-        .arg("-cp")
-        .arg(&classpath)
-        .arg("-d")
-        .arg(work.path())
-        .arg(&source)
-        .status()?;
-    if !result.success() {
-        return Err(format!("Java physics exporter compilation failed: {result}").into());
-    }
-    let generated = work.path().join("physics.bin");
-    let player_attributes = work.path().join("player-attributes.json");
-    let classpath = std::env::join_paths(
-        std::iter::once(work.path()).chain(jars.iter().map(PathBuf::as_path)),
+    let runtime = super::java_runtime::Runtime::new(&options.server, &options.java)?;
+    let generated = runtime.path().join("physics.bin");
+    let player_attributes = runtime.path().join("player-attributes.json");
+    runtime.export(
+        "ExportPhysics",
+        EXPORTER,
+        &options.javac,
+        options.compiler_jar.as_deref(),
+        &[&generated, &player_attributes],
     )?;
-    let result = Command::new(&java)
-        .arg("-Xmx512m")
-        .arg("-cp")
-        .arg(classpath)
-        .arg("ExportPhysics")
-        .arg(&generated)
-        .arg(&player_attributes)
-        .current_dir(work.path())
-        .status()?;
-    if !result.success() {
-        return Err(format!("Java physics exporter failed: {result}").into());
-    }
     verify(
         &player_attributes,
         &target.player_attributes_report.sha256,
@@ -169,16 +97,7 @@ pub(super) fn generate(options: Options) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn verify(path: &Path, sha256: &str, bytes: u64) -> Result<(), Box<dyn Error>> {
-    if fs::metadata(path)?.len() != bytes || assets::vanilla_pack::sha256_file(path)? != sha256 {
-        return Err(format!(
-            "Java physics source hash/length mismatch: {}",
-            path.display()
-        )
-        .into());
-    }
-    Ok(())
-}
+use super::java_runtime::verify;
 
 #[cfg(test)]
 mod tests {

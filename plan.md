@@ -49,6 +49,8 @@ The app renders an experimental native terrain slice through the existing render
 Dry-land movement has narrow Linux offline fixture coverage; the complete playable
 loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
+Native entity model preparation is reproducible against pinned archives; model loading
+has deterministic coverage, while entity frame publication remains pending.
 
 - [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
   native task owner and keep Bedrock authentication/transport independent.

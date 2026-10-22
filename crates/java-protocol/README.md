@@ -357,6 +357,31 @@ special block callbacks, effects, entity collision and full respawn/dimension
 movement retention remain incomplete; unsupported queries report a blocked movement
 reason, never empty collision. These changes do not establish a playable client.
 
+## Native entity asset preparation
+
+`assetc java-entities` uses original export code with the verified server libraries
+and client model factories. It writes local `models.json`, with its size/hash pinned
+in `data/target.json`, and checks the generated entity schema report. No official
+client process or second renderer runs. The exported pig, cold-pig, baby-pig and
+wide/slim player hierarchies retain pixel coordinates, face normals, winding, UVs,
+parent transforms and visibility. `assets::entity::java` verifies and loads these
+hierarchies. Runtime geometry and textures must remain outside source control.
+
+After accepting the Minecraft EULA and obtaining the pinned archives:
+
+```sh
+cargo run --locked -p asset-compiler --bin assetc -- java-entities \
+  --server /path/to/server.jar --client /path/to/client.jar \
+  --out /path/to/java-assets/models.json --accept-eula
+```
+
+Use Java 25 with `javac`, or supply `--java /path/to/java` and
+`--compiler-jar /path/to/ecj.jar` as described for collision preparation. Linux
+fixture tests reproduced both entity report hashes and the existing collision and
+player-attribute hashes after the exporter infrastructure was shared. Loader tests
+reject incorrect provenance, duplicate parts and invalid normals. These checks
+establish prepared model data only; native entity frame publication is pending.
+
 ## Entity lifecycle work in progress
 
 The target manifest also pins 161 native entity identities, checked against the

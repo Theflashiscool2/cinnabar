@@ -48,5 +48,17 @@
     "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/type/EntityType.java",
     "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
     "official_registry_report_path": "reports/registries.json"
+  },
+  "entity_models_report": {
+    "path": "models.json",
+    "bytes": 232391,
+    "sha256": "0a8f7981955dedbe4999b6c69fcfc065a12c8a4517cc317c47d282ae41e41d7b",
+    "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
+  },
+  "entity_facts_report": {
+    "path": "entity-facts.json",
+    "bytes": 35326,
+    "sha256": "c1bb08b177f4e02a408c2d018deb1328a26b9400b8aa0066f828b1d884d27386",
+    "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   }
 }
