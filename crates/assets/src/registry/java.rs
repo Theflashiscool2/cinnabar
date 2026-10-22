@@ -3,6 +3,7 @@ pub mod catalog;
 pub mod geometry;
 pub mod graphics;
 pub mod models;
+pub mod physics;
 pub mod selectors;
 pub mod source;
 pub mod textures;

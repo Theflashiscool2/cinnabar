@@ -12,6 +12,15 @@ pub(super) fn validate_command_outputs(command: &Command) -> Result<(), AssetErr
     let sidecar;
     let item_inputs;
     match command {
+        JavaPhysics(options) => {
+            inputs.extend([
+                options.server.as_path(),
+                options.java.as_path(),
+                options.javac.as_path(),
+            ]);
+            inputs.extend(options.compiler_jar.as_deref());
+            outputs.push(&options.out);
+        }
         EntityFacts { source, out } => {
             inputs.push(source);
             outputs.push(out);

@@ -110,6 +110,10 @@ and pack carriers remain local inputs.
 
 `assets::registry::java` owns native Java runtime block/model/texture compilation.
 Its state catalog remains separate from shared GPU model/material resources.
+`assetc java-physics` exports native collision/surface facts from the verified pinned
+server; `assets::registry::java::physics` validates the report before admission.
+`sim::java` owns native double-precision collision, separate from Bedrock arithmetic.
+Player input/motion integration with that collision owner is still in progress.
 The Java domain store and bounded mesh pipeline fence session, dimension and neighbor
 revisions; the application owns asset installation and render publication permits.
 Its Java presentation resource exposes GPU upload readiness to the shared loading

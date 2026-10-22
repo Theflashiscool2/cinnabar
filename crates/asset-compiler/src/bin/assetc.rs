@@ -57,6 +57,8 @@ mod lang_command;
 #[path = "assetc/output_bundle.rs"]
 mod output_bundle;
 use output_bundle::write_output_bundle;
+#[path = "assetc/java_physics.rs"]
+mod java_physics;
 #[path = "assetc/output_validation.rs"]
 mod output_validation;
 #[path = "assetc/particle_command.rs"]
@@ -510,6 +512,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
                 out.display()
             );
         }
+        Command::JavaPhysics(options) => java_physics::generate(options)?,
         Command::Prepare {
             root,
             kit,

@@ -1,4 +1,4 @@
-//! Deterministic Bedrock movement simulation.
+//! Edition-specific movement simulation; Java retains its own arithmetic and collision facts.
 
 mod aabb;
 mod conformance;
@@ -38,3 +38,4 @@ pub use world::{
     TerrainSampleError, TerrainSampler, TerrainShape, TerrainShapeBinding, TerrainShapeOverride,
     TerrainState, WorldCollisionIdentity, WorldQueryError,
 };
+pub mod java;

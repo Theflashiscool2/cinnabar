@@ -122,6 +122,11 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
   results. Empty sections use zero-byte publication permits. Java world entry uses
   its GPU upload readiness and native player-loaded command, independently of the
   Bedrock loading gate; both loading paths have focused regression coverage.
+- [x] Export hash-pinned native collision/surface data from the verified server with
+  `assetc java-physics`. The authorized fixture test loads that output through Rust
+  and checks grass/air/stairs/water/ice/dynamic states. `sim::java` has deterministic
+  clipping/stepping coverage, including independent vanilla axis-order vectors.
+  This is preparation and collision-math evidence; no player movement is wired yet.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face
   occlusion, nonuniform biome tinting, spatial tint callbacks, animation/transparency
   semantics, clock/weather presentation and streaming new-state asset extension.

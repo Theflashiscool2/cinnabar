@@ -10,6 +10,7 @@ platform-specific = ["windows"]
 reads = [
     ".gitattributes",
     "Cargo.lock",
+    "crates/java-protocol/data/target.json",
     "assets/bedrock-target.json",
     "assets/block-projection-v2193.json",
     "assets/biome-projection-v2193.json",

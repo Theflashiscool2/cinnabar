@@ -255,6 +255,41 @@ pillar removed while disconnected and retains the server-authoritative wall hole
 This tests server-driven rendering, not client breaking/placement or physical
 movement. No Windows/macOS, visual parity or performance qualification is claimed.
 
+## Native collision data preparation (movement integration in progress)
+
+`assetc java-physics` verifies the manifest-pinned vanilla server archive and each
+bundled library, compiles an original offline exporter and loads the resulting
+report through `assets::registry::java::physics`. Only the generated report is a
+client runtime input; neither the server classes nor a JVM run inside the client.
+The report's byte length and SHA-256 live in `data/target.json`. It distinguishes
+static double-precision boxes, dynamic shapes, non-air empty shapes, fluids,
+friction/speed/jump/bounce properties and blocks with special movement callbacks.
+Dynamic shapes never become empty collision. The authorized Linux fixture test
+checks grass, air, stairs, water, ice, scaffolding and slime against the actual
+exported report, independently of visual models and Bedrock registry IDs.
+
+With a JDK matching the target manifest and an already obtained official server:
+
+```sh
+cargo run --locked -p asset-compiler --bin assetc -- java-physics \
+  --server /path/to/server.jar --out /path/to/java-assets/physics.bin \
+  --java /path/to/jdk/bin/java --javac /path/to/jdk/bin/javac --accept-eula
+```
+
+Only pass `--accept-eula` after accepting the Minecraft EULA. A locally supplied
+ECJ compiler can replace `--javac` with `--compiler-jar`; the fixture used
+`org.eclipse.jdt:ecj:3.44.0`, SHA-256
+`14c46ddc2e511c46c998da728f6a80f13a689c920f3832402f7ad150f6a6188d`.
+ECJ is an external preparation tool, under EPL-2.0; it is not a client dependency
+or bundled asset. JDK/compiler discovery and acquisition are explicit caller inputs.
+
+`sim::java::collision` contains separate double-precision clipping and stepping.
+It rejects retired scopes, missing chunks, unknown states and dynamic shapes;
+an explicit 32,768-cell foreground query budget remains a provisional limit.
+Deterministic collision tests include independently evaluated vanilla diagonal
+vectors. These routines are not yet wired to the running player's movement:
+report preparation and collision tests do not establish walking or playable support.
+
 ## Dependency choice and notices
 
 The starter's 15 tests covered status only and were rerun before extension.

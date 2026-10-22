@@ -59,6 +59,12 @@ fn main() {
         report["states"].as_u64().unwrap()
     );
     let client = &target["client_assets"];
+    let physics = &target["physics_report"];
+    code += &format!(
+        "pub const PHYSICS_REPORT_SHA256:&str={:?};\npub const PHYSICS_REPORT_BYTES:u64={};\n",
+        physics["sha256"].as_str().unwrap(),
+        physics["bytes"].as_u64().unwrap()
+    );
     code += &format!(
         "pub const CLIENT_ASSETS_SHA256:&str={:?};\npub const CLIENT_ASSETS_BYTES:u64={};\n",
         client["sha256"].as_str().unwrap(),
