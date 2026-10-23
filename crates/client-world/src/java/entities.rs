@@ -143,7 +143,7 @@ pub(super) fn admit(
             e.motion.yaw = yaw;
             e.motion.pitch = pitch;
             e.on_ground = on_ground;
-            e.queue_presentation_motion()
+            e.synchronize_presentation_motion()
         }),
         wire::Packet::Teleport {
             id,

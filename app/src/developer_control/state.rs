@@ -132,9 +132,23 @@ fn evaluate(world: &World, condition: &Condition) -> Result<Value, String> {
     }
 }
 
-fn player_position(world: &World) -> Option<[f32; 3]> {
+fn player_position(world: &World) -> Option<[f64; 3]> {
+    if let Some(state) = world
+        .get_resource::<crate::session::SessionController>()
+        .and_then(|controller| controller.native_java_world())
+    {
+        return world
+            .get_resource::<crate::session::java_render::Presentation>()?
+            .ready_position(state);
+    }
     let stream = world.resource::<ClientWorld>().stream.as_ref()?;
-    Some(stream.authority().resolved_server_position().position)
+    Some(
+        stream
+            .authority()
+            .resolved_server_position()
+            .position
+            .map(f64::from),
+    )
 }
 
 /// Screen names bottom first, e.g. `Gameplay`, `Hud`, `Chat`, `Menu(Pause)`.
@@ -301,7 +315,7 @@ pub(super) fn snapshot(world: &World) -> Value {
     let local_mods = crate::modding::developer_state(world);
 
     let mut snapshot = json!({
-        "in_world": stream.is_some(),
+        "in_world": player_position(world).is_some(),
         "sign_in": menu.map(|menu| menu.sign_in_status().as_str()),
         "immobile": world.get_resource::<client_state::PlayerRuntime>()
             .map(|player| player.facts.is_immobile()),

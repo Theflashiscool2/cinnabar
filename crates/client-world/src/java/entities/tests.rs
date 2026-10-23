@@ -35,6 +35,36 @@ fn decoded(name: &str, bytes: &[u8]) -> wire::Packet {
 }
 
 #[test]
+fn far_position_sync_retires_old_visual_targets_and_rebases_wire_deltas() {
+    let mut s = state();
+    s.admit(event(1, spawn()));
+    let sync = |position| wire::Packet::Position {
+        id: 99,
+        path: wire::Position::Linear(position),
+        rotation: [90., 0.],
+        on_ground: true,
+    };
+    assert!(s.admit(event(1, sync([1., 64., 0.]))));
+    assert!(s.admit(event(1, sync([100., 64., 0.]))));
+    let e = s.entities.get(99).unwrap();
+    // Pinned ClientPacketListener.handleEntityPositionSync snaps beyond 64 blocks.
+    assert_eq!(
+        e.presentation.as_ref().unwrap().track.current.position,
+        [100., 64., 0.]
+    );
+    assert_eq!(e.presentation.as_ref().unwrap().track.pending_steps(), 0);
+    // Independent relative packet: id 99, dx 4096, dy/dz zero, on-ground true.
+    assert!(s.admit(event(
+        1,
+        decoded(
+            "ClientboundMoveEntityPosPacket",
+            &[99, 1, 0x10, 0, 0, 0, 0, 0]
+        )
+    )));
+    assert_eq!(s.entities.get(99).unwrap().motion.position, [101., 64., 0.]);
+}
+
+#[test]
 fn native_motion_packets_seed_and_queue_presentation_but_metadata_and_velocity_do_not() {
     let mut s = state();
     s.admit(event(1, spawn()));

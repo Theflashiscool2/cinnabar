@@ -74,6 +74,25 @@ impl Presentation {
         self.dimension.as_ref().map(|_| self.opened)
     }
 
+    /// A diagnostic world entry requires an uploaded world from this exact authority lifetime.
+    #[cfg(feature = "developer-control")]
+    pub(crate) fn ready_position(
+        &self,
+        state: &client_world::java::WorldState,
+    ) -> Option<[f64; 3]> {
+        let dimension = state.terrain.dimension()?;
+        if !self.opened
+            || self.failure.is_some()
+            || state.terrain_error.is_some()
+            || state.phase != Some(java_protocol::session::Phase::Play)
+            || dimension.session != state.generation()
+            || self.dimension.as_ref() != Some(dimension)
+        {
+            return None;
+        }
+        state.player_motion.map(|motion| motion.position)
+    }
+
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({
@@ -405,5 +424,46 @@ mod tests {
         assert_eq!(terrain.bytes(), Some(64));
         assert!(!terrain.is_zero_byte());
         assert!(terrain_permit(&allowance, 1).is_none());
+    }
+
+    #[cfg(feature = "developer-control")]
+    #[test]
+    fn native_world_entry_waits_for_upload_and_rejects_retired_dimensions() {
+        let mut state = client_world::java::WorldState::default();
+        state.begin(7);
+        let dimension = Dimension {
+            session: 7,
+            epoch: 1,
+            name: "minecraft:overworld".into(),
+            min_y: -64,
+            height: 384,
+        };
+        state.terrain.begin(dimension.clone());
+        state.phase = Some(java_protocol::session::Phase::Play);
+        state.player_motion = Some(world::java::player::Motion {
+            position: [-1.25, -60., 12.5],
+            ..Default::default()
+        });
+        let mut presentation = Presentation::default();
+        presentation.dimension = Some(dimension.clone());
+        assert_eq!(presentation.ready_position(&state), None);
+        presentation.opened = true;
+        assert_eq!(
+            presentation.ready_position(&state),
+            Some([-1.25, -60., 12.5])
+        );
+
+        let mut replacement = dimension;
+        replacement.epoch += 1;
+        state.terrain.begin(replacement.clone());
+        assert_eq!(presentation.ready_position(&state), None);
+        presentation.dimension = Some(replacement);
+        presentation.failure = Some("fixture upload failure".into());
+        assert_eq!(presentation.ready_position(&state), None);
+        presentation.failure = None;
+        state.phase = Some(java_protocol::session::Phase::Configuration);
+        assert_eq!(presentation.ready_position(&state), None);
+        state.begin(8);
+        assert_eq!(presentation.ready_position(&state), None);
     }
 }

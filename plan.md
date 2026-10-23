@@ -165,8 +165,9 @@ server evidence; complex metadata and entity frame publication remain incomplete
   drained interpolation queue. Removal clears the body and cached pose; Save & Quit
   clears clocks/queues and reconnect renders the replacement pig with a fresh gait.
   The first session answered 14 keepalives and the reconnect answered two.
-  Remote short/relative teleports,
-  server tick-rate changes and mounted animation remain incomplete.
+  Native teleport anchors, short corrections and distant position-sync have focused
+  regression coverage and independent runtime vectors. Long teleport reconciliation,
+  non-ticking entities, server tick-rate changes and mounted animation remain incomplete.
 - [x] Exercise native numeric HUD publication on the Linux offline vanilla fixture:
   health, food, synchronized armor and XP match server queries and rendered frames.
   Equipment removal clears armor; mode changes control status/hand visibility. The
@@ -183,6 +184,8 @@ server evidence; complex metadata and entity frame publication remain incomplete
   semantics, clock/weather presentation and streaming new-state asset extension.
   The present slice requires a proven uniform biome field. Collision and player
   input remain incomplete; unbound camera translation is disabled in Java sessions.
+  A live elevated-platform case also exposed unallocated light sections being
+  treated as missing, suppressing both terrain and actor publication there.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 

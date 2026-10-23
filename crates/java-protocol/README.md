@@ -464,12 +464,27 @@ the replacement pig with a fresh gait. The first session answered 14 keepalives
 and the reconnect answered two. Eleven domain and six admission tests, scoped
 application-inclusive clippy with tests, formatting, architecture and the developer
 build pass. This run does not qualify frame budgets or Windows/macOS behavior.
-The developer-control `in_world` wait still checks Bedrock state; inspect
-`native_java_render.spawn_terrain_uploaded` and an actual rendered frame for Java.
+The developer-control `in_world` wait now requires a position and uploaded terrain
+from the current Java play session and dimension. Loading, reconfiguration, failed
+uploads and retired scopes cannot satisfy it. The normal Bedrock path is retained.
+This diagnostic identifies world entry, not complete gameplay support.
+Linux fixture verification confirms the wait succeeds after a real launcher join
+and world entry clears after Save & Quit. The run answered 26 keepalives.
 
-This remains a narrow native entity slice. Remote entity teleports currently snap
-and reset their delta anchor; vanilla short/relative teleport semantics still need
-correction and qualification. Tick-rate changes/freezing, shadows, glow outlines, death animation,
+Native teleport and absolute position-sync semantics remain separate: teleport
+preserves the delta-packet anchor and resolves relative fields against an active
+target or the completed pose. Short teleports interpolate; position-sync rebases
+the codec and snaps changes beyond the native distance cutoff. Completed rotation
+samples normalize angles independently of the raw target. Independent pinned-runtime
+probes and follow-up wire deltas cover these distinctions; regressions first exposed
+the wrong anchor and a distant sync retaining an obsolete visual target. Long
+teleport reconciliation with collisions and non-ticking entities remains unqualified.
+An 80-block vertical position-sync reached the correct domain position, but the
+destination capture exposed a lighting defect: unallocated light sections suppress
+both terrain and entity publication. That rendered correction case remains unverified.
+
+This remains a narrow native entity slice. Tick-rate changes/freezing, shadows,
+glow outlines, death animation,
 player-list identity/skins, equipment and other entity models remain unsupported.
 Lighting currently samples the authoritative feet cell. These limitations remain
 visible in diagnostics and do not establish entity visual parity or a playable client.

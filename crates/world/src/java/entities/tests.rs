@@ -138,7 +138,91 @@ fn reused_ids_get_new_lifetimes_and_retired_scopes_cannot_mutate_them() {
 }
 
 #[test]
-fn invalid_updates_are_atomic_and_teleports_replace_interpolation() {
+fn relative_teleport_keeps_the_native_target_and_preserves_the_delta_anchor() {
+    // Independent ClientPacketListener.setValuesFromPositionPacket probe on the pinned runtime:
+    // unmounted current x=1, queued x=10, relative +2 -> target x=12; next delta +1 -> x=11.
+    let mut entities = Entities::default();
+    entities.begin(7, 1);
+    let mut initial = spawn(42, 1);
+    initial.motion = Motion {
+        position: [1., 64., 0.],
+        velocity: [0.25, 0., 0.],
+        yaw: 20.,
+        pitch: 10.,
+    };
+    entities.spawn((7, 1), initial).unwrap();
+    entities
+        .update((7, 1), 42, |e| {
+            e.motion.position[0] = 10.;
+            e.delta_base = e.motion.position;
+            e.queue_presentation_motion()
+        })
+        .unwrap();
+    entities
+        .update((7, 1), 42, |e| {
+            e.teleport(
+                Motion {
+                    position: [2., 0., 0.],
+                    yaw: 5.,
+                    ..Default::default()
+                },
+                Relative {
+                    position: [true; 3],
+                    velocity: [true, false, false],
+                    yaw: true,
+                    pitch: true,
+                    rotate_velocity: false,
+                },
+                true,
+            )
+        })
+        .unwrap();
+    let entity = entities.get(42).unwrap();
+    assert_eq!(entity.motion.position, [12., 64., 0.]);
+    assert_eq!([entity.motion.yaw, entity.motion.pitch], [25., 10.]);
+    assert_eq!(entity.motion.velocity, [0.25, 0., 0.]);
+    assert_eq!(
+        decode_delta(entity.delta_base, [4096, 0, 0]),
+        [11., 64., 0.]
+    );
+    let track = &entity.presentation.as_ref().unwrap().track;
+    assert_eq!(track.current.position, [1., 64., 0.]);
+    assert_eq!(track.pending_steps(), 2);
+
+    for _ in 0..20 {
+        entities.tick_presentation();
+    }
+    entities
+        .update((7, 1), 42, |e| {
+            e.motion.yaw = 720.;
+            e.queue_presentation_motion()
+        })
+        .unwrap();
+    for _ in 0..4 {
+        entities.tick_presentation();
+    }
+    // The independent probe also checks an inactive handler after Entity.setRot(720, 0).
+    entities
+        .update((7, 1), 42, |e| {
+            e.teleport(
+                Motion {
+                    yaw: 5.,
+                    ..Default::default()
+                },
+                Relative {
+                    position: [true; 3],
+                    yaw: true,
+                    ..Default::default()
+                },
+                true,
+            )
+        })
+        .unwrap();
+    assert_eq!(entities.get(42).unwrap().motion.yaw, 5.);
+}
+
+#[test]
+fn invalid_updates_are_atomic_and_teleports_preserve_the_wire_anchor() {
     let mut entities = Entities::default();
     entities.begin(7, 1);
     assert!(
@@ -186,7 +270,8 @@ fn invalid_updates_are_atomic_and_teleports_replace_interpolation() {
         })
         .unwrap();
     let e = entities.get(42).unwrap();
-    assert_eq!(e.delta_base, [3., 70., 4.]);
+    // Native teleport does not reset VecDeltaCodec; absolute synchronization does.
+    assert_eq!(e.delta_base, old.position);
     assert!(e.path.is_empty());
     assert_eq!(e.teleport_revision, 2);
     assert!(e.on_ground);

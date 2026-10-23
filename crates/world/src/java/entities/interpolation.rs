@@ -7,6 +7,15 @@ use std::collections::VecDeque;
 /// Exceeding it is a reported incompatibility, never a silently discarded movement packet.
 pub const MAX_PENDING_STEPS: usize = 262_144;
 
+/// Pinned ClientPacketListener's squared cutoff for smoothing authoritative corrections.
+pub(super) fn within_correction_distance(from: [f64; 3], to: [f64; 3]) -> bool {
+    from.into_iter()
+        .zip(to)
+        .map(|(a, b)| (a - b) * (a - b))
+        .sum::<f64>()
+        <= 4096.
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Pose {
     pub position: [f64; 3],
@@ -189,6 +198,9 @@ impl Track {
             self.step_ticks -= step.ticks as f32;
             self.anchor = self.steps.pop_front().expect("observed step").pose;
         };
+        // Entity.setRot normalizes the sampled entity angles, independently of the raw target.
+        self.current.yaw %= 360.;
+        self.current.pitch %= 360.;
         let target_speed = (self.remaining_ticks / self.interval as f32).max(1.);
         self.speed += (target_speed - self.speed) * (1. / self.interval as f32);
         let advance = if self.speed < self.remaining_ticks {

@@ -363,26 +363,53 @@ impl Entity {
             presentation.head_to(self.head_yaw);
         }
     }
-    /// Replaces interpolation with a native teleport, including relative velocity/angle rules.
+    /// Absolute synchronization compares the displayed entity position to the new wire target.
+    pub fn synchronize_presentation_motion(&mut self) -> Result<(), &'static str> {
+        if let Some(presentation) = &mut self.presentation {
+            if interpolation::within_correction_distance(
+                presentation.track.current.position,
+                self.motion.position,
+            ) {
+                presentation.retarget(self.motion.into(), &self.path)?;
+            } else {
+                presentation.snap(self.motion.into());
+            }
+        }
+        Ok(())
+    }
+    /// Native teleport uses the pending target when interpolating, otherwise the completed pose.
+    /// Unlike absolute synchronization it never rebases the independent delta-packet decoder.
     pub fn teleport(
         &mut self,
         change: Motion,
         relative: Relative,
         on_ground: bool,
     ) -> Result<(), &'static str> {
-        let motion = self.motion.corrected(change, relative)?;
+        let mut base = self.motion;
+        if let Some(presentation) = &self.presentation
+            && presentation.track.pending_steps() == 0
+        {
+            let pose = presentation.track.current;
+            base.position = pose.position;
+            base.yaw = pose.yaw;
+            base.pitch = pose.pitch;
+        }
+        let motion = base.corrected(change, relative)?;
         let revision = self
             .teleport_revision
             .checked_add(1)
             .ok_or("Java entity teleport revision overflow")?;
+        if let Some(presentation) = &mut self.presentation {
+            if interpolation::within_correction_distance(base.position, motion.position) {
+                presentation.retarget(motion.into(), &[])?;
+            } else {
+                presentation.snap(motion.into());
+            }
+        }
         self.motion = motion;
-        self.delta_base = self.motion.position;
         self.path = Arc::from([]);
         self.on_ground = on_ground;
         self.teleport_revision = revision;
-        if let Some(presentation) = &mut self.presentation {
-            presentation.snap(self.motion.into());
-        }
         Ok(())
     }
 }

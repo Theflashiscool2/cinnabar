@@ -52,6 +52,28 @@ fn native_stepped_interpolation_matches_pinned_runtime_vectors() {
 }
 
 #[test]
+fn completed_native_rotation_is_normalized_independently_of_the_raw_target() {
+    let mut track = Track::new(Pose::default(), 3).unwrap();
+    track
+        .retarget(
+            Pose {
+                yaw: 720.,
+                pitch: 400.,
+                ..Default::default()
+            },
+            &[],
+        )
+        .unwrap();
+    for _ in 0..4 {
+        track.tick();
+    }
+    // Pinned Entity.setRot wraps both components after the handler samples its raw target.
+    assert_eq!(track.current.yaw, 0.);
+    assert_eq!(track.current.pitch, 40.);
+    assert_eq!(track.pending_steps(), 0);
+}
+
+#[test]
 fn native_interpolation_rejects_invalid_spans_before_allocating_a_path() {
     let mut track = Track::new(
         Pose {
