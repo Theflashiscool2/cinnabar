@@ -3,6 +3,8 @@ mod biomes;
 mod dynamics;
 mod entities;
 mod hud;
+#[cfg(test)]
+mod interaction_tests;
 mod nbt;
 pub mod player;
 mod roster;
@@ -26,6 +28,8 @@ pub struct WorldState {
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
     pub block_updates: u64,
+    /// Processing receipt only; acceptance comes from ordered authoritative block updates.
+    pub block_ack: Option<(u64, i32)>,
     pub vitals: Option<java_protocol::session::facts::Vitals>,
     pub death: Option<(i32, java_protocol::nbt::Value)>,
     pub phase: Option<Phase>,
@@ -67,9 +71,19 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::BlockAck {
+                dimension_epoch,
+                sequence,
+            } => {
+                if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
+                    return false;
+                }
+                self.block_ack = Some((dimension_epoch, sequence));
+            }
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
+                    self.block_ack = None;
                     self.status = Default::default();
                     self.bootstrap = None;
                     self.biomes.clear();

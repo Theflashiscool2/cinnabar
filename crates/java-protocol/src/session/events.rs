@@ -4,6 +4,10 @@ use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    BlockAck {
+        dimension_epoch: u64,
+        sequence: i32,
+    },
     Roster(roster::Packet),
     Hud(hud::Packet),
     Phase(Phase),

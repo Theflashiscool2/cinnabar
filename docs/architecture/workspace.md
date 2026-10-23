@@ -135,6 +135,14 @@ admits it before issuing a resolved teleport acknowledgement. The Java socket fe
 the reply by dimension and correction receipt and preserves packet order while
 waiting. Camera presentation observes the admitted correction without becoming a
 second player authority.
+`assets::registry::java::interaction` owns runtime outline and interaction-shape data,
+separately from collision facts. `sim::java::selection` owns native ray traversal;
+`gameplay::java::interaction` retains scoped intent under transport backpressure.
+The application binds finalized input to that owner and serializes native commands
+through the Java protocol owner. Acknowledgements are processing receipts; only
+ordered server updates alter terrain. Empty-hand creative breaking has Linux offline
+fixture evidence; survival,
+inventory-dependent behavior and entity targeting remain incomplete.
 `world::java::entities::visual` owns native appearance facts, including explicit
 incomplete metadata, registry-resolved pig variants and player clothing visibility. `client-world` validates
 wire accessor/serializer pairs using hash-pinned generated schemas. Local player

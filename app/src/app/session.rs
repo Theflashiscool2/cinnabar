@@ -5,6 +5,13 @@ pub(crate) fn configure_finish_system(app: &mut App) {
     app.init_resource::<crate::session::java_entities::Presentation>()
         .init_resource::<crate::session::java_render::Presentation>()
         .init_resource::<crate::session::java_movement::Movement>()
+        .init_resource::<crate::session::java_interaction::Interaction>()
+        .add_systems(
+            Update,
+            crate::session::java_interaction::update
+                .after(crate::session::java_movement::update)
+                .in_set(ClientFrameSet::NetworkSend),
+        )
         .add_systems(
             Update,
             crate::session::java_movement::update.in_set(ClientFrameSet::NetworkSend),

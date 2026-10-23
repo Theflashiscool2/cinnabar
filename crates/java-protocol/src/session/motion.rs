@@ -5,6 +5,26 @@ impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         match command {
+            Command::Interact {
+                dimension_epoch,
+                correction_sequence,
+                action,
+            } if dimension_epoch == self.dimension_epoch
+                && correction_sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead =>
+            {
+                self.send(
+                    "ServerboundPlayerActionPacket",
+                    &interaction::encode(action)?,
+                )
+                .await?;
+                // Pinned Minecraft.startAttack sends the empty Punch packet after block intent.
+                self.send("ServerboundPunchPacket", &[]).await?;
+            }
+            Command::Interact { .. } => {}
             Command::Move {
                 dimension_epoch,
                 sequence,

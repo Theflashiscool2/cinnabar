@@ -9,6 +9,8 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
             &target["player_list_schema"]["actions"],
             "PLAYER_LIST_ACTION",
         ),
+        (&target["interaction_schema"]["actions"], "PLAYER_ACTION"),
+        (&target["interaction_schema"]["faces"], "BLOCK_FACE"),
     ] {
         let path = pin["path"].as_str().unwrap();
         println!("cargo:rerun-if-changed={path}");
@@ -28,7 +30,10 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
             .split_once(';')
             .unwrap()
             .0;
-        let names = body.split(',').map(str::trim).collect::<Vec<_>>();
+        let names = body
+            .split(',')
+            .map(|value| value.trim().split('(').next().unwrap())
+            .collect::<Vec<_>>();
         assert_eq!(names.len() as u64, pin["count"].as_u64().unwrap());
         assert_eq!(
             names

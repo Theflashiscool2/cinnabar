@@ -413,6 +413,11 @@ pub(super) fn snapshot(world: &World) -> Value {
             .get_resource::<crate::session::java_movement::Movement>()
             .map(|m| m.diagnostic())
     );
+    snapshot["native_java_interaction"] = json!(
+        world
+            .get_resource::<crate::session::java_interaction::Interaction>()
+            .map(|i| i.diagnostic())
+    );
     if let Some(state) = world
         .get_resource::<crate::session::SessionController>()
         .and_then(|c| c.native_java_world())
@@ -424,6 +429,8 @@ pub(super) fn snapshot(world: &World) -> Value {
         snapshot["native_java"]["player_entity"] =
             json!(state.bootstrap.as_ref().map(|b| b.world.entity_id));
         snapshot["native_java"]["attributes"] = json!(state.player_dynamics.attributes.iter().map(|(name, attribute)| (name, json!({"base":attribute.base,"value":attribute.value().ok(),"modifiers":attribute.modifiers.iter().map(|m|json!({"name":m.name,"amount":m.amount,"operation":format!("{:?}",m.operation)})).collect::<Vec<_>>()}))).collect::<std::collections::BTreeMap<_,_>>());
+        snapshot["native_java"]["block_ack"] = json!(state.block_ack);
+        snapshot["native_java"]["block_updates"] = json!(state.block_updates);
         snapshot["native_java"]["deferred_entity_dynamics"] = json!(state.deferred_entity_dynamics);
         snapshot["native_java"]["players"] = json!({
             "count": state.players.iter().count(),

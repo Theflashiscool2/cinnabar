@@ -21,6 +21,7 @@ use world::java::Dimension;
 
 #[derive(Resource)]
 pub(crate) struct Presentation {
+    interaction: Option<Arc<::assets::registry::java::interaction::Table>>,
     physics: Option<Arc<::assets::registry::java::physics::Table>>,
     dimension: Option<Dimension>,
     pending: Option<crossbeam_channel::Receiver<Result<assets::Prepared, String>>>,
@@ -40,6 +41,7 @@ pub(crate) struct Presentation {
 impl Default for Presentation {
     fn default() -> Self {
         Self {
+            interaction: None,
             physics: None,
             dimension: None,
             pending: None,
@@ -64,6 +66,13 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    pub(super) fn interaction_shapes(
+        &self,
+    ) -> Option<&::assets::registry::java::interaction::Table> {
+        (self.opened && self.failure.is_none())
+            .then_some(self.interaction.as_deref())
+            .flatten()
+    }
     pub(super) fn movement_physics(&self) -> Option<&::assets::registry::java::physics::Table> {
         (self.opened && self.failure.is_none())
             .then_some(self.physics.as_deref())
@@ -225,6 +234,7 @@ pub(crate) fn update(
         p.pending = None;
         match result {
             Ok(prepared) => {
+                p.interaction = Some(prepared.interaction);
                 p.physics = Some(prepared.physics);
                 let revision = textures.revision.saturating_add(1);
                 *textures = ChunkTextureAssets::with_revision(
@@ -255,6 +265,11 @@ pub(crate) fn update(
         config.maximum_frame_items,
     );
     if let Some(stream) = p.stream.as_mut() {
+        if let Some(motion) = state.player_motion {
+            let mut eye = motion.position;
+            eye[1] += movement.0.eye_height(state);
+            stream.set_focus(eye.map(|v| (v / 16.).floor() as i32));
+        }
         for chunk in stream.poll(&mut state.terrain) {
             for &section in p.published.keys().filter(|s| [s[0], s[2]] == chunk) {
                 p.removals.insert(section);

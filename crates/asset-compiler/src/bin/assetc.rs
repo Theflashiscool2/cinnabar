@@ -59,6 +59,8 @@ mod output_bundle;
 use output_bundle::write_output_bundle;
 #[path = "assetc/java_entities.rs"]
 mod java_entities;
+#[path = "assetc/java_interaction.rs"]
+mod java_interaction;
 #[path = "assetc/java_physics.rs"]
 mod java_physics;
 #[path = "assetc/java_runtime.rs"]
@@ -518,6 +520,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
         Command::JavaEntities(options) => java_entities::generate(options)?,
+        Command::JavaInteraction(options) => java_interaction::generate(options)?,
         Command::Prepare {
             root,
             kit,

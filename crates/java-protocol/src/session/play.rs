@@ -40,6 +40,22 @@ impl Connection {
                 r.finish()?;
                 continue;
             }
+            if *name == "ClientboundBlockChangedAckPacket" {
+                let sequence = r.var()?;
+                r.finish()?;
+                if !self.bootstrapped || sequence < 0 {
+                    return Err(ProtocolError::Invalid(
+                        "Java block acknowledgement state/sequence",
+                    )
+                    .into());
+                }
+                self.emit(Event::BlockAck {
+                    dimension_epoch: self.dimension_epoch,
+                    sequence,
+                })
+                .await?;
+                continue;
+            }
             if let Some(packet) = roster::decode(name, &mut r)? {
                 r.finish()?;
                 if !self.bootstrapped {
@@ -247,7 +263,6 @@ impl Connection {
 const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundAnimatePacket",
     "ClientboundAwardStatsPacket",
-    "ClientboundBlockChangedAckPacket",
     "ClientboundBlockDestructionPacket",
     "ClientboundBlockEntityDataPacket",
     "ClientboundBlockEventPacket",

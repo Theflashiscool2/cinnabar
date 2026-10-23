@@ -21,6 +21,15 @@ pub(super) fn validate_command_outputs(command: &Command) -> Result<(), AssetErr
             inputs.extend(options.compiler_jar.as_deref());
             outputs.push(&options.out);
         }
+        JavaInteraction(options) => {
+            inputs.extend([
+                options.server.as_path(),
+                options.java.as_path(),
+                options.javac.as_path(),
+            ]);
+            inputs.extend(options.compiler_jar.as_deref());
+            outputs.push(options.out.as_path());
+        }
         JavaEntities(options) => {
             inputs.extend([
                 options.server.as_path(),

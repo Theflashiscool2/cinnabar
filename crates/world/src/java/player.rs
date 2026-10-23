@@ -95,9 +95,30 @@ pub fn trig(radians: f32) -> [f64; 2] {
         .map(|n| f64::from(table[((n as i64) & (SIZE as i64 - 1)) as usize]))
 }
 
+/// Pinned Entity.calculateViewVector: native float trigonometry/products widened to doubles.
+pub fn look(yaw: f32, pitch: f32) -> [f64; 3] {
+    let [ys, yc] = trig(-yaw * (std::f32::consts::PI / 180.)).map(|v| v as f32);
+    let [xs, xc] = trig(pitch * (std::f32::consts::PI / 180.)).map(|v| v as f32);
+    [f64::from(ys * xc), f64::from(-xs), f64::from(yc * xc)]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_view_vector_retains_float_products_before_double_widening() {
+        // Independent pinned Entity.calculateViewVector(30, 60) runtime result.
+        assert_eq!(
+            look(60., 30.),
+            [
+                -0.7499861121177673,
+                -0.49997231364250183,
+                0.4329966902732849
+            ]
+        );
+        assert_eq!(look(0., 0.), [0., -0., 1.]);
+    }
 
     #[test]
     fn absolute_and_relative_components_preserve_java_coordinate_precision() {

@@ -201,6 +201,19 @@ server evidence; complex metadata and entity frame publication remain incomplete
   semantics, clock/weather presentation and streaming new-state asset extension.
   The present slice requires a proven uniform biome field. Collision and player
   input remain incomplete; unbound camera translation is disabled in Java sessions.
+- [x] Exercise empty-hand creative breaking on the Linux offline vanilla fixture.
+  Runtime outline/interaction shapes, native ray traversal, sequenced actions and
+  scoped input/transport ownership have deterministic coverage. Actual Attack input
+  removes dirt through server block updates; a non-operator command-block attempt
+  is acknowledged but rejected and remains visible. Eight keepalives precede Save &
+  Quit cleanup. Reconnect advances generation 2→4, clears interaction state and
+  renders server-replaced terrain; a new sequence-1 break succeeds and eight further
+  keepalives are observed. Nearby mesh
+  dispatch has a failing-then-passing regression, but broad column invalidation and
+  edit-latency qualification remain open.
+- [ ] Complete survival/tool breaking, placement, entity targeting, local effects
+  and inventory-dependent restrictions. Creative fixture evidence is not general
+  interaction parity or a complete playable client.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 

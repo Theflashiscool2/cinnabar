@@ -1,4 +1,5 @@
 //! Native Java movement orchestration. WorldState retains the only predicted player motion.
+pub mod interaction;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};

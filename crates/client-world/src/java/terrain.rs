@@ -55,6 +55,7 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         java_protocol::session::hud::GameMode::from_id(i32::from(spawn.game_mode)),
     ));
     state.status.experience = None;
+    state.block_ack = None;
     state.teleport = None;
     state.player_motion = None;
     state.player_dynamics.unplaced_velocity = None;

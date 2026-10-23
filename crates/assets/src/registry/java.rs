@@ -2,6 +2,7 @@
 pub mod catalog;
 pub mod geometry;
 pub mod graphics;
+pub mod interaction;
 pub mod models;
 pub mod physics;
 pub mod selectors;

@@ -6,6 +6,7 @@ pub mod entities;
 mod events;
 pub mod facts;
 pub mod hud;
+pub mod interaction;
 pub use events::{Envelope, Event};
 mod login;
 mod motion;
@@ -64,6 +65,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    Interact {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+        action: interaction::Dig,
+    },
     Move {
         dimension_epoch: u64,
         sequence: u64,

@@ -116,7 +116,7 @@ the renderer receives no synthetic Bedrock packets or fabricated world.
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, an initial relative teleport without an admitted anchor,
 mid-session reconfiguration and tag replacement fail
-clearly. Inventory, chat signing and interactions remain unimplemented. Native
+clearly. Inventory and chat signing remain unimplemented. Native
 movement, entity and terrain presentation have the limited offline rendered
 evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
 
@@ -266,7 +266,7 @@ into seven materials, thirteen templates and 521 visible model quads across 24
 center-column sections; the sampled oak stair produced eleven source model quads.
 That run observed 49 columns and two real keepalives. `rendered_world` stayed false.
 
-The graphical experimental path loads `client.jar`, `blocks.json` and `physics.bin` from
+The graphical experimental path loads `client.jar`, `blocks.json`, `physics.bin` and `interaction.bin` from
 `CINNABAR_JAVA_ASSETS` (default `.local/assets/java/<pinned-version>`).
 Build with `cargo build --locked -p cinnabar --features developer-control` and
 launch through the repository's headless client MCP. Developer builds alone accept
@@ -293,6 +293,43 @@ This tests server-driven rendering, not client breaking/placement or physical
 movement. No Windows/macOS, visual parity or performance qualification is claimed.
 
 ## Native collision and dry-land movement
+
+Native outline picking and server-authoritative creative breaking are implemented. Prepare the separate,
+hash-pinned outline/interaction report with `assetc java-interaction --server SERVER_JAR
+--out JAVA_ASSETS/interaction.bin --accept-eula`, using the same explicit Java/compiler
+options as the physics command below. It runs only the original exporter against the
+verified runtime. Contextual shapes remain explicitly unsupported; collision boxes
+and visual meshes never substitute for outline shapes. The interaction adapter sends
+sequenced native actions and retains backpressured intent, with input/session/dimension/
+correction fences. Processing acknowledgements do not imply acceptance: only server
+block updates change terrain. Developer state exposes selection, buffered/queued
+intent and acknowledgements. Pending mesh dispatch prioritizes sections near the admitted
+player eye without dropping distant work or bypassing publication lifetimes. Column-wide
+invalidation still causes excessive work after individual edits; frame and edit-latency
+budgets remain unqualified. Survival/tool
+breaking, placement, entity targeting, local hand/crack effects and inventory-based
+restrictions are incomplete; this is not a playable-client claim.
+
+Linux hidden Vulkan acceptance (1280×720, scale 1, lavapipe) uses the authorized
+non-operator offline vanilla fixture. Launcher input selects dirt by its native outline;
+Attack sends the native action, the server confirms air, and a fresh frame shows its
+removal. The same input against a command block receives a processing receipt and
+unchanged-block correction; the block remains visible. After eight real keepalives,
+Save & Quit clears selection, queued intent, receipts, meshes and entity poses.
+Same-process reconnect advances generation 2→4, shows the server's replacement dirt
+instead of the old command block, and starts with no interaction receipts or queued
+actions. A new sequence-1 attack removes that replacement through a server update
+and the renderer; eight more keepalives are observed before shutdown.
+
+Independent shape/coordinate/packet vectors, malformed reports, backpressure,
+input/correction lifetimes, encrypted stream ordering and mesh-priority regressions
+pass at their owners. `assetc java-interaction` reproduces the manifest hash from the
+pinned server runtime, and its input/output alias test passes. Initial live captures
+exposed delayed mesh publication; the nearest-section regression fails before the
+priority fix and passes afterward. No performance improvement is claimed: broad
+column invalidation remains, and the live software-renderer run overlaps compilation.
+Scoped app-inclusive clippy, formatting, architecture and the graphical build pass.
+Full-workspace merge gates, Windows/macOS and online-mode acceptance did not run.
 
 `assetc java-physics` verifies the manifest-pinned vanilla server archive and each
 bundled library, compiles an original offline exporter and loads the resulting

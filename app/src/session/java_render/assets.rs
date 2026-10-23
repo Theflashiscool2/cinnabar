@@ -16,6 +16,7 @@ use std::{
 };
 use world::java::{BiomeAppearance, Column};
 pub(super) struct Prepared {
+    pub interaction: Arc<assets::registry::java::interaction::Table>,
     pub physics: Arc<assets::registry::java::physics::Table>,
     pub graphics: Arc<Graphics>,
     pub tints: Vec<render_scene::chunk::biome_tints::BiomeTint>,
@@ -48,6 +49,19 @@ fn load_inner(
     cancel: Arc<AtomicBool>,
 ) -> Result<Prepared, Box<dyn std::error::Error>> {
     use java_protocol::target;
+    let interaction_path = root.join("interaction.bin");
+    let interaction_bytes = std::fs::read(&interaction_path).map_err(|error| format!(
+        "Could not read Java interaction shapes at {}: {error}. Prepare them with assetc java-interaction",
+        interaction_path.display()
+    ))?;
+    if interaction_bytes.len() as u64 != target::INTERACTION_REPORT_BYTES {
+        return Err("Java interaction report size does not match target manifest".into());
+    }
+    let interaction = Arc::new(assets::registry::java::interaction::Table::load(
+        &interaction_bytes,
+        target::INTERACTION_REPORT_SHA256,
+        target::BLOCK_STATE_COUNT,
+    )?);
     let physics_bytes = std::fs::read(root.join("physics.bin"))?;
     if physics_bytes.len() as u64 != target::PHYSICS_REPORT_BYTES {
         return Err("Java physics report size does not match target manifest".into());
@@ -106,6 +120,7 @@ fn load_inner(
         assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
     )?);
     Ok(Prepared {
+        interaction,
         physics,
         graphics,
         tints,

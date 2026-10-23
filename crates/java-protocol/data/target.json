@@ -88,5 +88,25 @@
       "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/PlayerListEntryAction.java",
       "count": 8
     }
+  },
+  "interaction_report": {
+    "path": "interaction.bin",
+    "bytes": 4607154,
+    "sha256": "f523e981e925fb434bfceb0239ffa315311494789b1120e72c152a8a5cb1a193",
+    "generator": "crates/asset-compiler/src/bin/assetc/java/ExportInteraction.java"
+  },
+  "interaction_schema": {
+    "actions": {
+      "path": "data/PlayerAction.java",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/player/PlayerAction.java",
+      "sha256": "2661df470175f45ff8c41744b67f296c4d986a09c422c159e96a40d159938404",
+      "count": 9
+    },
+    "faces": {
+      "path": "data/Direction.java",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/object/Direction.java",
+      "sha256": "ab202605b6452cf6dbcd80c6637c21beed2b0ff6c6a0833117673c97003cc618",
+      "count": 6
+    }
   }
 }

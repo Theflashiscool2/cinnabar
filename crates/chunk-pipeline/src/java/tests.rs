@@ -80,6 +80,29 @@ fn native_workers_are_bounded_and_keep_authoritative_biome_indices() {
     assert_eq!(stream.metrics.dispatched, 9);
 }
 #[test]
+fn visible_center_gets_a_worker_before_distant_queued_sections() {
+    let (mut terrain, graphics) = fixture();
+    terrain.center = Some([0, 0]);
+    let mut stream = Stream::new(&terrain, graphics).unwrap();
+    stream.poll(&mut terrain);
+    assert_eq!(stream.active.len(), WORKERS);
+    assert!(
+        stream.active.contains(&[0, -1, 0]),
+        "visible center waited behind distant sections"
+    );
+    assert_eq!(stream.backlog(), 9, "priority must not drop distant work");
+}
+#[test]
+fn changing_the_view_prioritizes_its_section_without_dropping_other_work() {
+    let (mut terrain, graphics) = fixture();
+    let mut stream = Stream::new(&terrain, graphics).unwrap();
+    stream.set_focus([1, -1, 1]);
+    stream.poll(&mut terrain);
+    assert!(stream.active.contains(&[1, -1, 1]));
+    assert!(!stream.active.contains(&[-1, -1, -1]));
+    assert_eq!(stream.backlog(), 9);
+}
+#[test]
 fn queued_output_is_invalid_after_dimension_replacement_and_drop_cancels_workers() {
     let (mut terrain, graphics) = fixture();
     let mut stream = Stream::new(&terrain, graphics).unwrap();

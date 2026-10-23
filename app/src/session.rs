@@ -33,6 +33,7 @@ mod client_id;
 mod java;
 pub(crate) mod java_entities;
 pub(crate) mod java_hud;
+pub(crate) mod java_interaction;
 pub(crate) mod java_movement;
 pub(crate) mod java_render;
 mod startup;

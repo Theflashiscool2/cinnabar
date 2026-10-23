@@ -40,6 +40,7 @@ pub struct Metrics {
 pub struct Stream {
     dimension: Dimension,
     graphics: Arc<Graphics>,
+    focus: SectionKey,
     pending: BTreeSet<SectionKey>,
     active: BTreeSet<SectionKey>,
     ready: VecDeque<Ready>,
@@ -68,10 +69,13 @@ impl Drop for Stream {
 impl Stream {
     pub fn new(terrain: &Terrain, graphics: Arc<Graphics>) -> Option<Self> {
         let dimension = terrain.dimension()?.clone();
+        let center = terrain.center.unwrap_or_default();
+        let focus = [center[0], dimension.min_y.div_euclid(16), center[1]];
         let (sender, receiver) = crossbeam_channel::bounded(WORKERS);
         let mut stream = Self {
             dimension,
             graphics,
+            focus,
             pending: BTreeSet::new(),
             active: BTreeSet::new(),
             ready: VecDeque::new(),
@@ -91,6 +95,11 @@ impl Stream {
     }
     pub fn dimension(&self) -> &Dimension {
         &self.dimension
+    }
+    /// Prioritizes pending work near the current view without replacing its authority or
+    /// discarding distant sections. Existing worker/result lifetime checks remain unchanged.
+    pub fn set_focus(&mut self, section: [i32; 3]) {
+        self.focus = section;
     }
     fn mark(&mut self, [x, z]: [i32; 2]) {
         for y in self.dimension.min_y / 16..(self.dimension.min_y + self.dimension.height) / 16 {
@@ -150,7 +159,13 @@ impl Stream {
             let Some(section) = self
                 .pending
                 .iter()
-                .find(|p| !self.active.contains(*p))
+                .filter(|p| !self.active.contains(*p))
+                .min_by_key(|p| {
+                    let distance = (0..3)
+                        .map(|i| u128::from(p[i].abs_diff(self.focus[i])).pow(2))
+                        .sum::<u128>();
+                    (distance, **p)
+                })
                 .copied()
             else {
                 break;

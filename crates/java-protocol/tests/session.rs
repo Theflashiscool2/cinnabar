@@ -146,6 +146,15 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     assert_eq!(wire.read().await.unwrap(), [0x2a, 42, 1, 0]);
     assert_eq!(wire.read().await.unwrap(), [0x21, 1]);
     assert_eq!(wire.read().await.unwrap(), [0x0d]);
+    // Official protocol-777 report: player_action=41, punch=46, block_changed_ack=4.
+    // Retired dimension/correction actions produce no bytes; the current action and punch
+    // remain ordered on the same compressed, encrypted stream as movement and receipts.
+    assert_eq!(
+        wire.read().await.unwrap(),
+        [41, 0, 255, 255, 255, 255, 255, 255, 239, 192, 2, 128, 1]
+    );
+    assert_eq!(wire.read().await.unwrap(), [46]);
+    wire.write(&[4, 128, 1]).await.unwrap();
     // Abilities and the new packed velocity are delivered as admitted schemas, not deferred bytes.
     wire.write(&[0x41, 0, 0x3d, 0x4c, 0xcc, 0xcd, 0x3d, 0xcc, 0xcc, 0xcd])
         .await
@@ -215,10 +224,17 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let mut rotation = false;
     let mut entities = Vec::new();
     let mut hud = Vec::new();
+    let mut block_receipts = Vec::new();
     tokio::time::timeout(Duration::from_secs(10), async {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
             match envelope.event {
+                Event::BlockAck {
+                    dimension_epoch,
+                    sequence,
+                } => {
+                    block_receipts.push((dimension_epoch, sequence));
+                }
                 Event::Hud(session::hud::Packet::Experience {
                     progress,
                     level,
@@ -343,6 +359,22 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .await
                             .unwrap();
                     }
+                    for (epoch, correction) in [(99, 3), (dimension_epoch, 2), (dimension_epoch, 3)]
+                    {
+                        commands
+                            .send(session::Command::Interact {
+                                dimension_epoch: epoch,
+                                correction_sequence: correction,
+                                action: session::interaction::Dig {
+                                    action: session::interaction::Action::Start,
+                                    position: [-1, -64, -2],
+                                    face: session::interaction::Face::North,
+                                    sequence: 128,
+                                },
+                            })
+                            .await
+                            .unwrap();
+                    }
                 }
                 Event::Dynamics {
                     dimension_epoch,
@@ -455,6 +487,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(dynamics, 2);
     assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
     assert_eq!(hud, ["experience", "mode"]);
+    assert_eq!(block_receipts, [(1, 128)]);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {
