@@ -135,3 +135,80 @@ fn nonuniform_biomes_are_an_explicit_incomplete_feature() {
             .contains("Voronoi")
     );
 }
+
+#[test]
+fn unloaded_graphics_wait_for_assets_instead_of_failing_the_world() {
+    let (mut terrain, _) = fixture();
+    let report = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]}}"#;
+    let registry = BlockRegistry::load(report, &format!("{:x}", Sha256::digest(report))).unwrap();
+    let graphics = assets::registry::java::graphics::compile(
+        &mut BlockModels::new(Arc::new(registry), Box::new(Air)),
+        [],
+        64,
+    )
+    .unwrap();
+    let mut stream = Stream::new(&terrain, Arc::new(graphics)).unwrap();
+    test_time::eventually("native mesh encounters unloaded state", || {
+        stream.poll(&mut terrain);
+        stream.metrics.completed > 0
+    });
+    assert!(
+        stream.errors().is_empty(),
+        "unloaded models are recoverable"
+    );
+    assert!(
+        stream.backlog() > 0,
+        "unrendered terrain must remain pending"
+    );
+}
+
+#[test]
+fn graphics_extension_retries_only_waiting_sections_and_rejects_obsolete_base_or_world() {
+    let (mut terrain, complete) = fixture();
+    let report = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]}}"#;
+    let registry =
+        Arc::new(BlockRegistry::load(report, &format!("{:x}", Sha256::digest(report))).unwrap());
+    let mut models = BlockModels::new(registry, Box::new(Air));
+    let empty = Arc::new(assets::registry::java::graphics::compile(&mut models, [], 64).unwrap());
+    let mut stream = Stream::new(&terrain, Arc::clone(&empty)).unwrap();
+    test_time::eventually("sections await native graphics", || {
+        stream.poll(&mut terrain);
+        stream.waiting_graphics.len() == 9
+    });
+    assert_eq!(stream.missing_graphics(), BTreeSet::from([0]));
+    let extension = assets::registry::java::graphics::extend(empty, &mut models, [0]).unwrap();
+    assert!(stream.install_graphics(&terrain, &extension));
+    assert!(
+        !stream.install_graphics(&terrain, &extension),
+        "old base cannot replace new catalog"
+    );
+    let mut count = 0;
+    test_time::eventually("retry after asset preparation", || {
+        stream.poll(&mut terrain);
+        while stream.pop_ready(&terrain).is_some() {
+            count += 1;
+        }
+        count == 9
+    });
+    assert_eq!(stream.backlog(), 0);
+    assert!(stream.errors().is_empty());
+    let dispatched = stream.metrics.dispatched;
+    let duplicate =
+        assets::registry::java::graphics::extend(Arc::clone(stream.graphics()), &mut models, [0])
+            .unwrap();
+    assert!(stream.install_graphics(&terrain, &duplicate));
+    stream.poll(&mut terrain);
+    assert_eq!(
+        stream.metrics.dispatched, dispatched,
+        "extension must not remesh unaffected terrain"
+    );
+    let unrelated = assets::registry::java::graphics::extend(complete, &mut models, []).unwrap();
+    assert!(!stream.install_graphics(&terrain, &unrelated));
+    let next =
+        assets::registry::java::graphics::extend(Arc::clone(stream.graphics()), &mut models, [])
+            .unwrap();
+    let mut dimension = terrain.dimension().unwrap().clone();
+    dimension.epoch += 1;
+    terrain.begin(dimension);
+    assert!(!stream.install_graphics(&terrain, &next));
+}

@@ -198,7 +198,7 @@ server evidence; complex metadata and entity frame publication remain incomplete
   entity collision, sprint-transition parity and full respawn/dimension retention.
 - [ ] Complete terrain parity: smooth lighting/AO, fluid geometry, partial-face
   occlusion, nonuniform biome tinting, spatial tint callbacks, animation/transparency
-  semantics, clock/weather presentation and streaming new-state asset extension.
+  semantics and clock/weather presentation.
   The present slice requires a proven uniform biome field. Collision and player
   input remain incomplete; unbound camera translation is disabled in Java sessions.
 - [x] Exercise native creative breaking on the Linux offline vanilla fixture.
@@ -219,9 +219,17 @@ server evidence; complex metadata and entity frame publication remain incomplete
   Fifteen keepalives precede reconnect; fresh session inventory and respawn epoch 1→2
   clear stale intent and slots. Chest/player views share storage and state IDs retain
   server order across wrapping, but chest behavior has deterministic coverage only.
+- [x] Exercise streaming native graphics extensions on the Linux offline fixture.
+  Typed missing-state dependencies, off-frame additions and checked GPU publication
+  preserve resident draw addresses. New command/gold/log states and log-axis changes
+  render after join; real input passes accepted/rejected creative-break checks.
+  Session 2→4→6 resets ownership; cancelling with an extension pending and 206 queued
+  meshes cannot contaminate the next world. The sessions observe 12, seven and five
+  keepalives. Owner/render/app regressions and scoped gates pass. Ordinary edits still
+  invalidate whole columns (216 section jobs); edit latency and resource/performance
+  qualification remain open. This does not establish general playable support.
 - [ ] Complete inventory defaults, item visuals, local selection, containers and
-  transactions. The live incremental command-block addition still exposes the known
-  missing-graphics failure; prepare new states during streaming before placement.
+  transactions.
 - [ ] Complete survival/tool breaking, placement, entity targeting, local effects
   and inventory-dependent restrictions. Creative fixture evidence is not general
   interaction parity or a complete playable client.

@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 struct State {
     requested: Option<ChunkTextureAssets>,
     geometry: Option<Arc<[ChunkRenderInstance]>>,
+    extension_base: Option<ChunkTextureBindingIdentity>,
     attempt: Arc<()>,
     holding_geometry: bool,
     geometry_epoch: u64,
@@ -27,11 +28,16 @@ impl State {
 pub struct ChunkTexturePreparation {
     assets: ChunkTextureAssets,
     geometry: Option<Arc<[ChunkRenderInstance]>>,
+    extension_base: Option<ChunkTextureBindingIdentity>,
     attempt: Arc<()>,
     epoch: u64,
 }
 
 impl ChunkTexturePreparation {
+    /// Only a worker-verified resource prefix can replace bindings while old draws are resident.
+    pub fn extends(&self, identity: ChunkTextureBindingIdentity) -> bool {
+        self.extension_base == Some(identity)
+    }
     /// Returns the immutable atlas inputs captured for this attempt.
     pub fn assets(&self) -> &ChunkTextureAssets {
         &self.assets
@@ -59,10 +65,39 @@ impl ChunkTextureReload {
         {
             state.requested = Some(assets);
             state.geometry = None;
+            state.extension_base = None;
             state.attempt = Arc::new(());
             state.holding_geometry = false;
             state.result = None;
         }
+    }
+
+    /// Stages appended draw resources without replacing resident meshes. The proof is built
+    /// off-frame and must name these exact immutable assets and the current world epoch.
+    pub fn request_extension(
+        &self,
+        epoch: u64,
+        previous: &ChunkTextureAssets,
+        assets: ChunkTextureAssets,
+        proof: &assets::DrawResourceExtension,
+    ) -> bool {
+        if !proof.matches(previous.assets(), assets.assets())
+            || previous.enhanced().is_some()
+            || assets.enhanced().is_some()
+        {
+            return false;
+        }
+        let mut state = self.0.lock().unwrap_or_else(|error| error.into_inner());
+        if epoch != state.geometry_epoch {
+            return false;
+        }
+        state.requested = Some(assets);
+        state.geometry = None;
+        state.extension_base = Some(previous.binding_identity());
+        state.attempt = Arc::new(());
+        state.holding_geometry = false;
+        state.result = None;
+        true
     }
 
     /// Stages a resident mesh set and its material tables only for the captured world epoch.
@@ -86,6 +121,7 @@ impl ChunkTextureReload {
         }
         state.requested = Some(assets);
         state.geometry = Some(geometry);
+        state.extension_base = None;
         state.attempt = Arc::new(());
         state.holding_geometry = true;
         state.result = None;
@@ -188,6 +224,7 @@ impl ChunkTextureReload {
         Some(ChunkTexturePreparation {
             assets: state.requested.clone()?,
             geometry: state.geometry.clone(),
+            extension_base: state.extension_base,
             attempt: Arc::clone(&state.attempt),
             epoch: state.geometry_epoch,
         })

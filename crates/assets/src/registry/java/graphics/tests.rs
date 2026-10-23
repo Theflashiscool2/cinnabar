@@ -26,13 +26,16 @@ fn png(pixels: &[u8], width: u32, height: u32) -> Vec<u8> {
     bytes
 }
 fn models() -> BlockModels {
-    let report=serde_json::to_vec(&json!({"minecraft:stone":{"states":[{"id":0,"default":true}]},"minecraft:air":{"states":[{"id":1,"default":true}]}})).unwrap();
+    let report=serde_json::to_vec(&json!({"minecraft:stone":{"states":[{"id":0,"default":true}]},"minecraft:air":{"states":[{"id":1,"default":true}]},"minecraft:dirt":{"states":[{"id":2,"default":true}]}})).unwrap();
     let registry = BlockRegistry::load(&report, &format!("{:x}", Sha256::digest(&report))).unwrap();
     let faces = ["down", "up", "west", "east", "north", "south"]
         .into_iter()
         .map(|f| (f.to_owned(), json!({"texture":"#all","cullface":f})))
         .collect::<serde_json::Map<_, _>>();
     let files=BTreeMap::from([
+        ("assets/minecraft/blockstates/dirt.json".into(),br#"{"variants":{"":{"model":"block/dirt"}}}"#.to_vec()),
+        ("assets/minecraft/models/block/dirt.json".into(),serde_json::to_vec(&json!({"textures":{"all":"block/larger"},"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":faces}]})).unwrap()),
+        ("assets/minecraft/textures/block/larger.png".into(),png(&[90,70,30,255].repeat(4),2,2)),
         ("assets/minecraft/blockstates/stone.json".into(),serde_json::to_vec(&json!({"variants":{"":{"model":"block/stone"}}})).unwrap()),
         ("assets/minecraft/blockstates/air.json".into(),serde_json::to_vec(&json!({"variants":{"":{"model":"block/air"}}})).unwrap()),
         ("assets/minecraft/models/block/stone.json".into(),serde_json::to_vec(&json!({"textures":{"all":"block/test"},"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":faces}]})).unwrap()),
@@ -100,4 +103,66 @@ fn grass_tint_is_explicit_and_unknown_callbacks_fail() {
     );
     assert_eq!(tint("minecraft:anything", -1).unwrap(), 0);
     assert!(tint("minecraft:redstone_wire", 0).is_err());
+}
+
+#[test]
+fn extension_keeps_resident_draw_addresses_and_source_pixels_without_reordering_states() {
+    for (first, added) in [(0, 2), (2, 0)] {
+        let old = Arc::new(compile(&mut models(), [first, 1], 64).unwrap());
+        let selected = old.select(first, [-3, -60, 9]).unwrap();
+        let extension = extend(Arc::clone(&old), &mut models(), [added, first]).unwrap();
+        let next = extension.graphics();
+        assert!(extension.extends(&old));
+        assert!(!extension.extends(next));
+        assert!(!old.contains(added));
+        assert!(next.contains(added));
+        assert_eq!(next.select(first, [-3, -60, 9]).unwrap(), selected);
+        assert!(
+            next.runtime
+                .model_templates()
+                .starts_with(old.runtime.model_templates())
+        );
+        assert!(
+            next.runtime
+                .model_quads()
+                .starts_with(old.runtime.model_quads())
+        );
+        assert!(
+            next.runtime
+                .materials()
+                .starts_with(old.runtime.materials())
+        );
+        assert_eq!(
+            next.runtime.texture_pages().len(),
+            2,
+            "reuse partially occupied pages"
+        );
+        let reference = TextureRef::new(1, 0).unwrap();
+        assert_eq!(
+            next.runtime.texture_source_size(reference),
+            old.runtime.texture_source_size(reference)
+        );
+        let old_pixel = &old.runtime.texture_pages()[1].texture.mips[0].rgba8[..4];
+        assert_eq!(
+            &next.runtime.texture_pages()[1].texture.mips[0].rgba8[..4],
+            old_pixel
+        );
+        assert!(extension.resources().matches(&old.runtime, &next.runtime));
+        let duplicate = extend(Arc::clone(next), &mut models(), [added]).unwrap();
+        assert_eq!(
+            duplicate.graphics().runtime.model_templates(),
+            next.runtime.model_templates()
+        );
+        assert_eq!(
+            duplicate.graphics().runtime.texture_pages(),
+            next.runtime.texture_pages()
+        );
+    }
+}
+#[test]
+fn extension_does_not_turn_unknown_models_into_air_or_damage_the_old_catalog() {
+    let old = Arc::new(compile(&mut models(), [0], 64).unwrap());
+    assert!(extend(Arc::clone(&old), &mut models(), [99]).is_err());
+    assert!(!old.contains(99));
+    assert!(!old.select(0, [0; 3]).unwrap().is_empty());
 }

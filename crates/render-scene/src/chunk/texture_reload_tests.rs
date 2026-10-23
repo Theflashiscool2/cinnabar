@@ -7,6 +7,27 @@ fn candidate(revision: u64) -> ChunkTextureAssets {
 }
 
 #[test]
+fn extension_requires_exact_asset_proof_and_current_world_and_never_holds_geometry() {
+    let bridge = ChunkTextureReload::default();
+    let old = candidate(1);
+    let next = candidate(2);
+    let proof =
+        assets::DrawResourceExtension::checked(Arc::clone(old.assets()), Arc::clone(next.assets()))
+            .unwrap();
+    let epoch = bridge.geometry_epoch();
+    assert!(!bridge.request_extension(epoch, &old, candidate(2), &proof));
+    assert!(bridge.request_extension(epoch, &old, next.clone(), &proof));
+    let request = bridge.preparation().unwrap();
+    assert!(request.extends(old.binding_identity()));
+    assert!(!request.extends(next.binding_identity()));
+    assert!(request.geometry().is_none());
+    assert!(!bridge.geometry_pending());
+    bridge.discard_geometry();
+    assert!(!bridge.finish(&request, true));
+    assert!(!bridge.request_extension(epoch, &old, next, &proof));
+}
+
+#[test]
 fn stale_success_and_failure_cannot_complete_the_replacement_request() {
     let bridge = ChunkTextureReload::default();
     let first = candidate(1);

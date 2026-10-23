@@ -1,5 +1,6 @@
 //! Native Java world presentation through Cinnabar's existing chunk renderer.
 mod assets;
+mod growth;
 use super::SessionController;
 use bevy::prelude::*;
 use client_presentation::local_player::LocalViewPose;
@@ -27,6 +28,7 @@ pub(crate) struct Presentation {
     pending: Option<crossbeam_channel::Receiver<Result<assets::Prepared, String>>>,
     cancel: Arc<AtomicBool>,
     stream: Option<chunk_pipeline::java::Stream>,
+    growth: growth::Growth,
     unsupported_tints: BTreeSet<u32>,
     failure: Option<String>,
     published: BTreeMap<[i32; 3], (u64, Instant, bool)>,
@@ -47,6 +49,7 @@ impl Default for Presentation {
             pending: None,
             cancel: Arc::new(AtomicBool::new(false)),
             stream: None,
+            growth: growth::Growth::default(),
             unsupported_tints: BTreeSet::new(),
             failure: None,
             published: BTreeMap::new(),
@@ -111,6 +114,9 @@ impl Presentation {
             "submitted_sections": self.published.len(),
             "uploaded_nonempty_sections": self.uploaded.len(),
             "backlog": self.stream.as_ref().map(|s| s.backlog()),
+            "graphics_extension_pending": self.growth.busy(),
+            "graphics_extensions": self.growth.completed,
+            "missing_graphics": self.stream.as_ref().map(|s| s.missing_graphics()),
             "workers": self.stream.as_ref().map(|s| serde_json::json!({
                 "dispatched": s.metrics.dispatched,
                 "completed": s.metrics.completed,
@@ -146,6 +152,7 @@ pub(crate) fn update(
     textures: Option<ResMut<ChunkTextureAssets>>,
     tints: Option<ResMut<ChunkBiomeTints>>,
     acknowledgements: Option<Res<ChunkUploadAcknowledgements>>,
+    gpu: Res<render_scene::ChunkTextureReload>,
 ) {
     let (
         Some(mut controller),
@@ -178,6 +185,7 @@ pub(crate) fn update(
         .cloned();
     if p.dimension != active {
         if p.dimension.is_some() {
+            gpu.discard_geometry();
             queue.reset_session();
             acknowledgements.clear();
         }
@@ -206,12 +214,7 @@ pub(crate) fn update(
         && initial_halo_ready(&state.terrain)
         && state.teleport.is_some()
     {
-        let root = std::env::var_os("CINNABAR_JAVA_ASSETS")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| {
-                std::path::PathBuf::from(".local/assets/java")
-                    .join(java_protocol::target::GAME_VERSION)
-            });
+        let root = assets::root();
         let columns = state
             .terrain
             .columns()
@@ -274,6 +277,13 @@ pub(crate) fn update(
             for &section in p.published.keys().filter(|s| [s[0], s[2]] == chunk) {
                 p.removals.insert(section);
             }
+        }
+        if p.failure.is_none()
+            && let Err(error) =
+                p.growth
+                    .tick(stream, &state.terrain, &mut textures, &gpu, &p.cancel)
+        {
+            p.failure = Some(format!("Java graphics extension: {error}"));
         }
         while let Some(ready) = stream.pop_ready(&state.terrain) {
             if ready

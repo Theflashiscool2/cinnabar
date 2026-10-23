@@ -1,5 +1,5 @@
 //! Bounded native Java mesh workers. A result never outlives its session/dimension authority.
-use assets::registry::java::graphics::Graphics;
+use assets::registry::java::graphics::{Extension, Graphics};
 use crossbeam_channel::{Receiver, Sender};
 use meshing::{
     ChunkMesh, PackedBiomeRecord,
@@ -35,8 +35,8 @@ pub struct Metrics {
     pub obsolete: u64,
     pub waiting_light: u64,
 }
-/// Each stream owns one immutable graphics revision. New required states must install a complete
-/// revision explicitly, before meshing them. Unavailable graphics are errors, never air.
+/// Mesh jobs capture immutable graphics. Missing states wait for a checked append-only extension;
+/// existing results remain valid because their resource addresses cannot change.
 pub struct Stream {
     dimension: Dimension,
     graphics: Arc<Graphics>,
@@ -45,6 +45,7 @@ pub struct Stream {
     active: BTreeSet<SectionKey>,
     ready: VecDeque<Ready>,
     errors: BTreeMap<SectionKey, String>,
+    waiting_graphics: BTreeMap<SectionKey, BTreeSet<u32>>,
     sender: Sender<Completed>,
     receiver: Receiver<Completed>,
     cancel: Arc<AtomicBool>,
@@ -80,6 +81,7 @@ impl Stream {
             active: BTreeSet::new(),
             ready: VecDeque::new(),
             errors: BTreeMap::new(),
+            waiting_graphics: BTreeMap::new(),
             sender,
             receiver,
             cancel: Arc::new(AtomicBool::new(false)),
@@ -92,6 +94,30 @@ impl Stream {
     }
     pub fn graphics(&self) -> &Arc<Graphics> {
         &self.graphics
+    }
+    /// Installs only a proven extension of this stream's current catalog in this world lifetime.
+    pub fn install_graphics(&mut self, terrain: &Terrain, extension: &Extension) -> bool {
+        if terrain.dimension() != Some(&self.dimension) || !extension.extends(&self.graphics) {
+            return false;
+        }
+        self.graphics = Arc::clone(extension.graphics());
+        self.waiting_graphics.retain(|section, ids| {
+            if ids.iter().all(|id| self.graphics.contains(*id)) {
+                self.pending.insert(*section);
+                false
+            } else {
+                true
+            }
+        });
+        true
+    }
+    pub fn missing_graphics(&self) -> BTreeSet<u32> {
+        self.waiting_graphics
+            .values()
+            .flatten()
+            .copied()
+            .filter(|id| !self.graphics.contains(*id))
+            .collect()
     }
     pub fn dimension(&self) -> &Dimension {
         &self.dimension
@@ -112,6 +138,7 @@ impl Stream {
         if terrain.dimension() != Some(&self.dimension) {
             self.cancel.store(true, Ordering::Release);
             self.pending.clear();
+            self.waiting_graphics.clear();
             self.ready.clear();
             return Vec::new();
         }
@@ -119,6 +146,7 @@ impl Stream {
         let mut unloaded = Vec::new();
         for chunk in dirty {
             self.errors.retain(|p, _| [p[0], p[2]] != chunk);
+            self.waiting_graphics.retain(|p, _| [p[0], p[2]] != chunk);
             if terrain.column(chunk).is_none() {
                 unloaded.push(chunk);
                 self.pending.retain(|p| [p[0], p[2]] != chunk);
@@ -145,6 +173,14 @@ impl Stream {
                         mesh,
                         biome,
                     });
+                }
+                Err(Error::MissingGraphics(ids)) => {
+                    if ids.iter().all(|id| self.graphics.contains(*id)) {
+                        // An old worker can finish after its requested assets were installed.
+                        self.pending.insert(done.section);
+                    } else {
+                        self.waiting_graphics.insert(done.section, ids);
+                    }
                 }
                 Err(Error::MissingLight(_)) => {
                     self.metrics.waiting_light += 1;
@@ -215,7 +251,7 @@ impl Stream {
         &self.errors
     }
     pub fn backlog(&self) -> usize {
-        self.pending.len() + self.active.len() + self.ready.len()
+        self.pending.len() + self.active.len() + self.ready.len() + self.waiting_graphics.len()
     }
 }
 /// Only a proven uniform native biome field bypasses Java's unimplemented Voronoi/blend path.

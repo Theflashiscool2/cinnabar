@@ -6,7 +6,10 @@ use assets::registry::java::{
     models::Face,
     source::Error as AssetError,
 };
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use world::java::{Column, Dimension, PublicationKey};
 
 /// Immutable halo captured with the publication key. The caller rejects outdated results.
@@ -77,15 +80,23 @@ pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<
     let mut transparent = Vec::new();
     // Resolve each block once, including the halo; positional variants remain deterministic.
     let mut cells = BTreeMap::new();
+    let mut missing = BTreeSet::new();
     for y in -1..=16 {
         for z in -1..=16 {
             for x in -1..=16 {
                 let pos = [x0 + x, y0 + y, z0 + z];
                 if let Some(id) = snapshot.block(pos) {
-                    cells.insert(pos, graphics.select(id, pos)?);
+                    if graphics.contains(id) {
+                        cells.insert(pos, graphics.select(id, pos)?);
+                    } else {
+                        missing.insert(id);
+                    }
                 }
             }
         }
+    }
+    if !missing.is_empty() {
+        return Err(Error::MissingGraphics(missing));
     }
     for y in 0..16 {
         for z in 0..16 {
@@ -181,6 +192,7 @@ fn opposite(face: Face) -> Face {
 pub enum Error {
     Assets(AssetError),
     MissingLight([i32; 3]),
+    MissingGraphics(BTreeSet<u32>),
     Invalid(String),
 }
 impl From<AssetError> for Error {
@@ -193,6 +205,7 @@ impl std::fmt::Display for Error {
         match self {
             Self::Assets(e) => e.fmt(f),
             Self::MissingLight(p) => write!(f, "Java light not yet known at {p:?}"),
+            Self::MissingGraphics(ids) => write!(f, "Java states awaiting graphics: {ids:?}"),
             Self::Invalid(s) => f.write_str(s),
         }
     }

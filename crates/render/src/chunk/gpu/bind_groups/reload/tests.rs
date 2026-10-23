@@ -125,6 +125,68 @@ fn published(app: &App) -> (ChunkTextureBindingIdentity, BufferId, BufferId) {
     )
 }
 
+#[test]
+fn checked_resource_extension_publishes_with_resident_draws_without_replacing_the_arena() {
+    let (mut app, instances) = publication_app();
+    let old = app.world().resource::<ChunkTextureAssets>().clone();
+    let next = ChunkTextureAssets::with_revision(
+        Arc::new(assets::RuntimeAssets::diagnostic()),
+        old.revision + 1,
+    );
+    let proof =
+        assets::DrawResourceExtension::checked(Arc::clone(old.assets()), Arc::clone(next.assets()))
+            .unwrap();
+    let before = published(&app);
+    let allocations = app.world().resource::<ChunkGpuArena>().allocations.len();
+    assert_eq!(allocations, instances.len());
+    let reload = app.world().resource::<ChunkTextureReload>();
+    assert!(reload.request_extension(reload.geometry_epoch(), &old, next.clone(), &proof));
+    let request = reload.preparation().unwrap();
+    let device = app.world().resource::<RenderDevice>();
+    let queue = app.world().resource::<RenderQueue>();
+    let (prepared, stats) = build_chunk_texture_assets(&next, device, queue).unwrap();
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    assert!(sender.send(Some((prepared, stats, None))).is_ok());
+    app.world_mut()
+        .resource_mut::<ChunkGpuTextureAssets>()
+        .pending = Some(PendingTextures {
+        request,
+        result: std::sync::Mutex::new(receiver),
+    });
+    app.world_mut()
+        .run_system_once(prepare_chunk_texture_assets)
+        .unwrap();
+    assert_eq!(
+        app.world()
+            .resource::<ChunkTextureReload>()
+            .status(next.binding_identity()),
+        Some(Ok(()))
+    );
+    assert_eq!(
+        published(&app),
+        before,
+        "CPU has not selected the candidate yet"
+    );
+    app.insert_resource(next.clone());
+    app.world_mut()
+        .run_system_once(prepare_chunk_texture_assets)
+        .unwrap();
+    let after = published(&app);
+    assert_eq!(after.0, next.binding_identity());
+    assert_ne!(after.1, before.1);
+    assert_eq!(after.2, before.2, "resident geometry buffer must survive");
+    assert_eq!(
+        app.world().resource::<ChunkGpuArena>().allocations.len(),
+        allocations
+    );
+    assert!(
+        app.world()
+            .resource::<ChunkTextureReload>()
+            .requested()
+            .is_none()
+    );
+}
+
 /// Authored changes must publish and resume streaming while old terrain remains allocated.
 #[cfg(feature = "enhanced")]
 #[test]

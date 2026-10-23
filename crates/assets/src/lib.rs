@@ -272,9 +272,9 @@ pub use registry::{
     pinned_block_identity, read_registry, read_registry_for_protocol, registry_header_protocol,
 };
 pub use runtime::{
-    BlockOverlay, MaterialOverride, NetworkIdMode, ResolvedBlock, ResolvedFace, RuntimeAssets,
-    SequentialIdRemap, ServerDefinedBlock, VanillaFallback, server_defined_blocks,
-    server_defined_blocks_for_registry,
+    BlockOverlay, DrawResourceExtension, MaterialOverride, NetworkIdMode, ResolvedBlock,
+    ResolvedFace, RuntimeAssets, SequentialIdRemap, ServerDefinedBlock, VanillaFallback,
+    server_defined_blocks, server_defined_blocks_for_registry,
 };
 pub use skin_geometry::{
     MAX_SKIN_GEOMETRY_BONES, MAX_SKIN_GEOMETRY_CUBES, MAX_SKIN_GEOMETRY_VERTICES, SkinGeometry,

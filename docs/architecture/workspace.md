@@ -110,6 +110,12 @@ and pack carriers remain local inputs.
 
 `assets::registry::java` owns native Java runtime block/model/texture compilation.
 Its state catalog remains separate from shared GPU model/material resources.
+Missing native graphics become typed pipeline dependencies. Worker-owned append-only
+catalogs retain existing draw addresses; `assets::DrawResourceExtension` proves the
+shared table prefix without exposing native IDs to the renderer. `ChunkTextureReload`
+stages compatible GPU additions while preserving resident geometry. The application
+waits for GPU readiness before installing the catalog, then only dependent sections
+retry. Catalog identity and independent session/dimension/request fences reject stale work.
 `assetc java-physics` exports native collision/surface facts from the verified pinned
 server; `assets::registry::java::physics` validates the report before admission.
 `assetc java-entities` exports hash-pinned local model hierarchies and checks native

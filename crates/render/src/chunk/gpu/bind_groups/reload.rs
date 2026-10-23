@@ -63,6 +63,14 @@ pub(in crate::chunk) fn prepare_chunk_texture_assets(
         let geometry = &staged.replacement.2;
         if let Some(geometry) = geometry {
             geometry.ready(&instances, &arena)
+        } else if gpu_assets
+            .prepared
+            .as_ref()
+            .is_some_and(|current| staged.request.extends(current.identity))
+        {
+            // Every resident draw's material/template address retains its meaning. Ordinary
+            // uploads keep using the old atlas until main-world selection publishes this one.
+            true
         } else {
             // Atlas-only publication waits for every physical draw.
             arena.allocations.is_empty() && arena.retired_allocations.is_empty()

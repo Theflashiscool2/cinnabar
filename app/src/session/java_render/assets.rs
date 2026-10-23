@@ -26,6 +26,50 @@ struct CancelSource {
     jar: Jar,
     cancel: Arc<AtomicBool>,
 }
+pub(super) fn root() -> PathBuf {
+    std::env::var_os("CINNABAR_JAVA_ASSETS")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(".local/assets/java").join(java_protocol::target::GAME_VERSION)
+        })
+}
+/// Revalidates runtime inputs and decodes only newly requested models on the asset worker.
+pub(super) fn extend(
+    previous: Arc<Graphics>,
+    states: BTreeSet<u32>,
+    cancel: Arc<AtomicBool>,
+) -> Result<graphics::Extension, String> {
+    let work = || -> Result<_, Box<dyn std::error::Error>> {
+        use java_protocol::target;
+        if cancel.load(Ordering::Acquire) {
+            return Err("Java asset load cancelled".into());
+        }
+        let root = root();
+        let report = std::fs::read(root.join("blocks.json"))?;
+        if report.len() != target::BLOCK_REPORT_BYTES {
+            return Err("Java block report size does not match target manifest".into());
+        }
+        let registry = Arc::new(BlockRegistry::load(&report, target::BLOCK_REPORT_SHA256)?);
+        let jar = Jar::open(
+            &root.join("client.jar"),
+            target::CLIENT_ASSETS_SHA256,
+            target::CLIENT_ASSETS_BYTES,
+        )?;
+        let mut models = BlockModels::new(
+            registry,
+            Box::new(CancelSource {
+                jar,
+                cancel: Arc::clone(&cancel),
+            }),
+        );
+        let extension = graphics::extend(previous, &mut models, states)?;
+        if cancel.load(Ordering::Acquire) {
+            return Err("Java asset load cancelled".into());
+        }
+        Ok(extension)
+    };
+    work().map_err(|e| e.to_string())
+}
 impl Source for CancelSource {
     fn read(&mut self, path: &str) -> Result<Vec<u8>, Error> {
         if self.cancel.load(Ordering::Acquire) {

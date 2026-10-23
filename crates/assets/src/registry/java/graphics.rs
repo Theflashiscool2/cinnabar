@@ -22,7 +22,9 @@ pub struct Graphics {
     pub runtime: Arc<RuntimeAssets>,
     states: BTreeMap<u32, State>,
     pub templates: BTreeMap<u32, Template>,
+    builder: Builder,
 }
+#[derive(Clone)]
 struct State {
     selection: Arc<Selection>,
     variants: BTreeMap<VariantKey, Vec<u32>>,
@@ -71,6 +73,57 @@ pub fn compile(
     };
     let mut admitted = BTreeMap::new();
     let mut templates = BTreeMap::new();
+    append(models, states, &mut builder, &mut admitted, &mut templates)?;
+    finish(builder, admitted, templates)
+}
+/// An append-only catalog revision, valid only against its exact predecessor.
+/// Construction preserves every old material, template, animation and texture address.
+pub struct Extension {
+    previous: Arc<Graphics>,
+    next: Arc<Graphics>,
+    resources: crate::DrawResourceExtension,
+}
+impl Extension {
+    pub fn resources(&self) -> &crate::DrawResourceExtension {
+        &self.resources
+    }
+    pub fn graphics(&self) -> &Arc<Graphics> {
+        &self.next
+    }
+    pub fn extends(&self, graphics: &Arc<Graphics>) -> bool {
+        Arc::ptr_eq(&self.previous, graphics)
+    }
+}
+/// Compiles only new state models on a worker. Existing meshes keep their resource addresses.
+/// Source pixels are retained to rebuild compatible texture pages without rereading old assets.
+pub fn extend(
+    previous: Arc<Graphics>,
+    models: &mut BlockModels,
+    states: impl IntoIterator<Item = u32>,
+) -> Result<Extension, Error> {
+    let mut builder = previous.builder.clone();
+    let mut admitted = previous.states.clone();
+    let mut templates = previous.templates.clone();
+    append(models, states, &mut builder, &mut admitted, &mut templates)?;
+    let next = Arc::new(finish(builder, admitted, templates)?);
+    let resources = crate::DrawResourceExtension::checked(
+        Arc::clone(&previous.runtime),
+        Arc::clone(&next.runtime),
+    )
+    .ok_or_else(|| invalid("Java graphics extension changed resident draw addresses"))?;
+    Ok(Extension {
+        previous,
+        next,
+        resources,
+    })
+}
+fn append(
+    models: &mut BlockModels,
+    states: impl IntoIterator<Item = u32>,
+    builder: &mut Builder,
+    admitted: &mut BTreeMap<u32, State>,
+    templates: &mut BTreeMap<u32, Template>,
+) -> Result<(), Error> {
     for id in states {
         if admitted.contains_key(&id) {
             continue;
@@ -157,24 +210,37 @@ pub fn compile(
             },
         );
     }
+    Ok(())
+}
+fn finish(
+    mut builder: Builder,
+    states: BTreeMap<u32, State>,
+    templates: BTreeMap<u32, Template>,
+) -> Result<Graphics, Error> {
     builder.finish_textures()?;
-    // Only shared GPU resources are appended. Java state identity remains in `states` above.
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
+    // Keep source pixels and stable addresses, not a duplicate copy of the generated mip chains.
+    builder.overlay.textures.clear();
+    builder.overlay.texture_source_sizes.clear();
+    builder.overlay.texture_source_grids.clear();
     Ok(Graphics {
         runtime,
-        states: admitted,
+        states,
         templates,
+        builder,
     })
 }
+#[derive(Clone)]
 struct SpriteRef {
     texture: TextureRef,
     animation: u32,
     alpha: u32,
 }
+#[derive(Clone)]
 struct Builder {
     overlay: BlockOverlay,
-    images: Vec<Image>,
+    images: Vec<Arc<Image>>,
     sprites: BTreeMap<Identifier, SpriteRef>,
     materials: BTreeMap<(Identifier, u32), u32>,
 }
@@ -209,7 +275,7 @@ impl Builder {
         for index in 0..sprite.frames.len() {
             self.reference(first + index)?;
         }
-        self.images.extend(sprite.frames);
+        self.images.extend(sprite.frames.into_iter().map(Arc::new));
         let animation = if sprite.timeline.len() > 1 {
             let index = self.overlay.animations.len() as u32;
             let frame_start = self.overlay.animation_frames.len() as u32;

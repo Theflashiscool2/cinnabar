@@ -1,4 +1,5 @@
 mod decode;
+mod extension;
 mod face_overrides;
 #[cfg(test)]
 mod geometry_tests;
@@ -7,6 +8,7 @@ mod id_remap;
 mod overlay;
 mod server_defined_blocks;
 
+pub use extension::DrawResourceExtension;
 pub use id_remap::SequentialIdRemap;
 pub use overlay::{BlockOverlay, MaterialOverride, VanillaFallback};
 pub use server_defined_blocks::{

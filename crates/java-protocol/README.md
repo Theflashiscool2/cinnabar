@@ -251,8 +251,42 @@ The Rust implementation is original; game class/source files are not distributed
 Smooth Java AO/light interpolation, fluids, partial-face occlusion, nonuniform
 biome blending, spatial tint callbacks, per-face UV-region transparency classification,
 variable-duration texture animation and server clock/weather presentation remain
-incomplete. Graphics buffers currently rebuild for a collected initial
-state set; streaming new state identities needs an incremental resource extension.
+incomplete. Initial graphics preparation collects resident states. Subsequently missing
+states are typed mesh dependencies, not fatal errors or air. A cancellable worker
+compiles only new state models and appends stable template/material/animation addresses;
+source pixels are retained to rebuild texture pages without rereading old sprites.
+An asset-owned prefix proof permits the shared renderer to stage and publish new GPU
+tables while keeping resident geometry. Only waiting sections retry; old jobs remain
+valid against the retained address prefix. Session/dimension and exact catalog identity
+fence CPU results; the GPU mailbox independently fences its world and request lifetime.
+Unsupported model/tint semantics still fail explicitly. Runtime archives and block
+reports are revalidated on each extension worker. Texture-page rebuilding/upload and
+retained catalog memory have not met the project's performance qualification budgets.
+
+Linux offline vanilla acceptance (hidden Vulkan/lavapipe, 1280×720, scale 1) introduces
+command-block, gold-block and oak-log states after launcher join. Three extensions
+publish without losing existing terrain; a subsequent log-axis change visibly selects
+its end texture. Actual empty-hand creative input removes the new gold block, while
+the non-operator command-block attempt is acknowledged and rejected by server authority.
+Fresh frames and server queries confirm both outcomes. Twelve keepalives precede cleanup.
+Reconnect advances generation 2→4 with no inherited actions or extension state, then
+renders another log variant. After seven keepalives, Save & Quit cancels a newly observed
+pending gold-state extension and 206 outstanding mesh jobs. Generation 6 renders the
+server's resulting world, retains one pig and answers five keepalives before cleanup.
+No render/protocol error is observed. Native render/interaction records clear on each
+exit; the fixture has no established client TCP connection afterward. Procfs prevents
+per-process socket ownership inspection. Debug/software-renderer RSS samples around
+2.1 GiB are not memory or frame-budget qualification.
+
+The missing-graphics regression fails before the fix and passes afterward. Native
+owner tests, resource-prefix rejection, stale-world/catalog fences, compatible GPU
+publication, existing reload regressions, app cancellation/readiness tests, clippy,
+formatting, architecture and the graphical build pass. Full-workspace merge gates,
+Windows/macOS and online-mode acceptance remain unrun. Ordinary block updates still
+invalidate whole columns and their neighbours: the first added block dispatches 217
+jobs (216 section jobs plus a graphics retry), despite stable old draw resources.
+This remains a measured work/latency bottleneck for the next terrain update slice;
+the extension does not qualify a playable client or improve an FPS benchmark.
 
 `meshing::java` consumes immutable domain snapshots and produces shared Cinnabar
 mesh buffers, sampling the server's separate sky/block light nibbles.
@@ -327,7 +361,8 @@ semantics remain incomplete. Component defaults are not yet resolved for behavio
 Chest layouts have deterministic coverage only, with no chest UI/click acceptance.
 An incremental command-block addition during this run reproduced the existing
 unprepared-state graphics failure. The subsequent interaction checks used states
-present at join; streaming new-state asset extension remains an unresolved blocker.
+present at join. The subsequent streaming extension and live acceptance described
+above repair that failure without changing the inventory authority slice.
 Focused owner/wire tests, app-inclusive clippy, formatting, architecture and the
 Linux graphical build pass. An initial owner build exhausted disk; inactive artifacts
 were removed and the identical checks passed. Online, Windows/macOS, full-workspace
