@@ -51,6 +51,7 @@ impl WorldState {
             epoch: d.epoch,
             mode: self.status.mode,
             hardcore: self.bootstrap.as_ref()?.world.hardcore,
+            selected_slot: self.inventory.selected.and_then(|s| u8::try_from(s).ok()),
             health: self.vitals.as_ref().map(|v| v.health),
             maximum_health: attribute("minecraft:max_health"),
             food: self.vitals.as_ref().map(|v| v.food),

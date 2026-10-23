@@ -11,6 +11,7 @@ fn native_hud_capture_keeps_server_armor_without_a_bedrock_inventory() {
         epoch: 1,
         mode: Some(world::java::hud::GameMode::Survival),
         hardcore: false,
+        selected_slot: Some(0),
         health: Some(13.),
         maximum_health: Some(20.),
         food: Some(9),

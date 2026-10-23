@@ -40,6 +40,7 @@ pub struct Snapshot {
     pub epoch: u64,
     pub mode: Option<GameMode>,
     pub hardcore: bool,
+    pub selected_slot: Option<u8>,
     pub health: Option<f32>,
     pub maximum_health: Option<f32>,
     pub food: Option<i32>,

@@ -149,7 +149,7 @@ impl SemanticHud {
         );
         changed |= replace(
             &mut model.hotbar_visible,
-            hotbar && player.selected_hotbar_slot().is_some(),
+            hotbar && runtime.hud_selected_slot(player).is_some(),
         );
         changed |= replace(
             &mut model.xp_bar,
@@ -191,7 +191,7 @@ impl SemanticHud {
                     frame.hotbar_stacks[index].as_ref(),
                     frame.hotbar_icons[index],
                     frame.hotbar_durability[index],
-                    player.selected_hotbar_slot() == Some(index as u8),
+                    runtime.hud_selected_slot(player) == Some(index as u8),
                 )
             })
             && match (&self.model.offhand, runtime.gameplay_hud().offhand_stack()) {
@@ -251,7 +251,7 @@ impl SemanticHud {
                     frame.hotbar_stacks[index].as_ref(),
                     frame.hotbar_icons[index],
                     frame.hotbar_durability[index],
-                    player.selected_hotbar_slot() == Some(index as u8),
+                    runtime.hud_selected_slot(player) == Some(index as u8),
                 )
             })
             .collect();
@@ -299,7 +299,7 @@ impl SemanticHud {
             .selected_item_changed_millis()
             .filter(|changed| now.saturating_sub(*changed) < ITEM_NAME_MILLIS)
             .zip(frame.selected_item_name.as_deref())
-            .filter(|_| self.model.hotbar_visible && player.selected_hotbar_slot().is_some())
+            .filter(|_| self.model.hotbar_visible && runtime.hud_selected_slot(player).is_some())
             .map(|(changed, name)| (bounded_visible_text(name), changed));
         changed |= refresh_timed(&mut self.model.item_name, item_name);
         changed

@@ -87,6 +87,8 @@ pub struct State {
     incarnation: u64,
     pub revision: u64,
     pub selected: Option<usize>,
+    /// Last local selection serialized by the socket; server selections remain ordered facts.
+    pub selection_receipt: Option<u64>,
     storage: Vec<Cell>,
     pub player: Option<Menu>,
     pub opened: Option<Menu>,

@@ -66,6 +66,12 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    /// Slot range is admitted by the inventory owner. Sequence identifies the write receipt.
+    Select {
+        dimension_epoch: u64,
+        sequence: u64,
+        slot: u8,
+    },
     Interact {
         dimension_epoch: u64,
         correction_sequence: u64,

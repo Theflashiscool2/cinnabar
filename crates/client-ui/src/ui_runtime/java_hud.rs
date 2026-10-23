@@ -81,6 +81,10 @@ impl UiRuntime {
     pub fn java_hud(&self) -> Option<Snapshot> {
         self.java_hud
     }
+    pub(super) fn hud_selected_slot(&self, player: &player_state::PlayerState) -> Option<u8> {
+        self.java_hud
+            .map_or_else(|| player.selected_hotbar_slot(), |hud| hud.selected_slot)
+    }
     pub(super) fn shows_survival_stats(&self, player: &player_state::PlayerState) -> bool {
         self.java_hud.map_or_else(
             || player.facts.survival_stats_visible(),
@@ -114,6 +118,7 @@ mod tests {
             epoch: 1,
             mode: Some(GameMode::Survival),
             hardcore: false,
+            selected_slot: Some(0),
             health: Some(7.5),
             maximum_health: Some(20.0),
             food: Some(6),

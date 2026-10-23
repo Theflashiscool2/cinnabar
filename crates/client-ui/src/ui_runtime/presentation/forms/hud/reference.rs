@@ -18,7 +18,7 @@ pub(super) fn hud_model(
     let seconds = |millis: u64| millis as f64 / 1_000.0;
     let now = frame.now_millis;
     let mode_allows_hotbar = runtime.mode_shows_hotbar(player_runtime);
-    let selected = player_runtime.selected_hotbar_slot();
+    let selected = runtime.hud_selected_slot(player_runtime);
     let survival = runtime.shows_survival_stats(player_runtime);
     let mut slot = |stack: Option<&protocol::NetworkItemStack>,
                     icon: Option<IconRef>,

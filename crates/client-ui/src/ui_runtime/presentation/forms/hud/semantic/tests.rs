@@ -602,3 +602,35 @@ fn chat_color_keeps_encoded_hud_message_inputs_unmodified() {
         ui_screens::test_support::hover_chat::CAPTION
     );
 }
+
+#[test]
+fn native_java_selection_updates_the_retained_hotbar_without_bedrock_inventory_mutation() {
+    let mut f = Fixture::default();
+    let mut cache = SemanticHud::default();
+    let mut native = world::java::hud::Snapshot {
+        session: 1,
+        epoch: 1,
+        mode: Some(world::java::hud::GameMode::Survival),
+        hardcore: false,
+        selected_slot: Some(8),
+        health: Some(20.),
+        maximum_health: Some(20.),
+        food: Some(20),
+        saturation: Some(5.),
+        armor: Some(0.),
+        experience: None,
+    };
+    assert!(f.runtime.publish_java_hud(native));
+    f.check(&mut cache);
+    assert!(cache.model.hotbar_visible && cache.model.hotbar[8].selected);
+    assert!(!cache.model.hotbar[0].selected);
+    assert_eq!(f.player.selected_hotbar_slot(), Some(0));
+    native.selected_slot = Some(2);
+    assert!(f.runtime.publish_java_hud(native));
+    assert!(f.check(&mut cache).hotbar);
+    assert!(cache.model.hotbar[2].selected && !cache.model.hotbar[8].selected);
+    assert!(!f.check(&mut cache).hotbar);
+    f.runtime.clear_java_hud();
+    f.check(&mut cache);
+    assert!(cache.model.hotbar[0].selected && !cache.model.hotbar[2].selected);
+}

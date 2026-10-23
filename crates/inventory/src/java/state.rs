@@ -48,6 +48,19 @@ impl State {
         }
         result
     }
+    /// Applies a local choice only after serialization, in the same event order as server facts.
+    pub fn selection_sent(&mut self, session: u64, epoch: u64, sequence: u64, slot: usize) -> bool {
+        if !self.accepts(session, epoch)
+            || self.selection_receipt.is_some_and(|old| sequence <= old)
+        {
+            return false;
+        }
+        if self.admit(session, epoch, Update::Selected(slot)) != Ok(true) {
+            return false;
+        }
+        self.selection_receipt = Some(sequence);
+        true
+    }
     pub fn menu(&self, id: i32) -> Option<&Menu> {
         if id == 0 {
             self.player.as_ref()

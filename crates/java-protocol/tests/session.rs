@@ -146,6 +146,8 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     assert_eq!(wire.read().await.unwrap(), [0x2a, 42, 1, 0]);
     assert_eq!(wire.read().await.unwrap(), [0x21, 1]);
     assert_eq!(wire.read().await.unwrap(), [0x0d]);
+    // Official report: set_carried_item=54, followed by a signed big-endian short.
+    assert_eq!(wire.read().await.unwrap(), [54, 0, 8]);
     // Official protocol-777 report: player_action=41, punch=46, block_changed_ack=4.
     // Retired dimension/correction actions produce no bytes; the current action and punch
     // remain ordered on the same compressed, encrypted stream as movement and receipts.
@@ -237,6 +239,14 @@ async fn login_configuration_play_keepalives_and_cancellation() {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
             match envelope.event {
+                Event::SelectionSent {
+                    dimension_epoch,
+                    sequence,
+                    slot,
+                } => {
+                    assert_eq!((dimension_epoch, sequence, slot), (1, 1, 8));
+                    inventory.push("local selection");
+                }
                 Event::Inventory {
                     dimension_epoch,
                     packet,
@@ -397,6 +407,16 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .await
                             .unwrap();
                     }
+                    for epoch in [99, dimension_epoch] {
+                        commands
+                            .send(session::Command::Select {
+                                dimension_epoch: epoch,
+                                sequence: 1,
+                                slot: 8,
+                            })
+                            .await
+                            .unwrap();
+                    }
                     for (epoch, correction) in [(99, 3), (dimension_epoch, 2), (dimension_epoch, 3)]
                     {
                         commands
@@ -526,7 +546,10 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
     assert_eq!(hud, ["experience", "mode"]);
     assert_eq!(block_receipts, [(1, 128)]);
-    assert_eq!(inventory, ["content", "selected", "slot"]);
+    assert_eq!(
+        inventory,
+        ["local selection", "content", "selected", "slot"]
+    );
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

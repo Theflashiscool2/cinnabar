@@ -147,3 +147,20 @@ fn invalid_snapshots_are_atomic_and_replacement_retires_containers_and_cursor() 
     s.begin(8, 1);
     assert!(!s.admit(7, 3, Update::Selected(3)).unwrap());
 }
+
+#[test]
+fn local_selection_receipts_and_server_corrections_share_one_ordered_inventory() {
+    let mut state = State::default();
+    state.begin(7, 1);
+    assert!(!state.selection_sent(6, 1, 1, 8));
+    assert!(!state.selection_sent(7, 2, 1, 8));
+    state.admit(7, 1, Update::Selected(4)).unwrap();
+    assert!(state.selection_sent(7, 1, 1, 8));
+    assert_eq!(state.selected, Some(8));
+    state.admit(7, 1, Update::Selected(2)).unwrap();
+    assert!(!state.selection_sent(7, 1, 1, 8));
+    assert_eq!(state.selected, Some(2));
+    state.begin(8, 1);
+    assert_eq!(state.selection_receipt, None);
+    assert_eq!(state.selected, Some(0));
+}

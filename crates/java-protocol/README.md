@@ -371,8 +371,7 @@ observed before reconnect. Session 4→6 receives a fresh inventory and clears i
 intent. Death clears the stack; the real Respawn button replaces inventory epoch 1→2
 and receives a fresh empty menu with health 20. Fourteen keepalives are observed in
 that reconnected session before shutdown. This is not inventory gameplay: native item assets,
-local hotbar selection, click prediction/reconciliation, crafting, use-item and tool
-semantics remain incomplete. Component defaults are not yet resolved for behavior.
+click prediction/reconciliation, crafting, use-item and tool semantics remain incomplete. Component defaults are not yet resolved for behavior.
 Chest layouts have deterministic coverage only, with no chest UI/click acceptance.
 An incremental command-block addition during this run reproduced the existing
 unprepared-state graphics failure. The subsequent interaction checks used states
@@ -382,6 +381,34 @@ Focused owner/wire tests, app-inclusive clippy, formatting, architecture and the
 Linux graphical build pass. An initial owner build exhausted disk; inactive artifacts
 were removed and the identical checks passed. Online, Windows/macOS, full-workspace
 merge gates and performance budgets remain unqualified.
+
+Local number-key, wheel and controller selection uses the existing semantic input
+router. The Java action owner retains desktop selection/attack order across bounded
+transport backpressure. Selection serializes `ServerboundSetCarriedItemPacket` with
+the pinned signed-short field; an explicit local write receipt enters the same ordered
+admission queue as server selection facts. This receipt is not server acknowledgement.
+No inventory stack is predicted or decremented. Later interactions wait for the receipt,
+and server corrections can replace the selection before the next action. Buffered clicks
+retain their original ray target. Input/session/
+dimension/correction changes cancel unsent intent without replaying a consumed frame;
+overflow explicitly quarantines
+controls until release. The existing HUD reads the native selected slot without
+mutating Bedrock inventory. Native item icons and held-item models remain unsupported.
+References are the pinned codec's `ServerboundSetCarriedItemPacket`, vanilla
+`MultiPlayerGameMode.ensureHasSentCarriedItem` and
+`ServerGamePacketListenerImpl.handleSetCarriedItem` from the verified runtime.
+
+Linux hidden Vulkan acceptance (1280×720, scale 1, lavapipe) confirms number keys,
+both wheel directions and wraparound against server queries and fresh HUD frames.
+An occupied-hand attack followed by an empty-hand choice leaves dirt intact; reversing
+those input edges sends the choice first and removes the block through a server update.
+The inspected frames show both outcomes. Session 2→4 clears input/receipts and renders
+fresh terrain and inventory; 22 keepalives precede reconnect and three follow it.
+Save & Quit clears native state and the fixture is restored. Focused owner, encrypted-wire
+and HUD regression tests, app-inclusive clippy, formatting, architecture and the Linux
+graphical build pass. A dimension-replacement regression failed before preserving the
+consumed input-frame identity and passes afterward. Live controller/touch input, online
+mode, other platforms, full-workspace merge gates and performance remain unqualified.
 
 ## Native collision and dry-land movement
 
@@ -395,8 +422,8 @@ sequenced native actions and retains backpressured intent, with input/session/di
 correction fences. Processing acknowledgements do not imply acceptance: only server
 block updates change terrain. Developer state exposes selection, buffered/queued
 intent and acknowledgements. Pending mesh dispatch prioritizes sections near the admitted
-player eye without dropping distant work or bypassing publication lifetimes. Column-wide
-invalidation still causes excessive work after individual edits; frame and edit-latency
+player eye without dropping distant work or bypassing publication lifetimes. Incremental
+block/light changes now use spatial invalidation as described above; frame and edit-latency
 budgets remain unqualified. Survival/tool
 breaking, placement, entity targeting, local hand/crack effects and inventory-based
 restrictions are incomplete; this is not a playable-client claim.

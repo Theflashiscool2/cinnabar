@@ -4,6 +4,12 @@ use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    /// Local write receipt, not a server transaction acknowledgement.
+    SelectionSent {
+        dimension_epoch: u64,
+        sequence: u64,
+        slot: u8,
+    },
     Inventory {
         dimension_epoch: u64,
         packet: inventory::Packet,

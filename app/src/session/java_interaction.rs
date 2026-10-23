@@ -3,20 +3,20 @@ use super::{SessionController, java_movement::Movement, java_render::Presentatio
 use bevy::{prelude::*, time::Real};
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
+use gameplay::java::actions::{Controller as Actions, Intent};
 use java_protocol::session::{
     Command,
     interaction::{Action, Dig, Face},
 };
-use semantic_input::Action as InputAction;
 use sim::java::selection;
 
 #[derive(Resource, Default)]
-pub(crate) struct Interaction(pub gameplay::java::interaction::Controller);
+pub(crate) struct Interaction(pub gameplay::java::interaction::Controller, pub Actions);
 impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking"})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking", "input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -37,61 +37,72 @@ pub(crate) fn update(
         return;
     };
     let Some(java) = controller.java.as_ref() else {
-        interaction.0 = Default::default();
+        *interaction = Default::default();
         return;
     };
     let state = &controller.java_world;
+    let target = pick(state, &presentation, &movement, &view);
+    let hit = target.as_ref().ok().copied().flatten();
+    interaction.1.capture(state, &input.0, hit);
     let snapshot = input.0.snapshot();
+    let released =
+        snapshot.is_some_and(|s| s.authority_released) || interaction.1.blocked.is_some();
     interaction.0.begin_frame(
         state,
         time.delta(),
         snapshot.map(|s| s.authority_generation),
-        snapshot.is_some_and(|s| s.authority_released),
+        released,
     );
-    let Some(shapes) = presentation.interaction_shapes() else {
-        return;
-    };
-    if interaction.0.pending().is_none() {
-        let Some(dimension) = state.terrain.dimension() else {
+    if let Err(error) = target {
+        interaction.0.blocked = Some(error);
+    }
+    // A retained attack must enter the transport before a following slot change.
+    for _ in 0..semantic_input::MAX_PENDING_ACTION_EVENTS {
+        if !send_pending(java, &mut interaction.0) {
             return;
-        };
-        let Some(motion) = state.player_motion else {
-            return;
-        };
-        let Some(range) = state
-            .player_dynamics
-            .attributes
-            .get("minecraft:block_interaction_range")
-            .and_then(|a| a.value().ok())
-        else {
-            interaction.0.blocked = Some("Missing native Java block interaction range".into());
-            return;
-        };
-        let mut from = motion.position;
-        from[1] += movement.0.eye_height(state);
-        let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
-        let direction = world::java::player::look(180. - yaw.to_degrees(), -pitch.to_degrees());
-        let to = std::array::from_fn(|i| from[i] + direction[i] * range);
-        let hit = match selection::pick(
-            &state.terrain,
-            shapes,
-            (dimension.session, dimension.epoch),
-            from,
-            to,
-        ) {
-            Ok(hit) => hit,
-            Err(error) => {
-                interaction.0.selected = None;
-                interaction.0.blocked = Some(error.to_string());
+        }
+        match interaction.1.front(state) {
+            Some(Intent::Attack(pressed)) => {
+                let (phase, captured_hit) = interaction.1.consume_attack(pressed);
+                interaction.0.advance(state, phase, captured_hit);
+            }
+            Some(Intent::Slot(_) | Intent::Cycle(_)) => {
+                let Some(selection) = interaction.1.selection(state) else {
+                    continue;
+                };
+                match java.command(Command::Select {
+                    dimension_epoch: selection.epoch,
+                    sequence: selection.sequence,
+                    slot: selection.slot,
+                }) {
+                    Ok(()) => interaction.1.selection_queued(),
+                    Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                        interaction.0.blocked =
+                            Some("Java selection is waiting for transport capacity".into());
+                    }
+                    Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                        interaction.0.blocked = Some("Java selection transport closed".into());
+                    }
+                }
                 return;
             }
-        };
-        interaction
-            .0
-            .advance(state, input.0.phase(InputAction::Attack), hit);
+            None => {
+                let phase = interaction.1.held_attack();
+                interaction.0.advance(state, phase, hit);
+                send_pending(java, &mut interaction.0);
+                return;
+            }
+        }
     }
-    let Some(request) = interaction.0.pending() else {
-        return;
+}
+
+/// Keeps the captured action unchanged until the bounded transport accepts it.
+fn send_pending(
+    java: &client_session::java::Session,
+    interaction: &mut gameplay::java::interaction::Controller,
+) -> bool {
+    let Some(request) = interaction.pending() else {
+        return true;
     };
     let face = match request.hit.face {
         selection::Face::Down => Face::Down,
@@ -112,13 +123,51 @@ pub(crate) fn update(
         },
     };
     match java.command(command) {
-        Ok(()) => interaction.0.queued(),
+        Ok(()) => {
+            interaction.queued();
+            return true;
+        }
         Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-            interaction.0.blocked =
-                Some("Java interaction is waiting for transport capacity".into())
+            interaction.blocked = Some("Java interaction is waiting for transport capacity".into())
         }
         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-            interaction.0.blocked = Some("Java interaction transport closed".into())
+            interaction.blocked = Some("Java interaction transport closed".into())
         }
     }
+    false
+}
+
+/// Captures click-time native outline authority; hotbar selection needs no geometry fallback.
+fn pick(
+    state: &client_world::java::WorldState,
+    presentation: &Presentation,
+    movement: &Movement,
+    view: &LocalViewPose,
+) -> Result<Option<selection::Hit>, String> {
+    let (Some(shapes), Some(dimension), Some(motion)) = (
+        presentation.interaction_shapes(),
+        state.terrain.dimension(),
+        state.player_motion,
+    ) else {
+        return Ok(None);
+    };
+    let range = state
+        .player_dynamics
+        .attributes
+        .get("minecraft:block_interaction_range")
+        .and_then(|a| a.value().ok())
+        .ok_or("Missing native Java block interaction range")?;
+    let mut from = motion.position;
+    from[1] += movement.0.eye_height(state);
+    let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
+    let direction = world::java::player::look(180. - yaw.to_degrees(), -pitch.to_degrees());
+    let to = std::array::from_fn(|i| from[i] + direction[i] * range);
+    selection::pick(
+        &state.terrain,
+        shapes,
+        (dimension.session, dimension.epoch),
+        from,
+        to,
+    )
+    .map_err(|error| error.to_string())
 }

@@ -231,7 +231,15 @@ server evidence; complex metadata and entity frame publication remain incomplete
   retries have deterministic coverage. Full replacements/biomes retain broad work;
   edit latency and resource/performance qualification remain open. This does not
   establish general playable support.
-- [ ] Complete inventory defaults, item visuals, local selection, containers and
+- [x] Exercise native hotbar selection and ordered interaction input on the Linux
+  offline vanilla fixture. Number keys, both wheel directions and wraparound agree
+  with server selection and the rendered HUD. An attack before an empty-hand slot
+  choice retains the block; reversing those edges removes it through server authority.
+  Bounded transport waits retain click-time targets; a failing-then-passing regression
+  prevents a consumed frame replaying after dimension replacement. Session 2→4 clears
+  pending input and receives fresh inventory; 22 keepalives precede reconnect and three
+  follow it. Scoped owner/wire/UI tests, clippy, architecture and the graphical build pass.
+- [ ] Complete inventory defaults, item visuals, containers and
   transactions.
 - [ ] Complete survival/tool breaking, placement, entity targeting, local effects
   and inventory-dependent restrictions. Creative fixture evidence is not general

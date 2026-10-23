@@ -5,6 +5,24 @@ impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         match command {
+            Command::Select {
+                dimension_epoch,
+                sequence,
+                slot,
+            } if dimension_epoch == self.dimension_epoch => {
+                self.send(
+                    "ServerboundSetCarriedItemPacket",
+                    &i16::from(slot).to_be_bytes(),
+                )
+                .await?;
+                self.emit(Event::SelectionSent {
+                    dimension_epoch,
+                    sequence,
+                    slot,
+                })
+                .await?;
+            }
+            Command::Select { .. } => {}
             Command::Interact {
                 dimension_epoch,
                 correction_sequence,

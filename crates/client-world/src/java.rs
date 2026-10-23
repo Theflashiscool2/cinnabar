@@ -73,6 +73,18 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::SelectionSent {
+                dimension_epoch,
+                sequence,
+                slot,
+            } => {
+                return self.inventory.selection_sent(
+                    self.generation,
+                    dimension_epoch,
+                    sequence,
+                    usize::from(slot),
+                );
+            }
             Event::Inventory {
                 dimension_epoch,
                 packet,
