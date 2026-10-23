@@ -209,8 +209,7 @@ server evidence; complex metadata and entity frame publication remain incomplete
   Quit cleanup. Reconnect advances generation 2→4, clears interaction state and
   renders server-replaced terrain; a new sequence-1 break succeeds and eight further
   keepalives are observed. Nearby mesh
-  dispatch has a failing-then-passing regression, but broad column invalidation and
-  edit-latency qualification remain open.
+  dispatch has a failing-then-passing regression; edit-latency qualification remains open.
 - [x] Exercise native player-inventory admission on the Linux offline vanilla fixture.
   Item/component schemas, complete content, slot/cursor/selection updates and scoped
   menu ownership have deterministic coverage. Live server queries match damage 7,
@@ -225,9 +224,13 @@ server evidence; complex metadata and entity frame publication remain incomplete
   render after join; real input passes accepted/rejected creative-break checks.
   Session 2→4→6 resets ownership; cancelling with an extension pending and 206 queued
   meshes cannot contaminate the next world. The sessions observe 12, seven and five
-  keepalives. Owner/render/app regressions and scoped gates pass. Ordinary edits still
-  invalidate whole columns (216 section jobs); edit latency and resource/performance
-  qualification remain open. This does not establish general playable support.
+  keepalives. Owner/render/app regressions and scoped gates pass. Spatial block/light
+  invalidation reduces the same newly added block from 217 mesh jobs to two. Live
+  interior edits/breaks dispatch one job and a boundary break dispatches two, exposing
+  the adjacent face correctly. Effective skylight inheritance and obsolete initial-job
+  retries have deterministic coverage. Full replacements/biomes retain broad work;
+  edit latency and resource/performance qualification remain open. This does not
+  establish general playable support.
 - [ ] Complete inventory defaults, item visuals, local selection, containers and
   transactions.
 - [ ] Complete survival/tool breaking, placement, entity targeting, local effects

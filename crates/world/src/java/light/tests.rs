@@ -112,3 +112,56 @@ fn malformed_arrays_cannot_replace_or_mutate_authority() {
     assert!(terrain.is_current(&old));
     assert_eq!(terrain.light([-13, 17, -30]), Some([9, 11]));
 }
+
+#[test]
+fn dirty_light_regions_follow_native_sky_inheritance_and_ignore_unchanged_rows() {
+    let mut terrain = Terrain::default();
+    terrain.begin(dimension());
+    terrain.replace([-1, -2], column());
+    terrain.take_dirty();
+    let mut upper = terrain.column([-1, -2]).unwrap().light.sky[3]
+        .as_ref()
+        .unwrap()
+        .to_vec();
+    upper[145] = 0x20; // Change y=17, leaving the inherited bottom row unchanged.
+    let update = |bytes: Vec<u8>| Light {
+        sky: vec![None, None, None, Some(bytes.into()), None],
+        block: vec![None; 5],
+    };
+    assert!(terrain.update_light([-1, -2], update(upper.clone())));
+    assert!(terrain.take_dirty().is_empty());
+    let changed: Vec<_> = terrain.take_changed_regions().collect();
+    assert_eq!(changed.len(), 1);
+    assert_eq!(changed[0].min, [-16, 16, -32]);
+    assert_eq!(changed[0].max, [-1, 31, -17]);
+    assert_eq!(terrain.light([-13, 0, -30]), Some([0, 7]));
+    assert_eq!(terrain.light([-13, 17, -30]), Some([9, 2]));
+    upper[17] = 0x30; // Changing the bottom row also changes the unallocated layer below.
+    assert!(terrain.update_light([-1, -2], update(upper)));
+    let changed: Vec<_> = terrain.take_changed_regions().map(|r| r.min[1]).collect();
+    assert_eq!(changed, [0, 16]);
+    assert_eq!(terrain.light([-13, 0, -30]), Some([0, 3]));
+    assert_eq!(terrain.light([-13, -16, -30]), Some([0, 0]));
+}
+
+#[test]
+fn repeated_or_omitted_light_data_keeps_existing_worker_authority() {
+    let mut terrain = Terrain::default();
+    terrain.begin(dimension());
+    terrain.replace([-1, -2], column());
+    terrain.take_dirty();
+    let key = terrain.publication_key([-1, -2]).unwrap();
+    let same = terrain.column([-1, -2]).unwrap().light.clone();
+    for update in [
+        same,
+        Light {
+            sky: vec![None; 5],
+            block: vec![None; 5],
+        },
+    ] {
+        assert!(terrain.update_light([-1, -2], update));
+        assert!(terrain.is_current(&key));
+        assert!(terrain.take_dirty().is_empty());
+        assert!(terrain.take_changed_regions().next().is_none());
+    }
+}

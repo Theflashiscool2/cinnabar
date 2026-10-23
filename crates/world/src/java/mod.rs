@@ -7,7 +7,7 @@ mod palette;
 pub mod player;
 pub mod roster;
 mod store;
-pub use store::{PublicationKey, Terrain};
+pub use store::{ChangedRegion, PublicationKey, Terrain};
 #[cfg(test)]
 mod tests;
 use crate::NbtValue;

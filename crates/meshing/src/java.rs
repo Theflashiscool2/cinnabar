@@ -12,6 +12,17 @@ use std::{
 };
 use world::java::{Column, Dimension, PublicationKey};
 
+const HALO: i32 = 1;
+/// Sections whose cell/light halo intersects an authoritative changed region.
+/// Coalesced regions remain section-local; this never walks an unbounded world-volume box.
+pub fn affected_sections(region: world::java::ChangedRegion) -> impl Iterator<Item = [i32; 3]> {
+    let min = region.min.map(|v| v.saturating_sub(HALO).div_euclid(16));
+    let max = region.max.map(|v| v.saturating_add(HALO).div_euclid(16));
+    (min[0]..=max[0]).flat_map(move |x| {
+        (min[1]..=max[1]).flat_map(move |y| (min[2]..=max[2]).map(move |z| [x, y, z]))
+    })
+}
+
 /// Immutable halo captured with the publication key. The caller rejects outdated results.
 pub struct Snapshot {
     pub dimension: Dimension,
@@ -64,7 +75,7 @@ pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<
     let [cx, cz] = snapshot.key.chunk;
     let origin = |v: i32| {
         v.checked_mul(16)
-            .filter(|n| n.checked_sub(1).is_some() && n.checked_add(16).is_some())
+            .filter(|n| n.checked_sub(HALO).is_some() && n.checked_add(15 + HALO).is_some())
             .ok_or_else(|| invalid("Java section coordinate overflow"))
     };
     let [x0, y0, z0] = [origin(cx)?, origin(section_y)?, origin(cz)?];
@@ -81,9 +92,9 @@ pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<
     // Resolve each block once, including the halo; positional variants remain deterministic.
     let mut cells = BTreeMap::new();
     let mut missing = BTreeSet::new();
-    for y in -1..=16 {
-        for z in -1..=16 {
-            for x in -1..=16 {
+    for y in -HALO..=15 + HALO {
+        for z in -HALO..=15 + HALO {
+            for x in -HALO..=15 + HALO {
                 let pos = [x0 + x, y0 + y, z0 + z];
                 if let Some(id) = snapshot.block(pos) {
                     if graphics.contains(id) {

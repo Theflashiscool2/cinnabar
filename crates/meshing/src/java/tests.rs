@@ -76,3 +76,22 @@ fn unallocated_sky_above_resident_data_is_full_sky() {
     let snapshot = Snapshot::capture(&terrain, [-1, -2]).unwrap();
     assert_eq!(snapshot.light([-16, -48, -32]), Some([0, 15]));
 }
+
+#[test]
+fn spatial_dependencies_include_only_intersecting_halo_sections() {
+    use std::collections::BTreeSet;
+    let sections = |position| {
+        affected_sections(world::java::ChangedRegion {
+            min: position,
+            max: position,
+        })
+        .collect::<BTreeSet<_>>()
+    };
+    assert_eq!(sections([8, -8, 8]), BTreeSet::from([[0, -1, 0]]));
+    let corners = (-2..=-1)
+        .flat_map(|x| (-2..=-1).flat_map(move |y| (-2..=-1).map(move |z| [x, y, z])))
+        .collect();
+    assert_eq!(sections([-16, -16, -16]), corners);
+    let edge = sections([i32::MIN; 3]);
+    assert_eq!(edge, BTreeSet::from([[i32::MIN / 16; 3]]));
+}

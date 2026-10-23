@@ -132,6 +132,16 @@ impl Stream {
             self.pending.insert([x, y, z]);
         }
     }
+    /// Column revisions conservatively fence every job in the halo. A spatial edit can retire
+    /// an unrelated in-flight result; retry that bounded job rather than losing its first mesh.
+    fn retry_obsolete(&mut self, terrain: &Terrain, section: SectionKey) {
+        self.metrics.obsolete += 1;
+        if terrain.dimension() == Some(&self.dimension)
+            && terrain.column([section[0], section[2]]).is_some()
+        {
+            self.pending.insert(section);
+        }
+    }
     /// Returns unloaded columns so the host can retire already published render entities.
     /// Every dispatch captures immutable authority, and every result is checked again at handoff.
     pub fn poll(&mut self, terrain: &mut Terrain) -> Vec<[i32; 2]> {
@@ -154,13 +164,26 @@ impl Stream {
                 self.mark(chunk);
             }
         }
+        for region in terrain.take_changed_regions() {
+            for section in meshing::java::affected_sections(region) {
+                if section[1] < self.dimension.min_y.div_euclid(16)
+                    || section[1] >= (self.dimension.min_y + self.dimension.height).div_euclid(16)
+                    || terrain.column([section[0], section[2]]).is_none()
+                {
+                    continue;
+                }
+                self.errors.remove(&section);
+                self.waiting_graphics.remove(&section);
+                self.pending.insert(section);
+            }
+        }
         while self.ready.len() < WORKERS {
             let Ok(done) = self.receiver.try_recv() else {
                 break;
             };
             self.active.remove(&done.section);
             if !terrain.is_current(&done.key) {
-                self.metrics.obsolete += 1;
+                self.retry_obsolete(terrain, done.section);
                 continue;
             }
             self.metrics.completed += 1;
@@ -190,7 +213,15 @@ impl Stream {
                 }
             }
         }
-        self.ready.retain(|r| terrain.is_current(&r.key));
+        // The queue is worker-bounded. Preserve ordering while retiring stale candidates.
+        for _ in 0..self.ready.len() {
+            let ready = self.ready.pop_front().expect("counted ready result");
+            if terrain.is_current(&ready.key) {
+                self.ready.push_back(ready);
+            } else {
+                self.retry_obsolete(terrain, ready.section);
+            }
+        }
         while self.active.len() + self.ready.len() < WORKERS {
             let Some(section) = self
                 .pending
@@ -240,7 +271,7 @@ impl Stream {
             if terrain.is_current(&ready.key) {
                 return Some(ready);
             }
-            self.metrics.obsolete += 1;
+            self.retry_obsolete(terrain, ready.section);
         }
         None
     }

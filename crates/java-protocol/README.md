@@ -282,11 +282,26 @@ The missing-graphics regression fails before the fix and passes afterward. Nativ
 owner tests, resource-prefix rejection, stale-world/catalog fences, compatible GPU
 publication, existing reload regressions, app cancellation/readiness tests, clippy,
 formatting, architecture and the graphical build pass. Full-workspace merge gates,
-Windows/macOS and online-mode acceptance remain unrun. Ordinary block updates still
-invalidate whole columns and their neighbours: the first added block dispatches 217
-jobs (216 section jobs plus a graphics retry), despite stable old draw resources.
-This remains a measured work/latency bottleneck for the next terrain update slice;
-the extension does not qualify a playable client or improve an FPS benchmark.
+Windows/macOS and online-mode acceptance remain unrun.
+
+Incremental terrain changes now carry section-local block/light bounds. Meshing owns
+its one-cell dependency halo; the pipeline queues only intersecting resident sections.
+Full column replacements, unloads and biome updates retain full-column invalidation.
+Light changes compare effective sources, including inherited bottom-row skylight;
+identical or omitted updates preserve revisions. Column revision fences remain
+conservative: obsolete in-flight jobs retry rather than losing their initial mesh.
+
+The same Linux fixture command-block addition dispatches two jobs (including its
+missing-graphics retry), versus 217 before spatial invalidation. An interior dirt
+update and actual creative break each dispatch one job. Breaking at a chunk boundary
+dispatches two jobs, and a fresh frame shows the newly exposed neighbouring face;
+server queries confirm the removed and retained blocks. Reconnect advances generation
+2→4, renders the remaining server block, clears action counters and observes four
+further keepalives before fixture restoration and disconnect. Focused world/meshing/pipeline
+regressions, scoped clippy, formatting, architecture and the graphical build pass.
+These are measured work counts, not frame-rate or edit-latency qualification. Effective
+light-source changes still conservatively invalidate whole light sections. General
+playable support and the project's performance budgets remain incomplete.
 
 `meshing::java` consumes immutable domain snapshots and produces shared Cinnabar
 mesh buffers, sampling the server's separate sky/block light nibbles.

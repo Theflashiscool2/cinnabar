@@ -9,11 +9,19 @@ pub struct PublicationKey {
     pub revision: u64,
     pub neighbours: [Option<u64>; 8],
 }
+/// Inclusive authoritative block/light changes, coalesced within one native section.
+/// Consumers choose their own dependency halo; the store does not prescribe mesh work.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ChangedRegion {
+    pub min: [i32; 3],
+    pub max: [i32; 3],
+}
 #[derive(Debug, Default)]
 pub struct Terrain {
     dimension: Option<Dimension>,
     columns: BTreeMap<[i32; 2], Arc<Column>>,
     dirty: BTreeSet<[i32; 2]>,
+    changed_regions: BTreeMap<[i32; 3], ChangedRegion>,
     revision: u64,
     pub center: Option<[i32; 2]>,
     pub radius: Option<u32>,
@@ -80,7 +88,31 @@ impl Terrain {
             .expect("Java column revision exhausted");
         self.revision
     }
+    fn mark_region(&mut self, region: ChangedRegion) {
+        let section = region.min.map(|v| v.div_euclid(16));
+        self.changed_regions
+            .entry(section)
+            .and_modify(|old| {
+                for axis in 0..3 {
+                    old.min[axis] = old.min[axis].min(region.min[axis]);
+                    old.max[axis] = old.max[axis].max(region.max[axis]);
+                }
+            })
+            .or_insert(region);
+    }
+    fn mark_light_section(&mut self, [x, z]: [i32; 2], y: i32) {
+        let [Some(x), Some(y), Some(z)] = [x, y, z].map(|v| v.checked_mul(16)) else {
+            self.mark_dirty([x, z]);
+            return;
+        };
+        // Multiples of sixteen leave fifteen representable coordinates in every axis.
+        self.mark_region(ChangedRegion {
+            min: [x, y, z],
+            max: [x + 15, y + 15, z + 15],
+        });
+    }
     fn mark_dirty(&mut self, [x, z]: [i32; 2]) {
+        self.changed_regions.retain(|p, _| [p[0], p[2]] != [x, z]);
         for (dx, dz) in (-1..=1).flat_map(|x| (-1..=1).map(move |z| (x, z))) {
             if let (Some(x), Some(z)) = (x.checked_add(dx), z.checked_add(dz)) {
                 self.dirty.insert([x, z]);
@@ -154,7 +186,10 @@ impl Terrain {
         // across an authoritative block replacement would expose facts about the previous block.
         column.heightmaps.clear();
         column.block_entities.retain(|b| b.position != [x, y, z]);
-        self.mark_dirty(key);
+        self.mark_region(ChangedRegion {
+            min: [x, y, z],
+            max: [x, y, z],
+        });
     }
     pub fn update_light(&mut self, key: [i32; 2], update: Light) -> bool {
         let Some(column) = self.columns.get(&key) else {
@@ -164,23 +199,44 @@ impl Terrain {
         if !update.valid_for(column.sections.len()) {
             return false;
         }
-        let revision = self.next_revision();
-        let column = Arc::make_mut(self.columns.get_mut(&key).unwrap());
-        for (old, new) in column
+        if !column
             .light
+            .sky
+            .iter()
+            .zip(&update.sky)
+            .chain(column.light.block.iter().zip(&update.block))
+            .any(|(old, new)| {
+                new.as_ref()
+                    .is_some_and(|new| old.as_deref() != Some(new.as_ref()))
+            })
+        {
+            return true;
+        }
+        let mut merged = column.light.clone();
+        for (old, new) in merged
             .sky
             .iter_mut()
             .zip(update.sky)
-            .chain(column.light.block.iter_mut().zip(update.block))
+            .chain(merged.block.iter_mut().zip(update.block))
         {
             if new.is_some() {
                 *old = new;
             }
         }
+        let changed = column.light.changed_sections(
+            &merged,
+            self.dimension.as_ref().expect("resident dimension"),
+        );
+        let revision = self.next_revision();
+        let column = Arc::make_mut(self.columns.get_mut(&key).unwrap());
+        column.light = merged;
         column.revision = revision;
-        self.mark_dirty(key);
+        for section in changed {
+            self.mark_light_section(key, section);
+        }
         true
     }
+
     pub fn update_biomes(&mut self, key: [i32; 2], biomes: Vec<Palette<BiomeId>>) -> bool {
         let Some(column) = self.columns.get(&key) else {
             self.ignored_nonresident_updates += 1;
@@ -200,6 +256,10 @@ impl Terrain {
     }
     pub fn take_dirty(&mut self) -> BTreeSet<[i32; 2]> {
         std::mem::take(&mut self.dirty)
+    }
+    /// Drains coalesced spatial changes separately from full column replacement/unload work.
+    pub fn take_changed_regions(&mut self) -> impl Iterator<Item = ChangedRegion> + use<> {
+        std::mem::take(&mut self.changed_regions).into_values()
     }
     /// Packed terrain/light payload bytes, excluding allocator overhead and registry/asset data.
     pub fn retained_payload_bytes(&self) -> usize {

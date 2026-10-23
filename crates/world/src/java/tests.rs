@@ -108,3 +108,30 @@ fn neighbour_replacement_invalidates_lighting_and_mesh_snapshot() {
     assert!(!t.is_current(&key));
     assert!(t.take_dirty().contains(&[0, 0]));
 }
+
+#[test]
+fn spatial_edits_coalesce_within_sections_without_dirtying_whole_columns() {
+    let mut terrain = Terrain::default();
+    terrain.begin(dimension(1));
+    terrain.replace([-1, 0], column());
+    terrain.take_dirty();
+    terrain.set_block([-15, -63, 2], BlockStateId(8));
+    terrain.set_block([-2, -50, 12], BlockStateId(9));
+    assert!(terrain.take_dirty().is_empty());
+    assert_eq!(
+        terrain.take_changed_regions().collect::<Vec<_>>(),
+        [ChangedRegion {
+            min: [-15, -63, 2],
+            max: [-2, -50, 12],
+        }]
+    );
+    let key = terrain.publication_key([-1, 0]).unwrap();
+    terrain.set_block([-2, -50, 12], BlockStateId(9));
+    assert!(terrain.is_current(&key));
+    assert!(terrain.take_changed_regions().next().is_none());
+    terrain.set_block([-2, -50, 12], BlockStateId(10));
+    terrain.unload([-1, 0]);
+    assert!(terrain.take_changed_regions().next().is_none());
+    terrain.replace([-1, 0], column());
+    assert!(!terrain.is_current(&key));
+}

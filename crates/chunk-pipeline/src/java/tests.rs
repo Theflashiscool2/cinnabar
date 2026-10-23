@@ -10,7 +10,8 @@ struct Air;
 impl Source for Air {
     fn read(&mut self, path: &str) -> Result<Vec<u8>, AssetError> {
         match path {
-            "assets/minecraft/blockstates/air.json" => {
+            "assets/minecraft/blockstates/air.json"
+            | "assets/minecraft/blockstates/cave_air.json" => {
                 Ok(br#"{"variants":{"":{"model":"block/air"}}}"#.to_vec())
             }
             "assets/minecraft/models/block/air.json" => Ok(br#"{"elements":[]}"#.to_vec()),
@@ -21,11 +22,11 @@ impl Source for Air {
     }
 }
 fn fixture() -> (Terrain, Arc<Graphics>) {
-    let report = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]}}"#;
+    let report = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]},"minecraft:cave_air":{"states":[{"id":1,"default":true}]}}"#;
     let registry = BlockRegistry::load(report, &format!("{:x}", Sha256::digest(report))).unwrap();
     let graphics = assets::registry::java::graphics::compile(
         &mut BlockModels::new(Arc::new(registry), Box::new(Air)),
-        [0],
+        [0, 1],
         64,
     )
     .unwrap();
@@ -211,4 +212,57 @@ fn graphics_extension_retries_only_waiting_sections_and_rejects_obsolete_base_or
     dimension.epoch += 1;
     terrain.begin(dimension);
     assert!(!stream.install_graphics(&terrain, &next));
+}
+
+#[test]
+fn one_interior_block_edit_does_not_remesh_unaffected_sections() {
+    let (mut terrain, graphics) = fixture();
+    let mut stream = Stream::new(&terrain, graphics).unwrap();
+    test_time::eventually("initial native terrain", || {
+        stream.poll(&mut terrain);
+        while stream.pop_ready(&terrain).is_some() {}
+        stream.backlog() == 0
+    });
+    let before = stream.metrics.dispatched;
+    terrain.set_block([8, -8, 8], BlockStateId(1));
+    let mut changed = Vec::new();
+    test_time::eventually("one native block edit", || {
+        stream.poll(&mut terrain);
+        while let Some(ready) = stream.pop_ready(&terrain) {
+            changed.push(ready.section);
+        }
+        stream.backlog() == 0
+    });
+    assert_eq!(
+        changed,
+        [[0, -1, 0]],
+        "unaffected terrain must retain its existing mesh"
+    );
+    assert_eq!(stream.metrics.dispatched - before, 1);
+}
+
+#[test]
+fn spatial_edit_retries_obsolete_initial_jobs_instead_of_losing_their_first_mesh() {
+    let (mut terrain, graphics) = fixture();
+    let mut stream = Stream::new(&terrain, graphics).unwrap();
+    test_time::eventually("queued initial geometry", || {
+        stream.poll(&mut terrain);
+        !stream.ready.is_empty()
+    });
+    terrain.set_block([8, -8, 8], BlockStateId(1));
+    let mut published = BTreeSet::new();
+    test_time::eventually("all initial geometry after a concurrent edit", || {
+        stream.poll(&mut terrain);
+        while let Some(ready) = stream.pop_ready(&terrain) {
+            assert!(terrain.is_current(&ready.key));
+            assert!(
+                published.insert(ready.section),
+                "duplicate section publication"
+            );
+        }
+        stream.backlog() == 0
+    });
+    assert_eq!(published.len(), 9);
+    assert!(stream.metrics.obsolete > 0);
+    assert!(stream.errors().is_empty());
 }
