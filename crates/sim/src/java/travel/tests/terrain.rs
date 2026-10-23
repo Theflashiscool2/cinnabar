@@ -36,6 +36,7 @@ fn scene() -> (Terrain, Table) {
         name: "fixture:floor".into(),
         min_y: -16,
         height: 32,
+        has_skylight: true,
     });
     assert!(
         terrain.replace(

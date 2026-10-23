@@ -47,6 +47,7 @@ pub(super) fn state() -> WorldState {
         name: "minecraft:overworld".into(),
         min_y: -64,
         height: 384,
+        has_skylight: true,
     });
     state
         .bootstrap
@@ -62,6 +63,7 @@ pub(super) fn state() -> WorldState {
                     [
                         ("min_y".into(), java_protocol::nbt::Value::Int(-64)),
                         ("height".into(), java_protocol::nbt::Value::Int(384)),
+                        ("has_skylight".into(), java_protocol::nbt::Value::Byte(1)),
                     ]
                     .into(),
                 ),

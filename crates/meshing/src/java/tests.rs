@@ -8,6 +8,7 @@ fn terrain() -> Terrain {
         name: "example:negative".into(),
         min_y: -64,
         height: 16,
+        has_skylight: true,
     });
     let blocks = Palette::uniform(BlockStateId(42), 4096);
     let section = Arc::new(Section {
@@ -44,7 +45,7 @@ fn negative_coordinates_light_nibbles_and_unknown_boundary_are_distinct() {
     assert_eq!(snapshot.light([-15, -64, -32]), Some([7, 10]));
     assert_eq!(snapshot.light([-1, -49, -17]), Some([7, 12]));
     assert_eq!(snapshot.light([-16, -65, -32]), Some([0, 0]));
-    assert_eq!(snapshot.light([-16, -48, -32]), None);
+    assert_eq!(snapshot.light([-16, -48, -32]), Some([0, 15]));
     assert_eq!(snapshot.light([0, -64, -32]), None);
     assert_eq!(snapshot.block([-16, -65, -32]), None);
 }
@@ -63,6 +64,15 @@ fn worker_snapshot_keeps_old_authority_but_cannot_publish_after_replacement() {
         name: "example:replacement".into(),
         min_y: -64,
         height: 16,
+        has_skylight: true,
     });
     assert!(!terrain.is_current(&next.key));
+}
+
+#[test]
+fn unallocated_sky_above_resident_data_is_full_sky() {
+    // Verified with the pinned client's SkyLightSectionStorage.getLightValue(false).
+    let terrain = terrain();
+    let snapshot = Snapshot::capture(&terrain, [-1, -2]).unwrap();
+    assert_eq!(snapshot.light([-16, -48, -32]), Some([0, 15]));
 }

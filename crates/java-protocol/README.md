@@ -186,7 +186,16 @@ arrays, not the older NBT heightmap compound. Network block-entity NBT remains t
 `client-world::java` admits those packets into `world::java::Terrain`: Java-only
 block/biome IDs, compact Y/Z/X palettes, full columns, light/biome updates, block
 changes and unloads. Negative coordinates use Euclidean chunk division. Missing
-terrain/light is unknown, not air or fullbright. Session/dimension epochs and
+columns remain unknown, not air or fullbright. `world::java::Light` samples resident
+light storage for meshes and actors: absent block layers read zero; absent sky
+layers inherit the bottom row of the next stored layer above, or full sky above
+all stored layers. Explicit empty layers remain zero. The native dimension registry
+provides `has_skylight`; dimensions without sky read zero sky light. Incremental
+updates retain omitted layers and invalidate publication revisions. The reference
+is the manifest-pinned client archive’s `BlockLightSectionStorage.getLightValue`
+and `SkyLightSectionStorage.getLightValue(..., false)`, checked with an isolated
+original probe and independent numerical vectors. No official client is launched.
+Session/dimension epochs and
 column/neighbour revisions reject obsolete publications. Respawn clears terrain
 and position before admitting the new world. Nonresident incremental updates do
 not invent columns and are counted. Block replacement invalidates old block-entity
@@ -247,8 +256,8 @@ state set; streaming new state identities needs an incremental resource extensio
 `meshing::java` consumes immutable domain snapshots and produces shared Cinnabar
 mesh buffers, sampling the server's separate sky/block light nibbles.
 `chunk-pipeline::java` bounds concurrent jobs/results, carries neighbor revision
-keys and rejects obsolete work. Unknown light remains pending until new authority
-arrives. Its uniform-biome path preserves the actual native registry index and
+keys and rejects obsolete work. Unreceived neighbor columns remain pending until
+new authority arrives. Its uniform-biome path preserves the actual native registry index and
 fails explicitly when Java Voronoi/blend processing is required.
 
 For CPU mesh acceptance, add `--client-assets CLIENT_JAR --compile-terrain` to the
@@ -479,9 +488,19 @@ samples normalize angles independently of the raw target. Independent pinned-run
 probes and follow-up wire deltas cover these distinctions; regressions first exposed
 the wrong anchor and a distant sync retaining an obsolete visual target. Long
 teleport reconciliation with collisions and non-ticking entities remains unqualified.
-An 80-block vertical position-sync reached the correct domain position, but the
-destination capture exposed a lighting defect: unallocated light sections suppress
-both terrain and entity publication. That rendered correction case remains unverified.
+Linux hidden Vulkan acceptance now renders an 80-block vertical position-sync
+onto a server-created grass platform with the same pig visible. Native unallocated
+light lookup fixes the earlier missing terrain/body capture. Resident nonempty
+sections advance 25→27 and return to 25 after server removal; actor missing-light
+count stays zero. Server entity data confirms movement on that platform. The run
+observed seven keepalives before Save & Quit cleared meshes, poses and clocks;
+reconnect advances session 2→4 and renders fresh ground terrain and one pig.
+This is an offline vanilla fixture at 1280×720, scale 1, software lavapipe.
+Server-console block edits do not establish client interaction support. The six
+Java owner/consumer suites pass 69 tests, including a regression that failed before
+the fix, plus app-inclusive clippy with tests, format, architecture and a graphical
+build. No-sky dimensions have deterministic coverage only; smooth lighting, local
+light propagation, frame budgets and Windows/macOS remain unqualified.
 
 This remains a narrow native entity slice. Tick-rate changes/freezing, shadows,
 glow outlines, death animation,

@@ -122,6 +122,14 @@ server evidence; complex metadata and entity frame publication remain incomplete
   fresh terrain after an offline server edit, without the removed pillar.
   This does not establish client block interaction,
   visual parity, frame pacing or cross-platform acceptance.
+- [x] Share verified native unallocated-light lookup between terrain and actors;
+  admit dimension skylight capability from its registry. Independent runtime vectors
+  cover gaps, negative coordinates, explicit dark layers and no-sky dimensions;
+  malformed arrays cannot mutate authority. Linux offline rendered acceptance now
+  shows a server-created platform and pig after an 80-block upward correction,
+  confirms movement from server data, and removes both elevated mesh sections after
+  return. Seven keepalives, Save & Quit cleanup and a fresh generation on reconnect
+  were observed. Server-console edits do not establish client block interactions.
 - [x] Bound native mesh workers/results and reject stale session/dimension/column/halo
   results. Empty sections use zero-byte publication permits. Java world entry uses
   its GPU upload readiness and native player-loaded command, independently of the
@@ -184,8 +192,6 @@ server evidence; complex metadata and entity frame publication remain incomplete
   semantics, clock/weather presentation and streaming new-state asset extension.
   The present slice requires a proven uniform biome field. Collision and player
   input remain incomplete; unbound camera translation is disabled in Java sessions.
-  A live elevated-platform case also exposed unallocated light sections being
-  treated as missing, suppressing both terrain and actor publication there.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 

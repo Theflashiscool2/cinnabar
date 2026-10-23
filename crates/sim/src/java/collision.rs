@@ -293,6 +293,7 @@ mod tests {
             name: "fixture:world".into(),
             min_y: -64,
             height: 384,
+            has_skylight: true,
         });
         assert!(matches!(
             collect(&terrain, &table, 7, 1, body()),

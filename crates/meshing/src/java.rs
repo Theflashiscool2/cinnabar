@@ -47,26 +47,12 @@ impl Snapshot {
             )
             .map(|id| id.0)
     }
-    /// Includes the two server-provided boundary light sections. Unknown stays unknown.
+    /// Samples native light storage without turning missing columns into fullbright terrain.
     pub fn light(&self, [x, y, z]: [i32; 3]) -> Option<[u8; 2]> {
-        let local = y.checked_sub(self.dimension.min_y)?;
-        let section = local.div_euclid(16) + 1;
-        if section < 0 {
-            return None;
-        }
-        let column = self.columns.get(&[x.div_euclid(16), z.div_euclid(16)])?;
-        let index = ((y.rem_euclid(16) as usize) << 8)
-            | ((z.rem_euclid(16) as usize) << 4)
-            | x.rem_euclid(16) as usize;
-        let read = |layers: &[Option<Arc<[u8]>>]| -> Option<u8> {
-            let bytes = layers.get(section as usize)?.as_ref()?;
-            if bytes.is_empty() {
-                Some(0)
-            } else {
-                bytes.get(index / 2).map(|b| (b >> ((index % 2) * 4)) & 15)
-            }
-        };
-        Some([read(&column.light.block)?, read(&column.light.sky)?])
+        self.columns
+            .get(&[x.div_euclid(16), z.div_euclid(16)])?
+            .light
+            .sample(&self.dimension, [x, y, z])
     }
 }
 /// Builds the selected absolute section Y. Flat server lighting is supported; smooth Java AO,

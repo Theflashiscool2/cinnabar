@@ -4,6 +4,9 @@ use java_protocol::{nbt::Value, terrain as wire};
 use std::sync::Arc;
 use world::java as domain;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'static str> {
     let bootstrap = state
         .bootstrap
@@ -26,6 +29,12 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         Some(Value::Int(n)) => Ok(*n),
         _ => Err("missing Java dimension geometry"),
     };
+    let has_skylight = match fields.get("has_skylight") {
+        Some(Value::Byte(n)) => *n != 0,
+        _ => return Err("missing Java dimension skylight flag"),
+    };
+    let min_y = int("min_y")?;
+    let height = int("height")?;
     state.dimension_epoch = state
         .dimension_epoch
         .checked_add(1)
@@ -34,8 +43,9 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         session: state.generation,
         epoch: state.dimension_epoch,
         name: spawn.world.clone(),
-        min_y: int("min_y")?,
-        height: int("height")?,
+        min_y,
+        height,
+        has_skylight,
     });
     state
         .entities

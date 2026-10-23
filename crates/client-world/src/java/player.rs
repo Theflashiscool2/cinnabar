@@ -136,6 +136,7 @@ mod tests {
             name: "fixture:dimension".into(),
             min_y: -64,
             height: 384,
+            has_skylight: true,
         });
         state
     }

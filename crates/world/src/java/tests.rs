@@ -6,6 +6,7 @@ fn dimension(epoch: u64) -> Dimension {
         name: "minecraft:overworld".into(),
         min_y: -64,
         height: 16,
+        has_skylight: true,
     }
 }
 fn column() -> Column {
@@ -59,7 +60,7 @@ fn worker_results_cannot_cross_updates_reloads_or_dimensions() {
     assert!(!t.accepts(6, 2));
 }
 #[test]
-fn omitted_light_stays_unknown_and_empty_light_clears_previous_data() {
+fn omitted_light_keeps_storage_and_empty_light_clears_previous_data() {
     let mut t = Terrain::default();
     t.begin(dimension(1));
     t.replace([0, 0], column());

@@ -437,6 +437,7 @@ mod tests {
             name: "minecraft:overworld".into(),
             min_y: -64,
             height: 384,
+            has_skylight: true,
         };
         state.terrain.begin(dimension.clone());
         state.phase = Some(java_protocol::session::Phase::Play);

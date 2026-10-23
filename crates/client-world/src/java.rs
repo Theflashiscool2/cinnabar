@@ -232,6 +232,7 @@ mod tests {
             name: "minecraft:overworld".into(),
             min_y: -64,
             height: 384,
+            has_skylight: true,
         });
         assert!(!state.admit(Envelope {
             generation: 7,

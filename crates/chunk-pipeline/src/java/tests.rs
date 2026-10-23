@@ -36,6 +36,7 @@ fn fixture() -> (Terrain, Arc<Graphics>) {
         name: "fixture:world".into(),
         min_y: -16,
         height: 16,
+        has_skylight: true,
     });
     for x in -1..=1 {
         for z in -1..=1 {

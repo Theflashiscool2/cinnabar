@@ -2,6 +2,7 @@
 pub mod dynamics;
 pub mod entities;
 pub mod hud;
+mod light;
 mod palette;
 pub mod player;
 mod store;
@@ -19,13 +20,15 @@ pub struct Dimension {
     pub name: String,
     pub min_y: i32,
     pub height: i32,
+    pub has_skylight: bool,
 }
 #[derive(Clone, Debug)]
 pub struct Section {
     pub blocks: Palette<BlockStateId>,
     pub biomes: Palette<BiomeId>,
 }
-/// None is unknown light; a present empty slice is authoritative zero light.
+/// Native light storage: absent layers are unallocated; present empty slices are zero.
+/// In an incremental update, an absent layer instead means to retain existing storage.
 #[derive(Clone, Debug, Default)]
 pub struct Light {
     pub sky: Vec<Option<Arc<[u8]>>>,

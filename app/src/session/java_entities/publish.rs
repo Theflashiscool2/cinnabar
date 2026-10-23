@@ -285,20 +285,6 @@ pub(crate) fn update(
 /// Current slice samples authoritative light at the feet. Eye-height probing remains unqualified.
 fn light(terrain: &world::java::Terrain, position: [f64; 3]) -> Option<u32> {
     let [x, y, z] = position.map(|n| n.floor() as i32);
-    let dimension = terrain.dimension()?;
-    let column = terrain.column([x.div_euclid(16), z.div_euclid(16)])?;
-    let section = usize::try_from(y.div_euclid(16) - dimension.min_y.div_euclid(16) + 1).ok()?;
-    let index = (y.rem_euclid(16) * 256 + z.rem_euclid(16) * 16 + x.rem_euclid(16)) as usize;
-    let read = |layers: &[Option<Arc<[u8]>>]| {
-        let bytes = layers.get(section)?.as_ref()?;
-        if bytes.is_empty() {
-            Some(0)
-        } else {
-            bytes.get(index / 2).map(|v| (v >> ((index & 1) * 4)) & 15)
-        }
-    };
-    Some(render_model::pack_actor_light(
-        read(&column.light.block)?,
-        read(&column.light.sky)?,
-    ))
+    let [block, sky] = terrain.light([x, y, z])?;
+    Some(render_model::pack_actor_light(block, sky))
 }

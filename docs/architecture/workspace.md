@@ -124,6 +124,9 @@ frame. The application binds semantic input, native asset readiness and camera
 presentation; it does not route Java prediction through Bedrock packets.
 The Java domain store and bounded mesh pipeline fence session, dimension and neighbor
 revisions; the application owns asset installation and render publication permits.
+The world owner also samples native light storage for both terrain and actors.
+Dimension skylight capability comes from the configuration registry; unallocated
+layers use Java storage semantics while unreceived columns stay unavailable.
 Its Java presentation resource exposes GPU upload readiness to the shared loading
 screen and sends Java's player-loaded command; Bedrock's stream/loading handshake
 retains its own owner. Neither path fabricates the other edition's state.

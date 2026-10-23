@@ -94,8 +94,7 @@ impl Terrain {
         };
         let sections = (d.height / 16) as usize;
         if column.sections.len() != sections
-            || column.light.sky.len() != sections + 2
-            || column.light.block.len() != sections + 2
+            || !column.light.valid_for(sections)
             || column
                 .sections
                 .iter()
@@ -162,9 +161,7 @@ impl Terrain {
             self.ignored_nonresident_updates += 1;
             return false;
         };
-        if update.sky.len() != column.light.sky.len()
-            || update.block.len() != column.light.block.len()
-        {
+        if !update.valid_for(column.sections.len()) {
             return false;
         }
         let revision = self.next_revision();
