@@ -176,6 +176,15 @@ server evidence; complex metadata and entity frame publication remain incomplete
   Native teleport anchors, short corrections and distant position-sync have focused
   regression coverage and independent runtime vectors. Long teleport reconciliation,
   non-ticking entities, server tick-rate changes and mounted animation remain incomplete.
+- [x] Exercise standing default-skin remote players on the Linux offline vanilla fixture. Native player-list
+  schemas, scoped profiles, duplicate-add semantics, nullable updates, default skin
+  selection, clothing flags and player-specific body/gait rules have deterministic
+  coverage. Two native clients join from the launcher; real peer movement animates
+  the exported player model through the shared actor renderer. Departure removes
+  the profile/body/pose, and reconnect creates one fresh incarnation. Observer
+  reconnect clears terrain/poses and advances generation 2 to 4; eight keepalives
+  were observed before reconnect and two afterward. Custom skin downloads,
+  equipment, other player poses, nametags and the tab-list UI remain unfinished.
 - [x] Exercise native numeric HUD publication on the Linux offline vanilla fixture:
   health, food, synchronized armor and XP match server queries and rendered frames.
   Equipment removal clears armor; mode changes control status/hand visibility. The

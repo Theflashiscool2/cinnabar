@@ -34,6 +34,12 @@ pub(super) fn admit(
             } else {
                 None
             };
+            let player = if s.kind == java_protocol::target::ENTITY_PLAYER {
+                state.players.get(&s.uuid).map(|p| Arc::clone(&p.profile))
+            } else {
+                None
+            };
+            let interpolated = pig.is_some() || player.is_some();
             state.entities.spawn(
                 scope,
                 domain::Spawn {
@@ -50,17 +56,16 @@ pub(super) fn admit(
                     object_data: s.data,
                     visual: domain::visual::Visual {
                         pig,
+                        player,
                         ..Default::default()
                     },
-                    interpolation_interval: (s.kind == java_protocol::target::ENTITY_PIG).then(
-                        || {
-                            let id = java_protocol::target::ENTITY_TYPES
-                                .iter()
-                                .position(|&name| name == s.kind)
-                                .expect("decoded entity type");
-                            java_protocol::target::ENTITY_SPECS[id].update_interval
-                        },
-                    ),
+                    interpolation_interval: interpolated.then(|| {
+                        let id = java_protocol::target::ENTITY_TYPES
+                            .iter()
+                            .position(|&name| name == s.kind)
+                            .expect("decoded entity type");
+                        java_protocol::target::ENTITY_SPECS[id].update_interval
+                    }),
                 },
             )
         }

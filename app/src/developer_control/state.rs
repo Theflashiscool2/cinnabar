@@ -425,6 +425,17 @@ pub(super) fn snapshot(world: &World) -> Value {
             json!(state.bootstrap.as_ref().map(|b| b.world.entity_id));
         snapshot["native_java"]["attributes"] = json!(state.player_dynamics.attributes.iter().map(|(name, attribute)| (name, json!({"base":attribute.base,"value":attribute.value().ok(),"modifiers":attribute.modifiers.iter().map(|m|json!({"name":m.name,"amount":m.amount,"operation":format!("{:?}",m.operation)})).collect::<Vec<_>>()}))).collect::<std::collections::BTreeMap<_,_>>());
         snapshot["native_java"]["deferred_entity_dynamics"] = json!(state.deferred_entity_dynamics);
+        snapshot["native_java"]["players"] = json!({
+            "count": state.players.iter().count(),
+            "listed": state.players.iter().filter(|p| p.listed).count(),
+            "unknown_updates": state.players.unknown_updates,
+            // Diagnostic sampling does not limit the authority or disclose profile properties.
+            "sample": state.players.iter().take(16).map(|p| json!({
+                "uuid":p.uuid,"name":p.profile.name.as_ref(),"listed":p.listed,
+                "mode":format!("{:?}",p.mode),"latency":p.latency,"show_hat":p.show_hat,
+                "unverified_chat":p.chat.is_some(),
+            })).collect::<Vec<_>>(),
+        });
         snapshot["native_java"]["entities"] = json!({
             "count": state.entities.iter().count(),
             "revision": state.entities.revision(),

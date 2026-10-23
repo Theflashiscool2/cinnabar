@@ -23,7 +23,12 @@ use world::java::entities::visual::PigAppearance;
 pub(super) struct Prepared {
     pub models: BTreeMap<String, Arc<Model>>,
     pub textures: BTreeMap<String, ActorArtworkLocation>,
+    pub player_textures: BTreeMap<String, ActorArtworkLocation>,
     pub artwork: ActorArtworkPages,
+}
+enum Texture {
+    Pig(String),
+    Player(String),
 }
 pub(super) fn load(
     root: PathBuf,
@@ -67,11 +72,21 @@ fn inner(
         .iter()
         .flat_map(|a| [a.adult_texture.to_string(), a.baby_texture.to_string()])
         .collect::<BTreeSet<_>>();
-    let mut groups = BTreeMap::<(u16, u16), Vec<(String, Image)>>::new();
+    let mut requests = Vec::new();
     for name in keys {
+        let path = Identifier::parse(&name)?.asset_path("textures", "png");
+        requests.push((Texture::Pig(name), path));
+    }
+    for skin in target::DEFAULT_PLAYER_SKINS {
+        // ResourceTexture stores the complete resource path, unlike a pig variant's asset ID.
+        let id = Identifier::parse(skin.texture)?;
+        let path = format!("assets/{}/{}", id.namespace(), id.path());
+        requests.push((Texture::Player(skin.texture.to_owned()), path));
+    }
+    let mut groups = BTreeMap::<(u16, u16), Vec<(Texture, Image)>>::new();
+    for (name, path) in requests {
         check()?;
-        let image =
-            Image::decode(&jar.read(&Identifier::parse(&name)?.asset_path("textures", "png"))?)?;
+        let image = Image::decode(&jar.read(&path)?)?;
         groups
             .entry((u16::try_from(image.width)?, u16::try_from(image.height)?))
             .or_default()
@@ -79,6 +94,7 @@ fn inner(
     }
     let mut pages = Vec::new();
     let mut textures = BTreeMap::new();
+    let mut player_textures = BTreeMap::new();
     for ((width, height), images) in groups {
         // The shared page contract validates its finite GPU layer budget; no image is dropped.
         let page = u16::try_from(pages.len() + 1)?;
@@ -86,7 +102,11 @@ fn inner(
         let mut rgba = Vec::new();
         for (layer, (name, image)) in images.into_iter().enumerate() {
             rgba.extend(image.rgba);
-            textures.insert(
+            let (map, name) = match name {
+                Texture::Pig(name) => (&mut textures, name),
+                Texture::Player(name) => (&mut player_textures, name),
+            };
+            map.insert(
                 name,
                 ActorArtworkLocation {
                     page,
@@ -114,6 +134,7 @@ fn inner(
     Ok(Prepared {
         models: compiled,
         textures,
+        player_textures,
         artwork,
     })
 }

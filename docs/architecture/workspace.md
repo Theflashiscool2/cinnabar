@@ -136,17 +136,21 @@ the reply by dimension and correction receipt and preserves packet order while
 waiting. Camera presentation observes the admitted correction without becoming a
 second player authority.
 `world::java::entities::visual` owns native appearance facts, including explicit
-incomplete metadata and registry-resolved pig variants. `client-world` validates
+incomplete metadata, registry-resolved pig variants and player clothing visibility. `client-world` validates
 wire accessor/serializer pairs using hash-pinned generated schemas. Local player
 metadata stays separate from remote entity lifetimes and follows respawn retention.
 The protocol owner's original entity-facts report contains identifiers, dimensions,
-update intervals and schema facts; exported model geometry stays outside the checkout.
+update intervals, schema facts, default player skins and clothing masks; exported
+model geometry stays outside the checkout. `world::java::roster` owns session-scoped
+profiles and player-list facts, independently of dimension-scoped entity IDs. Entity
+appearance retains an immutable profile until despawn. Unverified remote chat material
+stays explicitly untrusted and does not authorize signed messages.
 `render-model::actor::java_geometry` converts verified native hierarchies into the
 common GPU rig contract, with a distinct catalog namespace. The application's native
 entity adapter prepares assets off-frame and binds scoped domain facts to complete
 `PreparedActorPublication` batches. Edition selection guards the shared actor catalog;
-pose caches use session/dimension/incarnation lifetimes. The initial visible slice is
-pig bodies with presentation-only interpolation and quadruped gait. The domain
+pose caches use session/dimension/incarnation lifetimes. Pig and default-skin player
+bodies share rig publication, with separate body controllers and model poses. The domain
 entity owner retains ordered visual targets separately from authoritative motion
 and delta anchors; the host advances its clock and samples poses for publication.
 Other entity renderers and full animation/teleport semantics remain incomplete.

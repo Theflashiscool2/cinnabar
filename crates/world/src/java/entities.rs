@@ -67,7 +67,7 @@ pub struct Entity {
     /// Ordered intermediate positions; each tick offset is measured from the preceding step.
     pub path: Arc<[PositionStep]>,
     pub visual: visual::Visual,
-    pub presentation: Option<animation::Mob>,
+    pub presentation: Option<animation::Presentation>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -241,7 +241,18 @@ impl Entities {
             .ok_or("Java entity revision overflow")?;
         let presentation = spawn
             .interpolation_interval
-            .map(|interval| animation::Mob::new(spawn.motion.into(), spawn.head_yaw, interval))
+            .map(|interval| {
+                animation::Presentation::new(
+                    spawn.motion.into(),
+                    spawn.head_yaw,
+                    interval,
+                    if spawn.visual.player.is_some() {
+                        animation::BodyKind::Player
+                    } else {
+                        animation::BodyKind::Pig
+                    },
+                )
+            })
             .transpose()?;
         self.detach(spawn.network_id);
         self.entries.insert(

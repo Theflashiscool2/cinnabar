@@ -11,6 +11,7 @@ mod login;
 mod motion;
 pub mod movement;
 mod play;
+pub mod roster;
 mod terrain;
 use crate::{
     ProtocolError,

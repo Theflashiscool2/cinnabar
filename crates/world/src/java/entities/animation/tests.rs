@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn native_body_control_matches_independent_stationary_and_moving_vectors() {
-    let mut mob = Mob::new(Pose::default(), 100., 3).unwrap();
+    let mut mob = Presentation::new(Pose::default(), 100., 3, BodyKind::Pig).unwrap();
     mob.body = 0.;
     for expected in [
         25., 25., 25., 25., 25., 25., 25., 25., 25., 25., 25., 32.5, 40., 47.5, 55., 62.5, 70.,
@@ -41,6 +41,7 @@ fn native_walk_samples_match_pinned_runtime_and_model_trigonometry() {
         walk.update(distance, false);
         let sample = Sample {
             pose: Pose::default(),
+            age_in_ticks: 0.,
             body_yaw: 0.,
             head_yaw: 0.,
             walk_position: (walk.position - walk.speed * 0.5) * walk.scale,
@@ -58,7 +59,7 @@ fn native_walk_samples_match_pinned_runtime_and_model_trigonometry() {
 
 #[test]
 fn native_head_body_and_gait_retire_with_a_discontinuity() {
-    let mut mob = Mob::new(Pose::default(), 0., 3).unwrap();
+    let mut mob = Presentation::new(Pose::default(), 0., 3, BodyKind::Pig).unwrap();
     mob.head_to(90.);
     for expected in [30., 60., 90.] {
         mob.tick(false, true, false, false);

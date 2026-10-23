@@ -1,5 +1,7 @@
-//! Unmounted pig presentation from the pinned runtime's body control and walk animation.
+//! Native pig and unarmed player presentation with separate body controllers.
 //! These sampled transforms never replace the entity's authoritative movement or collision.
+mod player;
+
 use super::{
     PositionStep,
     interpolation::{Pose, Track, rotation, wrap},
@@ -12,6 +14,7 @@ pub struct Sample {
     pub head_yaw: f32,
     pub walk_position: f32,
     pub walk_speed: f32,
+    pub age_in_ticks: f32,
 }
 impl Sample {
     /// Quadruped model rotations, in radians: head, right/left hind, right/left front.
@@ -33,8 +36,15 @@ impl Sample {
         ]
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BodyKind {
+    Pig,
+    Player,
+}
 #[derive(Clone, Debug)]
-pub struct Mob {
+pub struct Presentation {
+    kind: BodyKind,
+    ticks: u64,
     pub track: Track,
     head: f32,
     old_head: f32,
@@ -61,12 +71,14 @@ impl Walk {
         self.scale = if baby { 3. } else { 1. };
     }
 }
-impl Mob {
-    pub fn new(pose: Pose, head: f32, interval: u32) -> Result<Self, &'static str> {
+impl Presentation {
+    pub fn new(pose: Pose, head: f32, interval: u32, kind: BodyKind) -> Result<Self, &'static str> {
         if !head.is_finite() {
             return Err("nonfinite native head angle");
         }
         Ok(Self {
+            kind,
+            ticks: 0,
             track: Track::new(pose, interval)?,
             head,
             old_head: head,
@@ -97,6 +109,7 @@ impl Mob {
         self.old_head = self.head;
         self.old_body = self.body;
         self.track.tick();
+        self.ticks = self.ticks.saturating_add(1);
         if self.head_steps > 0 {
             // Native head interpolation uses the double overload before narrowing to float.
             let mut delta = f64::from(self.head_target) - f64::from(self.head);
@@ -116,6 +129,10 @@ impl Mob {
             self.walk.update(distance_squared.sqrt() as f32, baby);
         } else {
             self.walk = Walk::default();
+        }
+        if self.kind == BodyKind::Player {
+            player::body(self, dx, dz);
+            return;
         }
         // BodyRotationControl's native thresholds and getMaxHeadYRot for an unmounted pig.
         const MAX_HEAD: f32 = 75.;
@@ -145,6 +162,7 @@ impl Mob {
         let f = fraction.clamp(0., 1.);
         Sample {
             pose: self.track.sample(f),
+            age_in_ticks: self.ticks as f32 + f,
             body_yaw: rotation(self.old_body, self.body, f),
             head_yaw: rotation(self.old_head, self.head, f),
             walk_position: (self.walk.position - self.walk.speed * (1. - f)) * self.walk.scale,

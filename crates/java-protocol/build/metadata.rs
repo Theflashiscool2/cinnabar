@@ -74,6 +74,31 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
         .map(|v| v.as_str().unwrap())
         .collect::<Vec<_>>();
     *code += &format!("pub const ENTITY_POSES: &[&str] = &{poses:?};\n");
+    *code += "#[derive(Clone, Copy, Debug)]\npub struct DefaultPlayerSkin { pub texture: &'static str, pub slim: bool }\npub const DEFAULT_PLAYER_SKINS: &[DefaultPlayerSkin] = &[\n";
+    let skins = facts["default_player_skins"].as_array().unwrap();
+    assert!(!skins.is_empty());
+    let mut textures = std::collections::BTreeSet::new();
+    for skin in skins {
+        let texture = skin["texture"].as_str().unwrap();
+        assert!(textures.insert(texture));
+        let slim = match skin["model"].as_str().unwrap() {
+            "slim" => true,
+            "wide" => false,
+            _ => panic!("unimplemented native default skin model"),
+        };
+        *code += &format!("DefaultPlayerSkin {{ texture: {texture:?}, slim: {slim} }},\n");
+    }
+    *code += "];\n";
+    let mut clothing_masks = std::collections::BTreeSet::new();
+    for (name, mask) in facts["player_model_parts"].as_object().unwrap() {
+        assert!(name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'));
+        let mask = u8::try_from(mask.as_u64().unwrap()).unwrap();
+        assert!(mask.is_power_of_two() && clothing_masks.insert(mask));
+        *code += &format!(
+            "pub const PLAYER_MODEL_PART_{}: u8 = {mask};\n",
+            name.to_ascii_uppercase()
+        );
+    }
     // The two independently generated inventories must agree, including exact numeric IDs.
     *code += "#[derive(Clone, Copy, Debug)]\npub struct EntitySpec { pub update_interval: u32, pub dimensions: [f32; 3] }\npub const ENTITY_SPECS: &[EntitySpec] = &[\n";
     let types = facts["types"].as_array().unwrap();

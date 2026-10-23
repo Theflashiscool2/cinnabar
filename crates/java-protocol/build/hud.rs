@@ -1,9 +1,15 @@
-//! Derives the target's game-mode and notification IDs from maintained pinned enums.
+//! Derives native status and player-list enum identities from maintained pinned sources.
 use sha2::{Digest, Sha256};
 
 pub fn generate(code: &mut String, target: &serde_json::Value) {
-    for (key, symbol) in [("game_modes", "GAME_MODE"), ("game_events", "GAME_EVENT")] {
-        let pin = &target["hud_schema"][key];
+    for (pin, symbol) in [
+        (&target["hud_schema"]["game_modes"], "GAME_MODE"),
+        (&target["hud_schema"]["game_events"], "GAME_EVENT"),
+        (
+            &target["player_list_schema"]["actions"],
+            "PLAYER_LIST_ACTION",
+        ),
+    ] {
         let path = pin["path"].as_str().unwrap();
         println!("cargo:rerun-if-changed={path}");
         let bytes = std::fs::read(path).unwrap();

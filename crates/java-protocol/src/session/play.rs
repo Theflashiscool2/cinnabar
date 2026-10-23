@@ -40,6 +40,16 @@ impl Connection {
                 r.finish()?;
                 continue;
             }
+            if let Some(packet) = roster::decode(name, &mut r)? {
+                r.finish()?;
+                if !self.bootstrapped {
+                    return Err(
+                        ProtocolError::Invalid("player list before Java world login").into(),
+                    );
+                }
+                self.emit(Event::Roster(packet)).await?;
+                continue;
+            }
             if let Some(packet) = hud::decode(name, &mut r)? {
                 r.finish()?;
                 if !self.bootstrapped {
@@ -274,8 +284,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundMoveMinecartPacket",
     "ClientboundPlayerCombatEndPacket",
     "ClientboundPlayerCombatEnterPacket",
-    "ClientboundPlayerInfoRemovePacket",
-    "ClientboundPlayerInfoUpdatePacket",
     "ClientboundPlayerLookAtPacket",
     "ClientboundRecipeBookAddPacket",
     "ClientboundRecipeBookRemovePacket",

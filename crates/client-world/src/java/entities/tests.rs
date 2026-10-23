@@ -35,6 +35,94 @@ fn decoded(name: &str, bytes: &[u8]) -> wire::Packet {
 }
 
 #[test]
+fn remote_players_bind_profiles_and_clothing_without_reusing_old_entity_lifetimes() {
+    use java_protocol::{session::roster, target};
+    let mut s = state();
+    let add = |name: &str| Envelope {
+        generation: 7,
+        event: Event::Roster(roster::Packet::Update(vec![roster::Update {
+            uuid: [1; 16],
+            profile: Some(roster::Profile {
+                name: name.into(),
+                properties: vec![],
+            }),
+            ..Default::default()
+        }])),
+    };
+    let player = || {
+        let wire::Packet::Spawn(mut spawn) = spawn() else {
+            unreachable!()
+        };
+        spawn.kind = target::ENTITY_PLAYER;
+        wire::Packet::Spawn(spawn)
+    };
+    // Missing identity must not fabricate a profile or choose an unrelated player's appearance.
+    assert!(s.admit(event(1, player())));
+    assert!(s.entities.get(99).unwrap().visual.player.is_none());
+    assert!(s.entities.get(99).unwrap().presentation.is_none());
+    assert!(s.admit(add("First")));
+    assert!(s.admit(event(1, player())));
+    let first = s.entities.get(99).unwrap().identity;
+    assert!(s.entities.get(99).unwrap().presentation.is_some());
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .visual
+            .player
+            .as_ref()
+            .unwrap()
+            .name
+            .as_ref(),
+        "First"
+    );
+    // Target accessor 16, byte serializer 0: jacket and hat only.
+    assert!(s.admit(event(
+        1,
+        decoded("ClientboundSetEntityDataPacket", &[99, 16, 0, 0x42, 255])
+    )));
+    let layers = s.entities.get(99).unwrap().visual.player_layers;
+    assert!(layers.hat && layers.jacket);
+    assert!(
+        !layers.left_sleeve
+            && !layers.right_sleeve
+            && !layers.left_pants
+            && !layers.right_pants
+            && !layers.cape
+    );
+    assert!(s.admit(Envelope {
+        generation: 7,
+        event: Event::Roster(roster::Packet::Remove(vec![[1; 16]]))
+    }));
+    assert!(s.players.get(&[1; 16]).is_none());
+    // Native entities cache their immutable profile even when it leaves the tab list.
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .visual
+            .player
+            .as_ref()
+            .unwrap()
+            .name
+            .as_ref(),
+        "First"
+    );
+    s.admit(add("Second"));
+    assert!(s.admit(event(1, player())));
+    let replacement = s.entities.get(99).unwrap();
+    assert_ne!(replacement.identity, first);
+    assert_eq!(
+        replacement.visual.player.as_ref().unwrap().name.as_ref(),
+        "Second"
+    );
+    assert_eq!(replacement.visual.player_layers, Default::default());
+    s.begin(8);
+    assert_eq!(s.players.iter().count(), 0);
+    assert_eq!(s.entities.iter().count(), 0);
+}
+
+#[test]
 fn far_position_sync_retires_old_visual_targets_and_rebases_wire_deltas() {
     let mut s = state();
     s.admit(event(1, spawn()));

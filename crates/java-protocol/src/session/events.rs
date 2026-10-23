@@ -1,9 +1,10 @@
 //! Ordered native session messages exposed to admission consumers.
-use super::{Phase, dynamics, entities, facts, hud};
+use super::{Phase, dynamics, entities, facts, hud, roster};
 use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    Roster(roster::Packet),
     Hud(hud::Packet),
     Phase(Phase),
     Bootstrap(Box<Bootstrap>),

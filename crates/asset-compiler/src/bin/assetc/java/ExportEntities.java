@@ -114,6 +114,21 @@ public final class ExportEntities {
         for (Pose pose : Pose.values()) poses.add(pose.name().toLowerCase(Locale.ROOT));
         facts.add("poses", poses);
         facts.addProperty("pig_default_variant", net.minecraft.world.entity.animal.pig.PigVariants.DEFAULT.identifier().toString());
+        Field defaults = net.minecraft.client.resources.DefaultPlayerSkin.class.getDeclaredField("DEFAULT_SKINS");
+        defaults.setAccessible(true);
+        JsonArray skins = new JsonArray();
+        for (var skin : (net.minecraft.world.entity.player.PlayerSkin[])defaults.get(null)) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("texture", skin.body().texturePath().toString());
+            entry.addProperty("model", skin.model().getSerializedName());
+            skins.add(entry);
+        }
+        facts.add("default_player_skins", skins);
+        JsonObject clothing = new JsonObject();
+        for (var part : net.minecraft.world.entity.player.PlayerModelPart.values()) {
+            clothing.addProperty(part.getId(), part.getMask());
+        }
+        facts.add("player_model_parts", clothing);
         Files.writeString(Path.of(args[1]), JSON.toJson(facts)+"\n");
     }
 }

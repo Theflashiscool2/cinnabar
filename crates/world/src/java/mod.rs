@@ -5,6 +5,7 @@ pub mod hud;
 mod light;
 mod palette;
 pub mod player;
+pub mod roster;
 mod store;
 pub use store::{PublicationKey, Terrain};
 #[cfg(test)]

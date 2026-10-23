@@ -22,6 +22,7 @@ use world::java::entities::{Identity, visual::PigModel};
 struct Pose {
     model: Arc<render_model::actor::java_geometry::Model>,
     angles: [[f32; 3]; 5],
+    layers: Option<world::java::entities::visual::PlayerLayers>,
     bones: Arc<[RenderBoneTransform]>,
     bounds: ::assets::SkinGeometryBounds,
 }
@@ -38,6 +39,8 @@ pub(crate) struct Presentation {
     unsupported: usize,
     unknown_light: usize,
     glow_pending: usize,
+    custom_skin_pending: usize,
+    published_players: usize,
     elapsed: std::time::Duration,
     ticks: u64,
 }
@@ -55,6 +58,8 @@ impl Default for Presentation {
             unsupported: 0,
             unknown_light: 0,
             glow_pending: 0,
+            custom_skin_pending: 0,
+            published_players: 0,
             elapsed: std::time::Duration::ZERO,
             ticks: 0,
         }
@@ -75,7 +80,7 @@ impl Presentation {
     }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len(),"error":self.failure,"presentation":"native_pig_interpolation","interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.elapsed.as_nanos()/simulation_clock::TICK_DURATION.as_nanos(),"light_probe":"feet","visual_parity":false})
+        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len(),"error":self.failure,"presentation":"native_pig_and_player_interpolation","published_players":self.published_players,"custom_skin_pending":self.custom_skin_pending,"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.elapsed.as_nanos()/simulation_clock::TICK_DURATION.as_nanos(),"light_probe":"feet","visual_parity":false})
     }
 }
 pub(crate) mod publish;

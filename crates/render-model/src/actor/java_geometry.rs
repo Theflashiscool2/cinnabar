@@ -124,6 +124,28 @@ impl Model {
     ) -> Result<Arc<[RenderBoneTransform]>, Error> {
         pose(&self.bones, rotations)
     }
+
+    /// Hides native parts and their descendants without rebuilding geometry or introducing
+    /// singular rotations. Zero uniform scale collapses their triangles in the shared rig.
+    pub fn pose_with_visibility(
+        &self,
+        rotations: &[(usize, [f32; 3])],
+        hidden: &[usize],
+    ) -> Result<Arc<[RenderBoneTransform]>, Error> {
+        if hidden.iter().any(|index| *index >= self.bones.len()) {
+            return Err(Error::BoneCount);
+        }
+        let mut transforms = self.pose(rotations)?;
+        let output = Arc::make_mut(&mut transforms);
+        let mut invisible = vec![false; self.bones.len()];
+        for (i, bone) in self.bones.iter().enumerate() {
+            invisible[i] = hidden.contains(&i) || bone.parent.is_some_and(|p| invisible[p]);
+            if invisible[i] {
+                output[i].translation_scale[3] = 0.;
+            }
+        }
+        Ok(transforms)
+    }
 }
 
 fn collect(
@@ -271,6 +293,49 @@ mod tests {
                 [4., -4., -8., 1., 0.],
             ],
         }
+    }
+    #[test]
+    fn native_part_visibility_hides_descendants_and_restores_without_mutating_rest_pose() {
+        let root = part(
+            "root",
+            [0.; 3],
+            vec![face()],
+            vec![part(
+                "hat",
+                [0., 16., 0.],
+                vec![face()],
+                vec![part("detail", [0., 1., 0.], vec![face()], vec![])],
+            )],
+        );
+        let model = Model::compile(&root, EntityRigId(123)).unwrap();
+        let hat = model.bone("root/hat").unwrap();
+        let detail = model.bone("root/hat/detail").unwrap();
+        let hidden = model.pose_with_visibility(&[], &[hat]).unwrap();
+        assert_eq!(hidden[0].translation_scale[3], 1.);
+        for index in [hat, detail] {
+            assert!(hidden[index].is_finite());
+            assert_eq!(hidden[index].translation_scale[3], 0.);
+            let matrix = affine(&hidden[index]);
+            assert_eq!(
+                matrix.transform_point3(Vec3::ZERO),
+                matrix.transform_point3(Vec3::ONE)
+            );
+        }
+        assert!(model.posed_bounds(&hidden).is_ok());
+        assert!(
+            model
+                .rest_pose
+                .iter()
+                .all(|bone| bone.translation_scale[3] == 1.)
+        );
+        assert!(
+            model
+                .pose_with_visibility(&[], &[])
+                .unwrap()
+                .iter()
+                .all(|bone| bone.translation_scale[3] == 1.)
+        );
+        assert!(model.pose_with_visibility(&[], &[usize::MAX]).is_err());
     }
     #[test]
     fn coordinates_and_head_rotations_match_independent_native_pose_stack_vectors() {

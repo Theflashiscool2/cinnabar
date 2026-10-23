@@ -1945,5 +1945,88 @@
     "shooting",
     "inhaling"
   ],
-  "pig_default_variant": "minecraft:temperate"
+  "pig_default_variant": "minecraft:temperate",
+  "default_player_skins": [
+    {
+      "texture": "minecraft:textures/entity/player/slim/alex.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/ari.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/efe.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/kai.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/makena.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/noor.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/steve.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/sunny.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/slim/zuri.png",
+      "model": "slim"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/alex.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/ari.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/efe.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/kai.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/makena.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/noor.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/steve.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/sunny.png",
+      "model": "wide"
+    },
+    {
+      "texture": "minecraft:textures/entity/player/wide/zuri.png",
+      "model": "wide"
+    }
+  ],
+  "player_model_parts": {
+    "cape": 1,
+    "jacket": 2,
+    "left_sleeve": 4,
+    "right_sleeve": 8,
+    "left_pants_leg": 16,
+    "right_pants_leg": 32,
+    "hat": 64
+  }
 }

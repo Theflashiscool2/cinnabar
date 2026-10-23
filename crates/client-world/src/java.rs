@@ -3,7 +3,9 @@ mod biomes;
 mod dynamics;
 mod entities;
 mod hud;
+mod nbt;
 pub mod player;
+mod roster;
 mod terrain;
 #[cfg(test)]
 mod tests_support;
@@ -17,6 +19,7 @@ pub struct WorldState {
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
     pub entities: world::java::entities::Entities,
+    pub players: world::java::roster::Roster,
     pub player_visual: world::java::entities::visual::Visual,
     pub status: world::java::hud::State,
     pub biomes: Vec<world::java::BiomeAppearance>,
@@ -44,6 +47,7 @@ impl WorldState {
     pub fn begin(&mut self, generation: u64) {
         *self = Self {
             generation,
+            players: world::java::roster::Roster::new(generation),
             ..Self::default()
         };
     }
@@ -77,6 +81,7 @@ impl WorldState {
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                     self.entities = Default::default();
+                    self.players = world::java::roster::Roster::new(self.generation);
                     self.player_visual = Default::default();
                 }
             }
@@ -121,6 +126,7 @@ impl WorldState {
             },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
             Event::Hud(packet) => hud::admit(self, packet),
+            Event::Roster(packet) => return roster::admit(self, packet),
             Event::Entities {
                 dimension_epoch,
                 packet,

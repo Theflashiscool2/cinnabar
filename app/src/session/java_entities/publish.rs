@@ -67,6 +67,8 @@ pub(crate) fn update(
     p.unsupported = 0;
     p.unknown_light = 0;
     p.glow_pending = 0;
+    p.custom_skin_pending = 0;
+    p.published_players = 0;
     if p.assets.is_none() && p.pending.is_none() && p.failure.is_none() {
         let appearances = match state.pig_appearances() {
             Ok(v) => v,
@@ -136,10 +138,6 @@ pub(crate) fn update(
             if e.visual.invisible() {
                 continue;
             }
-            let Some(variant) = &e.visual.pig else {
-                p.unsupported += 1;
-                continue;
-            };
             if e.visual.incomplete.is_some()
                 || e.visual.pose.as_ref() != "standing"
                 || e.visual.health.is_some_and(|h| h <= 0.)
@@ -150,58 +148,106 @@ pub(crate) fn update(
             if e.visual.glowing() {
                 p.glow_pending += 1;
             }
-            let model_name = if e.visual.baby {
-                "baby_pig"
-            } else {
-                match variant.model {
-                    PigModel::Normal => "pig",
-                    PigModel::Cold => "cold_pig",
-                }
-            };
-            let Some(model) = assets.models.get(model_name) else {
-                p.failure = Some(format!("missing native model {model_name}"));
-                break;
-            };
-            let texture = if e.visual.baby {
-                &variant.baby_texture
-            } else {
-                &variant.adult_texture
-            };
-            let Some(&artwork) = assets.textures.get(texture.as_ref()) else {
-                p.failure = Some(format!("unprepared native entity texture {texture}"));
-                break;
-            };
             let Some(motion) = &e.presentation else {
                 p.unsupported += 1;
                 continue;
             };
             let sampled = motion.sample(fraction);
+            let is_player = e.visual.player.is_some();
+            let (model_name, texture, textures) = if let Some(profile) = &e.visual.player {
+                if profile
+                    .properties
+                    .iter()
+                    .any(|p| p.name.as_ref() == "textures")
+                {
+                    p.custom_skin_pending += 1;
+                }
+                (
+                    if profile.default_skin.slim {
+                        "player_slim"
+                    } else {
+                        "player_wide"
+                    },
+                    profile.default_skin.texture.as_ref(),
+                    &assets.player_textures,
+                )
+            } else if let Some(variant) = &e.visual.pig {
+                let name = if e.visual.baby {
+                    "baby_pig"
+                } else {
+                    match variant.model {
+                        PigModel::Normal => "pig",
+                        PigModel::Cold => "cold_pig",
+                    }
+                };
+                (
+                    name,
+                    if e.visual.baby {
+                        variant.baby_texture.as_ref()
+                    } else {
+                        variant.adult_texture.as_ref()
+                    },
+                    &assets.textures,
+                )
+            } else {
+                p.unsupported += 1;
+                continue;
+            };
+            let Some(model) = assets.models.get(model_name) else {
+                p.failure = Some(format!("missing native model {model_name}"));
+                break;
+            };
+            let Some(&artwork) = textures.get(texture) else {
+                p.failure = Some(format!("unprepared native entity texture {texture}"));
+                break;
+            };
             let Some(light) = light(&state.terrain, sampled.pose.position) else {
                 p.unknown_light += 1;
                 continue;
             };
-            let angles = sampled.rotations();
-            if p.poses
-                .get(&e.identity)
-                .is_none_or(|old| !Arc::ptr_eq(&old.model, model) || old.angles != angles)
-            {
-                let names = [
-                    "root/head",
-                    "root/right_hind_leg",
-                    "root/left_hind_leg",
-                    "root/right_front_leg",
-                    "root/left_front_leg",
-                ];
+            let angles = if is_player {
+                sampled.player_rotations()
+            } else {
+                sampled.rotations()
+            };
+            let layers = is_player.then_some(e.visual.player_layers);
+            if p.poses.get(&e.identity).is_none_or(|old| {
+                !Arc::ptr_eq(&old.model, model) || old.angles != angles || old.layers != layers
+            }) {
+                let names = if is_player {
+                    [
+                        "root/head",
+                        "root/right_arm",
+                        "root/left_arm",
+                        "root/right_leg",
+                        "root/left_leg",
+                    ]
+                } else {
+                    [
+                        "root/head",
+                        "root/right_hind_leg",
+                        "root/left_hind_leg",
+                        "root/right_front_leg",
+                        "root/left_front_leg",
+                    ]
+                };
                 let Some(bones) = names
                     .map(|name| model.bone(name))
                     .into_iter()
                     .collect::<Option<Vec<_>>>()
                 else {
-                    p.failure = Some("native pig animation bone missing".into());
+                    p.failure = Some("native entity animation bone missing".into());
                     break;
                 };
                 let rotations = bones.into_iter().zip(angles).collect::<Vec<_>>();
-                match model.pose(&rotations) {
+                let hidden = match hidden_parts(model, layers) {
+                    Ok(parts) => parts,
+                    Err(error) => {
+                        p.failure = Some(error.into());
+                        break;
+                    }
+                };
+                match model.pose_with_visibility(&rotations, &hidden) {
                     Ok(bones) => {
                         let bounds = match model.posed_bounds(&bones) {
                             Ok(bounds) => bounds,
@@ -215,6 +261,7 @@ pub(crate) fn update(
                             Pose {
                                 model: Arc::clone(model),
                                 angles,
+                                layers,
                                 bones,
                                 bounds,
                             },
@@ -241,7 +288,8 @@ pub(crate) fn update(
                 pose_generation: render_api::PoseGeneration::new(p.serial),
                 layer: render_model::ACTOR_LAYER_BODY,
             };
-            let matrix = Mat4::from_rotation_translation(
+            let matrix = Mat4::from_scale_rotation_translation(
+                Vec3::splat(if is_player { 0.9375 } else { 1. }),
                 Quat::from_rotation_y(-sampled.body_yaw.to_radians()),
                 Vec3::from_array(sampled.pose.position.map(|v| v as f32)),
             )
@@ -268,11 +316,13 @@ pub(crate) fn update(
                 light,
             });
             batch.artwork.insert(identity, artwork);
+            p.published_players += usize::from(is_player);
         }
         p.poses.retain(|id, _| retained.contains(id));
     }
     if let Some(error) = &p.failure {
         batch = empty();
+        p.published_players = 0;
         p.poses.clear();
         if let Some(mut menu) = menu {
             menu.set_java_diagnostic(format!("Java entities incomplete: {error}. Check the pinned models.json and client.jar in CINNABAR_JAVA_ASSETS."));
@@ -287,4 +337,30 @@ fn light(terrain: &world::java::Terrain, position: [f64; 3]) -> Option<u32> {
     let [x, y, z] = position.map(|n| n.floor() as i32);
     let [block, sky] = terrain.light([x, y, z])?;
     Some(render_model::pack_actor_light(block, sky))
+}
+
+/// Native outer-layer switches bind to named parts in the verified player hierarchy.
+fn hidden_parts(
+    model: &render_model::actor::java_geometry::Model,
+    layers: Option<world::java::entities::visual::PlayerLayers>,
+) -> Result<Vec<usize>, &'static str> {
+    let Some(layers) = layers else {
+        return Ok(Vec::new());
+    };
+    [
+        ("root/head/hat", layers.hat),
+        ("root/body/jacket", layers.jacket),
+        ("root/left_arm/left_sleeve", layers.left_sleeve),
+        ("root/right_arm/right_sleeve", layers.right_sleeve),
+        ("root/left_leg/left_pants", layers.left_pants),
+        ("root/right_leg/right_pants", layers.right_pants),
+    ]
+    .into_iter()
+    .filter(|(_, visible)| !visible)
+    .map(|(name, _)| {
+        model
+            .bone(name)
+            .ok_or("native player clothing bone missing")
+    })
+    .collect()
 }

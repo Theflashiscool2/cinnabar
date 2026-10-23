@@ -371,7 +371,9 @@ reason, never empty collision. These changes do not establish a playable client.
 
 `assetc java-entities` uses original export code with the verified server libraries
 and client model factories. It writes local `models.json`, with its size/hash pinned
-in `data/target.json`, and checks the generated entity schema report. No official
+in `data/target.json`, and checks the generated entity schema report. The report
+also exports the native default-skin table and player clothing masks; skin selection
+uses Java UUID hashing and floor-modulo with independent pinned-runtime vectors. No official
 client process or second renderer runs. The exported pig, cold-pig, baby-pig and
 wide/slim player hierarchies retain pixel coordinates, face normals, winding, UVs,
 parent transforms and visibility. `assets::entity::java` verifies and loads these
@@ -421,18 +423,65 @@ real keepalives and 49 chunks were observed. The encrypted fixture also covers
 metadata delivery. Local metadata follows respawn retention without creating a
 second local-player entity. Invalid updates are atomic and stale epochs are rejected.
 
-Complex item components, nonempty particle metadata, profiles and inline painting
+Complex item components, nonempty particle metadata, embedded profile metadata and inline painting
 holders remain unimplemented. Their known passive metadata notification produces an
 explicit, persistent incomplete-entity diagnostic; no parsed prefix is admitted.
 Other entity accessor schemas remain incomplete. Correctly framed unused accessor
 values (including names/equipment-related metadata) do not imply implemented visuals.
-Native pig bodies now publish through Cinnabar's existing actor renderer. An off-frame,
+Native pig and default-skin player bodies publish through Cinnabar's existing actor renderer. An off-frame,
 cancellable worker validates `models.json` and the pinned client archive, compiles
 native hierarchies into ordinary GPU bone transforms and prepares registry-selected
 textures. The actor catalog uses a separate Java GPU namespace, not Bedrock entity
 IDs. Session/dimension/incarnation fences retire cached poses and pending workers;
 only the active edition prepares the shared actor scene. Model changes replace the
 pose and culling bounds; removed entities leave the next complete frame batch.
+
+Player-list update/removal schemas follow the manifest-pinned MCProtocolLib
+`ClientboundPlayerInfoUpdatePacket` and `ClientboundPlayerInfoRemovePacket`; action
+bits generate from the hash-pinned `PlayerListEntryAction` enum. `world::java::roster`
+retains profiles separately from entity IDs. Native two-pass admission keeps the first
+profile on duplicate additions, preserves omitted fields, and applies explicit clears.
+Unknown updates are counted without inventing players. Profiles survive dimension
+replacement and retire on session/configuration replacement. Remote entities cache
+their immutable profile until despawn, so removing a tab entry does not erase a body.
+The developer state exposes roster counts and sampled public identities, not properties.
+
+Remote chat key encoding is checked using the existing RSA library. Received public
+keys/signatures remain explicitly **unverified**; no chat trust or signing capability
+is granted. Signed chat and custom texture signature verification/downloads are not
+implemented. Default-skin fallback is reported through `custom_skin_pending` when a
+profile supplies textures. It does not establish custom-skin fidelity.
+
+The player body uses the exported wide/slim hierarchy, native scale, metadata clothing
+visibility, independent player body turning, and standing empty-hand gait/idle poses.
+It reuses the existing actor rig and generic ordered interpolation track, not pig body
+control or Bedrock movement. Unarmed body/model probes and lifecycle/visibility tests
+pass; full math equivalence, item-use, attack, crouching, mounted, swimming and spectator
+presentation remain unqualified. The tab-list UI, nametags, equipment and capes remain
+open. This is not a playable-client claim.
+
+Two native Cinnabar clients joined the pinned offline vanilla fixture from their
+saved Java launcher entries on Linux (hidden Vulkan/lavapipe, 1280×720, scale 1).
+Fresh frames show the second player's default skin, correct standing hierarchy and
+moving limbs alongside actual terrain and the pig. Native input moved the peer;
+the server position and observer's quantized position agree within one wire unit.
+Departure removes the roster entry, body and cached pose. Rejoin creates one new
+entity incarnation; observer reconnect advances generation 2 to 4, clears old
+terrain/poses, and renders one peer and one pig. Eight keepalives were observed
+before observer reconnect and two afterward, with no unknown roster/entity updates
+or entity asset errors. These fixtures qualify neither custom skins/equipment nor
+general movement, visual or performance parity.
+
+The local evidence is `java-player-{joined,walking,departed,rejoined,main-reconnected}.png`,
+`java-player-walk.mp4`, and corresponding state/build records outside the checkout.
+The tested binary SHA-256 is
+`4fe80b76c8bc4574bf1811bf508b47b9e49230364f86b888f049e08703071f48`;
+it includes this slice over `3cac1cb77`, with only Rust formatting changed afterward.
+Owner tests cover wire actions and malformed input, default skins, profile lifetime,
+entity-ID reuse, body/gait vectors and clothing visibility. Scoped tests, app-inclusive
+clippy, graphical build and the architecture check pass. The first link exhausted
+disk space; clearing idle build caches allowed the unchanged build to pass. Windows,
+macOS, online authentication and full integration/merge gates were not run.
 
 To exercise this slice, place the exported `models.json` beside `client.jar`,
 `blocks.json` and `physics.bin` in `CINNABAR_JAVA_ASSETS`, build the client as above,
@@ -504,7 +553,7 @@ light propagation, frame budgets and Windows/macOS remain unqualified.
 
 This remains a narrow native entity slice. Tick-rate changes/freezing, shadows,
 glow outlines, death animation,
-player-list identity/skins, equipment and other entity models remain unsupported.
+custom player skins, equipment and other entity models remain unsupported.
 Lighting currently samples the authoritative feet cell. These limitations remain
 visible in diagnostics and do not establish entity visual parity or a playable client.
 Passenger relationships retain scoped lifetimes with deterministic replacement/cycle

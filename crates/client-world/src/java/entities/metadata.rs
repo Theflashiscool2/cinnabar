@@ -136,6 +136,17 @@ fn apply(
             }
             ("DATA_BABY_ID", Value::Bool(baby)) => visual.baby = baby,
             ("DATA_HEALTH_ID", Value::Float(health)) => visual.health = Some(health),
+            ("DATA_PLAYER_MODE_CUSTOMISATION", Value::Byte(parts)) => {
+                visual.player_layers = world::java::entities::visual::PlayerLayers {
+                    hat: parts & target::PLAYER_MODEL_PART_HAT != 0,
+                    jacket: parts & target::PLAYER_MODEL_PART_JACKET != 0,
+                    left_sleeve: parts & target::PLAYER_MODEL_PART_LEFT_SLEEVE != 0,
+                    right_sleeve: parts & target::PLAYER_MODEL_PART_RIGHT_SLEEVE != 0,
+                    left_pants: parts & target::PLAYER_MODEL_PART_LEFT_PANTS_LEG != 0,
+                    right_pants: parts & target::PLAYER_MODEL_PART_RIGHT_PANTS_LEG != 0,
+                    cape: parts & target::PLAYER_MODEL_PART_CAPE != 0,
+                };
+            }
             ("DATA_VARIANT_ID", Value::Int(id)) if visual.pig.is_some() => {
                 visual.pig = Some(variant(state, id)?)
             }

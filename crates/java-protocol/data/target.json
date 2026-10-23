@@ -57,8 +57,8 @@
   },
   "entity_facts_report": {
     "path": "data/entity-facts.json",
-    "bytes": 35374,
-    "sha256": "0684496b27d286c8c6c42d97c6d5cc47d050c0ccc1b0c9563fae0b4e3aa8e146",
+    "bytes": 37419,
+    "sha256": "c93b7accc27ef440e0f3d5294c2a2a1c437f3d64055fbbf87721427b2e3f79d9",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "metadata_schema": {
@@ -79,6 +79,14 @@
       "sha256": "a7847f97476988d901dbbcd6f147bc70b5658093ace6e141634b013262b5b949",
       "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/level/notify/GameEvent.java",
       "count": 14
+    }
+  },
+  "player_list_schema": {
+    "actions": {
+      "path": "data/PlayerListEntryAction.java",
+      "sha256": "ec954a05b438d291d90801419ffa70d2f1e0a286147a2ea06f187dc8fdb30d5a",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/PlayerListEntryAction.java",
+      "count": 8
     }
   }
 }
