@@ -390,9 +390,10 @@ admission queue as server selection facts. This receipt is not server acknowledg
 No inventory stack is predicted or decremented. Later interactions wait for the receipt,
 and server corrections can replace the selection before the next action. Buffered clicks
 retain their original ray target. Input/session/
-dimension/correction changes cancel unsent intent without replaying a consumed frame;
-overflow explicitly quarantines
-controls until release. The existing HUD reads the native selected slot without
+dimension/correction changes cancel unsent intent without replaying a consumed frame.
+Complete click bursts remain ordered while selection waits for its local write receipt;
+an incomplete physical input batch quarantines controls until release.
+The existing HUD reads the native selected slot without
 mutating Bedrock inventory. Native item icons and held-item models remain unsupported.
 References are the pinned codec's `ServerboundSetCarriedItemPacket`, vanilla
 `MultiPlayerGameMode.ensureHasSentCarriedItem` and

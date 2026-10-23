@@ -2,7 +2,7 @@
 use client_world::java::WorldState;
 use inventory::java::HOTBAR_SIZE;
 use semantic_input::{
-    Action, ActionPhase, HOTBAR_DIGIT_ACTIONS, MAX_PENDING_ACTION_EVENTS,
+    Action, ActionPhase, HOTBAR_DIGIT_ACTIONS,
     finalized::FinalizedInput,
     identity::{InputAuthorityGeneration, InputSequence},
 };
@@ -142,10 +142,6 @@ impl Controller {
     fn append(&mut self, values: impl IntoIterator<Item = Intent>, hit: Option<Hit>) {
         for value in values {
             if self.quarantined {
-                break;
-            }
-            if self.queue.len() == MAX_PENDING_ACTION_EVENTS {
-                self.overflow();
                 break;
             }
             self.queue.push_back(Entry { intent: value, hit });

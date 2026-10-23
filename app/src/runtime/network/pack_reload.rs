@@ -27,6 +27,9 @@ mod publication_tests;
 #[cfg(test)]
 mod post_join_tests;
 
+#[cfg(test)]
+mod saved_globals_tests;
+
 struct Prepared {
     revision: u64,
     generation: u64,
@@ -285,12 +288,11 @@ impl PackReload {
                     {
                         let _zone = bevy::log::info_span!("pack_apply.actor_artwork").entered();
                         let artwork = current_artwork.as_ref().map(|current| {
-                            application
-                                .entity_artwork
-                                .as_deref()
-                                .filter(|next| next.identity() != current.identity())
-                                .unwrap_or(current)
-                                .clone()
+                            resource_packs::entity_artwork_base(
+                                current,
+                                application.entity_artwork.as_deref(),
+                            )
+                            .clone()
                         });
                         let blocks =
                             block_items

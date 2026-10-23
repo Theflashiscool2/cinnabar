@@ -435,6 +435,8 @@ pub struct MenuView {
     pub gamepad_input: bool,
     /// Touch hardware remains available when a mouse or controller becomes active.
     pub touch_available: bool,
+    /// The touch-control draft owns this settings surface.
+    pub touch_editor_open: bool,
     pub server_tab: MenuServerTab,
     pub profile_tab: super::ProfileTab,
     pub dialog: Option<MenuDialog>,
@@ -468,6 +470,8 @@ pub struct MenuView {
     pub shader_packs: std::sync::Arc<[String]>,
     /// Revision of the discovered list carried by shader-pack picker actions.
     pub shader_packs_revision: u64,
+    /// The imported pack currently being removed by the host.
+    pub shader_pack_removing: Option<std::sync::Arc<str>>,
     /// The requested pack while shader-pack mode is active, even if discovery no longer lists it.
     pub shader_pack: Option<String>,
     /// The highlighted renderer or shader-pack choice; `None` while the selected shader pack is missing.
@@ -477,6 +481,8 @@ pub struct MenuView {
     /// Why the selected shader pack failed to load, for the Shaders tab; see
     /// [`super::shader_pack_status::failure_description`].
     pub renderer_failure: Option<std::sync::Arc<str>>,
+    /// The render host is still loading the selected shader pack.
+    pub shader_pack_loading: bool,
     /// Session VSync forced by a launch flag; the saved toggle is shown locked to it.
     pub vsync_override: Option<bool>,
     pub display_name: String,
@@ -521,6 +527,8 @@ pub struct MenuView {
     pub feeds: MenuFeeds,
     /// The open local world is hosted for Xbox friends, so the pause screen offers invites.
     pub hosting: bool,
+    /// The host's own local world while playing it, which Settings can change.
+    pub world_settings: Option<std::sync::Arc<crate::local_worlds::in_world::View>>,
     /// The code invitation flow covering the Realms tab.
     pub realm_membership: Option<super::realm_membership::State>,
     /// The invite screen's friends and picks while it is up.
@@ -669,6 +677,19 @@ impl MenuView {
         })
     }
 
+    /// Whether Settings lists `section`: Server only over a world, Game only in the host's world.
+    pub fn settings_section_shown(
+        &self,
+        section: super::settings_sections::SettingSection,
+    ) -> bool {
+        use super::settings_sections::SettingSection;
+        match section {
+            SettingSection::Server => self.over_world,
+            SettingSection::Game => self.world_settings.is_some(),
+            _ => true,
+        }
+    }
+
     /// Whether a popup draws over the screen and takes its input.
     pub fn popup_open(&self) -> bool {
         self.dialog.is_some()
@@ -707,6 +728,7 @@ impl MenuView {
             navigation_focus_visible: true,
             gamepad_input: false,
             touch_available: cfg!(target_os = "android"),
+            touch_editor_open: false,
             server_tab: MenuServerTab::Featured,
             profile_tab: super::ProfileTab::default(),
             dialog: None,
@@ -733,10 +755,12 @@ impl MenuView {
             render_mode: ui::RenderMode::Vanilla,
             shader_packs: std::sync::Arc::from([]),
             shader_packs_revision: 0,
+            shader_pack_removing: None,
             shader_pack: None,
             renderer: Some(super::RendererChoice::Vanilla),
             shader_options_available: false,
             renderer_failure: None,
+            shader_pack_loading: false,
             vsync_override: None,
             display_name,
             servers: MenuList::default(),
@@ -766,6 +790,7 @@ impl MenuView {
             editing: None,
             local_worlds: MenuList::default(),
             local: Default::default(),
+            world_settings: None,
             settings: SettingsInteraction::default(),
             settings_options: Default::default(),
             storage: Default::default(),

@@ -58,7 +58,7 @@ pub(crate) fn update(
         interaction.0.blocked = Some(error);
     }
     // A retained attack must enter the transport before a following slot change.
-    for _ in 0..semantic_input::MAX_PENDING_ACTION_EVENTS {
+    for _ in 0..=interaction.1.backlog() {
         if !send_pending(java, &mut interaction.0) {
             return;
         }

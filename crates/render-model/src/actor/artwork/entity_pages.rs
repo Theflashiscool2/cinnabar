@@ -1,4 +1,5 @@
 //! Generic entity texture admission, independent of any edition's asset catalog format.
+use super::page_budget::MAX_ACTOR_PAGE_LAYERS;
 use super::*;
 impl ActorArtworkPages {
     /// Builds immutable artwork off-frame from prepared pages and explicit rig bindings.

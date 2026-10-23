@@ -149,14 +149,11 @@ fn repeated_frame_and_authority_loss_cannot_replay_a_choice() {
     assert_eq!(c.selection(&state).unwrap().sequence, 1);
 }
 #[test]
-fn overflow_is_explicit_and_quarantines_until_neutral() {
+fn incomplete_input_is_explicit_and_quarantines_until_neutral() {
     let state = state();
     let mut c = Controller::default();
     c.capture(&state, &input(1, None), None);
-    c.append(
-        std::iter::repeat_n(Intent::Cycle(1), MAX_PENDING_ACTION_EVENTS + 1),
-        None,
-    );
+    c.overflow();
     assert_eq!(c.backlog(), 0);
     assert!(c.blocked.is_some());
     c.capture(&state, &input(2, Some(Action::Hotbar2)), None);
@@ -165,6 +162,56 @@ fn overflow_is_explicit_and_quarantines_until_neutral() {
     assert!(c.blocked.is_none());
     c.capture(&state, &input(4, Some(Action::Hotbar2)), None);
     assert_eq!(c.selection(&state).unwrap().slot, 1);
+}
+
+#[test]
+fn complete_desktop_click_burst_survives_selection_backpressure() {
+    use semantic_input::{
+        DesktopEvent, DesktopEvents, DeviceFrame, KeyboardMouseFrame, PhysicalControl,
+        SemanticInputRouter,
+    };
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, Some(Action::Hotbar2)), None);
+    c.selection(&state).unwrap();
+    c.selection_queued();
+    let mut events = DesktopEvents::default();
+    for _ in 0..300 {
+        for pressed in [true, false] {
+            events.push(DesktopEvent::Button {
+                control: PhysicalControl::MouseButton(1),
+                pressed,
+                modifiers: Default::default(),
+            });
+        }
+    }
+    let mut router = SemanticInputRouter::default();
+    router.route(DeviceFrame::default()).unwrap();
+    router.finalize().unwrap();
+    router
+        .route(DeviceFrame {
+            desktop_events: Some(events),
+            keyboard_mouse: Some(KeyboardMouseFrame {
+                activity_sequence: 1,
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
+        .unwrap();
+    let frame = FinalizedInput::from_finalized(router.finalize().unwrap());
+    c.capture(&state, &frame, None);
+    assert!(c.front(&state).is_none());
+    assert!(c.blocked.is_none());
+    assert!(state.inventory.selection_sent(7, 1, 1, 1));
+    for _ in 0..300 {
+        assert_eq!(c.front(&state), Some(Intent::Attack(true)));
+        assert!(c.consume_attack(true).0.pressed);
+        assert_eq!(c.front(&state), Some(Intent::Attack(false)));
+        assert!(c.consume_attack(false).0.released);
+    }
+    c.capture(&state, &frame, None);
+    assert_eq!(c.backlog(), 0);
+    assert!(!c.held_attack().held);
 }
 #[test]
 fn dimension_replacement_clears_pending_edges_and_receipts() {

@@ -85,6 +85,7 @@ pub enum MenuDialog {
     Exit,
     DeathQuit,
     RemoveSaved(usize),
+    RemoveShaderPack(u16, u64),
     StorageDelete,
     StorageError,
     /// A dismissible host notice whose body is supplied by the menu view.
@@ -170,6 +171,8 @@ pub enum MenuAction {
     AddSaveConnect,
     SelectServerEdition(ServerEdition),
     AddBack,
+    /// Opens the native touch-control layout draft.
+    EditTouchControls,
     SettingsScale(i8),
     SettingsScalePicker,
     SettingsFullscreen(bool),
@@ -198,6 +201,8 @@ pub enum MenuAction {
     SettingsShaders,
     /// Re-lists shader packs and reloads the selected pack with its saved options.
     ReloadShaders,
+    RemoveShaderPackDialog(u16, u64),
+    ConfirmRemoveShaderPack(u16, u64),
     PauseResume,
     PauseDisconnect,
     OpenDeathQuit,
@@ -213,6 +218,8 @@ pub enum MenuAction {
     PlayLocalWorld(usize),
     /// A press on a local-world screen (create, edit, templates) or its modals.
     LocalWorld(LocalWorldAction),
+    /// A press in Settings' Game section for the world being played.
+    WorldSettings(crate::local_worlds::in_world::Action),
     SignOut,
     /// Show a featured server in the Servers tab's info panel.
     SelectFeatured(usize),
