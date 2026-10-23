@@ -14,6 +14,7 @@ pub enum Intent {
     Slot(usize),
     Cycle(i32),
     Attack(bool),
+    Use(bool),
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Selection {
@@ -37,6 +38,7 @@ pub struct Controller {
     waiting: Option<u64>,
     next_sequence: u64,
     held: bool,
+    use_held: bool,
     quarantined: bool,
     pub blocked: Option<&'static str>,
 }
@@ -116,6 +118,13 @@ impl Controller {
             if attack.released {
                 self.append([Intent::Attack(false)], hit);
             }
+            let use_item = input.phase(Action::Use);
+            if use_item.pressed {
+                self.append([Intent::Use(true)], hit);
+            }
+            if use_item.released {
+                self.append([Intent::Use(false)], hit);
+            }
         }
     }
     fn retire(&mut self) {
@@ -123,6 +132,7 @@ impl Controller {
         self.pending = None;
         self.waiting = None;
         self.held = false;
+        self.use_held = false;
     }
     fn overflow(&mut self) {
         self.retire();
@@ -169,6 +179,20 @@ impl Controller {
             consumed.hit,
         )
     }
+    /// Use edges obey the same selection and click-time target ordering as attacks.
+    pub fn consume_use(&mut self, pressed: bool) -> (ActionPhase, Option<Hit>) {
+        let consumed = self.queue.pop_front().expect("observed use edge");
+        debug_assert_eq!(consumed.intent, Intent::Use(pressed));
+        self.use_held = pressed;
+        (
+            ActionPhase {
+                pressed,
+                held: pressed,
+                released: !pressed,
+            },
+            consumed.hit,
+        )
+    }
     /// Computes against admitted selection, including server corrections between writes.
     pub fn selection(&mut self, state: &WorldState) -> Option<Selection> {
         if self.pending.is_some() {
@@ -179,7 +203,7 @@ impl Controller {
             Intent::Cycle(delta) => {
                 (state.inventory.selected? as i32 + delta).rem_euclid(HOTBAR_SIZE as i32) as usize
             }
-            Intent::Attack(_) => return None,
+            Intent::Attack(_) | Intent::Use(_) => return None,
         };
         if slot >= HOTBAR_SIZE {
             self.overflow();
@@ -214,11 +238,20 @@ impl Controller {
             ..Default::default()
         }
     }
+    pub fn held_use(&self) -> ActionPhase {
+        ActionPhase {
+            held: self.use_held && self.queue.is_empty() && self.waiting.is_none(),
+            ..Default::default()
+        }
+    }
     pub fn backlog(&self) -> usize {
         self.queue.len() + usize::from(self.waiting.is_some())
     }
 }
 fn intent(action: Action, pressed: bool) -> Option<Intent> {
+    if action == Action::Use {
+        return Some(Intent::Use(pressed));
+    }
     if action == Action::Attack {
         return Some(Intent::Attack(pressed));
     }

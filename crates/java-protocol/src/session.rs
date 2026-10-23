@@ -77,6 +77,11 @@ pub enum Command {
         correction_sequence: u64,
         action: interaction::Dig,
     },
+    UseOn {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+        action: interaction::UseOn,
+    },
     Move {
         dimension_epoch: u64,
         sequence: u64,

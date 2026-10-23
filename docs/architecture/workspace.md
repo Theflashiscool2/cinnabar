@@ -150,18 +150,22 @@ second player authority.
 `inventory::java` owns native storage, known/empty distinctions, component patches,
 container state IDs and lifetimes. Local selection write receipts and server corrections
 share its ordered admission path. `gameplay::java::actions` retains semantic hotbar and
-attack order under backpressure; selection serialization receipts unblock subsequent
+attack/use order under backpressure; selection serialization receipts unblock subsequent
 actions without inventing server acknowledgements. Native HUD snapshots carry the
 selected slot separately from Bedrock inventory. `client-world` converts Java wire notifications
 before admission; player and chest slot views reference the same storage. Native
 item default semantics, transactions and UI presentation remain incomplete.
 `assets::registry::java::interaction` owns runtime outline and interaction-shape data,
 separately from collision facts. `sim::java::selection` owns native ray traversal;
-`gameplay::java::interaction` retains scoped intent under transport backpressure.
+`gameplay::java::interaction` retains scoped intent under transport backpressure and
+allocates one ordered sequence for breaking and main-hand use-on-block. Use requests
+preserve the native face, fractional hit and inside flag; the protocol owner serializes
+its pinned hand and packet schema. Neither terrain nor stack counts are predicted.
 The application binds finalized input to that owner and serializes native commands
 through the Java protocol owner. Acknowledgements are processing receipts; only
-ordered server updates alter terrain. Empty-hand creative breaking has Linux offline
-fixture evidence; survival,
+ordered server updates alter terrain. Empty-hand creative breaking and main-hand
+placement have Linux offline fixture evidence, including server rejection without
+predicted terrain or item loss. Survival/tool breaking, offhand/air use, general
 inventory-dependent behavior and entity targeting remain incomplete.
 `world::java::entities::visual` owns native appearance facts, including explicit
 incomplete metadata, registry-resolved pig variants and player clothing visibility. `client-world` validates

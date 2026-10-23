@@ -107,6 +107,12 @@
       "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/object/Direction.java",
       "sha256": "ab202605b6452cf6dbcd80c6637c21beed2b0ff6c6a0833117673c97003cc618",
       "count": 6
+    },
+    "hands": {
+      "path": "data/Hand.java",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/player/Hand.java",
+      "sha256": "71fcb40dca00f8c33c436d603ba0fd1b802e7e6b3fc56c43a682f6bf5baab0da",
+      "count": 2
     }
   },
   "inventory_schema": {

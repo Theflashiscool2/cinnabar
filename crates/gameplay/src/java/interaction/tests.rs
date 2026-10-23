@@ -70,6 +70,127 @@ fn press() -> ActionPhase {
     }
 }
 #[test]
+fn survival_use_is_buffered_and_does_not_predict_blocks_or_stack_consumption() {
+    let mut state = state();
+    state.status.mode = Some(GameMode::Survival);
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:dirt".into(),
+                    count: 7,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    c.use_on(&state, press(), Some(hit()));
+    assert_eq!(c.pending().unwrap().kind, Kind::UseOn);
+    assert_eq!(c.pending().unwrap().sequence, 1);
+    begin(&mut c, &state, Duration::from_secs(1));
+    c.use_on(&state, ActionPhase::default(), None);
+    assert_eq!(c.pending().unwrap().hit, hit());
+    c.queued();
+    assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 7);
+    assert_eq!(state.block_updates, 0);
+    assert_eq!(state.terrain.len(), 0);
+    for _ in 0..3 {
+        begin(&mut c, &state, simulation_clock::TICK_DURATION);
+        c.use_on(
+            &state,
+            ActionPhase {
+                held: true,
+                ..Default::default()
+            },
+            Some(hit()),
+        );
+        c.advance(&state, ActionPhase::default(), Some(hit()));
+        assert!(c.pending().is_none());
+    }
+    begin(&mut c, &state, simulation_clock::TICK_DURATION);
+    c.use_on(
+        &state,
+        ActionPhase {
+            held: true,
+            ..Default::default()
+        },
+        Some(hit()),
+    );
+    assert_eq!(c.pending().unwrap().sequence, 2);
+    c.queued();
+    // A server rejection/unchanged slot remains authoritative: another attempt never decrements it.
+    assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 7);
+}
+#[test]
+fn held_use_keeps_tick_remainder_without_accumulating_transport_wait() {
+    let state = state();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    c.use_on(&state, press(), Some(hit()));
+    c.queued();
+    let held = ActionPhase {
+        held: true,
+        ..Default::default()
+    };
+    begin(&mut c, &state, Duration::from_millis(240));
+    c.use_on(&state, held, Some(hit()));
+    assert_eq!(c.pending().unwrap().sequence, 2);
+    // Queuing at a frame boundary must preserve the 40ms tick remainder. Waiting for
+    // transport afterward must not manufacture extra held uses when it finally drains.
+    begin(&mut c, &state, Duration::from_secs(2));
+    c.queued();
+    begin(&mut c, &state, Duration::from_millis(159));
+    c.use_on(&state, held, Some(hit()));
+    assert!(c.pending().is_none());
+    begin(&mut c, &state, Duration::from_millis(1));
+    c.use_on(&state, held, Some(hit()));
+    assert_eq!(c.pending().unwrap().sequence, 3);
+}
+#[test]
+fn use_and_break_share_sequence_and_authority_retirement() {
+    let mut state = state();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    c.advance(&state, press(), Some(hit()));
+    c.queued();
+    c.use_on(&state, press(), Some(hit()));
+    assert_eq!(c.pending().unwrap().sequence, 2);
+    c.queued();
+    c.advance(&state, press(), Some(hit()));
+    assert_eq!(c.pending().unwrap().sequence, 3);
+    c.queued();
+    c.use_on(&state, press(), Some(hit()));
+    c.begin_frame(
+        &state,
+        Duration::ZERO,
+        Some(InputAuthorityGeneration::INITIAL),
+        true,
+    );
+    assert!(c.pending().is_none());
+    begin(&mut c, &state, Duration::ZERO);
+    c.use_on(&state, press(), Some(hit()));
+    state.status.mode = Some(GameMode::Spectator);
+    begin(&mut c, &state, Duration::ZERO);
+    assert!(c.pending().is_none());
+    c.use_on(&state, press(), Some(hit()));
+    assert!(c.pending().is_none());
+    state.status.mode = Some(GameMode::Survival);
+    c.use_on(&state, press(), Some(hit()));
+    state.inventory = Default::default();
+    begin(&mut c, &state, Duration::ZERO);
+    assert!(c.pending().is_none());
+    state.begin(8);
+    begin(&mut c, &state, Duration::ZERO);
+    assert!(c.last_queued.is_none());
+}
+#[test]
 fn unknown_or_occupied_hands_cannot_send_an_empty_hand_creative_action() {
     let mut state = state();
     state.inventory = Default::default();

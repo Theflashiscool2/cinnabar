@@ -1,11 +1,17 @@
-//! Native creative block-breaking intent. Terrain changes only on server block updates.
+//! Native block intent. Shared action sequences never predict terrain or stack changes.
 use client_world::java::WorldState;
 use semantic_input::{ActionPhase, identity::InputAuthorityGeneration};
 use sim::java::selection::Hit;
 use std::time::Duration;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Break,
+    UseOn,
+}
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
+    pub kind: Kind,
     pub dimension_epoch: u64,
     pub correction_sequence: u64,
     pub sequence: i32,
@@ -19,6 +25,8 @@ pub struct Controller {
     correction: u64,
     sequence: i32,
     elapsed: Duration,
+    use_elapsed: Duration,
+    use_remainder: Duration,
     delay: u8,
     pending: Option<Request>,
     pub selected: Option<Hit>,
@@ -51,27 +59,32 @@ impl Controller {
         {
             self.pending = None;
             self.elapsed = Duration::ZERO;
+            self.use_elapsed = Duration::ZERO;
             self.delay = 0;
             self.selected = None;
         } else {
             self.elapsed = self.elapsed.saturating_add(elapsed);
+            self.use_elapsed = self.use_elapsed.saturating_add(elapsed);
         }
         self.authority = authority;
         self.enabled = authority.is_some() && !released;
         self.correction = correction;
-        if self.pending.is_some()
-            && (!matches!(state.inventory.held(), Some(None))
-                || state.status.mode != Some(world::java::hud::GameMode::Creative)
-                || !state
-                    .player_dynamics
-                    .abilities
-                    .as_ref()
-                    .is_some_and(|a| a.creative)
-                || state.death.is_some()
-                || state.vitals.as_ref().is_none_or(|v| v.health <= 0.))
+        let invalid_break = !matches!(state.inventory.held(), Some(None))
+            || state.status.mode != Some(world::java::hud::GameMode::Creative)
+            || !state
+                .player_dynamics
+                .abilities
+                .as_ref()
+                .is_some_and(|a| a.creative);
+        if self.pending.is_some_and(|request| match request.kind {
+            Kind::Break => invalid_break,
+            Kind::UseOn => !can_use(state),
+        }) || state.death.is_some()
+            || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
         {
             self.pending = None;
             self.elapsed = Duration::ZERO;
+            self.use_elapsed = Duration::ZERO;
         }
         self.blocked = None;
     }
@@ -82,9 +95,14 @@ impl Controller {
         if let Some(request) = self.pending.take() {
             self.last_queued = Some(request);
             self.queued_actions = self.queued_actions.saturating_add(1);
-            self.delay = 5; // Pinned MultiPlayerGameMode creative destroyDelay, measured in ticks.
             // Backpressure paused this action; old elapsed time must not become fresh presses.
-            self.elapsed = Duration::ZERO;
+            match request.kind {
+                Kind::Break => {
+                    self.delay = 5; // Pinned MultiPlayerGameMode creative destroyDelay, in ticks.
+                    self.elapsed = Duration::ZERO;
+                }
+                Kind::UseOn => self.use_elapsed = self.use_remainder,
+            }
         }
     }
     pub fn backlog_ticks(&self) -> u128 {
@@ -128,7 +146,7 @@ impl Controller {
             return;
         }
         if attack.pressed {
-            self.request(hit);
+            self.request(hit, Kind::Break);
             // The initial click is this tick's action; do not repeat it from accumulated time.
             self.elapsed = Duration::ZERO;
             return;
@@ -149,12 +167,52 @@ impl Controller {
                 self.delay -= 1;
                 continue;
             }
-            if self.request(hit) {
+            if self.request(hit, Kind::Break) {
                 break;
             }
         }
     }
-    fn request(&mut self, hit: Option<Hit>) -> bool {
+    /// Main-hand block use is server-authoritative. No offhand/air-use fallback is invented.
+    pub fn use_on(&mut self, state: &WorldState, action: ActionPhase, hit: Option<Hit>) {
+        self.selected = hit;
+        if self.pending.is_some() {
+            return;
+        }
+        if !self.enabled
+            || self.scope.is_none()
+            || state.awaiting_correction_ack()
+            || state.death.is_some()
+            || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
+        {
+            self.use_elapsed = Duration::ZERO;
+            return;
+        }
+        if !can_use(state) {
+            if action.pressed || action.held {
+                self.blocked = Some("Native Java block use requires confirmed inventory and an active Survival/Creative/Adventure world; container UI is incomplete".into());
+            }
+            self.use_elapsed = Duration::ZERO;
+            return;
+        }
+        let interval = simulation_clock::TICK_DURATION * 4;
+        if action.pressed || (action.held && self.use_elapsed >= interval) {
+            // Pinned Minecraft.startUseItem rightClickDelay is four native ticks.
+            self.use_elapsed = if action.pressed {
+                Duration::ZERO
+            } else {
+                self.use_elapsed - interval
+            };
+            // Retain the tick remainder, excluding any subsequent transport wait.
+            self.use_remainder = self.use_elapsed;
+            if !self.request(hit, Kind::UseOn) && hit.is_none() {
+                self.blocked =
+                    Some("Native Java air use and offhand fallback are not implemented".into());
+            }
+        } else if !action.held {
+            self.use_elapsed = Duration::ZERO;
+        }
+    }
+    fn request(&mut self, hit: Option<Hit>, kind: Kind) -> bool {
         let Some(hit) = hit else {
             return false;
         };
@@ -167,6 +225,7 @@ impl Controller {
         };
         self.sequence = sequence;
         self.pending = Some(Request {
+            kind,
             dimension_epoch: epoch,
             correction_sequence: self.correction,
             sequence,
@@ -174,6 +233,16 @@ impl Controller {
         });
         true
     }
+}
+
+fn can_use(state: &WorldState) -> bool {
+    use world::java::hud::GameMode;
+    state.inventory.held().is_some()
+        && state.inventory.opened.is_none()
+        && matches!(
+            state.status.mode,
+            Some(GameMode::Survival | GameMode::Creative | GameMode::Adventure)
+        )
 }
 
 #[cfg(test)]

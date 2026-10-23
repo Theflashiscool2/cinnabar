@@ -11,6 +11,7 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
         ),
         (&target["interaction_schema"]["actions"], "PLAYER_ACTION"),
         (&target["interaction_schema"]["faces"], "BLOCK_FACE"),
+        (&target["interaction_schema"]["hands"], "HAND"),
     ] {
         let path = pin["path"].as_str().unwrap();
         println!("cargo:rerun-if-changed={path}");

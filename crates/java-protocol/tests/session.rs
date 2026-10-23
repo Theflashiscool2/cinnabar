@@ -156,7 +156,16 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
         [41, 0, 255, 255, 255, 255, 255, 255, 239, 192, 2, 128, 1]
     );
     assert_eq!(wire.read().await.unwrap(), [46]);
-    wire.write(&[4, 128, 1]).await.unwrap();
+    // Official report: use_item_on=66. A held-item block use follows the break on the
+    // same encrypted/compressed stream; retired dimension/correction uses emit nothing.
+    assert_eq!(
+        wire.read().await.unwrap(),
+        [
+            66, 0, 255, 255, 255, 255, 255, 255, 239, 192, 2, 0x3f, 0, 0, 0, 0x3f, 0x80, 0, 0,
+            0x3e, 0x80, 0, 0, 1, 0, 0x81, 1
+        ]
+    );
+    wire.write(&[4, 129, 1]).await.unwrap();
     // Official report: container_set_content=18, set_held_slot=107, set_player_inventory=110.
     // A complete empty player menu precedes a selected slot and a native dirt update.
     let mut inventory = vec![18, 0, 1, 46];
@@ -433,6 +442,25 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .await
                             .unwrap();
                     }
+                    for (epoch, correction) in [(99, 3), (dimension_epoch, 2), (dimension_epoch, 3)]
+                    {
+                        commands
+                            .send(session::Command::UseOn {
+                                dimension_epoch: epoch,
+                                correction_sequence: correction,
+                                action: session::interaction::UseOn {
+                                    hand: session::interaction::Hand::Main,
+                                    position: [-1, -64, -2],
+                                    face: session::interaction::Face::North,
+                                    cursor: [0.5, 1., 0.25],
+                                    inside: true,
+                                    world_border: false,
+                                    sequence: 129,
+                                },
+                            })
+                            .await
+                            .unwrap();
+                    }
                 }
                 Event::Dynamics {
                     dimension_epoch,
@@ -545,7 +573,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(dynamics, 2);
     assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
     assert_eq!(hud, ["experience", "mode"]);
-    assert_eq!(block_receipts, [(1, 128)]);
+    assert_eq!(block_receipts, [(1, 129)]);
     assert_eq!(
         inventory,
         ["local selection", "content", "selected", "slot"]

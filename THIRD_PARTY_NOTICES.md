@@ -575,14 +575,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Native Java protocol reference
 
-`crates/java-protocol/data/MinecraftCodec.java` supplies packet ordering and names,
-`crates/java-protocol/data/AttributeType.java` supplies the native attribute schema, and
-`crates/java-protocol/data/EntityType.java` supplies native entity registry names, and
-`crates/java-protocol/data/MetadataTypes.java` supplies metadata serializer ordering;
-`crates/java-protocol/data/GameMode.java` and `GameEvent.java` supply native mode and
-notification identities from
-GeyserMC MCProtocolLib at the revision pinned in that manifest. Its Java sources
-are behavior references, not an embedded client or runtime dependency.
+The Java reference sources in `crates/java-protocol/data/` supply packet ordering,
+registry/component schemas and enum identities, including block actions, faces and
+hands. They come from GeyserMC MCProtocolLib at the revision pinned in
+[`target.json`](crates/java-protocol/data/target.json). These sources are behavior
+references, not an embedded client or runtime dependency.
 
 Copyright (C) 2013-2021 Steveice10
 Copyright (C) 2021-2026 GeyserMC

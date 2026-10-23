@@ -241,7 +241,17 @@ server evidence; complex metadata and entity frame publication remain incomplete
   follow it. Scoped owner/wire/UI tests, clippy, architecture and the graphical build pass.
 - [ ] Complete inventory defaults, item visuals, containers and
   transactions.
-- [ ] Complete survival/tool breaking, placement, entity targeting, local effects
+- [x] Exercise main-hand block use and placement on the Linux offline vanilla fixture.
+  Native face/hit fields and a shared break/use sequence retain input order without
+  predicting terrain or stack counts. Survival placement consumes one dirt item;
+  Adventure, occupied-space and player-collision rejections consume none and leave
+  no ghost blocks. Selecting a slot and placing in one input sequence renders the
+  server's oriented stair state. Reconnect 2→4 restores terrain/inventory and a fresh
+  sequence-1 placement consumes the final stair. Held use stops after release across
+  real keepalives; nine precede reconnect and 30 follow it. A failing-then-passing
+  tick-remainder regression prevents frame drift and transport-wait bursts. Focused
+  protocol/session/gameplay tests, scoped clippy, architecture and the client build pass.
+- [ ] Complete survival/tool breaking, general item/offhand use, entity targeting, local effects
   and inventory-dependent restrictions. Creative fixture evidence is not general
   interaction parity or a complete playable client.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,

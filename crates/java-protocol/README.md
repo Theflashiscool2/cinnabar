@@ -324,7 +324,7 @@ launch through the repository's headless client MCP. Developer builds alone acce
 identity to explicit loopback fixtures. Select an actual saved Java row in the
 launcher. Production account routing still requires this fork's OAuth configuration.
 The app waits for a nonempty spawn-section GPU upload before sending player-loaded;
-this is not a claim of movement or gameplay. Java loading readiness does not wait
+Readiness alone does not establish gameplay support. Java loading readiness does not wait
 for a Bedrock stream or send Bedrock loading commands. Empty section publications
 use the shared zero-byte allowance. Native movement owns player translation; free
 camera translation is disabled. Developer state exposes session/epoch, upload counts, worker
@@ -412,7 +412,8 @@ mode, other platforms, full-workspace merge gates and performance remain unquali
 
 ## Native collision and dry-land movement
 
-Native outline picking and server-authoritative creative breaking are implemented. Prepare the separate,
+Native outline picking, server-authoritative creative breaking and main-hand block use
+are implemented. Prepare the separate,
 hash-pinned outline/interaction report with `assetc java-interaction --server SERVER_JAR
 --out JAVA_ASSETS/interaction.bin --accept-eula`, using the same explicit Java/compiler
 options as the physics command below. It runs only the original exporter against the
@@ -425,8 +426,51 @@ intent and acknowledgements. Pending mesh dispatch prioritizes sections near the
 player eye without dropping distant work or bypassing publication lifetimes. Incremental
 block/light changes now use spatial invalidation as described above; frame and edit-latency
 budgets remain unqualified. Survival/tool
-breaking, placement, entity targeting, local hand/crack effects and inventory-based
+breaking, general item use, entity targeting, local hand/crack effects and inventory-based
 restrictions are incomplete; this is not a playable-client claim.
+
+Use input joins the same ordered queue as hotbar selection and attack. Block use sends
+the pinned `ServerboundUseItemOnPacket` with main hand, signed packed position, native
+face, fractional hit, inside/world-border flags and the shared action sequence. The
+block picker produces block hits, not world-border hits. Socket dispatch checks loaded
+dimension, correction and death fences. Held use repeats after the native four-tick
+delay; a backpressured tap retains its original target. Terrain and inventory change
+only through admitted server updates, so processing receipts never create a block or
+consume an item. Unknown inventory, spectator mode and an opened unsupported container
+block this path explicitly. Offhand fallback, air use, component-default behavior,
+client effects, item visuals and container UI are incomplete. References are the pinned
+codec's use-on-block schema/hand enum and verified vanilla `Minecraft.startUseItem`,
+`MultiPlayerGameMode.useItemOn` and `ServerGamePacketListenerImpl.handleUseItemOn`.
+To exercise it, join a saved Java server with the runtime assets configured above,
+select a server-supplied block stack using number keys or the wheel, aim at a native
+block outline and press/hold the existing Use binding (right mouse button by default).
+Inspect `native_java.inventory`, `native_java_interaction` and `native_java.block_ack`
+through developer control; item icons and held models do not yet show native stacks.
+
+Linux hidden Vulkan/lavapipe acceptance at 1280×720, scale 1, enters the authorized
+offline vanilla world from the launcher. Use on dirt places its neighbour and consumes
+one item (7→6); an Adventure-mode rejection retains six and creates no ghost block.
+An ordered slot-choice/use gesture places an oak stair (2→1). Server queries and fresh
+frames agree on its south-facing, bottom, straight, dry state; its graphics extend
+after join through the normal native mesh path. Reconnect advances generation 2→4,
+restores authoritative terrain/stacks, and a new sequence-1 placement consumes the
+last stair. Held use on that stair's top face places one dirt block (6→5), then rejects
+further attempts into occupied space. A full-block fixture separately rejects repeated
+placement into the player's collision volume without consuming items. Releasing Use
+stops new requests while keepalives continue. Nine actual keepalives precede reconnect
+and 30 follow it; Save & Quit clears native actions/world facts and the client exits.
+The fixture is restored afterward. This is a limited main-hand placement slice,
+not general item, inventory, combat or playable-client acceptance.
+
+The use codec has independent signed-coordinate, hit/flag and malformed-value vectors.
+The encrypted/compressed session fixture checks the official packet identity, field
+order and retired correction/dimension fences. Gameplay tests cover slot/use ordering,
+retained targets, no predicted stack consumption and a failing-then-passing held-use
+tick-remainder regression. All 62 protocol unit tests, three session fixtures and
+18 focused Java gameplay tests pass, alongside scoped app-inclusive clippy, formatting,
+architecture and the Linux developer build. A low-disk linker failure recovered after
+clearing inactive caches and rerunning the same build. Full-workspace merge gates,
+Windows/macOS, online mode and performance budgets remain unqualified.
 
 Linux hidden Vulkan acceptance (1280×720, scale 1, lavapipe) uses the authorized
 non-operator offline vanilla fixture. Launcher input selects dirt by its native outline;

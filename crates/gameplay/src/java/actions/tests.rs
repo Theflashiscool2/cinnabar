@@ -45,6 +45,47 @@ fn input(sequence: u64, action: Option<Action>) -> FinalizedInput {
     })
 }
 #[test]
+fn use_edges_retain_hit_and_wait_for_slot_receipts() {
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, None), None);
+    let hit = Hit {
+        block: [1, -60, 2],
+        state: 42,
+        position: [1.5, -59., 2.5],
+        face: sim::java::selection::Face::Up,
+        inside: false,
+    };
+    c.append(
+        [
+            Intent::Slot(1),
+            Intent::Use(true),
+            Intent::Use(false),
+            Intent::Attack(true),
+        ],
+        Some(hit),
+    );
+    c.selection(&state).unwrap();
+    c.selection_queued();
+    assert!(c.front(&state).is_none());
+    assert!(!c.held_use().held);
+    state.inventory.selection_sent(7, 1, 1, 1);
+    assert_eq!(c.front(&state), Some(Intent::Use(true)));
+    let (phase, original) = c.consume_use(true);
+    assert!(phase.pressed);
+    assert_eq!(original, Some(hit));
+    assert_eq!(c.front(&state), Some(Intent::Use(false)));
+    assert!(c.consume_use(false).0.released);
+    assert_eq!(c.front(&state), Some(Intent::Attack(true)));
+    c.consume_attack(true);
+    assert!(c.held_attack().held);
+    assert!(!c.held_use().held);
+    c.retire();
+    assert!(!c.held_attack().held);
+    c.capture(&state, &input(2, Some(Action::Use)), Some(hit));
+    assert_eq!(c.front(&state), Some(Intent::Use(true)));
+}
+#[test]
 fn choices_wait_for_serialization_and_preserve_attack_order_under_backpressure() {
     let mut state = state();
     let mut c = Controller::default();

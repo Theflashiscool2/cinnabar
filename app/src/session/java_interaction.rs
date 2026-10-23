@@ -4,9 +4,10 @@ use bevy::{prelude::*, time::Real};
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
 use gameplay::java::actions::{Controller as Actions, Intent};
+use gameplay::java::interaction::Kind;
 use java_protocol::session::{
     Command,
-    interaction::{Action, Dig, Face},
+    interaction::{Action, Dig, Face, Hand, UseOn},
 };
 use sim::java::selection;
 
@@ -16,7 +17,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking", "input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_and_main_hand_block_use", "input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -66,6 +67,10 @@ pub(crate) fn update(
                 let (phase, captured_hit) = interaction.1.consume_attack(pressed);
                 interaction.0.advance(state, phase, captured_hit);
             }
+            Some(Intent::Use(pressed)) => {
+                let (phase, captured_hit) = interaction.1.consume_use(pressed);
+                interaction.0.use_on(state, phase, captured_hit);
+            }
             Some(Intent::Slot(_) | Intent::Cycle(_)) => {
                 let Some(selection) = interaction.1.selection(state) else {
                     continue;
@@ -87,6 +92,11 @@ pub(crate) fn update(
                 return;
             }
             None => {
+                let use_phase = interaction.1.held_use();
+                interaction.0.use_on(state, use_phase, hit);
+                if !send_pending(java, &mut interaction.0) {
+                    return;
+                }
                 let phase = interaction.1.held_attack();
                 interaction.0.advance(state, phase, hit);
                 send_pending(java, &mut interaction.0);
@@ -112,14 +122,32 @@ fn send_pending(
         selection::Face::West => Face::West,
         selection::Face::East => Face::East,
     };
-    let command = Command::Interact {
-        dimension_epoch: request.dimension_epoch,
-        correction_sequence: request.correction_sequence,
-        action: Dig {
-            action: Action::Start,
-            position: request.hit.block,
-            face,
-            sequence: request.sequence,
+    let command = match request.kind {
+        Kind::UseOn => Command::UseOn {
+            dimension_epoch: request.dimension_epoch,
+            correction_sequence: request.correction_sequence,
+            action: UseOn {
+                hand: Hand::Main,
+                position: request.hit.block,
+                face,
+                cursor: std::array::from_fn(|i| {
+                    (request.hit.position[i] - f64::from(request.hit.block[i])) as f32
+                }),
+                inside: request.hit.inside,
+                // The native outline picker returns a block hit, never a world-border hit.
+                world_border: false,
+                sequence: request.sequence,
+            },
+        },
+        Kind::Break => Command::Interact {
+            dimension_epoch: request.dimension_epoch,
+            correction_sequence: request.correction_sequence,
+            action: Dig {
+                action: Action::Start,
+                position: request.hit.block,
+                face,
+                sequence: request.sequence,
+            },
         },
     };
     match java.command(command) {
