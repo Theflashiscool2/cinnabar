@@ -66,6 +66,18 @@ impl Connection {
                 self.emit(Event::Roster(packet)).await?;
                 continue;
             }
+            if let Some(packet) = inventory::decode(name, &mut r)? {
+                r.finish()?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("inventory before Java world login").into());
+                }
+                self.emit(Event::Inventory {
+                    dimension_epoch: self.dimension_epoch,
+                    packet,
+                })
+                .await?;
+                continue;
+            }
             if let Some(packet) = hud::decode(name, &mut r)? {
                 r.finish()?;
                 if !self.bootstrapped {
@@ -271,10 +283,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundClearTitlesPacket",
     "ClientboundCommandSuggestionsPacket",
     "ClientboundCommandsPacket",
-    "ClientboundContainerClosePacket",
-    "ClientboundContainerSetContentPacket",
-    "ClientboundContainerSetDataPacket",
-    "ClientboundContainerSetSlotPacket",
     "ClientboundCooldownPacket",
     "ClientboundCustomChatCompletionsPacket",
     "ClientboundDamageEventPacket",
@@ -314,14 +322,11 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetBorderWarningDelayPacket",
     "ClientboundSetBorderWarningDistancePacket",
     "ClientboundSetCameraPacket",
-    "ClientboundSetCursorItemPacket",
     "ClientboundSetDefaultSpawnPositionPacket",
     "ClientboundSetDisplayObjectivePacket",
     "ClientboundSetEntityLinkPacket",
     "ClientboundSetEquipmentPacket",
-    "ClientboundSetHeldSlotPacket",
     "ClientboundSetObjectivePacket",
-    "ClientboundSetPlayerInventoryPacket",
     "ClientboundSetPlayerTeamPacket",
     "ClientboundSetScorePacket",
     "ClientboundSetSimulationDistancePacket",

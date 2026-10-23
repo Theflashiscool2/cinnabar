@@ -49,6 +49,9 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         has_skylight,
     });
     state
+        .inventory
+        .begin(state.generation, state.dimension_epoch);
+    state
         .entities
         .begin(state.generation, state.dimension_epoch);
     state.status.mode = Some(super::hud::mode(

@@ -110,13 +110,14 @@ position, death, health/food and respawn facts. Explicit respawn input uses a bo
 connection-owned queue; interrupted reads retain prefix/body/cipher progress. It answers
 teleports, keepalives, pings and chunk-batch flow control. Terrain packets decode off
 the rendering thread. Entity lifecycle and selected metadata have domain admission;
-inventory notifications remain outside admitted state;
+inventory contents, slot/cursor/selection updates and container lifetimes now have
+an edition-owned admission path with the limited live evidence below;
 the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, an initial relative teleport without an admitted anchor,
 mid-session reconfiguration and tag replacement fail
-clearly. Inventory and chat signing remain unimplemented. Native
+clearly. Inventory interaction/presentation and chat signing remain incomplete. Native
 movement, entity and terrain presentation have the limited offline rendered
 evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
 
@@ -291,6 +292,46 @@ columns and observes three more actual keepalives. Its fresh frame omits a stone
 pillar removed while disconnected and retains the server-authoritative wall hole.
 This tests server-driven rendering, not client breaking/placement or physical
 movement. No Windows/macOS, visual parity or performance qualification is claimed.
+
+## Native inventory authority
+
+The target pins the item registry and maintained component/container schemas. Wire
+item stacks preserve identity, count, component overrides and explicit removals;
+missing overrides are not interpreted as missing default components. Common scalar,
+text/NBT, enchantment, holder-set, tool, food and tooltip patches decode. Other
+component payloads fail with their identifier; they are never skipped into a corrupt
+snapshot. The expanded slot array has an explicit provisional 8 MiB budget, sharing
+the transport inflation budget; this is not modded-container capacity qualification.
+Complete content, slot, selected-slot, player-storage, cursor and menu
+notifications enter `inventory::java` through `client-world`. Unknown slots remain
+distinct from authoritative empty stacks. Player menus and supported chest layouts
+reference one player-storage owner. Ordered state IDs may wrap and are not sorted.
+Session/dimension replacement retires storage, menus and cursors; container IDs also
+have local incarnations. Unsupported menu layouts expose an explicit inventory error.
+
+Independent wire and encrypted-session tests, slot ownership, atomic invalid content,
+state-ID wrapping and stale-session admission have deterministic coverage. Linux
+hidden Vulkan acceptance (1280×720, scale 1, lavapipe) joins the offline vanilla
+fixture through the launcher and admits 41 confirmed player-storage cells. The initial
+sync exposed a retained carrot, correcting the earlier empty-hand assumption. Server
+queries agree with an iron pickaxe carrying damage 7 and a count-7 dirt stack with an
+explicit enchantments-component removal. A held item blocks the current empty-hand
+breaking path. After an explicit server clear, admitted empty-hand actions remove dirt
+and retain a rejected command block in fresh rendered frames. Fifteen keepalives are
+observed before reconnect. Session 4→6 receives a fresh inventory and clears interaction
+intent. Death clears the stack; the real Respawn button replaces inventory epoch 1→2
+and receives a fresh empty menu with health 20. Fourteen keepalives are observed in
+that reconnected session before shutdown. This is not inventory gameplay: native item assets,
+local hotbar selection, click prediction/reconciliation, crafting, use-item and tool
+semantics remain incomplete. Component defaults are not yet resolved for behavior.
+Chest layouts have deterministic coverage only, with no chest UI/click acceptance.
+An incremental command-block addition during this run reproduced the existing
+unprepared-state graphics failure. The subsequent interaction checks used states
+present at join; streaming new-state asset extension remains an unresolved blocker.
+Focused owner/wire tests, app-inclusive clippy, formatting, architecture and the
+Linux graphical build pass. An initial owner build exhausted disk; inactive artifacts
+were removed and the identical checks passed. Online, Windows/macOS, full-workspace
+merge gates and performance budgets remain unqualified.
 
 ## Native collision and dry-land movement
 

@@ -108,5 +108,26 @@
       "sha256": "ab202605b6452cf6dbcd80c6637c21beed2b0ff6c6a0833117673c97003cc618",
       "count": 6
     }
+  },
+  "inventory_schema": {
+    "components": {
+      "path": "data/DataComponentTypes.java",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/item/component/DataComponentTypes.java",
+      "sha256": "f14803b24670551f3c68b7a044d6569458a91fc94e3be6142f4c42441dde0e16",
+      "count": 122
+    },
+    "containers": {
+      "path": "data/ContainerType.java",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/inventory/ContainerType.java",
+      "sha256": "9f4c7d502ed25be2c6dd93d9b136c6a6b21da61b0b98db9407a322ddc855bbda",
+      "count": 25
+    },
+    "items": {
+      "path": "data/item-types.json",
+      "sha256": "3b52874b6b7bff9dd6a2a00f0260c2f0accc1924fde8d7113777a0ca864a8a0e",
+      "count": 1658,
+      "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
+      "generator": "ordered minecraft:item entries from the pinned server reports/registries.json"
+    }
   }
 }

@@ -49,6 +49,7 @@ pub(super) fn state() -> WorldState {
         height: 384,
         has_skylight: true,
     });
+    state.inventory.begin(7, 1);
     state
         .bootstrap
         .as_mut()

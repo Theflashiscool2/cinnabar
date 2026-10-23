@@ -31,6 +31,18 @@ fn state() -> WorldState {
         food: 20,
         saturation: 5.,
     });
+    state.inventory.begin(7, 1);
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: None,
+            },
+        )
+        .unwrap();
     state
 }
 fn hit() -> Hit {
@@ -56,6 +68,55 @@ fn press() -> ActionPhase {
         held: true,
         released: false,
     }
+}
+#[test]
+fn unknown_or_occupied_hands_cannot_send_an_empty_hand_creative_action() {
+    let mut state = state();
+    state.inventory = Default::default();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    c.advance(&state, press(), Some(hit()));
+    assert!(c.pending().is_none());
+    state.inventory.begin(7, 1);
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:iron_sword".into(),
+                    count: 1,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    begin(&mut c, &state, Duration::ZERO);
+    c.advance(&state, press(), Some(hit()));
+    assert!(c.pending().is_none());
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: None,
+            },
+        )
+        .unwrap();
+    begin(&mut c, &state, Duration::ZERO);
+    c.advance(&state, press(), Some(hit()));
+    assert!(c.pending().is_some());
+    state.inventory = Default::default();
+    begin(&mut c, &state, Duration::ZERO);
+    assert!(
+        c.pending().is_none(),
+        "unconfirmed inventory cancels backpressured intent"
+    );
 }
 #[test]
 fn taps_survive_backpressure_and_creative_repeat_uses_native_tick_delay() {

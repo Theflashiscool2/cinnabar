@@ -135,6 +135,10 @@ admits it before issuing a resolved teleport acknowledgement. The Java socket fe
 the reply by dimension and correction receipt and preserves packet order while
 waiting. Camera presentation observes the admitted correction without becoming a
 second player authority.
+`inventory::java` owns native storage, known/empty distinctions, component patches,
+container state IDs and lifetimes. `client-world` converts Java wire notifications
+before admission; player and chest slot views reference the same storage. Native
+item default semantics, transactions and UI presentation remain incomplete.
 `assets::registry::java::interaction` owns runtime outline and interaction-shape data,
 separately from collision facts. `sim::java::selection` owns native ray traversal;
 `gameplay::java::interaction` retains scoped intent under transport backpressure.

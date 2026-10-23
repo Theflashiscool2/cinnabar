@@ -1,9 +1,13 @@
 //! Ordered native session messages exposed to admission consumers.
-use super::{Phase, dynamics, entities, facts, hud, roster};
+use super::{Phase, dynamics, entities, facts, hud, inventory, roster};
 use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    Inventory {
+        dimension_epoch: u64,
+        packet: inventory::Packet,
+    },
     BlockAck {
         dimension_epoch: u64,
         sequence: i32,

@@ -7,6 +7,7 @@ mod events;
 pub mod facts;
 pub mod hud;
 pub mod interaction;
+pub mod inventory;
 pub use events::{Envelope, Event};
 mod login;
 mod motion;

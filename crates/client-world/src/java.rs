@@ -5,6 +5,7 @@ mod entities;
 mod hud;
 #[cfg(test)]
 mod interaction_tests;
+mod inventory;
 mod nbt;
 pub mod player;
 mod roster;
@@ -17,6 +18,7 @@ use java_protocol::session::{
 };
 #[derive(Default, Debug)]
 pub struct WorldState {
+    pub inventory: ::inventory::java::State,
     generation: u64,
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
@@ -71,6 +73,10 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::Inventory {
+                dimension_epoch,
+                packet,
+            } => return inventory::admit(self, dimension_epoch, packet),
             Event::BlockAck {
                 dimension_epoch,
                 sequence,
@@ -83,6 +89,7 @@ impl WorldState {
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
+                    self.inventory = Default::default();
                     self.block_ack = None;
                     self.status = Default::default();
                     self.bootstrap = None;

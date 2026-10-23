@@ -59,6 +59,20 @@ impl Controller {
         self.authority = authority;
         self.enabled = authority.is_some() && !released;
         self.correction = correction;
+        if self.pending.is_some()
+            && (!matches!(state.inventory.held(), Some(None))
+                || state.status.mode != Some(world::java::hud::GameMode::Creative)
+                || !state
+                    .player_dynamics
+                    .abilities
+                    .as_ref()
+                    .is_some_and(|a| a.creative)
+                || state.death.is_some()
+                || state.vitals.as_ref().is_none_or(|v| v.health <= 0.))
+        {
+            self.pending = None;
+            self.elapsed = Duration::ZERO;
+        }
         self.blocked = None;
     }
     pub fn pending(&self) -> Option<Request> {
@@ -102,6 +116,13 @@ impl Controller {
         if !creative {
             if attack.pressed || attack.held {
                 self.blocked = Some("Native Java survival/tool breaking is not implemented".into());
+            }
+            self.elapsed = Duration::ZERO;
+            return;
+        }
+        if !matches!(state.inventory.held(), Some(None)) {
+            if attack.pressed || attack.held {
+                self.blocked = Some("Native Java breaking currently requires a confirmed empty hand; item/tool behavior is incomplete".into());
             }
             self.elapsed = Duration::ZERO;
             return;

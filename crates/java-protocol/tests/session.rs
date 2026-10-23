@@ -155,6 +155,13 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     );
     assert_eq!(wire.read().await.unwrap(), [46]);
     wire.write(&[4, 128, 1]).await.unwrap();
+    // Official report: container_set_content=18, set_held_slot=107, set_player_inventory=110.
+    // A complete empty player menu precedes a selected slot and a native dirt update.
+    let mut inventory = vec![18, 0, 1, 46];
+    inventory.extend([0; 47]); // 46 empty slots and an empty cursor.
+    wire.write(&inventory).await.unwrap();
+    wire.write(&[107, 2]).await.unwrap();
+    wire.write(&[110, 2, 4, 55, 0, 0]).await.unwrap();
     // Abilities and the new packed velocity are delivered as admitted schemas, not deferred bytes.
     wire.write(&[0x41, 0, 0x3d, 0x4c, 0xcc, 0xcd, 0x3d, 0xcc, 0xcc, 0xcd])
         .await
@@ -225,10 +232,41 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     let mut entities = Vec::new();
     let mut hud = Vec::new();
     let mut block_receipts = Vec::new();
+    let mut inventory = Vec::new();
     tokio::time::timeout(Duration::from_secs(10), async {
         while let Some(envelope) = rx.recv().await {
             assert_eq!(envelope.generation, 7);
             match envelope.event {
+                Event::Inventory {
+                    dimension_epoch,
+                    packet,
+                } => {
+                    assert_eq!(dimension_epoch, 1);
+                    match packet {
+                        session::inventory::Packet::Content {
+                            container,
+                            state,
+                            slots,
+                            carried,
+                        } => {
+                            assert_eq!((container, state), (0, 1));
+                            assert_eq!(slots.len(), 46);
+                            assert!(slots.iter().all(Option::is_none) && carried.is_none());
+                            inventory.push("content");
+                        }
+                        session::inventory::Packet::Selected(slot) => {
+                            assert_eq!(slot, 2);
+                            inventory.push("selected");
+                        }
+                        session::inventory::Packet::PlayerSlot { slot, stack } => {
+                            assert_eq!(slot, 2);
+                            let stack = stack.unwrap();
+                            assert_eq!((stack.item, stack.count), (55, 4));
+                            inventory.push("slot");
+                        }
+                        _ => panic!("unexpected inventory packet"),
+                    }
+                }
                 Event::BlockAck {
                     dimension_epoch,
                     sequence,
@@ -488,6 +526,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
     assert_eq!(entities, ["spawn", "metadata", "move", "remove"]);
     assert_eq!(hud, ["experience", "mode"]);
     assert_eq!(block_receipts, [(1, 128)]);
+    assert_eq!(inventory, ["content", "selected", "slot"]);
 }
 #[tokio::test]
 async fn wrong_state_packet_fails_without_play() {

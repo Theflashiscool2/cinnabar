@@ -2867,6 +2867,7 @@ dependencies = [
  "protocol-ids",
  "render-api",
  "render-model",
+ "serde_json",
  "sha2",
  "simulation-clock",
  "test-alloc",

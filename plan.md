@@ -201,7 +201,7 @@ server evidence; complex metadata and entity frame publication remain incomplete
   semantics, clock/weather presentation and streaming new-state asset extension.
   The present slice requires a proven uniform biome field. Collision and player
   input remain incomplete; unbound camera translation is disabled in Java sessions.
-- [x] Exercise empty-hand creative breaking on the Linux offline vanilla fixture.
+- [x] Exercise native creative breaking on the Linux offline vanilla fixture.
   Runtime outline/interaction shapes, native ray traversal, sequenced actions and
   scoped input/transport ownership have deterministic coverage. Actual Attack input
   removes dirt through server block updates; a non-operator command-block attempt
@@ -211,6 +211,17 @@ server evidence; complex metadata and entity frame publication remain incomplete
   keepalives are observed. Nearby mesh
   dispatch has a failing-then-passing regression, but broad column invalidation and
   edit-latency qualification remain open.
+- [x] Exercise native player-inventory admission on the Linux offline vanilla fixture.
+  Item/component schemas, complete content, slot/cursor/selection updates and scoped
+  menu ownership have deterministic coverage. Live server queries match damage 7,
+  count 7 and an explicit component removal. The initial sync corrects a retained-carrot
+  assumption; confirmed empty-hand input then passes accepted/rejected breaking cases.
+  Fifteen keepalives precede reconnect; fresh session inventory and respawn epoch 1→2
+  clear stale intent and slots. Chest/player views share storage and state IDs retain
+  server order across wrapping, but chest behavior has deterministic coverage only.
+- [ ] Complete inventory defaults, item visuals, local selection, containers and
+  transactions. The live incremental command-block addition still exposes the known
+  missing-graphics failure; prepare new states during streaming before placement.
 - [ ] Complete survival/tool breaking, placement, entity targeting, local effects
   and inventory-dependent restrictions. Creative fixture evidence is not general
   interaction parity or a complete playable client.
