@@ -3,8 +3,10 @@ use thiserror::Error;
 
 mod android;
 mod ios;
+mod java;
 pub use android::configure_android;
 pub use ios::configure_ios;
+pub use java::discover_java_assets;
 
 const APP_DIR: &str = crate::PRODUCT_NAME;
 

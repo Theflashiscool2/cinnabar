@@ -78,19 +78,15 @@ pub(crate) fn update(
                 return;
             }
         };
-        let root = std::env::var_os("CINNABAR_JAVA_ASSETS")
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| {
-                std::path::PathBuf::from(".local/assets/java")
-                    .join(java_protocol::target::GAME_VERSION)
-            });
+        let root =
+            launcher::install_layout::discover_java_assets().map_err(|error| error.to_string());
         let cancel = Arc::clone(&p.cancel);
         let (tx, rx) = crossbeam_channel::bounded(1);
         p.pending = Some(rx);
         if let Err(e) = std::thread::Builder::new()
             .name("java-entity-assets".into())
             .spawn(move || {
-                let _ = tx.send(assets::load(root, appearances, cancel));
+                let _ = tx.send(root.and_then(|root| assets::load(root, appearances, cancel)));
             })
         {
             p.pending = None;
@@ -329,7 +325,7 @@ pub(crate) fn update(
         p.published_players = 0;
         p.poses.clear();
         if let Some(mut menu) = menu {
-            menu.set_java_diagnostic(format!("Java entities incomplete: {error}. Check the pinned models.json and client.jar in CINNABAR_JAVA_ASSETS."));
+            menu.set_java_diagnostic(format!("Java entities incomplete: {error}. Check the pinned models.json and client.jar in the packaged Java asset directory."));
         }
     }
     p.published = batch.submissions.len();

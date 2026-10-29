@@ -9,6 +9,7 @@ sideloading tools sign the bundle.
 """
 
 import argparse
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import shutil
@@ -22,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VANILLA_SOURCE = ROOT / "assets/vanilla-source.json"
 RUNTIME = Path(__file__).resolve().with_name("runtime.json")
 COMPILED = "assets/compiled"
+JAVA_TARGET = ROOT / "crates/java-protocol/data/target.json"
 
 
 def resource_dir():
@@ -78,30 +80,53 @@ def copy_entry(source, target, info):
         shutil.copyfileobj(reader, writer, 1 << 20)
 
 
-def add_file(target, path, name):
+def add_file(target, path, name, expected=None):
     """Streams one local file into the IPA as a regular 0644 unix entry."""
     entry = zipfile.ZipInfo.from_file(path, name, strict_timestamps=False)
     entry.external_attr = (stat.S_IFREG | 0o644) << 16
     entry.create_system = 3
     entry.compress_type = zipfile.ZIP_DEFLATED
+    digest = hashlib.sha256()
+    size = 0
     with open(path, "rb") as reader, target.open(entry, "w") as writer:
-        shutil.copyfileobj(reader, writer, 1 << 20)
+        while chunk := reader.read(1 << 20):
+            writer.write(chunk)
+            if expected is not None:
+                digest.update(chunk)
+                size += len(chunk)
+    if expected is not None and (size != expected["bytes"] or digest.hexdigest() != expected["sha256"]):
+        raise AssetError(f"{path.name}: Java artifact does not match pinned size/SHA-256; output not replaced")
 
 
-def add_assets(ipa, local, out, force=False):
+def java_sources(directory):
+    """Only pinned runtime inputs enter the app; exporters, credentials and server jars stay out."""
+    manifest = json.loads(JAVA_TARGET.read_text(encoding="utf-8"))
+    relative = f"assets/java/{manifest['game_version']}"
+    specs = [("client.jar", manifest["client_assets"])]
+    for key in ("block_registry_report", "physics_report", "interaction_report", "entity_models_report"):
+        spec = manifest[key]
+        specs.append((PurePosixPath(spec["path"]).name, spec))
+    for name, _ in specs:
+        if not (directory / name).is_file():
+            raise AssetError(f"missing Java runtime input {directory / name}; prepare pinned exports on the host")
+    return relative, specs
+
+
+def add_assets(ipa, local, out, force=False, java_assets=None):
     """Writes `out`: `ipa` plus the local carriers and pack. Returns the number of files added."""
     if not ipa.is_file():
         raise AssetError(f"missing IPA {ipa}")
     if out.exists() and not force:
         raise AssetError(f"{out} exists; pass --force to replace it")
     dirs = source_dirs(local)
+    java_relative, java_specs = java_sources(java_assets) if java_assets is not None else (None, [])
     added = 0
     with tempfile.NamedTemporaryFile(dir=out.parent, prefix=out.name, suffix=".tmp", delete=False) as handle:
         partial = Path(handle.name)
     try:
         with zipfile.ZipFile(ipa) as source, zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED) as target:
             resources = f"{app_dir(source.namelist())}{resource_dir()}/"
-            replaced = tuple(f"{resources}{relative}/" for relative in dirs)
+            replaced = tuple(f"{resources}{relative}/" for relative in dirs + ([java_relative] if java_relative else []))
             for info in source.infolist():
                 if not info.filename.startswith(replaced):
                     copy_entry(source, target, info)
@@ -110,6 +135,9 @@ def add_assets(ipa, local, out, force=False):
                     if path.is_file():
                         add_file(target, path, resources + path.relative_to(local).as_posix())
                         added += 1
+            for name, expected in java_specs:
+                add_file(target, java_assets / name, f"{resources}{java_relative}/{name}", expected)
+                added += 1
         partial.replace(out)
     except BaseException:
         partial.unlink(missing_ok=True)
@@ -122,6 +150,7 @@ def main(argv=None):
     parser.add_argument("ipa", type=Path, help="unsigned IPA from build-ipa.sh or the iOS workflow")
     parser.add_argument("--local", type=Path, default=ROOT / ".local", help="checkout .local directory")
     parser.add_argument("--out", type=Path, help="output IPA (default: -unsigned replaced by -assets)")
+    parser.add_argument("--java-assets", type=Path, help="prepared Java runtime directory, verified against the tracked target manifest")
     parser.add_argument("--force", action="store_true", help="replace an existing output")
     args = parser.parse_args(argv)
     out = args.out
@@ -131,7 +160,7 @@ def main(argv=None):
     if out.resolve() == args.ipa.resolve():
         parser.error("the output must differ from the input IPA")
     try:
-        added = add_assets(args.ipa, args.local, out, args.force)
+        added = add_assets(args.ipa, args.local, out, args.force, args.java_assets)
     except AssetError as error:
         print(f"add-assets: {error}", file=sys.stderr)
         return 1

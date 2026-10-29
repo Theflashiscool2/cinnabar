@@ -74,3 +74,45 @@ keyboard and mouse work only as far as winit's UIKit backend delivers their inpu
 - Preparing assets on the device: inject them with `add-assets.py` before sideloading.
 - The crash monitor and native crash dumps; Rust panics still write crash folders.
 - Clipboard and opening links. Sign in with the device code on another device.
+
+## Native Java Edition in this fork
+
+The iPhone runtime observations above describe upstream's Bedrock path. They do not
+qualify native Java networking, authentication, terrain, touch gameplay or Hypixel.
+The Java release target remains the version in `crates/java-protocol/data/target.json`.
+
+Java terrain and entity workers resolve resources through the host's `InstallLayout`,
+including when UIKit changes the working directory. To include locally prepared Java
+inputs alongside the required shared carriers:
+
+```sh
+python3 packaging/ios/add-assets.py path/to/Cinnabar-<version>-unsigned.ipa \
+  --java-assets path/to/prepared-java-runtime
+```
+
+The directory must contain `client.jar`, `blocks.json`, `physics.bin`,
+`interaction.bin` and `models.json`. The injector verifies the bytes it writes
+against the tracked Java target's sizes and SHA-256 hashes. A mismatch leaves any
+existing output untouched. It copies only these Java files into
+`local/assets/java/<pinned-version>/`; server binaries, exporter programs and account
+credentials are excluded. Prepare exports on a host with the target's Java runtime,
+using the existing `assetc java-physics`, `java-interaction` and `java-entities`
+commands and their explicit EULA acceptance. The running iPhone app never executes
+Java or a data exporter. Desktop `CINNABAR_JAVA_ASSETS` overrides still work.
+
+The build script currently requires the Xcode major in `packaging/ios/runtime.json`:
+26. Xcode 27.1 with SDK 27.1 does not satisfy this pin. Install Xcode 26 alongside
+27.1 and select its developer directory for the build; do not change the system's
+selected Xcode or claim that a different SDK has been validated:
+
+```sh
+# Set this to the actual Xcode 26 installation on the Mac.
+export DEVELOPER_DIR=/Applications/Xcode_26.app/Contents/Developer
+xcrun --sdk iphoneos --show-sdk-version
+rustup target add aarch64-apple-ios
+CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
+```
+
+An unsigned IPA still needs the user's asset injection, signing and device
+installation. This fork's Java sign-in UI and online/iPhone acceptance remain
+incomplete; no account tokens should be transferred in a source bundle or IPA.

@@ -227,7 +227,8 @@ pub(crate) fn update(
         std::thread::Builder::new()
             .name("java-assets".into())
             .spawn(move || {
-                let _ = sender.send(assets::load(root, columns, biomes, cancel));
+                let _ =
+                    sender.send(root.and_then(|root| assets::load(root, columns, biomes, cancel)));
             })
             .expect("Java asset worker");
     }
@@ -253,7 +254,7 @@ pub(crate) fn update(
             }
             Err(error) => {
                 p.failure = Some(format!(
-                    "Java runtime assets: {error}. Supply the pinned client.jar, blocks.json and physics.bin under CINNABAR_JAVA_ASSETS."
+                    "Java runtime assets: {error}. Prepare the pinned Java runtime inputs in the app resource root assets/java directory, or use CINNABAR_JAVA_ASSETS on desktop."
                 ))
             }
         }

@@ -26,12 +26,8 @@ struct CancelSource {
     jar: Jar,
     cancel: Arc<AtomicBool>,
 }
-pub(super) fn root() -> PathBuf {
-    std::env::var_os("CINNABAR_JAVA_ASSETS")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            PathBuf::from(".local/assets/java").join(java_protocol::target::GAME_VERSION)
-        })
+pub(super) fn root() -> Result<PathBuf, String> {
+    launcher::install_layout::discover_java_assets().map_err(|error| error.to_string())
 }
 /// Revalidates runtime inputs and decodes only newly requested models on the asset worker.
 pub(super) fn extend(
@@ -44,7 +40,7 @@ pub(super) fn extend(
         if cancel.load(Ordering::Acquire) {
             return Err("Java asset load cancelled".into());
         }
-        let root = root();
+        let root = root()?;
         let report = std::fs::read(root.join("blocks.json"))?;
         if report.len() != target::BLOCK_REPORT_BYTES {
             return Err("Java block report size does not match target manifest".into());
