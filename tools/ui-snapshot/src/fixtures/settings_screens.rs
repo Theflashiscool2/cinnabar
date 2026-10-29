@@ -5,6 +5,18 @@ use super::*;
 /// Search results, an empty result and the compact settings viewport.
 pub(super) const SEARCH_STATES: &[State] = &[
     State {
+        name: "settings-global-resources-applying",
+        size: SIZE,
+        gui_scale: GUI_SCALE,
+        fixture: || {
+            let mut view = settings(SettingSection::GlobalTexturePack.definition().name);
+            let packs = Arc::make_mut(&mut view.global_resources);
+            packs.busy = true;
+            packs.message = oreui::loading_screen::RESOURCE_PACK_WORDS[0].to_owned();
+            Fixture::Menu(Box::new(view))
+        },
+    },
+    State {
         name: "settings-framerate",
         size: SIZE,
         gui_scale: GUI_SCALE,
@@ -109,6 +121,12 @@ fn settings_world_game(cheats: bool) -> Fixture {
 /// Whole settings pages, tall enough to show every row at once.
 pub(super) const PAGE_STATES: &[State] = &[
     State {
+        name: "settings-video-french-page",
+        size: [1280, 2600],
+        gui_scale: GUI_SCALE,
+        fixture: settings_video_french,
+    },
+    State {
         name: "settings-accessibility-page",
         size: [1280, 1700],
         gui_scale: GUI_SCALE,
@@ -140,11 +158,18 @@ pub(super) const PAGE_STATES: &[State] = &[
     },
     State {
         name: "settings-video-page",
-        size: [1280, 2600],
+        size: [1280, 4600],
         gui_scale: GUI_SCALE,
         fixture: || settings_page(SettingSection::Video, false),
     },
 ];
+
+/// Shows French video labels and help text with their accented glyphs.
+fn settings_video_french() -> Fixture {
+    let mut view = settings(SettingSection::Video.definition().name);
+    Arc::make_mut(&mut view.settings_options).set_language("fr_FR");
+    Fixture::Menu(Box::new(view))
+}
 
 /// One settings page, optionally signed in, with the sidebar beside it.
 fn settings_page(section: SettingSection, signed_in: bool) -> Fixture {

@@ -1,6 +1,6 @@
 //! The built-in touch draft shares the mod editor's geometry, snapping and input handling.
 use super::*;
-mod factory;
+pub(super) mod factory;
 use launcher::menu::{MenuView, settings_options::touch_layout::TouchLayout};
 use ui::mod_hud::{Card, Cell, Hud};
 
@@ -11,7 +11,8 @@ pub(super) fn enable_placement(value: &mut serde_json::Value) {
             let control = object
                 .get("$control")
                 .and_then(serde_json::Value::as_str)
-                .is_some_and(|name| name.starts_with("cinnabar.touch."));
+                .and_then(|name| control_id(Some(name)))
+                .is_some_and(placeable_control);
             let joystick = object.get("button_mappings").is_some_and(|mappings| {
                 mappings.as_array().is_some_and(|items| {
                     items
@@ -98,37 +99,34 @@ impl UiPresentationRuntime {
                 .iter()
                 .filter_map(|hit| {
                     let id = control_id(hit.pressed.as_deref())?;
-                    if id == touch::LOOK_SURFACE {
+                    if !placeable_control(id) {
                         return None;
                     }
                     let name = hit.pressed.as_deref()?.strip_prefix("cinnabar.touch.")?;
                     let viewport = self.screens.touch.base_viewport.expect("measured viewport");
-                    let anchor = *anchors.get(name).expect("authored touch control anchor");
+                    let mods = &self.screens.touch.mod_buttons;
+                    let key = mod_buttons::placement_name(mods, name)?;
+                    let button = mod_buttons::slot(name).and_then(|slot| mods.get(slot));
+                    let anchor = button.map_or_else(
+                        || *anchors.get(name).expect("authored touch control anchor"),
+                        |button| button.anchor,
+                    );
                     let offset = anchor.offset_for_origin(
                         [hit.rect.x, hit.rect.y],
                         [hit.rect.w, hit.rect.h],
                         viewport.0.map(|v| f64::from(v / viewport.1)),
                     );
                     Some(Card {
-                        id: name.into(),
-                        editor_label: match name {
-                            "joystick" => "Joystick",
-                            "menu" => "Pause",
-                            "chat" => "Chat",
-                            "emote" => "Emotes",
-                            "jump" => "Jump",
-                            "sprint" => "Sprint",
-                            "sneak" => "Sneak",
-                            "attack" => "Attack",
-                            "use" => "Use",
-                            _ => name,
-                        }
-                        .into(),
+                        editor_label: button.map_or_else(
+                            || builtin_label(name).into(),
+                            |button| button.label.clone(),
+                        ),
+                        position: view.settings_options.touch_layout().position(&key),
+                        id: key,
                         anchor,
                         offset,
                         reset_anchor: Some(anchor),
                         reset_offset: Some(offset),
-                        position: view.settings_options.touch_layout().position(name),
                         background_opacity: 0.,
                         background_radius: 0.,
                         // Fixed host previews retain their measured bounds independently from
@@ -253,14 +251,26 @@ impl UiPresentationRuntime {
     }
     /// Drops an abandoned settings surface and all retained input geometry.
     pub fn close_touch_editor(&mut self) {
-        self.screens.touch.editor = None;
-        self.screens.touch.editor_viewport = None;
+        let state = &mut self.screens.touch;
+        state.editor = None;
+        state.editor_viewport = None;
+        if let Some(buttons) = state.deferred_mod_buttons.take() {
+            state.install_mod_buttons(buttons.iter().map(|(owner, button)| (*owner, button)));
+        }
     }
     /// A completed transaction: Save returns its layout; Cancel returns no replacement.
     pub fn take_touch_editor_result(&mut self) -> Option<Option<TouchLayout>> {
         let result = self.screens.touch.editor.as_mut()?.take_result()?;
         let layout = result.saved.then(|| {
-            let mut layout = TouchLayout::default();
+            // Placements of mod buttons not presented now survive the replacement.
+            let mut layout = self.screens.touch.saved.clone();
+            layout.retain(|name| {
+                ui::mod_touch::is_placement_name(name)
+                    && !result
+                        .placements
+                        .iter()
+                        .any(|placement| placement.id == name)
+            });
             {
                 for placement in result.placements {
                     if let Some(position) = placement.position {
@@ -274,8 +284,17 @@ impl UiPresentationRuntime {
                                 base.hits
                                     .iter()
                                     .find(|hit| {
-                                        hit.pressed.as_deref()
-                                            == Some(&format!("cinnabar.touch.{}", placement.id))
+                                        hit.pressed
+                                            .as_deref()
+                                            .and_then(|p| p.strip_prefix("cinnabar.touch."))
+                                            .and_then(|name| {
+                                                mod_buttons::placement_name(
+                                                    &self.screens.touch.mod_buttons,
+                                                    name,
+                                                )
+                                            })
+                                            .as_deref()
+                                            == Some(placement.id.as_str())
                                     })
                                     .map(|hit| {
                                         [hit.rect.x, hit.rect.y].into_iter().enumerate().all(
@@ -300,5 +319,21 @@ impl UiPresentationRuntime {
         });
         self.close_touch_editor();
         Some(layout)
+    }
+}
+
+/// Editor captions of the authored controls.
+fn builtin_label(name: &str) -> &str {
+    match name {
+        "joystick" => "Joystick",
+        "menu" => "Pause",
+        "chat" => "Chat",
+        "utilities" => "Menu",
+        "jump" => "Jump",
+        "sprint" => "Sprint",
+        "sneak" => "Sneak",
+        "attack" => "Attack",
+        "use" => "Use",
+        _ => name,
     }
 }

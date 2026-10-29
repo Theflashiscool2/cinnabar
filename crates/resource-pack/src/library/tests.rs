@@ -9,6 +9,57 @@ use zip::{ZipWriter, write::SimpleFileOptions};
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
+fn numeric_array_versions_survive_import_and_restart() {
+    for version in [[65535, 0, 0], [0, 65535, 0], [0, 0, 65535]] {
+        let fixture = Fixture::new();
+        let mut library = fixture.library();
+        let mut manifest: serde_json::Value =
+            serde_json::from_str(&manifest(1, "resources", "")).unwrap();
+        manifest["header"]["version"] = serde_json::json!(version);
+        let bytes = zip(&[
+            ("manifest.json", &serde_json::to_vec(&manifest).unwrap()),
+            ("marker.txt", b"numeric version"),
+            ("pack_icon.png", b"icon"),
+        ]);
+        let report = library
+            .import(&fixture.write("pack.mcpack", &bytes))
+            .unwrap();
+        assert!(report.rejected.is_empty(), "{:?}", report.rejected);
+        assert_eq!(report.imported[0].version, version);
+        library.activate(Uuid::from_u128(1)).unwrap();
+        library.apply().unwrap();
+        let mut restarted = fixture.library();
+        assert_eq!(restarted.available()[0].version, version);
+        let view = LayeredPackView::new(restarted.preview().unwrap());
+        assert_eq!(
+            view.read("marker.txt").unwrap().as_ref(),
+            b"numeric version"
+        );
+        assert_eq!(
+            restarted
+                .pack_icon(&restarted.available()[0])
+                .unwrap()
+                .unwrap()
+                .as_ref(),
+            b"icon"
+        );
+    }
+}
+
+#[test]
+fn authored_version_strings_still_reject_more_than_five_digits() {
+    let fixture = Fixture::new();
+    let manifest = manifest(1, "resources", "").replace("[1,0,0]", r#""100000.0.0""#);
+    let bytes = zip(&[("manifest.json", manifest.as_bytes())]);
+    let report = fixture
+        .library()
+        .import(&fixture.write("pack.mcpack", &bytes))
+        .unwrap();
+    assert!(report.imported.is_empty());
+    assert_eq!(report.rejected.len(), 1);
+}
+
+#[test]
 fn restore_revisions_survive_updates_and_restart_until_the_backup_is_replaced() {
     let fixture = Fixture::new();
     let mut library = fixture.library();
@@ -131,6 +182,40 @@ fn imports_legacy_manifest_names_with_formatting_codes() {
     assert_eq!(report.imported[0].name, "§r§4Fixture");
     library.activate(Uuid::from_u128(91)).unwrap();
     assert_eq!(library.apply().unwrap().packs().len(), 1);
+}
+
+#[test]
+fn multiline_manifest_descriptions_survive_import_and_restart() {
+    let fixture = Fixture::new();
+    let mut library = fixture.library();
+    let manifest = manifest(92, "resources", "").replace(
+        "\"name\":\"Fixture\"",
+        "\"name\":\"§bFixture\",\"description\":\"First line\r\n§eSecond\tline\"",
+    );
+    let bytes = zip(&[
+        ("manifest.json", manifest.as_bytes()),
+        ("marker.txt", b"pack content"),
+    ]);
+    let report = library
+        .import(&fixture.write("multiline.mcpack", &bytes))
+        .unwrap();
+    assert!(report.rejected.is_empty(), "{:?}", report.rejected);
+    assert_eq!(report.imported.len(), 1);
+    assert_eq!(report.imported[0].name, "§bFixture");
+    assert_eq!(
+        report.imported[0].description,
+        "First line\r\n§eSecond\tline"
+    );
+    library.activate(Uuid::from_u128(92)).unwrap();
+    library.apply().unwrap();
+
+    let mut restarted = fixture.library();
+    assert_eq!(
+        restarted.available()[0].description,
+        report.imported[0].description
+    );
+    let view = LayeredPackView::new(restarted.preview().unwrap());
+    assert_eq!(view.read("marker.txt").unwrap().as_ref(), b"pack content");
 }
 
 #[test]

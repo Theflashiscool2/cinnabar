@@ -81,6 +81,7 @@ impl MiningAdmission {
         })?;
         Some(crate::melee::PressContext {
             refused_destroy: None,
+            actor_life: None,
             tick: sample.tick,
             player_position: sample.position,
             input_mode: protocol::PlayerInputMode::Mouse,
@@ -717,6 +718,15 @@ fn creative_no_break_tags_include_mace() {
         );
     }
     assert!(destroys_in_creative(&assets::facts::ItemFact::default()));
+}
+
+#[test]
+fn creative_sword_trait_also_blocks_destroy_prediction() {
+    let fact = assets::facts::ItemFact {
+        traits: assets::facts::ItemTraits::SWORD,
+        ..Default::default()
+    };
+    assert!(!destroys_in_creative(&fact));
 }
 
 #[test]

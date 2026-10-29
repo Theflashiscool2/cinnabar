@@ -231,6 +231,7 @@ fn server_input_locks_stop_rebound_keyboard_look() {
     });
 }
 
+#[cfg(feature = "developer-control")]
 fn movement_fixture() -> App {
     let mut router = SemanticInputRouter::default();
     router
@@ -262,6 +263,7 @@ fn movement_fixture() -> App {
     app
 }
 #[test]
+#[cfg(feature = "developer-control")]
 fn native_session_can_withhold_unbound_camera_translation_without_faking_physics() {
     let mut app = movement_fixture();
     app.insert_resource(UnboundCameraMovement(false));
@@ -278,6 +280,7 @@ fn native_session_can_withhold_unbound_camera_translation_without_faking_physics
     );
 }
 #[test]
+#[cfg(feature = "developer-control")]
 fn server_input_locks_gate_non_physics_fly_movement() {
     let mut app = movement_fixture();
     for (bits, blocked) in [(ClientInputLock::Movement as u32, true), (0, false)] {

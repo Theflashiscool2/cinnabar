@@ -21,6 +21,7 @@ fn fixture(fragment: &str) -> (tempfile::TempDir, Request) {
         options: None,
         dimension: "minecraft:overworld".into(),
         environment: Environment::default(),
+        software_fused_dot: false,
         purpose: shaderpack::worker::Purpose::Render,
     };
     (root, request)
@@ -28,7 +29,11 @@ fn fixture(fragment: &str) -> (tempfile::TempDir, Request) {
 
 /// Starts the same bounded stdio entry point the shipping client dispatches.
 fn start(request: &Request) -> Running {
-    Running::start(Path::new(env!("CARGO_BIN_EXE_shaderpack-worker")), request).unwrap()
+    Running::start(
+        Some(Path::new(env!("CARGO_BIN_EXE_shaderpack-worker"))),
+        request,
+    )
+    .unwrap()
 }
 
 /// Waits for a child result without imposing wall-clock assertions on translation.
@@ -86,6 +91,44 @@ fn compiled_modules_and_reflection_survive_the_process_boundary() {
         first.evaluate(&at(0.0), 0.0),
         [("level".into(), shaderpack::UniformValue::Float(0.5))]
     );
+}
+
+#[test]
+fn software_fused_dot_survives_the_process_boundary() {
+    let (_root, mut request) = fixture(
+        "#version 330\nout vec4 color; void main() { color = vec4(dot(gl_FragCoord.xy, vec2(12.9898, 4.1414))); }",
+    );
+    request.software_fused_dot = true;
+    let compiled = finish(&mut start(&request)).unwrap();
+    assert!(compiled.config.software_fused_dot);
+    assert!(compiled.translation.programs[0].is_ok());
+    for stage in &compiled.translation.programs[0].stages {
+        let module = &stage.result.as_ref().unwrap().module;
+        assert!(module.functions.iter().all(|(_, function)| {
+            function.expressions.iter().all(|(_, expression)| {
+                !matches!(
+                    expression,
+                    naga::Expression::Math {
+                        fun: naga::MathFunction::Fma,
+                        ..
+                    }
+                )
+            })
+        }));
+    }
+}
+
+#[test]
+fn compiler_runs_from_the_packaged_prep_kit_path() {
+    let (_root, request) =
+        fixture("#version 330\nout vec4 color; void main() { color=vec4(1.0); }");
+    let install = tempfile::tempdir().unwrap();
+    let kit = install.path().join("Cinnabar — test/resources/prep-kit");
+    let executable = assets::carriers::kit_compiler(&kit);
+    std::fs::create_dir_all(executable.parent().unwrap()).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_shaderpack-worker"), &executable).unwrap();
+    let mut worker = Running::start(Some(&executable), &request).unwrap();
+    assert!(finish(&mut worker).unwrap().translation.programs[0].is_ok());
 }
 
 #[test]
@@ -180,4 +223,60 @@ fn render_defaults_survive_unreadable_saved_settings_but_editor_reports_the_erro
         panic!("the editor must report its read error");
     };
     assert!(reason.contains("regular file"));
+}
+
+/// Both backends return the same shader modules, reflection and pack metadata.
+#[test]
+fn in_process_compilation_matches_the_isolated_worker() {
+    let (_root, request) =
+        fixture("#version 330\nout vec4 color; void main() { color = vec4(1.0); }");
+    let isolated = finish(&mut start(&request)).unwrap();
+    let in_process = finish(&mut Running::start_in_process(&request).unwrap()).unwrap();
+    assert_eq!(
+        serde_json::to_value(&isolated).unwrap(),
+        serde_json::to_value(&in_process).unwrap(),
+    );
+}
+
+#[test]
+fn in_process_cancellation_and_deadlines_retire_compilation() {
+    let (_root, request) =
+        fixture("#version 330\nout vec4 color; void main() { color = vec4(1.0); }");
+    for (elapsed, cancelled, expected) in [
+        (Duration::ZERO, true, "cancelled"),
+        (TIME_LIMIT, false, "time limit"),
+    ] {
+        let mut worker = Running::start_in_process(&request).unwrap();
+        let mut result = worker.poll(elapsed, cancelled);
+        test_time::eventually("in-process compiler retired", || {
+            if result.is_none() {
+                result = worker.poll(Duration::ZERO, false);
+            }
+            result.is_some()
+        });
+        assert!(result.unwrap().err().unwrap().contains(expected));
+    }
+    assert!(
+        finish(&mut Running::start_in_process(&request).unwrap())
+            .unwrap()
+            .translation
+            .programs[0]
+            .is_ok()
+    );
+}
+
+#[test]
+fn in_process_options_do_not_require_a_compiler_executable() {
+    let (root, mut request) = fixture("not valid GLSL");
+    std::fs::write(
+        root.path().join("shaders/settings.glsl"),
+        "//#define GLOW\n#ifdef GLOW\n#endif\n",
+    )
+    .unwrap();
+    request.purpose = shaderpack::worker::Purpose::Options;
+    let session = response(&mut Running::start_in_process(&request).unwrap())
+        .unwrap()
+        .into_options()
+        .unwrap();
+    assert!(session.option("GLOW").is_some());
 }

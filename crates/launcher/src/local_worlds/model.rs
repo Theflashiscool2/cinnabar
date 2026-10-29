@@ -94,6 +94,8 @@ pub enum Effect {
     /// Reads the open world's status once it changes, or after a short wait.
     PollStatus,
     Close,
+    /// Saves and stops the open world; its outcome is never surfaced.
+    Leave,
     /// Its outcome is never surfaced.
     SetPaused(bool),
     /// Readies a server ahead of a likely open; its outcome is never surfaced.

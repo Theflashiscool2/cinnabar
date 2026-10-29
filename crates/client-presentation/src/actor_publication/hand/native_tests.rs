@@ -131,6 +131,20 @@ fn fixture_with_binding(
         ("textures/test.png".into(), png.into_inner()),
     ];
     let mut files = files;
+    let paper = files
+        .iter()
+        .find(|(path, _)| path.as_ref() == "textures/test.png")
+        .unwrap()
+        .1
+        .clone();
+    files.push((
+        format!("{}.png", assets::item::shield::pattern_path("")).into(),
+        paper.clone(),
+    ));
+    files.push((
+        format!("{}.png", assets::entity::MAP_BACKGROUND_TEXTURE_IDENTIFIER).into(),
+        paper,
+    ));
     let bow = files
         .iter()
         .find(|(path, _)| &**path == "attachables/shield.json")
@@ -287,6 +301,8 @@ fn fixture_with_binding(
     let input = ActorEquipmentInput {
         main: main.map(|identifier| crate::presentation::equipment::WornItem {
             variant: Default::default(),
+            map_id: None,
+            shield_pattern: None,
             charged_projectile: None,
             use_facts: client_world::EffectiveItemUse::default(),
             grip: assets::item::grip::builtin_item_grip(identifier),
@@ -459,6 +475,8 @@ fn native_hand_unbound_attachables_keep_actor_frame_during_owner_swing() {
             if off_hand {
                 input.off = Some(crate::presentation::equipment::WornItem {
                     variant: Default::default(),
+                    map_id: None,
+                    shield_pattern: None,
                     charged_projectile: None,
                     use_facts: client_world::EffectiveItemUse::default(),
                     grip: assets::item::grip::builtin_item_grip("minecraft:shield"),
@@ -622,6 +640,8 @@ fn assert_java_native_parent(main: Option<&str>, off: bool, degrees: f32) {
     if off {
         input.off = Some(crate::presentation::equipment::WornItem {
             variant: Default::default(),
+            map_id: None,
+            shield_pattern: None,
             charged_projectile: None,
             use_facts: client_world::EffectiveItemUse::default(),
             grip: assets::item::grip::builtin_item_grip("minecraft:shield"),
@@ -873,6 +893,7 @@ pub(super) fn player_feed() -> client_world::LocalPlayerFeed {
         java_swing_ticks: actor_animation::ACTOR_SWING_TICKS,
         flying: false,
         gliding: false,
+        swimming: false,
         spinning: false,
         fall_fly_ticks: 0,
         teleported: false,
@@ -949,3 +970,6 @@ fn legacy_bare_arm_reuses_its_rest_pose_without_sampling_or_allocating() {
     }
     assert_eq!(cache.native_pose.sample_work, (0, 0));
 }
+
+#[path = "shield_review_tests.rs"]
+mod shield_review;

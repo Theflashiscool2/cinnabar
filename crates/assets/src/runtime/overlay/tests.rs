@@ -51,7 +51,8 @@ fn review_full_face_occlusion_requires_drawable_geometry() {
     );
 }
 
-fn cube_overlay(texture: TextureArray) -> BlockOverlay {
+/// Creates one cube whose faces use the first overlay texture.
+pub(super) fn cube_overlay(texture: TextureArray) -> BlockOverlay {
     BlockOverlay {
         visuals: vec![BlockVisual {
             native_material: crate::native_material::NativeMaterialFacts::Unresolved,
@@ -192,6 +193,51 @@ fn raster_only_leaf_replacement_preserves_the_base_weighted_selector() {
     );
     assert_eq!(runtime.material(3).texture.page(), 1);
     assert_eq!(base.material(3).texture.page(), 0);
+}
+
+#[test]
+fn only_base_visuals_whose_face_art_changed_are_retextured() {
+    let mut base = RuntimeAssets::diagnostic();
+    base.materials = vec![
+        Material::unvaried(),
+        Material {
+            variation_start: 2,
+            variation_count: 2,
+            ..Material::unvaried()
+        },
+        Material {
+            variation_weight: 0.25_f32.to_bits(),
+            ..Material::unvaried()
+        },
+        Material {
+            variation_weight: 0.75_f32.to_bits(),
+            ..Material::unvaried()
+        },
+        Material::unvaried(),
+    ]
+    .into();
+    let diagnostic = base.visuals[0];
+    base.visuals = [0, 1, 4]
+        .map(|material| BlockVisual {
+            faces: [material; 6],
+            ..diagnostic
+        })
+        .into();
+    let mut overlay = cube_overlay(page(16));
+    let untouched = base.with_block_overlay(3, &overlay).unwrap();
+    assert!((0..4).all(|visual| !untouched.is_retextured(crate::BlockVisualId(visual))));
+    // Repointing one weighted leaf changes the art of every face that selects it.
+    overlay.material_overrides.push(MaterialOverride {
+        material: 3,
+        texture: TextureRef::new(1, 0).unwrap(),
+        animation: NO_ANIMATION,
+        variation: None,
+    });
+    let runtime = base.with_block_overlay(3, &overlay).unwrap();
+    let retextured = (0..4)
+        .filter(|&visual| runtime.is_retextured(crate::BlockVisualId(visual)))
+        .collect::<Vec<_>>();
+    assert_eq!(retextured, [1]);
 }
 
 #[test]
@@ -420,10 +466,6 @@ fn vanilla_fallback_does_not_substitute_another_static_variant() {
     for variant_zero in [
         Material {
             animation: 0,
-            ..Material::unvaried()
-        },
-        Material {
-            texture: TextureRef::new(1, 0).unwrap(),
             ..Material::unvaried()
         },
         Material {

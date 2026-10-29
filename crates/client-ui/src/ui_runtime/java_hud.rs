@@ -6,18 +6,23 @@ use world::java::hud::{DISPLAY_ARMOR_POINTS, FOOD_POINTS, Snapshot};
 impl UiRuntime {
     /// Rejects retired player snapshots before changing any HUD or life-state value.
     pub fn publish_java_hud(&mut self, snapshot: Snapshot) -> bool {
-        if snapshot.session != self.session_id
+        if snapshot.session != self.session.session_id
             || snapshot.health.is_some_and(|n| !n.is_finite())
             || snapshot.maximum_health.is_some_and(|n| !n.is_finite())
             || snapshot.armor.is_some_and(|n| !n.is_finite())
             || self
+                .session
                 .java_hud
                 .is_some_and(|old| old.session == snapshot.session && old.epoch > snapshot.epoch)
         {
             return false;
         }
-        if self.java_hud.is_some_and(|old| old.epoch != snapshot.epoch) {
-            self.gameplay_hud.clear();
+        if self
+            .session
+            .java_hud
+            .is_some_and(|old| old.epoch != snapshot.epoch)
+        {
+            self.session.gameplay_hud.clear();
         }
         let health = snapshot.health.and_then(|current| {
             let maximum = snapshot.maximum_health?;
@@ -32,12 +37,12 @@ impl UiRuntime {
                 self.publish_local_player_alive(current > 0.0);
             }
             // This shared flag means authoritative recovery, not permission to press Respawn.
-            self.local_player_respawn_ready = false;
+            self.session.local_player_respawn_ready = false;
         } else {
-            self.local_player_health_available = false;
-            self.local_player_respawn_ready = false;
+            self.session.local_player_health_available = false;
+            self.session.local_player_respawn_ready = false;
         }
-        if let (Some(old), Some(new)) = (self.hud.health(), health)
+        if let (Some(old), Some(new)) = (self.session.hud.health(), health)
             && new.current() < old.current()
         {
             self.note_player_hurt();
@@ -56,43 +61,44 @@ impl UiRuntime {
                 DISPLAY_ARMOR_POINTS,
             )
         });
-        self.hud.set_stats(health, food, armor, None);
-        self.hud.set_absorption(None);
+        self.session.hud.set_stats(health, food, armor, None);
+        self.session.hud.set_absorption(None);
         match snapshot.experience {
-            Some(xp) => self.hud.set_experience(xp.level, xp.progress),
-            None => self.hud.clear_experience(),
+            Some(xp) => self.session.hud.set_experience(xp.level, xp.progress),
+            None => self.session.hud.clear_experience(),
         }
-        self.gameplay_hud.set_hardcore(snapshot.hardcore);
+        self.session.gameplay_hud.set_hardcore(snapshot.hardcore);
         if let Some(saturation) = snapshot.saturation {
-            self.gameplay_hud.set_saturation(saturation);
+            self.session.gameplay_hud.set_saturation(saturation);
         }
-        self.java_hud = Some(snapshot);
+        self.session.java_hud = Some(snapshot);
         true
     }
     /// Clears only a native projection; an ordinary Bedrock frame remains untouched.
     pub fn clear_java_hud(&mut self) {
-        if self.java_hud.take().is_some() {
-            self.hud.clear();
-            self.gameplay_hud.clear();
-            self.local_player_health_available = false;
-            self.local_player_respawn_ready = false;
+        if self.session.java_hud.take().is_some() {
+            self.session.hud.clear();
+            self.session.gameplay_hud.clear();
+            self.session.local_player_health_available = false;
+            self.session.local_player_respawn_ready = false;
         }
     }
     pub fn java_hud(&self) -> Option<Snapshot> {
-        self.java_hud
+        self.session.java_hud
     }
     pub(super) fn hud_selected_slot(&self, player: &player_state::PlayerState) -> Option<u8> {
-        self.java_hud
+        self.session
+            .java_hud
             .map_or_else(|| player.selected_hotbar_slot(), |hud| hud.selected_slot)
     }
     pub(super) fn shows_survival_stats(&self, player: &player_state::PlayerState) -> bool {
-        self.java_hud.map_or_else(
+        self.session.java_hud.map_or_else(
             || player.facts.survival_stats_visible(),
             |hud| hud.mode.is_some_and(|mode| mode.survival_stats()),
         )
     }
     pub(super) fn mode_shows_hotbar(&self, player: &player_state::PlayerState) -> bool {
-        self.java_hud.map_or_else(
+        self.session.java_hud.map_or_else(
             || {
                 player
                     .facts
@@ -136,15 +142,15 @@ mod tests {
         let mut ui = UiRuntime::new(7);
         let player = player_state::PlayerState::new(7);
         assert!(ui.publish_java_hud(snapshot()));
-        assert_eq!(ui.hud.health(), BoundedStat::new(8, 20));
-        assert_eq!(ui.hud.hunger(), BoundedStat::new(6, 20));
-        assert_eq!(ui.hud.armor(), BoundedStat::new(6, 20));
-        assert_eq!(ui.hud.experience().unwrap().level, 12);
+        assert_eq!(ui.session.hud.health(), BoundedStat::new(8, 20));
+        assert_eq!(ui.session.hud.hunger(), BoundedStat::new(6, 20));
+        assert_eq!(ui.session.hud.armor(), BoundedStat::new(6, 20));
+        assert_eq!(ui.session.hud.experience().unwrap().level, 12);
         assert!(ui.shows_survival_stats(&player));
         let mut malformed = snapshot();
         malformed.health = Some(f32::NAN);
         assert!(!ui.publish_java_hud(malformed));
-        assert_eq!(ui.hud.health(), BoundedStat::new(8, 20));
+        assert_eq!(ui.session.hud.health(), BoundedStat::new(8, 20));
         let mut dead = snapshot();
         dead.health = Some(0.0);
         assert!(ui.publish_java_hud(dead));
@@ -160,16 +166,16 @@ mod tests {
         next.experience = None;
         assert!(ui.publish_java_hud(next));
         assert!(!ui.shows_survival_stats(&player) && !ui.mode_shows_hotbar(&player));
-        assert!(ui.hud.health().is_none() && ui.hud.experience().is_none());
+        assert!(ui.session.hud.health().is_none() && ui.session.hud.experience().is_none());
         assert!(!ui.publish_java_hud(snapshot()));
         assert_eq!(ui.java_hud(), Some(next));
         ui.begin_session(8);
         assert!(!ui.publish_java_hud(snapshot()));
-        assert!(ui.java_hud().is_none() && ui.hud.health().is_none());
-        ui.hud.set_health(BoundedStat::new(5, 20));
+        assert!(ui.java_hud().is_none() && ui.session.hud.health().is_none());
+        ui.session.hud.set_health(BoundedStat::new(5, 20));
         ui.clear_java_hud();
         assert_eq!(
-            ui.hud.health(),
+            ui.session.hud.health(),
             BoundedStat::new(5, 20),
             "native cleanup must not clear Bedrock state"
         );

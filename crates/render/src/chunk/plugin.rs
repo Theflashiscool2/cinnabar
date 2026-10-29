@@ -13,6 +13,7 @@ use crate::chunk::{
         install_chunk_commands,
     },
 };
+use bevy::render::GpuResourceAppExt;
 use render_scene::RuntimeStageProfiler;
 use render_scene::{
     ChunkAnimationClock, ChunkBiomeTints, ChunkRenderApplySet, ChunkRenderQueue,
@@ -87,6 +88,7 @@ impl Plugin for ChunkRenderPlugin {
                     update_chunk_animation_clock,
                 ),
             );
+        super::visibility::install(app);
 
         if app.get_sub_app(RenderApp).is_none() {
             return;
@@ -112,6 +114,7 @@ impl Plugin for ChunkRenderPlugin {
             app.world().resource::<TransparentWitnessEvidence>().clone();
 
         crate::pipeline_warmup::register::<ChunkPipeline>(app);
+        crate::pipeline_warmup::register_pending::<ChunkGpuTextureAssets>(app);
         let render_app = app.sub_app_mut(RenderApp);
         crate::device_poll::install(render_app);
         render_app
@@ -123,7 +126,8 @@ impl Plugin for ChunkRenderPlugin {
             .insert_resource(model_workload_metrics)
             .insert_resource(visibility_diagnostics)
             .insert_resource(transparent_witness_evidence)
-            .init_resource::<ChunkPipeline>()
+            .init_gpu_resource::<ChunkPipeline>()
+            .init_resource::<super::gpu::compact::CompactTerrain>()
             .init_resource::<GraphicsMetadataPublicationState>()
             .init_resource::<crate::dropped_item_render::terrain_items::TerrainItemMeshGenerations>(
             )
@@ -151,15 +155,21 @@ impl Plugin for ChunkRenderPlugin {
             crate::runtime_profile_trace::install_surface_trace(render_app);
         }
         install_chunk_commands(render_app);
+        install_visible_transparent_tracking(render_app.world_mut());
         transparent::gamma_pass::install(app);
         let render_app = app.sub_app_mut(RenderApp);
         render_app.edit_schedule(Render, configure_chunk_publication);
         render_app.edit_schedule(Render, configure_graphics_metadata_publication);
         crate::surface_capabilities::install(render_app);
+        crate::world_passes::install(render_app);
         render_app
             .add_systems(
                 RenderStartup,
-                (init_chunk_gpu_arena, init_chunk_gpu_animation_clock),
+                (
+                    init_chunk_gpu_arena,
+                    init_chunk_gpu_animation_clock,
+                    super::gpu::compact::install,
+                ),
             )
             .add_systems(
                 Render,
@@ -176,9 +186,11 @@ impl Plugin for ChunkRenderPlugin {
                         .run_if(opaque_terrain_passes_enabled)
                         .in_set(RenderSystems::Queue),
                     queue_transparent_chunks
-                        .run_if(render_scene::panorama::world_passes_enabled)
+                        .in_set(crate::world_passes::WorldPassSystems)
                         .in_set(RenderSystems::Queue),
-                    prepare_chunk_texture_assets.in_set(ChunkPublicationStage::Attributes),
+                    prepare_chunk_texture_assets
+                        .in_set(ChunkPublicationStage::Attributes)
+                        .run_if(render_scene::startup_work::world_work_allowed),
                     prepare_chunk_animation_clock.in_set(ChunkPublicationStage::Attributes),
                     prepare_chunk_biome_tints
                         .in_set(ChunkPublicationStage::Attributes)
@@ -188,6 +200,9 @@ impl Plugin for ChunkRenderPlugin {
                         .after(crate::dropped_item_render::terrain_items::TerrainItemSessionSet)
                         .after(prepare_chunk_texture_assets),
                     prepare_transparent_sorts.in_set(ChunkPublicationStage::LiquidSort),
+                    track_visible_transparent_chunks
+                        .in_set(ChunkPublicationStage::ModelSort)
+                        .before(prepare_transparent_model_sorts),
                     prepare_transparent_model_sorts.in_set(ChunkPublicationStage::ModelSort),
                     prepare_chunk_indirect_batches
                         .in_set(RenderSystems::PrepareResources)
@@ -218,6 +233,24 @@ fn opaque_terrain_passes_enabled(
 /// Registers the native terrain modules and their shared imports in the asset collection.
 pub(crate) fn load_shaders(app: &mut App) {
     crate::lighting::install(app);
+    const TERRAIN_TABLES: bevy::asset::Handle<bevy::shader::Shader> =
+        bevy::asset::uuid_handle!("9740edc2-a972-4501-b23a-f2303206ad4a");
+    load_internal_asset!(
+        app,
+        TERRAIN_TABLES,
+        "../terrain_tables.wesl",
+        |source, path| { crate::shader_safety::from_wesl(source, path) }
+    );
+    const CHUNK_RECORDS: bevy::asset::Handle<bevy::shader::Shader> =
+        bevy::asset::uuid_handle!("15409134-b00f-453e-bd85-bd7a9536e34d");
+    load_internal_asset!(
+        app,
+        CHUNK_RECORDS,
+        "../chunk_records.wesl",
+        |source, path| {
+            crate::shader_safety::from_wesl(crate::material_shader::source(source), path)
+        }
+    );
     load_internal_asset!(
         app,
         BIOME_TINT_SHADER_HANDLE,

@@ -32,6 +32,9 @@ const MAX_RUNTIME_POSE_WORK_PER_ACTOR_FRAME: usize =
     FRAME_PASSES_PER_ACTOR * MAX_RUNTIME_POSE_WORK_PER_ACTOR_TICK;
 const MAX_RUNTIME_BINDINGS_PER_RIG: usize = 4_096;
 
+mod catalog;
+pub use catalog::ActorAnimationCatalog;
+
 mod actor;
 pub use actor::{AnimatedActor, AnimatedActors, MAX_ANIMATED_ACTORS};
 pub mod consumables;
@@ -77,8 +80,10 @@ mod query;
 mod render;
 mod render_frame;
 pub use render_frame::{ActorRenderFrame, ActorRenderLayers};
+mod brandish;
 mod replay;
 mod server_animation;
+mod shulker;
 pub use server_animation::ServerAnimationCompiler;
 mod schedule;
 mod skin;

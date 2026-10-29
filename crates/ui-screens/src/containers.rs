@@ -7,10 +7,11 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use json_ui::{CollectionItem, DataSource, Scalar, ViewState, hit_test, press_region};
+use json_ui::{CollectionItem, DataSource, Scalar, ViewState, hit_test};
 use protocol::NetworkItemStack;
 use serde_json::Value;
 use ui::IconRef;
+use ui_engine::engine::layout_task::LayoutResources;
 use ui_engine::engine::{
     FormEngine, ScreenArt,
     item_renderer::ItemRenderer,
@@ -31,6 +32,8 @@ const WORKBENCH_CRAFT_SLOT: u8 = 32;
 mod held_stack;
 #[cfg(test)]
 mod held_stack_tests;
+mod preparation;
+pub mod presses;
 use held_stack::held_stack;
 
 /// Which screen the engine drew, for mapping its cells back to ledger targets.
@@ -133,8 +136,13 @@ pub struct ContainerScreen {
     /// The personal inventory's layout, kept apart so other containers never evict it and opening
     /// it stays cheap after [`ContainerScreen::prewarm_inventory`].
     inventory: Option<ScreenCache>,
-    /// The catalog the inventory was last prewarmed for, so each catalog prewarms once.
-    prewarmed: Option<Arc<json_ui::Catalog>>,
+    /// Sources observed by the last closed-inventory preparation.
+    prewarmed: Option<preparation::InventoryPreparation>,
+    /// At most one closed-screen layout runs in the background.
+    preparing: Option<preparation::PendingInventory>,
+    preparation_revision: u64,
+    /// A readiness update requires another texture request over the retained layout.
+    refresh_artwork: bool,
     /// Screens resolved from the catalog, for cache tests.
     resolves: usize,
     /// Immutable creative rows reused across hover and scroll frames.
@@ -170,19 +178,10 @@ impl ContainerScreen {
         input: ContainerInput<'_>,
         frame: &mut PaintFrame<'_>,
     ) -> Option<EngineFrame> {
-        self.render(engine, source, items, input, frame, false)
-    }
-
-    /// Prepares layout and textures without retaining bindings or painting the closed screen.
-    pub fn prepare(
-        &mut self,
-        engine: &FormEngine,
-        source: &dyn ContainerSource,
-        items: &ContainerFrame<'_>,
-        input: ContainerInput<'_>,
-        frame: &mut PaintFrame<'_>,
-    ) {
-        let _ = self.render(engine, source, items, input, frame, true);
+        if matches!(input.layout, ScreenLayout::Personal { .. }) {
+            let _ = self.collect_preparation(engine, true);
+        }
+        self.render(engine, source, items, input, frame, None)
     }
 
     /// Shares container data and layout preparation between prewarming and visible painting.
@@ -193,7 +192,7 @@ impl ContainerScreen {
         items: &ContainerFrame<'_>,
         input: ContainerInput<'_>,
         frame: &mut PaintFrame<'_>,
-        prepare: bool,
+        prepare: Option<LayoutResources>,
     ) -> Option<EngineFrame> {
         let ContainerInput {
             layout,
@@ -256,6 +255,10 @@ impl ContainerScreen {
             scroll: screen.container_scroll.clone(),
             ..ViewState::default()
         };
+        if let Some(resources) = prepare {
+            self.start_preparing(engine, context, data, view, frame, resources);
+            return None;
+        }
         let overlay = held_stack(
             source.player().inventory.ledger().cursor_stack(),
             items.cursor_icon,
@@ -301,38 +304,25 @@ impl ContainerScreen {
                     cache, catalog, baseline, reference, &context, &data, &view, root, env, text,
                 )
             };
-            if prepare {
-                let _ = engine.prepare(art, &mut paint_frame, draw);
-                if let Some(cached) = cache {
-                    // Closed-screen data is incomplete. The first paint binds from fresh state,
-                    // even if its data happens to match the prepared layout's inputs.
-                    cached.binding = recipe_book::screen_binding(cached.virtualize_recipe_book);
-                    cached.data = None;
-                }
-                Ok(None)
-            } else {
-                engine.draw(art, &mut paint_frame, draw)
-            }
+            engine.draw(art, &mut paint_frame, draw)
         };
         frame.renderers = caller;
         if resolved(cache) != before {
             self.resolves += 1;
         }
         match drawn {
-            Ok(Some(drawn)) => Some(drawn),
+            Ok(Some(drawn)) => {
+                if let Some(cached) = cache {
+                    cached.live = true;
+                }
+                Some(drawn)
+            }
             // A screen the engine cannot draw hands containers back to the Java path.
             Ok(None) | Err(_) => {
                 frame.nodes.truncate(rollback.0);
                 *frame.next = rollback.1;
                 None
             }
-        }
-    }
-
-    /// Releases texture-dependent measurements and layout while retaining the bound screen.
-    pub fn invalidate_textures(&mut self) {
-        for cache in [&mut self.cache, &mut self.inventory].into_iter().flatten() {
-            cache.invalidate_textures();
         }
     }
 
@@ -345,27 +335,27 @@ impl ContainerScreen {
             .sum()
     }
 
+    /// Controls the retained container screens' layouts placed rather than spliced unchanged
+    /// from their previous layout.
+    pub fn placed(&self) -> usize {
+        [&self.cache, &self.inventory]
+            .into_iter()
+            .flatten()
+            .map(|cache| cache.placed)
+            .sum()
+    }
+
     /// Screens the container paints have resolved from the catalog.
     pub fn resolves(&self) -> usize {
         self.resolves
     }
 
-    /// Whether the personal inventory needs preparation for this catalog. An inventory already
-    /// painted retains its live bindings and needs no prewarm when it closes.
-    pub fn prewarm_inventory(&mut self, engine: &FormEngine) -> bool {
-        let catalog = engine.catalog();
-        if self
-            .prewarmed
+    /// Controls rebuilt over the personal inventory's retained lifetime, for work regressions.
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn inventory_rebuilt(&self) -> usize {
+        self.inventory
             .as_ref()
-            .is_some_and(|prewarmed| Arc::ptr_eq(prewarmed, catalog))
-        {
-            return false;
-        }
-        self.prewarmed = Some(Arc::clone(catalog));
-        !self
-            .inventory
-            .as_ref()
-            .is_some_and(|cached| Arc::ptr_eq(&cached.catalog, catalog))
+            .map_or(0, |cache| cache.binding.rebuilt_total())
     }
 }
 
@@ -401,7 +391,8 @@ struct ScreenCache {
     laid: Option<(ViewState, json_ui::LayoutCacheKey, Arc<json_ui::FormRender>)>,
     /// The open screen's live bindings across data refreshes.
     binding: json_ui::BindState,
-    virtualize_recipe_book: bool,
+    /// Preparation may refresh only until the first successful visible paint.
+    live: bool,
     factory_inputs: bool,
     /// Grid and factory templates kept across binds, so their unchanged instances stand.
     resolutions: json_ui::ResolveCache,
@@ -409,6 +400,8 @@ struct ScreenCache {
     language: [usize; 3],
     /// Layouts run for this screen, for cache tests.
     layouts: usize,
+    /// Controls those layouts placed rather than spliced, for cache tests.
+    placed: usize,
 }
 
 impl ScreenCache {
@@ -476,11 +469,12 @@ impl ScreenCache {
                 measures: json_ui::MeasureCache::default(),
                 laid: None,
                 binding: recipe_book::screen_binding(virtualize_recipe_book),
-                virtualize_recipe_book,
+                live: false,
                 factory_inputs: data.has_factory_inputs(),
                 resolutions: json_ui::ResolveCache::default(),
                 language: text.1,
                 layouts: 0,
+                placed: 0,
             });
         }
         let cached = cache.as_mut()?;
@@ -496,7 +490,20 @@ impl ScreenCache {
         if text_changed || layout_changed {
             cached.measures = json_ui::MeasureCache::default();
         }
-        if cached.data.as_deref() != Some(data) {
+        let fresh = |(laid_view, laid_layout, _): &(ViewState, json_ui::LayoutCacheKey, _)| {
+            !text_changed && laid_view.scroll == view.scroll && *laid_layout == layout
+        };
+        // The first visible frame uses the prepared initial result. Its pending scroll
+        // feedback applies after painting, just as it does for a freshly opened screen.
+        let prepared = !cached.live
+            && cached.binding.input_matches(data)
+            && cached.laid.as_ref().is_some_and(fresh);
+        if cached.data.as_deref() != Some(data) && !prepared {
+            // Preparation starts no live lifetime. Changed first-open inputs read fresh once
+            // and visibility bindings; equal inputs already have exactly that initial result.
+            if !cached.live {
+                cached.binding.restart(data);
+            }
             let data = Arc::new(data.clone());
             // A refresh rebuilds only the controls it changed and keeps their measurements, so
             // moving one item or switching a tab no longer rebinds and remeasures the screen.
@@ -525,14 +532,13 @@ impl ScreenCache {
             cached.data = Some(data);
             cached.laid = None;
         }
-        // Hover, press and focus only filter the gated nodes; scroll lays out again.
-        let fresh = |(laid_view, laid_layout, _): &(ViewState, json_ui::LayoutCacheKey, _)| {
-            !text_changed && laid_view.scroll == view.scroll && *laid_layout == layout
-        };
+        // Hover, press and focus only filter the gated nodes; scroll lays out again. A data
+        // change lays out again but splices the subtrees it left unchanged.
         if !cached.laid.as_ref().is_some_and(fresh) {
             let tree = cached.bound_tree()?;
             let mut render =
                 json_ui::render_bound_gated(tree, root, env, view, &mut cached.measures);
+            cached.placed += cached.measures.placed();
             // Long grids build only the cells around those in view: bind what this layout
             // newly shows and lay out again, before anything draws.
             for _ in 0..GRID_PASSES {
@@ -553,6 +559,7 @@ impl ScreenCache {
                     &mut cached.measures,
                 );
                 render = json_ui::render_bound_gated(tree, root, env, view, &mut cached.measures);
+                cached.placed += cached.measures.placed();
             }
             // Scroll views publish their end state; views reading it rebind next frame.
             if cached.binding.publish_scrolls(&render.report) && cached.binding.observes_scroll() {
@@ -566,25 +573,6 @@ impl ScreenCache {
             .as_ref()
             .map(|(_, _, render)| Arc::clone(render))
     }
-}
-
-/// The press targets that drop the held stack, as vanilla's `drop_item_panel`
-/// routes them.
-const CURSOR_DROPS: [&str; 2] = ["button.cursor_drop_all", "button.cursor_drop_one"];
-
-/// Whether a press at `gui` on the engine-drawn container drops the held stack.
-/// The press drops when it reaches no control, since the screen itself maps it
-/// to a cursor drop, or reaches a drop panel. Every `common.root_panel` section,
-/// such as the inventory, recipe book or creative hotbar, claims presses
-/// anywhere on its background, as do its buttons.
-pub fn engine_press_drops(frame: &EngineFrame, gui: [f32; 2]) -> bool {
-    let point = [f64::from(gui[0]), f64::from(gui[1])];
-    press_region(&frame.hits, point).is_none_or(|region| {
-        region
-            .pressed
-            .as_deref()
-            .is_some_and(|target| CURSOR_DROPS.contains(&target))
-    })
 }
 
 /// Builds collections with one icon-table entry per cell, keeping later bindings stable.
@@ -604,6 +592,7 @@ impl Cells<'_> {
         let index = self.icons.len();
         // Empty cells reserve an entry but never address it: their binding is Null.
         self.icons.push(icon.unwrap_or(IconRef {
+            color_mask: None,
             page: 0,
             uv: [0; 4],
             glint: false,
@@ -815,6 +804,8 @@ pub fn screen_data(
 }
 
 #[cfg(test)]
+mod auto_place_tests;
+#[cfg(test)]
 mod empty_cells_tests;
 #[cfg(test)]
 mod press_drop_tests;
@@ -905,57 +896,4 @@ fn survival_globals(data: &mut DataSource, title: &str) {
 mod texture_metadata_tests;
 
 #[cfg(test)]
-mod review_tests {
-    use super::*;
-    #[test]
-    fn review_container_layout_remeasures_after_language_or_scale_changes() {
-        struct Text(f64);
-        impl json_ui::TextMeasure for Text {
-            fn extent(&self, _: &str) -> [f64; 2] {
-                [self.0, 10.0]
-            }
-        }
-        struct NoTexture;
-        impl json_ui::TextureSource for NoTexture {
-            /// The measurement fixture has no image sources.
-            fn texture(&self, _: &str) -> Option<json_ui::TextureMeta> {
-                None
-            }
-        }
-        let mut catalog = json_ui::Catalog::default();
-        catalog.apply_pack([("ui/_ui_defs.json", br#"{"ui_defs":["ui/chest.json"]}"#.as_slice()), ("ui/chest.json", br#"{"namespace":"chest","small_chest_screen":{"type":"screen","controls":[{"label":{"type":"label","text":"key","size":["default",10]}}]}}"#.as_slice())]);
-        let catalog = Arc::new(catalog);
-        let mut cache = None;
-        let (context, data, view) = (
-            json_ui::Context::desktop(),
-            DataSource::new(),
-            ViewState::default(),
-        );
-        for (generation, width) in [(0, 10.0), (1, 30.0)] {
-            let text = Text(width);
-            let env = json_ui::LayoutEnv {
-                text: &text,
-                textures: &NoTexture,
-            };
-            let rendered = ScreenCache::render(
-                &mut cache,
-                &catalog,
-                &catalog,
-                "chest.small_chest_screen",
-                &context,
-                &data,
-                &view,
-                [100.0; 2],
-                &env,
-                (1.0, [generation, 0, 0]),
-            )
-            .unwrap();
-            let label = rendered
-                .nodes
-                .iter()
-                .find(|node| node.name == "label")
-                .unwrap();
-            assert_eq!(label.dest.w, width);
-        }
-    }
-}
+mod review_tests;

@@ -472,15 +472,16 @@ pub struct MenuView {
     pub shader_packs_revision: u64,
     /// The imported pack currently being removed by the host.
     pub shader_pack_removing: Option<std::sync::Arc<str>>,
+    /// A picked shader-pack import is open or copying; another waits until it finishes.
+    pub shader_pack_importing: bool,
     /// The requested pack while shader-pack mode is active, even if discovery no longer lists it.
     pub shader_pack: Option<String>,
     /// The highlighted renderer or shader-pack choice; `None` while the selected shader pack is missing.
     pub renderer: Option<super::RendererChoice>,
     /// The requested pack has an option screen, including a command-line pack not listed.
     pub shader_options_available: bool,
-    /// Why the selected shader pack failed to load, for the Shaders tab; see
-    /// [`super::shader_pack_status::failure_description`].
-    pub renderer_failure: Option<std::sync::Arc<str>>,
+    /// Load failure or partial-program warning for the selected shader pack.
+    pub renderer_issue: Option<super::shader_pack_status::PackIssue>,
     /// The render host is still loading the selected shader pack.
     pub shader_pack_loading: bool,
     /// Session VSync forced by a launch flag; the saved toggle is shown locked to it.
@@ -727,7 +728,7 @@ impl MenuView {
             pressed: None,
             navigation_focus_visible: true,
             gamepad_input: false,
-            touch_available: cfg!(target_os = "android"),
+            touch_available: crate::TOUCH_PRIMARY,
             touch_editor_open: false,
             server_tab: MenuServerTab::Featured,
             profile_tab: super::ProfileTab::default(),
@@ -756,10 +757,11 @@ impl MenuView {
             shader_packs: std::sync::Arc::from([]),
             shader_packs_revision: 0,
             shader_pack_removing: None,
+            shader_pack_importing: false,
             shader_pack: None,
             renderer: Some(super::RendererChoice::Vanilla),
             shader_options_available: false,
-            renderer_failure: None,
+            renderer_issue: None,
             shader_pack_loading: false,
             vsync_override: None,
             display_name,

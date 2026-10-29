@@ -59,6 +59,14 @@ struct LoaderState {
 }
 
 impl PacketModLoader {
+    /// Captures the selected source's grants without waiting for compilation.
+    pub fn selected_grants(&self) -> Option<ModGrants> {
+        self.state()
+            .selection
+            .as_ref()
+            .map(|selection| selection.grants.clone())
+    }
+
     /// Selects the packet mod later sessions use and compiles it on a background thread; `None`
     /// clears it. Selecting the current source again keeps its compiled code.
     /// Returns the displaced executable owner for off-thread retirement.
@@ -170,7 +178,7 @@ impl PacketModLoader {
     }
 
     /// Replaces obsolete native input and consumes a recent result without waiting for WASI.
-    pub fn native_frame(&self, frame: Option<mod_api::native_frame::Frame>) -> Option<FrameOutput> {
+    pub fn native_frame(&self, frame: Option<mod_host::NativeFrame>) -> Option<FrameOutput> {
         self.inner
             .native_frame
             .try_lock()

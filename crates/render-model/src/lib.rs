@@ -10,7 +10,9 @@ mod entity_shadow;
 pub mod equipment;
 mod font_atlas;
 pub mod font_shading;
+mod frame_buffers;
 mod frame_latency;
+pub use frame_buffers::FrameBuffers;
 mod frame_pacing;
 pub mod hats;
 pub use font_atlas::{
@@ -25,6 +27,11 @@ mod presentation;
 pub mod primitive_shapes;
 pub mod terrain_units;
 mod ui;
+mod ui_model;
+mod ui_publication_pool;
+pub use ui_model::{
+    UI_MODEL_LAYER_BITS, UiModelBone, UiModelPose, project_ui_model_vertex, ui_model_instance,
+};
 pub mod ui_page_uniform;
 mod ui_textures;
 mod visibility;
@@ -64,12 +71,15 @@ pub use frame_pacing::{
     Cadence, FrameRate, OCCLUDED_FRAME_RATE, UNFOCUSED_FRAME_RATE, WindowActivity,
     effective_frame_rate,
 };
-pub use item_geometry::{extruded_sprite_vertices, held_sprite_vertices, textured_cube_vertices};
+pub use item_geometry::{
+    extruded_sprite_vertices, held_sprite_vertices, sampled_sprite_vertex_count,
+    textured_cube_vertices,
+};
 pub use nametag::{
-    MAX_NAMETAG_RECORDS, NAMETAG_ALPHA_CUTOFF, NAMETAG_ATLAS_SIDE, NAMETAG_BLOCKS_PER_FONT_PIXEL,
-    NAMETAG_DIM_TEXT_ALPHA, NAMETAG_LINE_PITCH_PX, NAMETAG_TEXT_REVERSE_Z_BIAS, NametagAtlasRect,
-    NametagLabel, NametagRecord, NametagScene, java_nametag_line_backgrounds,
-    nametag_line_backgrounds, nametag_line_left,
+    MAX_NAMETAG_RECORDS, NAMETAG_ALPHA_CUTOFF, NAMETAG_ANNOTATION_TEXT, NAMETAG_ATLAS_SIDE,
+    NAMETAG_BLOCKS_PER_FONT_PIXEL, NAMETAG_DIM_TEXT_ALPHA, NAMETAG_LINE_PITCH_PX,
+    NAMETAG_TEXT_REVERSE_Z_BIAS, NametagAtlasRect, NametagLabel, NametagRecord, NametagScene,
+    java_nametag_line_backgrounds, nametag_line_backgrounds, nametag_line_left,
 };
 pub use panorama::{MAX_PANORAMA_FACE_SIDE, PanoramaFaces, PanoramaView};
 pub use presentation::{
@@ -81,20 +91,21 @@ pub use ui::{
     MAX_UI_BATCHES, MAX_UI_DRAW_BYTES, MAX_UI_FIXED_TEXTURE_BYTES, MAX_UI_INDICES,
     MAX_UI_TEXTURE_BYTES, MAX_UI_TEXTURE_LAYERS, MAX_UI_TEXTURE_SIDE, MAX_UI_VERTICES,
     UI_BLEND_ALPHA, UI_BLEND_BACKDROP, UI_BLEND_FILTER, UI_BLEND_INVERT, UI_STYLE_ADDITIVE,
-    UI_STYLE_ALPHA_TEST, UI_STYLE_COLOR_MASK, UI_STYLE_GLINT, UI_STYLE_PARTICLE,
-    UI_STYLE_RADIAL_GRADIENT, UiRenderBatch, UiRenderInput, UiRenderReject, UiRenderRejectReason,
-    UiRenderScene, UiRenderStats, UiRenderStatsSnapshot, UiRenderTextureArray, UiRenderVertex,
-    UiScissor, ui_particle_uv,
+    UI_STYLE_COLOR_MASK, UI_STYLE_GLINT, UI_STYLE_PARTICLE, UI_STYLE_RADIAL_GRADIENT,
+    UiRenderBatch, UiRenderInput, UiRenderReject, UiRenderRejectReason, UiRenderScene,
+    UiRenderStats, UiRenderStatsSnapshot, UiRenderTextureArray, UiRenderVertex, UiScissor,
+    ui_particle_uv,
 };
 pub use ui_textures::{
     MAX_UI_ART_PAGES, MAX_UI_DYNAMIC_PAGES, MAX_UI_MODEL_ATLAS_PAGES, MAX_UI_NATIVE_SHEET_BYTES,
     MAX_UI_NATIVE_SHEET_PAGES, MAX_UI_NATIVE_SHEET_SIDE, MAX_UI_NATIVE_TEXTURE_GROWTH_BYTES,
-    MAX_UI_TEXTURE_BUCKETS, UI_ART_PAGE_SIDE, UI_DYNAMIC_PAGE_SIDE, UI_LOCAL_FONT_PAGE_OFFSET,
-    UI_LOCAL_FONT_PAGE_SIDE, UI_LOCAL_ICON_FONT_PAGE_SIDE, UI_MODEL_ATLAS_PAGE_OFFSET,
-    UI_MODEL_ATLAS_SIDE, UI_NATIVE_SHEET_PAGE_OFFSET, UI_PARTICLE_PAGE_OFFSET,
-    UI_PLAYER_SKIN_PAGE_OFFSET, UI_SESSION_GLYPH_PAGE_OFFSET, UI_SESSION_GLYPH_PAGE_SIDE,
-    UI_SESSION_GLYPH_PAGES, UI_SESSION_ICON_PAGE_OFFSET, UiTextureBucket, UiTextureCatalog,
-    UiTextureFormat, UiTextureLocation, UiTexturePage, UiTexturePlan,
+    MAX_UI_SHIELD_PAGES, MAX_UI_TEXTURE_BUCKETS, UI_ART_PAGE_SIDE, UI_DYNAMIC_PAGE_SIDE,
+    UI_LOCAL_FONT_PAGE_OFFSET, UI_LOCAL_FONT_PAGE_SIDE, UI_LOCAL_ICON_FONT_PAGE_SIDE,
+    UI_MODEL_ATLAS_PAGE_OFFSET, UI_MODEL_ATLAS_SIDE, UI_NATIVE_SHEET_PAGE_OFFSET,
+    UI_PARTICLE_PAGE_OFFSET, UI_PLAYER_SKIN_PAGE_OFFSET, UI_SESSION_GLYPH_PAGE_OFFSET,
+    UI_SESSION_GLYPH_PAGE_SIDE, UI_SESSION_GLYPH_PAGES, UI_SESSION_ICON_PAGE_OFFSET,
+    UI_SHIELD_PAGE_OFFSET, UiTextureBucket, UiTextureCatalog, UiTextureFormat, UiTextureLocation,
+    UiTexturePage, UiTexturePlan,
 };
 pub use visibility::{
     ExtractedCameraIdentity, GraphicsAdapterMetadata, OpaqueDrawMode, VisibilityDiagnosticSnapshot,
@@ -104,10 +115,6 @@ pub use visibility::{
 /// Enhanced is disabled until the GPU faults and system freezes are resolved.
 /// Ordinary settings, launch flags and camera components cannot override this switch.
 pub const ENHANCED_RENDERING_ENABLED: bool = false;
-
-/// The Java shader-pack render mode is opt-in at build time while it is experimental.
-/// Default builds keep settings, launch flags and cameras off it.
-pub const SHADER_PACKS_ENABLED: bool = cfg!(feature = "shaderpacks");
 
 #[cfg(feature = "enhanced-diagnostics")]
 static ENHANCED_DIAGNOSTIC: std::sync::atomic::AtomicBool =
@@ -185,6 +192,7 @@ pub use block_entity::ChalkboardModel;
 pub use block_entity::ConduitModel;
 pub use block_entity::CrystalBeamModel;
 pub use block_entity::DragonDeathModel;
+pub use block_entity::LoyaltyRopeModel;
 pub use block_entity::ShulkerModel;
 pub use block_entity::{
     AtlasRect, BlockEntityAtlas, MAP_CELL, MIN_DYNAMIC_ATLAS_WIDTH, TEXT_CELL, TEXT_SLOT_COUNT,
@@ -217,16 +225,19 @@ pub use block_entity::{
 pub use block_entity::{Oxidation, StatueModel, StatuePose};
 pub use block_entity::{SignFace, SignModel, SignMount};
 pub use block_entity::{SkullKind, SkullModel, SkullMount, floor_yaw_degrees, skull_geometry};
-pub use block_entity::{StaticItemPlacement, StaticItemPlacements, matrix_rows};
+pub use block_entity::{
+    StaticItemPlacement, StaticItemPlacements, matrix_rows, overlay_item_transform,
+};
 pub use celestial::{
     NIGHT_SKY_TRANSFER, celestial_angle, day_plateau, daylight, lightmap_sky_darken,
     star_brightness, sun_direction, sunrise_band,
 };
 pub use dropped_item::ItemMeshVertex;
 pub use dropped_item::{
-    DroppedItemInstance, DroppedItemModel, MAX_DROPPED_ITEM_INSTANCES, MAX_DYNAMIC_ITEM_VERTICES,
-    MAX_ITEM_LAYERS, MAX_ITEM_SPRITE_SIDE, MIN_ITEM_ATLAS_SIDE, TerrainItemInstance,
-    TerrainItemTransition, WHITE_LAYER, dropped_item_transform,
+    DYNAMIC_LIGHT_LEVELS, DroppedItemInstance, DroppedItemModel, DynamicLightRun,
+    MAX_DROPPED_ITEM_INSTANCES, MAX_DYNAMIC_ITEM_VERTICES, MAX_ITEM_LAYERS, MAX_ITEM_SPRITE_SIDE,
+    MIN_ITEM_ATLAS_SIDE, TerrainItemInstance, TerrainItemTransition, WHITE_LAYER,
+    dropped_item_transform,
 };
 pub use dropped_item::{DroppedItemShape, DroppedItemSpawnPose, native_dropped_item_transform};
 pub use dropped_item::{rope_color, rope_point, rope_ribbon};

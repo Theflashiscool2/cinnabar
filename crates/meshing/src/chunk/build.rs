@@ -83,6 +83,8 @@ pub struct MeshOptions<'a> {
     /// columns), toward which water then draws no face, as Java's. Set while a shader pack
     /// renders the world; empty keeps Bedrock's faces beside them.
     pub water_filled: &'a [u32],
+    /// The cell overlays of the sub-chunk's own cells, drawn in order after its block models.
+    pub overlays: &'a [crate::CellOverlay],
 }
 
 /// Greedy-mesh the bounded palette snapshot with solved block/sky light.
@@ -428,6 +430,7 @@ fn mesh_sub_chunk_core<S: crate::lighting::MeshLightSampler + ?Sized>(
                                     [x as i32, y as i32, z as i32],
                                     part_template,
                                     entry.variant & 3,
+                                    visible_quad_mask,
                                     emission > 0,
                                 )
                             };
@@ -491,6 +494,18 @@ fn mesh_sub_chunk_core<S: crate::lighting::MeshLightSampler + ?Sized>(
             }
         }
     }
+    crate::overlays::mesh_overlays(
+        options.overlays,
+        visuals,
+        network_id_mode,
+        &lighting,
+        &mut crate::overlays::ModelOutput {
+            refs: &mut model_refs,
+            lighting: &mut model_lighting,
+            opaque: &mut model_draw_refs,
+            transparent: &mut transparent_model_draw_refs,
+        },
+    );
 
     let (liquid_quads, liquid_lighting) = if include_liquids {
         mesh_liquids(
@@ -558,7 +573,7 @@ use crate::{
 /// every real template respects; a larger count saturates to all-visible rather
 /// than overflowing the shift on a rayon mesh worker, and the meshing loop only
 /// addresses the first 32 quads.
-fn quad_visibility_mask(quad_count: u32) -> u32 {
+pub(crate) fn quad_visibility_mask(quad_count: u32) -> u32 {
     match quad_count {
         0 => 0,
         count if count >= 32 => u32::MAX,

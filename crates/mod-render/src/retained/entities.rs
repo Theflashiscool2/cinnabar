@@ -2,7 +2,9 @@
 use super::*;
 
 /// Exact actor incarnation in the world authority's namespace.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
+)]
 pub struct EntityKey {
     pub session: u64,
     pub dimension: i32,
@@ -36,6 +38,7 @@ impl Store {
             .entities
             .retain(|handle, _| !removed.contains(handle));
         resources.instances.retain(|_, instance| !matches!(instance.anchor, Anchor::Entity(anchor) if removed.contains(&anchor.entity)));
+        clips::reconcile(&mut resources);
         if resources != *self.committed {
             resources.instance_revision += 1;
             self.committed = Arc::new(resources);

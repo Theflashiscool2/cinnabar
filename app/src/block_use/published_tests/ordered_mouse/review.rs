@@ -2,6 +2,9 @@
 use super::*;
 use protocol::test_support::packets::equipment;
 
+#[path = "review/hand_actions.rs"]
+mod hand_actions;
+
 #[path = "equipment.rs"]
 mod equipment_tests;
 
@@ -79,20 +82,28 @@ fn fill(app: &App, slots: usize) {
 
 /// Removes the fixture actor through world ingress while leaving its block ray intact.
 fn remove_actor(world: &mut World) {
-    let mut client = world.resource_mut::<crate::runtime::world::ClientWorld>();
-    let stream = client.stream.as_mut().unwrap();
-    let sequence = stream.committed_sequence() + 1;
-    stream
-        .submit(
-            sequence,
-            protocol::WorldEvent::Actor(protocol::ActorEvent::Remove(protocol::ActorRemoveEvent {
-                dimension: 0,
-                unique_id: 99,
-            })),
-        )
+    {
+        let mut client = world.resource_mut::<crate::runtime::world::ClientWorld>();
+        let stream = client.stream.as_mut().unwrap();
+        let sequence = stream.committed_sequence() + 1;
+        stream
+            .submit(
+                sequence,
+                protocol::WorldEvent::Actor(protocol::ActorEvent::Remove(
+                    protocol::ActorRemoveEvent {
+                        dimension: 0,
+                        unique_id: 99,
+                    },
+                )),
+            )
+            .unwrap();
+        stream.poll([4.5, 2.620_01, 8.5], 0);
+        assert_eq!(stream.committed_sequence(), sequence);
+    }
+    world.resource_mut::<BlockUseRuntime>().clear_picks();
+    world
+        .run_system_cached(crate::block_use::retain_block_use_pick)
         .unwrap();
-    stream.poll([4.5, 2.620_01, 8.5], 0);
-    assert_eq!(stream.committed_sequence(), sequence);
 }
 
 /// Applies an authoritative inventory event through the real retained ingress and UI drain.
@@ -355,6 +366,7 @@ fn ordered_mouse_review_overflow_drains_an_accepted_block_stop_before_neutral_re
             .sequential_id;
         stream.predict_block([4, 2, 6], 0, stone);
     }
+    world_pick_for_setup(app.world_mut());
     mouse_frame(app.world_mut(), MouseButton::Right, &[ButtonState::Pressed]);
     app.world_mut()
         .run_system_cached(produce_block_use)
@@ -410,6 +422,97 @@ fn ordered_mouse_review_overflow_drains_an_accepted_block_stop_before_neutral_re
         sent.iter()
             .filter_map(observe_transaction)
             .all(|tx| tx.item_use().is_none())
+    );
+}
+
+#[test]
+fn ordered_mouse_review_right_press_interrupts_held_mining_and_places_a_block() {
+    let (mut app, mut captured) = app_fixture(8);
+    remove_actor(app.world_mut());
+    set_hotbar_stack(app.world_mut(), 0, Some("minecraft:stone"));
+    app.world_mut()
+        .resource_mut::<client_state::PlayerRuntime>()
+        .facts
+        .publish_player_game_mode(PlayerGameMode::Survival);
+    world_pick_for_setup(app.world_mut());
+
+    mouse_frame(app.world_mut(), MouseButton::Left, &[ButtonState::Pressed]);
+    attack_progress_tests::ticks(app.world_mut(), 102, 103);
+    frame(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<client_interaction::survival_mining::SurvivalMiningRuntime>()
+            .destroying_target()
+            .map(|(position, _)| position),
+        Some([4, 2, 6]),
+        "the left button must have started mining before the handoff"
+    );
+    captured.drain();
+
+    let pick = app
+        .world()
+        .resource::<BlockUseRuntime>()
+        .pick(app.world().resource::<MovementTicker>())
+        .unwrap();
+    let Some(gameplay::block_use::PickResult::Block(block)) = pick.hits.ordinary else {
+        panic!("the mining fixture must retain its camera pick");
+    };
+    let expected_click = Vec3::from_array(block.point) - Vec3::new(4.0, 2.0, 6.0);
+    // The left button remains physically held while the right button is pressed.
+    mouse_frame(app.world_mut(), MouseButton::Right, &[ButtonState::Pressed]);
+    attack_progress_tests::ticks(app.world_mut(), 103, 104);
+    frame(&mut app);
+    assert_eq!(
+        app.world()
+            .resource::<client_interaction::survival_mining::SurvivalMiningRuntime>()
+            .destroying_target(),
+        None,
+        "right-click must abort the active destroy"
+    );
+    assert!(
+        app.world()
+            .resource::<BlockUseRuntime>()
+            .last_success_destination()
+            .is_some(),
+        "right-click must still reach block placement while left-click is held"
+    );
+    let packets = captured.drain();
+    let placement = packets
+        .iter()
+        .filter_map(observe_transaction)
+        .find_map(|transaction| transaction.item_use().cloned())
+        .expect("the handoff must send a placement transaction");
+    assert_eq!(placement.position, [4, 2, 6]);
+    assert_eq!(placement.from_position, [4.5, 2.620_01, 8.5]);
+    assert_eq!(
+        placement.trigger,
+        Some(protocol::ItemUseTrigger::PlayerInput)
+    );
+    assert_eq!(placement.face, 3);
+    assert!(Vec3::from_array(placement.click_position).abs_diff_eq(expected_click, 1.0e-5));
+    let abort_index = packets
+        .iter()
+        .position(|packet| {
+            protocol::test_support::packets::input_block_actions(packet)
+                .iter()
+                .any(|action| {
+                    action.0 == protocol::BlockActionKind::AbortDestroy.wire_value()
+                        && action.1 == [4, 2, 6]
+                })
+        })
+        .expect("the handoff must carry an abort for the interrupted destroy");
+    let abort = protocol::player_auth_input_trace_sample(&packets[abort_index]).unwrap();
+    assert_eq!(abort.tick, 103);
+    assert_eq!(abort.position, [4.5, 2.620_01, 8.5]);
+    let placement_index = packets
+        .iter()
+        .position(|packet| {
+            observe_transaction(packet).is_some_and(|transaction| transaction.item_use().is_some())
+        })
+        .unwrap();
+    assert!(
+        placement_index < abort_index,
+        "the immediate press precedes the tick's abort carrier"
     );
 }
 
@@ -491,3 +594,11 @@ fn ordered_mouse_review_changed_world_cancels_a_frozen_block_use() {
 
 #[path = "world.rs"]
 mod world_evidence;
+
+/// Publishes the fixture's changed geometry before its first physical input edge.
+fn world_pick_for_setup(world: &mut World) {
+    world.resource_mut::<BlockUseRuntime>().clear_picks();
+    world
+        .run_system_cached(crate::block_use::retain_block_use_pick)
+        .unwrap();
+}

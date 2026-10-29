@@ -19,6 +19,11 @@ pub const MAX_TERRAIN_METADATA_BYTES: usize = 256 * 1024;
 pub const MAX_TERRAIN_RESPONSE_BYTES: usize = 512 * 1024;
 
 mod guest;
+mod input;
+pub use input::{
+    MAX_CONTROL_KEY_BYTES, MAX_CONTROL_KEYS, MAX_INPUT_ACTION_BYTES, MAX_INPUT_BINDINGS,
+    MAX_INPUT_BINDINGS_PER_READ, control_key_valid,
+};
 pub mod native_camera;
 pub mod native_frame;
 pub mod native_menu;
@@ -33,9 +38,6 @@ pub use guest::PlayerMod;
 
 /// Native tick rate used when recording elapsed playtime; the app checks the simulation clock.
 pub const BEDROCK_TICKS_PER_SECOND: u32 = 20;
-
-/// Maximum accepted attack/use press cap per second.
-pub const MAX_CLICK_RATE: u32 = 100;
 
 /// Exclusive bound for guest time overrides: ticks in one Bedrock day.
 pub const BEDROCK_DAY_TICKS: u32 = 24_000;
@@ -53,7 +55,7 @@ pub const MAX_CAMERA_DELTA_RADIANS: f32 = 0.25;
 pub const MAX_ENTITY_REACH_BLOCKS: f32 = 6.0;
 /// Maximum opt-in delay of post-login application packets in either direction.
 pub const MAX_PACKET_DELAY_MS: u32 = 1_000;
-/// Bounded control and settings payloads for personal components.
+/// Bounded serialized personal settings.
 pub const MAX_SETTINGS_BYTES: usize = 16 * 1024;
 /// Inventory requests one player-mod callback may make.
 pub const MAX_INVENTORY_REQUESTS: usize = 4;
@@ -102,15 +104,6 @@ pub const COMPONENT_ASSET_SECTIONS: [&str; 6] = [
     NOTICES_SECTION,
     ICON_SECTION,
 ];
-pub const MAX_CONTROL_KEYS: usize = 64;
-/// Maximum bytes in a physical key name supplied by local controls.
-pub const MAX_CONTROL_KEY_BYTES: usize = 32;
-/// Whether a physical key name fits the shared controls wire contract.
-pub fn control_key_valid(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= MAX_CONTROL_KEY_BYTES
-        && key.bytes().all(|c| c.is_ascii_alphanumeric())
-}
 
 /// Maximum nearby mobs in one snapshot, and the radius they are drawn from.
 pub const MAX_GAMEPLAY_MOBS: usize = 64;
@@ -122,6 +115,8 @@ pub const MAX_RIG_VERTICAL_BLOCKS: f32 = 2.0;
 pub const MAX_RIG_BACK_BLOCKS: f32 = 8.0;
 pub const MAX_RIG_ROLL_RADIANS: f32 = 0.6;
 pub const MAX_RIG_FOV_DELTA_DEGREES: f32 = 30.0;
+/// Largest absolute roll or pitch a current-frame view tilt adds, in degrees.
+pub const MAX_VIEW_TILT_DEGREES: f32 = 90.0;
 /// Lower bounds for current-frame FOV and routed look multipliers; their upper bound is 1.
 pub const MIN_VIEW_FOV_SCALE: f32 = 0.1;
 pub const MIN_VIEW_LOOK_SCALE: f32 = 0.05;
@@ -137,8 +132,8 @@ pub const MAX_CUE_NAME_BYTES: usize = 32;
 pub const MAX_CUE_VALUES: usize = 8;
 /// Cues delivered to one callback from every loaded mod.
 pub const MAX_INCOMING_CUES: usize = 64;
-/// Local mods running at once.
-pub const MAX_LOADED_MODS: usize = 4;
+/// Structural bound on local mods running at once; frame fuel and memory budgets limit their cost.
+pub const MAX_LOADED_MODS: usize = 256;
 
 /// Render capability budgets, per instance or per committed callback.
 pub const MAX_RENDER_PASSES: usize = 8;
@@ -166,19 +161,15 @@ pub const MAX_PRIMITIVE_EXTENT_BLOCKS: f32 = 64.0;
 /// Primitives farther than this from the origin of either axis are rejected.
 pub const MAX_PRIMITIVE_COORDINATE: f32 = 30_000_000.0;
 
-/// Bounds for retained loaded-block highlighting.
+/// Most full-block highlights one native render scene draws.
 pub const MAX_BLOCK_HIGHLIGHTS: usize = 1024;
-pub const MAX_BLOCK_HIGHLIGHT_IDENTIFIERS: usize = 8;
-pub const MAX_BLOCK_HIGHLIGHT_IDENTIFIER_BYTES: usize = 128;
-pub const MAX_BLOCK_HIGHLIGHT_RANGE: f32 = 128.0;
-
-/// Host-owned selection; block coordinates never cross the guest boundary.
-#[derive(Clone, Debug, PartialEq)]
-pub struct BlockHighlightSpec {
-    pub identifiers: Vec<String>,
-    pub range: f32,
-    pub color: [f32; 4],
-}
+/// Most positions one `terrain.find-blocks` call returns, nearest first; it matches the
+/// highlight capacity so one search can fill a scene.
+pub const MAX_FOUND_BLOCKS: usize = MAX_BLOCK_HIGHLIGHTS;
+/// Most block identifiers one `terrain.find-blocks` search matches.
+pub const MAX_FOUND_BLOCK_IDENTIFIERS: usize = 8;
+/// Longest namespaced block identifier a block search accepts.
+pub const MAX_BLOCK_IDENTIFIER_BYTES: usize = 128;
 
 /// The `extension` world: HUD label, input, visual time, gameplay, panel, settings, events and
 /// render. The package also defines `player-mod`, whose types and links reach other packages.
@@ -215,6 +206,13 @@ pub mod player_mod {
     });
 }
 
+/// Explicit opt-in player-mod bindings; ordinary SDK exports do not claim input filtering.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Canonical ABI flattens screen records"
+)]
+pub mod filtered_player_mod;
+
 /// The `packet-mod` world: a trusted mod that relays every session packet.
 #[allow(
     clippy::too_many_arguments,
@@ -233,18 +231,28 @@ pub mod packet_mod {
     });
 }
 
-/// Maximum bytes in a stable selected world or server identity.
-pub const MAX_WORLD_IDENTITY_BYTES: usize = 256;
+mod observations;
+pub use observations::{
+    MAX_ACTOR_LIFE_READS, MAX_COMBAT_LIFE_READS, MAX_COMBAT_READ_EVENTS, MAX_OBSERVED_ACTOR_BOXES,
+    MAX_OBSERVED_ACTOR_NAME_BYTES, MAX_OBSERVED_ACTORS, MAX_OBSERVED_COMBAT_EVENTS,
+    MAX_WORLD_IDENTITY_BYTES,
+};
 
-/// Bounded cosmetic actor and combat observations per sandbox callback.
-pub const MAX_OBSERVED_ACTORS: usize = 16;
-pub const MAX_OBSERVED_ACTOR_BOXES: usize = 8;
-pub const MAX_OBSERVED_ACTOR_NAME_BYTES: usize = 128;
-pub const MAX_OBSERVED_COMBAT_EVENTS: usize = 64;
-pub const MAX_COMBAT_READ_EVENTS: usize = 4;
+/// Limits of the `presentation` interface.
+pub mod presentation;
 
-/// Total regular frame-callback fuel shared across all local mods.
-pub const TOTAL_MOD_FRAME_FUEL: u64 = 200_000;
+/// Most `facts` reads one callback may make, separate from player-state reads. Enough to resolve
+/// every inventory, armour and offhand item and every status effect in one callback; one more
+/// read traps the callback.
+pub const MAX_FACT_READS: u32 = 128;
+const _: () = assert!(
+    MAX_FACT_READS as usize
+        >= PLAYER_STATE_INVENTORY_SLOTS + PLAYER_STATE_ARMOR_SLOTS + 1 + MAX_PLAYER_STATE_EFFECTS
+);
+pub mod facts;
+
+/// Frame-callback fuel all local mods share: two of mod-host's measured `FRAME_FUEL`.
+pub const TOTAL_MOD_FRAME_FUEL: u64 = 400_000;
 
 /// World drawing authority and generation-safe resource tokens.
 pub mod drawing;

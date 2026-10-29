@@ -47,6 +47,8 @@ pub struct HudModel {
     pub chat_color: Option<char>,
     /// Optional mention color applied only to decoded message labels.
     pub chat_mention_color: Option<char>,
+    /// The current local actor display name used for mention matching.
+    pub chat_local_player: std::sync::Arc<str>,
     pub chat_visible: bool,
     /// Seconds a chat line stays before its fade.
     pub chat_lifetime: f64,
@@ -403,6 +405,18 @@ fn text_data(data: &mut DataSource, model: &HudModel) {
 /// Writes the bounded chat notification collection and factory instances.
 fn chat_data(data: &mut DataSource, model: &HudModel) {
     data.set_global("#chat_visible", Scalar::Bool(model.chat_visible));
+    data.set_global(
+        crate::vanilla::Binding::EditorChatVisible.as_str(),
+        Scalar::Bool(model.chat_visible),
+    );
+    data.set_global(
+        crate::vanilla::Binding::EditorChatLayoutActive.as_str(),
+        Scalar::Bool(false),
+    );
+    data.set_global(
+        crate::vanilla::Binding::EditorChatOffset.as_str(),
+        Scalar::Json(serde_json::json!([0, 0])),
+    );
     if model.chat_visible {
         data.set_collection(
             "chat_text_grid",

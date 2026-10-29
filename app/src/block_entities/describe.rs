@@ -1,5 +1,8 @@
 //! Turns a block entity's id, backing block state and NBT into what the renderer draws.
 
+mod item;
+use item::held_item;
+
 use assets::{
     banner::{MAX_BANNER_LAYERS, color_linear as banner_color, pattern_texture},
     block_entity_geometry::shulker_color_from_block_name,
@@ -24,6 +27,7 @@ const DEFAULT_SIGN_COLOR: i32 = -0x1000000;
 pub(super) struct HeldItem {
     pub(super) identifier: Arc<str>,
     pub(super) metadata: u32,
+    pub(super) shield_pattern: Option<Arc<render_api::ShieldPattern>>,
 }
 
 /// A retained plant block with all typed state selectors used to resolve its world identity.
@@ -95,6 +99,28 @@ pub(super) enum Template {
         back: Option<SignTextSpec>,
     },
     EnchantTable,
+    /// The item overlays of an overlay host, by Bedrock face; its block-state overlays are
+    /// drawn with the terrain mesh.
+    OverlayItems(Box<[(u8, world::OverlayItem)]>),
+}
+
+/// Plans the item overlays of an overlay host's `overlays`, resolved by `ids`, while `backing`,
+/// the cell's block, is their host; `None` when it draws no item.
+pub(super) fn overlay_items(
+    overlays: &world::CellOverlays,
+    ids: &dyn world::BlockIds,
+    backing: u32,
+) -> Option<Template> {
+    let resolved = overlays.resolve(ids);
+    let items: Box<[_]> = resolved
+        .on(backing)?
+        .iter()
+        .filter_map(|overlay| match &overlay.look {
+            world::OverlayLook::Item(item) => Some((overlay.face, item.clone())),
+            world::OverlayLook::Block(_) => None,
+        })
+        .collect();
+    (!items.is_empty()).then_some(Template::OverlayItems(items))
 }
 
 /// Facing from either state spelling: `minecraft:cardinal_direction` or `facing_direction`.
@@ -127,18 +153,6 @@ fn frame_rotation(nbt: &NbtCompound) -> f32 {
         .filter(|degrees| degrees.is_finite())
         .map(|degrees| degrees.rem_euclid(8.0 * ITEM_FRAME_ROTATION_STEP_DEGREES))
         .unwrap_or(0.0)
-}
-
-/// Reads a usable retained item stack.
-fn held_item(stack: &NbtCompound) -> Option<HeldItem> {
-    let name = stack.string("Name").filter(|name| !name.is_empty())?;
-    Some(HeldItem {
-        identifier: Arc::from(name),
-        metadata: stack
-            .integer("Damage")
-            .and_then(|damage| u32::try_from(damage).ok())
-            .unwrap_or(0),
-    })
 }
 
 /// Selects one leading half from a valid pair.
@@ -856,5 +870,78 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    /// Resolves `probe:bus` to 7 and `probe:plate` to 9, anything else to air.
+    struct ProbeIds;
+
+    impl world::BlockIds for ProbeIds {
+        fn air(&self) -> u32 {
+            0
+        }
+
+        fn resolve(&self, network_id: u32) -> u32 {
+            network_id
+        }
+
+        fn resolve_persistent(&self, entry: &NbtCompound) -> u32 {
+            match entry.string("name") {
+                Some("probe:bus") => 7,
+                Some("probe:plate") => 9,
+                _ => 0,
+            }
+        }
+    }
+
+    #[test]
+    fn overlay_items_show_only_on_their_host_and_leave_block_overlays_to_the_mesh() {
+        use world::NbtValue;
+        let named = |name: &str| {
+            let mut state = NbtCompound::default();
+            state.insert("name", NbtValue::String(name.into()));
+            NbtValue::Compound(state)
+        };
+        let mut plate = NbtCompound::default();
+        plate.insert("slot", NbtValue::Byte(0));
+        plate.insert("face", NbtValue::Byte(2));
+        plate.insert("block", named("probe:plate"));
+        let mut stack = NbtCompound::default();
+        stack.insert("Name", NbtValue::String("minecraft:diamond".into()));
+        let mut diamond = NbtCompound::default();
+        diamond.insert("slot", NbtValue::Byte(1));
+        diamond.insert("face", NbtValue::Byte(1));
+        diamond.insert("item", NbtValue::Compound(stack));
+        for (key, value) in [("size", 6.4), ("x", 0.0), ("y", 0.8)] {
+            diamond.insert(key, NbtValue::Float(value));
+        }
+        let mut root = NbtCompound::default();
+        root.insert("id", NbtValue::String("CinnabarOverlays".into()));
+        root.insert("host", named("probe:bus"));
+        root.insert(
+            "overlays",
+            NbtValue::List(vec![NbtValue::Compound(plate), NbtValue::Compound(diamond)]),
+        );
+        let nbt = world::BlockEntityNbt::decode_prefix(&root.encode_root().unwrap())
+            .unwrap()
+            .0;
+        let overlays = nbt.cell_overlays().unwrap();
+        let Some(Template::OverlayItems(items)) = super::overlay_items(overlays, &ProbeIds, 7)
+        else {
+            panic!("the host draws its diamond");
+        };
+        assert_eq!(
+            *items,
+            [(
+                1,
+                world::OverlayItem {
+                    name: Arc::from("minecraft:diamond"),
+                    damage: 0,
+                    size: 6.4,
+                    x: 0.0,
+                    y: 0.8,
+                }
+            )]
+        );
+        assert_eq!(super::overlay_items(overlays, &ProbeIds, 9), None);
     }
 }

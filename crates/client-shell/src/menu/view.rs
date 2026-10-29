@@ -61,12 +61,13 @@ impl MenuRuntime {
             shader_packs: std::sync::Arc::clone(&self.shader_packs),
             shader_packs_revision: self.shader_packs_revision,
             shader_pack_removing: self.shader_pack_removing.clone(),
+            shader_pack_importing: self.shader_pack_import != super::renderer::PackImport::Idle,
             shader_pack: (self.render_mode == ui::RenderMode::ShaderPack)
                 .then(|| self.shader_pack.clone())
                 .flatten(),
             renderer: self.renderer_choice(),
             shader_options_available: self.shader_options_available(),
-            renderer_failure: self.renderer_failure(),
+            renderer_issue: self.renderer_issue(),
             shader_pack_loading: self.renderer_loading(),
             vsync_override: self.vsync_override,
             display_name: self.presented_display_name(),

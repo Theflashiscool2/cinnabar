@@ -1,9 +1,7 @@
 //! The per-frame system, carrier loading and the caches behind them.
 
-use crate::runtime::network::resource_packs::PackApplication;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::IntoScheduleConfigs;
-use client_runtime::network::NetworkHandle;
 use std::{path::Path, sync::Arc};
 
 use assets::{RuntimeBlockEntityAssets, RuntimeFontCatalog};
@@ -25,7 +23,7 @@ use super::{
     books,
     containers::{ContainerKind, ContainerLids, cue_is_open},
     cracks::{CrackLayers, crack_instances, with_second_parts},
-    describe::{HeldItem, Template, describe},
+    describe::{HeldItem, Template, describe, overlay_items},
     sign_text,
     state::BlockState,
 };
@@ -56,7 +54,11 @@ pub(super) mod columns;
 mod crystal_beams;
 mod culling;
 mod dragon_death;
+mod loyalty_ropes;
+mod maps;
+mod placement;
 mod portals;
+use placement::{held_placement, overlay_item_placements};
 
 #[cfg(test)]
 mod beacon_tint_tests;
@@ -126,6 +128,8 @@ pub(crate) struct BlockEntityRuntime {
     /// Scan results per loaded column, rebuilt when the column changes.
     columns: HashMap<ChunkKey, columns::ColumnScan>,
     rescans: columns::RescanOrder,
+    /// The window whose last pass left every column in range current.
+    settled: Option<columns::ColumnWindow>,
     frame: u64,
     blocks: HashMap<u32, Option<Arc<BlockInfo>>>,
     layouts: TextLayoutCache,
@@ -133,8 +137,6 @@ pub(crate) struct BlockEntityRuntime {
     bell_rings: HashMap<[i32; 3], (u64, f64)>,
     /// Framed map ids seen this frame without an image.
     missing_maps: Vec<i64>,
-    /// When each map id was last requested from the server, in real seconds.
-    map_requests: HashMap<i64, f64>,
     /// Session and dimension the runtime-id keyed caches were filled from.
     session: Option<(u64, i32)>,
     beam_source: Option<(Arc<assets::RuntimeAssets>, Option<protocol::DimensionRange>)>,
@@ -151,13 +153,13 @@ impl BlockEntityRuntime {
             beacon_tints: assets::BeaconTintCatalog::pinned(),
             columns: HashMap::new(),
             rescans: columns::RescanOrder::default(),
+            settled: None,
             frame: 0,
             blocks: HashMap::new(),
             layouts: TextLayoutCache::new(TEXT_CACHE_ENTRIES, TEXT_CACHE_BYTES),
             shapes: CrackShapeCache::default(),
             bell_rings: HashMap::new(),
             missing_maps: Vec::new(),
-            map_requests: HashMap::new(),
             session: None,
             beam_source: None,
             books: books::TableBooks::default(),
@@ -180,6 +182,7 @@ impl BlockEntityRuntime {
         {
             self.beam_source = Some((Arc::clone(assets), range));
             self.columns.clear();
+            self.settled = None;
             self.blocks.clear();
         }
     }
@@ -195,11 +198,11 @@ impl BlockEntityRuntime {
         self.lids = ContainerLids::default();
         self.missing_maps.clear();
         self.columns.clear();
+        self.settled = None;
         self.rescans = columns::RescanOrder::default();
         self.blocks.clear();
         self.shapes.clear();
         self.bell_rings.clear();
-        self.map_requests.clear();
         self.books = books::TableBooks::default();
     }
 }
@@ -223,9 +226,10 @@ pub(crate) fn configure(app: &mut App, font: Arc<RuntimeFontCatalog>) {
             (
                 update_block_entity_scene
                     .after(crate::runtime::network::prepare_actor_render_frame),
-                request_missing_maps,
+                maps::request_missing_maps,
             )
-                .chain(),
+                .chain()
+                .run_if(bevy::prelude::resource_exists::<PhysicsCollisionRegistries>),
         );
 }
 
@@ -310,7 +314,7 @@ fn second_crack_part(
     store: &world::ChunkStore,
     mode: assets::NetworkIdMode,
     dimension: i32,
-    entry: &chunk_pipeline::ActiveBlockCrack,
+    entry: &client_world::ActiveBlockCrack,
 ) -> Option<([i32; 3], CrackLayers)> {
     let id = entry.layers[0]?;
     let offset = collisions.second_part_offset(mode, id)?;
@@ -485,16 +489,22 @@ pub(crate) fn update_block_entity_scene(
         ((center - SCAN_RADIUS_BLOCKS) / SUB_CHUNK_SIDE as f32).floor() as i32
             ..=((center + SCAN_RADIUS_BLOCKS) / SUB_CHUNK_SIDE as f32).floor() as i32
     };
-    let selected = runtime.rescans.select(
-        chunk_range(eye.x)
-            .flat_map(|x| chunk_range(eye.z).map(move |z| ChunkKey::new(dimension, x, z)))
-            .filter(|key| {
-                !columns::is_near_column(eye_column, key.x, key.z)
-                    && store.chunk(*key).is_some_and(|chunk| {
-                        scans.get(key).is_none_or(|scan| !scan.is_current(chunk))
-                    })
-            }),
-    );
+    let window = columns::ColumnWindow {
+        terrain: store.content_revision(),
+        columns: [chunk_range(eye.x), chunk_range(eye.z)],
+        eye_column,
+    };
+    // A settled window has no stale column to select, so selecting would change nothing.
+    let selected = if runtime.settled.as_ref() == Some(&window) {
+        Default::default()
+    } else {
+        runtime
+            .rescans
+            .select(window.stale_distant(dimension, store, |key, chunk| {
+                scans.get(&key).is_none_or(|scan| !scan.is_current(chunk))
+            }))
+    };
+    let mut settled = true;
     let prepare_zone = bevy::log::info_span!("block_entity.prepare").entered();
     'columns: for chunk_x in chunk_range(eye.x) {
         for chunk_z in chunk_range(eye.z) {
@@ -524,6 +534,13 @@ pub(crate) fn update_block_entity_scene(
                         chunk,
                         previous,
                         |id, runtime_id, nbt, position| {
+                            if let Some(overlays) = nbt.cell_overlays() {
+                                return overlay_items(
+                                    overlays,
+                                    &stream.authority().decode_ids(dimension),
+                                    runtime_id,
+                                );
+                            }
                             block_info(runtime, &collisions, mode, runtime_id)
                                 .zip(nbt.parse())
                                 .and_then(|(info, root)| {
@@ -541,8 +558,10 @@ pub(crate) fn update_block_entity_scene(
                     columns::ColumnScan::new(chunk, portals, entities)
                 },
             ) else {
+                settled = false;
                 continue;
             };
+            settled &= scan.is_current(chunk);
             scan.seen_frame = frame_stamp;
             let before_portals = submissions.len();
             portals::submit(&mut submissions, &scan.portals, eye);
@@ -643,6 +662,7 @@ pub(crate) fn update_block_entity_scene(
             }
             scans.insert(chunk_key, scan);
             if full {
+                settled = false;
                 break 'columns;
             }
         }
@@ -652,6 +672,7 @@ pub(crate) fn update_block_entity_scene(
     runtime.books.finish();
     scans.retain(|_, scan| scan.seen_frame == frame_stamp);
     runtime.columns = scans;
+    runtime.settled = settled.then_some(window);
     prune_bell_rings(&mut runtime.bell_rings, now_seconds, |position| {
         stream
             .block_event_cue(*position)
@@ -666,6 +687,15 @@ pub(crate) fn update_block_entity_scene(
         |runtime_id, owner_position| {
             let actor = stream.authority().actor(runtime_id)?;
             stream.solved_light_at(actor.brightness_sample_position(owner_position))
+        },
+    );
+    loyalty_ropes::submit(
+        &mut submissions,
+        stream.authority().loyalty_ropes(actor_partial_tick.0),
+        camera_position,
+        |runtime_id, trident| {
+            let actor = stream.authority().actor(runtime_id)?;
+            stream.solved_light_at(actor.brightness_sample_position(trident))
         },
     );
     dragon_death::submit(
@@ -725,76 +755,10 @@ fn yaw_toward(eye: Vec3, position: [i32; 3]) -> f32 {
     (-dx).atan2(-dz).to_degrees()
 }
 
-fn held_placement(
-    item: &HeldItem,
-    world_from_item: [[f32; 4]; 3],
-    light: Option<(u8, u8)>,
-) -> StaticItemPlacement {
-    StaticItemPlacement {
-        identifier: Arc::clone(&item.identifier),
-        metadata: item.metadata,
-        potted_block: None,
-        world_from_item,
-        light,
-    }
-}
-
 /// Item offsets over the grill, in block-center pixels; provisional.
 const CAMPFIRE_SLOTS: [[f32; 2]; 4] = [[-4.0, -4.0], [4.0, -4.0], [4.0, 4.0], [-4.0, 4.0]];
 const CAMPFIRE_ITEM_HEIGHT: f32 = 7.5;
 const CAMPFIRE_ITEM_SCALE: f32 = 0.375;
-
-/// Seconds before an unanswered map request is repeated.
-const MAP_REQUEST_RETRY_SECONDS: f64 = 5.0;
-
-/// Asks the server for the pixels of framed maps whose images have not arrived.
-pub(crate) fn request_missing_maps(
-    mut runtime: ResMut<BlockEntityRuntime>,
-    network: Option<Res<NetworkHandle<PackApplication>>>,
-    time: Res<Time<Real>>,
-) {
-    let Some(network) = network else {
-        return;
-    };
-    let now = time.elapsed_secs_f64();
-    let runtime = &mut *runtime;
-    runtime.missing_maps.sort_unstable();
-    runtime.missing_maps.dedup();
-    for id in std::mem::take(&mut runtime.missing_maps) {
-        let due = runtime
-            .map_requests
-            .get(&id)
-            .is_none_or(|last| now - last >= MAP_REQUEST_RETRY_SECONDS);
-        if due
-            && network
-                .send_inventory_packet(protocol::map_info_request_packet(id))
-                .is_ok()
-        {
-            runtime.map_requests.insert(id, now);
-        }
-    }
-    if runtime.map_requests.len() > 256 {
-        runtime
-            .map_requests
-            .retain(|_, last| now - *last < MAP_REQUEST_RETRY_SECONDS);
-    }
-}
-
-/// Cache key for a map image at one revision.
-fn map_cache_key(map_id: i64, revision: u64) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    (map_id, revision).hash(&mut hasher);
-    hasher.finish()
-}
-
-/// A 128x128 RGBA8 canvas from packed map pixels (red in the low byte).
-fn map_canvas(pixels: &[u32]) -> Vec<u8> {
-    pixels
-        .iter()
-        .flat_map(|pixel| pixel.to_le_bytes())
-        .collect()
-}
 
 /// Applies per-frame state (lid openness, sign canvases, viewer yaw) to a template; a `hidden`
 /// one still advances its book, lid, ring and map request and keeps its text and map canvases
@@ -884,8 +848,8 @@ fn resolve(
             }
             let map = map_id.and_then(|id| {
                 let image = stream.map_image(id)?;
-                scene.map_rect(map_cache_key(id, image.revision), || {
-                    map_canvas(&image.pixels)
+                scene.map_rect(maps::map_cache_key(id, image.revision), || {
+                    maps::map_canvas(&image.pixels)
                 })
             });
             if hidden {
@@ -895,11 +859,14 @@ fn resolve(
                 image,
                 rotation_degrees,
             });
-            if let (Some(item), None) = (item, map) {
+            if let (Some(item), None) = (item, map)
+                && item.identifier.as_ref() != assets::facts::FILLED_MAP_IDENTIFIER
+            {
                 held.push(held_placement(
                     item,
                     item_frame_item_transform(position, model.outward, rotation_degrees),
                     model.glow.then_some((15, 15)),
+                    Some(stream),
                 ));
             }
             Some(BlockEntityKind::ItemFrame(model))
@@ -914,9 +881,12 @@ fn resolve(
                 &plant.states,
             )?;
             held.push(StaticItemPlacement {
+                shield_pattern: None,
+                allow_block_models: false,
                 identifier: Arc::clone(&plant.identifier),
                 metadata: 0,
                 potted_block: Some(id),
+                carried_block: None,
                 world_from_item: render_model::dropped_item_transform(
                     position.map(|axis| axis as f32 + 0.5),
                     0.0,
@@ -940,7 +910,7 @@ fn resolve(
                     * Mat4::from_translation(Vec3::new(x, CAMPFIRE_ITEM_HEIGHT, z))
                     * Mat4::from_scale(Vec3::splat(CAMPFIRE_ITEM_SCALE * 16.0))
                     * Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2);
-                held.push(held_placement(item, matrix_rows(pose), None));
+                held.push(held_placement(item, matrix_rows(pose), None, None));
             }
             None
         }
@@ -965,6 +935,12 @@ fn resolve(
                     back,
                 },
             ))
+        }
+        Template::OverlayItems(items) => {
+            if !hidden {
+                held.extend(overlay_item_placements(items, position, stream));
+            }
+            None
         }
     }
 }

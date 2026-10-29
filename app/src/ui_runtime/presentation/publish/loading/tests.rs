@@ -235,6 +235,7 @@ fn release_local_terrain(
             ..Default::default()
         },
         42,
+        true,
         Duration::ZERO,
     );
     client_world.dimension_transfer.acknowledge(sequence + 1);

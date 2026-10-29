@@ -4,8 +4,10 @@
 
 use crate::runtime::network::resource_packs::PackApplication;
 use bevy::{
-    ecs::system::SystemParam,
-    prelude::{AppExit, Commands, MessageWriter, Res, ResMut, Resource},
+    ecs::system::{NonSendMarker, SystemParam},
+    prelude::{AppExit, Commands, Entity, MessageWriter, Query, Res, ResMut, Resource, With},
+    window::PrimaryWindow,
+    winit::WINIT_WINDOWS,
 };
 use bridge::CORE_START_TIMEOUT;
 use client_runtime::network::NetworkHandle;
@@ -29,8 +31,12 @@ use {
 
 use std::{path::PathBuf, time::Instant};
 
+#[cfg(all(test, unix))]
+mod cache_tests;
 mod client_id;
 mod java;
+mod join;
+use join::{attempt_connect, prepare_join};
 pub(crate) mod java_entities;
 pub(crate) mod java_hud;
 pub(crate) mod java_interaction;
@@ -51,10 +57,14 @@ pub(crate) struct SessionController {
     java: Option<client_session::java::Session>,
     java_world: client_world::java::WorldState,
     core: CoreProcessGuard, // declared first: the core stops before the directories below go
+    /// Cache mode captured before this connection's core was spawned.
+    blob_cache: BlobCache,
     /// Identity-checked owner of the live session's runtime directory.
     directory: Option<SessionDirectoryGuard>,
     /// The join provisioning behind the connecting screen.
     join: Option<JoinAttempt>,
+    /// A join waiting for mod consent before its cache mode is captured.
+    pending: Option<JoinIntent>,
     generation: u64,
     client_random_id: Option<protocol::ClientRandomId>,
     client_id_load: Option<
@@ -86,8 +96,10 @@ impl SessionController {
             java: None,
             java_world: Default::default(),
             core,
+            blob_cache: BlobCache::default(),
             directory: None,
             join: None,
+            pending: None,
             generation: 1,
             client_random_id: None,
             client_id_load: None,
@@ -99,6 +111,12 @@ impl SessionController {
             trust: None,
             kept_packs: crate::runtime::network::compiled_stacks(),
         }
+    }
+
+    /// Retains the startup core's cache advertisement through downstream login.
+    pub(crate) fn with_blob_cache(mut self, cache: BlobCache) -> Self {
+        self.blob_cache = cache;
+        self
     }
 
     /// A controller that releases `kept` instead of the stacks joins share.
@@ -187,7 +205,6 @@ impl SessionController {
     fn start_core(
         &mut self,
         menu: &MenuRuntime,
-        cache: &BlobCache,
         address: &str,
         auth_cache: Option<&std::path::Path>,
         generation: u64,
@@ -208,11 +225,8 @@ impl SessionController {
             &socket_dir,
             address,
             auth_cache,
-            // Advertise upstream cache capability exactly because this same
-            // connect hands the verified blob cache to the new network
-            // session; that ownership is what makes the client answer
-            // LoginSuccess with cache-enabled status downstream.
-            cache.enables_upstream_client_cache(),
+            // Upstream advertisement and downstream login share this captured cache mode.
+            self.blob_cache.enables_upstream_client_cache(),
             true,
         )
         .map_err(|error| format!("Could not start {address}: {error}"))?;
@@ -239,7 +253,7 @@ impl SessionController {
 
     #[cfg(all(test, unix))]
     pub(crate) fn join_pending(&self) -> bool {
-        self.join.is_some()
+        self.join.is_some() || self.pending.is_some()
     }
 
     /// Installs a connecting join at the current generation.
@@ -273,7 +287,7 @@ pub(crate) struct SessionResources<'w> {
     controller: ResMut<'w, SessionController>,
     state: crate::game_session::SessionWorld<'w>,
     network: ResMut<'w, NetworkHandle<PackApplication>>,
-    collisions: Res<'w, client_interaction::movement::PhysicsCollisionRegistries>,
+    collisions: Option<Res<'w, client_interaction::movement::PhysicsCollisionRegistries>>,
     launcher: Option<Res<'w, LauncherCoreSlot>>,
     actor_artwork: Option<ResMut<'w, render_scene::ActorArtworkResource>>,
     #[cfg(test)]
@@ -326,14 +340,23 @@ impl SessionResources<'_> {
     /// Ends the live session and fences a fresh generation. The core stops off
     /// the frame, and its directories go only once it has exited.
     fn retire(&mut self) -> u64 {
-        *self.network = NetworkHandle::<PackApplication>::disconnected();
+        let leave = bridge::leave_profile::LeaveProfile::current();
+        let _section = leave.section("session_retire");
+        let _span = bevy::log::info_span!("session.retire").entered();
+        {
+            let _section = leave.section("network_detach");
+            self.network.retire();
+        }
         let controller = &mut *self.controller;
         controller.java = None;
         let directory = controller.directory.take();
         let join = controller.join.take();
-        controller
-            .core
-            .stop_detached(move || drop((join, directory)));
+        controller.pending = None;
+        let core = leave.section("core_shutdown");
+        controller.core.stop_detached(move || {
+            let _core = core;
+            drop((join, directory));
+        });
         controller.connecting = false;
         controller.presence = None;
         controller.destination_identity = None;
@@ -344,111 +367,17 @@ impl SessionResources<'_> {
             self.far_terrain.as_mut(),
             self.state.client_world.stream.as_mut(),
         ) {
+            let _section = leave.section("far_terrain");
+            let _span = bevy::log::info_span!("session.retire_far_terrain").entered();
             far.retire_stream(stream);
         }
-        self.restore_startup_artwork();
+        {
+            let _section = leave.section("artwork_reset");
+            self.restore_startup_artwork();
+        }
         self.state.retire(generation);
         generation
     }
-}
-
-/// Starts provisioning a fresh core and network session for one address,
-/// replacing any previous session; [`poll_join`] finishes it on later frames.
-///
-/// This is the single replacement-handoff path shared by user joins and
-/// automatic server-transfer follows: identity-checked session directory,
-/// bounded core start wait, old-network shutdown, and a fresh session
-/// generation for every attempt. A running launcher core takes the join
-/// instead: it selects the target over `connect.v1` and the session dials it.
-fn attempt_connect(
-    menu: &mut MenuRuntime,
-    session: &mut SessionResources<'_>,
-    cache: &BlobCache,
-    intent: JoinIntent,
-) {
-    if intent.edition == launcher::menu::ServerEdition::Java {
-        java::connect(menu, session, intent);
-        return;
-    }
-    let profile = bridge::join_profile::JoinProfile::current();
-    if profile.id().is_none() {
-        bridge::join_profile::JoinProfile::begin();
-    }
-    bridge::join_profile::JoinProfile::current().mark("session_controller");
-    let JoinIntent {
-        edition: _,
-        address,
-        auth_cache,
-        local_world,
-    } = intent;
-    menu.remember_retry_target(&address, auth_cache.as_deref(), local_world);
-    // A replacement owns no route back into the old session, even when
-    // provisioning the new endpoint fails before the connecting screen opens.
-    menu.show_home();
-    let generation = session.retire();
-    session.controller.trust = None;
-    session
-        .state
-        .runtime
-        .experiences
-        .select_destination(&address);
-    menu.begin_join_progress(&address, local_world);
-    let mut presence = presence_target(&address, local_world);
-    if local_world {
-        presence.join = menu.hosted_world_address();
-        presence.max_players = menu.hosted_world_max_players();
-    } else {
-        presence.badge = menu.featured_badge(&address);
-        presence.max_players = menu.destination_max_players(&address);
-    }
-    session.controller.presence = Some(presence);
-    session.controller.local_world = local_world;
-    session.controller.destination_identity = Some(
-        if let Some(id) = menu.local_world_identity().filter(|_| local_world) {
-            format!("local:{id}")
-        } else {
-            format!("remote:{}", address.trim().to_lowercase())
-        },
-    );
-    let launcher = session.launcher.as_deref().and_then(|slot| {
-        slot.begin_join(
-            &address,
-            local_world,
-            auth_cache.is_some(),
-            menu.is_launcher(),
-        )
-    });
-    let controller = &mut *session.controller;
-    if let Err(message) = controller.prepare_client_random_id(menu.layout()) {
-        controller.fail_join(menu, message);
-        return;
-    }
-    let stage = match launcher {
-        Some(receiver) => JoinStage::Launcher(receiver),
-        // A local world exists only behind the launcher core.
-        None if local_world => {
-            controller.fail_join(menu, format!("Could not open {address}: no launcher core"));
-            return;
-        }
-        None => {
-            match controller.start_core(menu, cache, &address, auth_cache.as_deref(), generation) {
-                Ok(stage) => stage,
-                Err(message) => {
-                    controller.fail_join(menu, message);
-                    return;
-                }
-            }
-        }
-    };
-    controller.join = Some(JoinAttempt {
-        generation,
-        address,
-        auth_cache,
-        local_world,
-        stage,
-    });
-    controller.connecting = true;
-    menu.show_connecting();
 }
 
 /// Advances the pending join without blocking: starts its network session
@@ -459,16 +388,17 @@ fn poll_join(
     session: &mut SessionResources<'_>,
     cache: &BlobCache,
 ) {
-    let controller = &mut *session.controller;
-    if controller.join.is_none() {
-        return;
-    }
     // The join must capture admitted mods, including on a cold cache or a transfer.
     if session
         .mod_registration
         .as_ref()
         .is_some_and(|watcher| watcher.preparing())
     {
+        return;
+    }
+    prepare_join(menu, session, cache);
+    let controller = &mut *session.controller;
+    if controller.join.is_none() {
         return;
     }
     let client_random_id = match controller.poll_client_random_id() {
@@ -484,15 +414,17 @@ fn poll_join(
     let attempt = controller.join.take().expect("pending join");
     let server_address = attempt.address.clone();
     use client_session::connection::JoinPoll;
-    match attempt.poll(controller.generation, controller.connecting, || {
-        controller.core.exit_status()
-    }) {
+    match attempt.poll(
+        controller.generation,
+        controller.connecting,
+        session.collisions.is_some(),
+        || controller.core.exit_status(),
+    ) {
         JoinPoll::Retired => {}
         JoinPoll::Pending(attempt) => controller.join = Some(attempt),
         JoinPoll::StartCore(mut attempt) => {
             match controller.start_core(
                 menu,
-                cache,
                 &attempt.address,
                 attempt.auth_cache.as_deref(),
                 attempt.generation,
@@ -518,20 +450,23 @@ fn poll_join(
                 commands,
                 menu,
                 controller.generation,
-                cache,
+                &controller.blob_cache,
                 socket_dir,
                 login_settings,
                 client_random_id,
                 session.actor_artwork.as_deref().map(|artwork| &artwork.0),
                 session.ui_catalog.as_deref(),
-                session
-                    .packet_mods
-                    .as_ref()
-                    .and_then(|mods| mods.session_relay()),
+                session.packet_mods.as_ref().and_then(|mods| {
+                    mods.session_relay(controller.blob_cache.enables_upstream_client_cache())
+                }),
                 crate::runtime::network::session_registries::RegistryBase::new(
                     &session.state.client_world.runtime_assets,
-                    &session.collisions,
-                ),
+                    session
+                        .collisions
+                        .as_deref()
+                        .expect("join admission requires world collision resources"),
+                )
+                .with_entity_assets(session.state.client_world.entity_assets.clone()),
             ) {
                 if owned_core {
                     let directory = controller.directory.take();
@@ -619,6 +554,26 @@ fn start_network(
     Ok(())
 }
 
+/// Hides the window before an exit's blocking teardown, so a quit or update restart
+/// never shows a frozen frame.
+pub(crate) fn hide_window_before_exit(
+    menu: Res<MenuRuntime>,
+    windows: Query<Entity, With<PrimaryWindow>>,
+    _main_thread: NonSendMarker,
+) {
+    if !menu.exit_requested() {
+        return;
+    }
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    WINIT_WINDOWS.with_borrow(|windows| {
+        if let Some(window) = windows.get_window(window) {
+            window.set_visible(false);
+        }
+    });
+}
+
 /// Acts on the menu's session intents and advances the pending join.
 pub(crate) fn drive_session(
     mut commands: Commands,
@@ -681,6 +636,11 @@ fn drive_intents(
         return;
     }
     if menu.take_disconnect_request() {
+        let leave = bridge::leave_profile::LeaveProfile::pending_presentation();
+        let _binding = leave.enter();
+        let _span = bevy::log::info_span!("session.leave").entered();
+        let _section = leave.section("transition");
+        leave.mark("session_stop_request");
         bridge::join_profile::JoinProfile::current().finish("cancelled");
         // Loading and pause screens retain the Play page that opened the session.
         let cancelled_join = menu.is_connecting();
@@ -692,6 +652,7 @@ fn drive_intents(
         } else {
             menu.show_after_disconnect();
         }
+        leave.menu_ready();
         return;
     }
     if menu.is_connecting() && session.state.client_world.stream.is_some() {

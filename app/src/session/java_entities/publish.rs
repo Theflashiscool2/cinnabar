@@ -277,11 +277,15 @@ pub(crate) fn update(
             let pose = &p.poses[&e.identity];
             // GPU dimension zero means the current render slot. Session, epoch and incarnation
             // bind the native identity; no Java identifier is interpreted as a Bedrock dimension.
+            let Some(spawn_revision) = std::num::NonZeroU64::new(e.identity.incarnation) else {
+                p.failure = Some("Java entity has no admitted incarnation".into());
+                break;
+            };
             let identity = ActorRenderIdentity {
                 session_id: scope.0,
                 dimension: 0,
                 runtime_id: e.identity.incarnation,
-                spawn_revision: e.identity.incarnation,
+                spawn_revision,
                 ingress_sequence: e.revision,
                 source_tick: None,
                 movement_revision: e.revision,

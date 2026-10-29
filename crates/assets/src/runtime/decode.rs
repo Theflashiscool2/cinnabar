@@ -73,6 +73,7 @@ impl RuntimeAssets {
             overlay_page_layer_counts: Box::new([]),
             biomes,
             provenance,
+            retextured_visuals: Box::new([]),
             missing: AtomicU64::new(0),
         };
         // Prepare numeric block-entity routes before the carrier reaches the live world.
@@ -467,11 +468,7 @@ fn validate_fixed(
                     .0
                     .get(index + 1)
                     .is_none_or(|next| {
-                        !matches!(
-                            u32_at(next, 8),
-                            0 | crate::MODEL_TEMPLATE_FLAG_BAMBOO
-                                | crate::MODEL_TEMPLATE_FLAG_SHORT_GRASS
-                        )
+                        !crate::model::potted_world_template_flags_are_valid(u32_at(next, 8))
                     }))
         {
             return Err(invalid(

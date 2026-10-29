@@ -110,6 +110,24 @@ pub const MODEL_TEMPLATE_FLAG_TORCH: u32 = 1 << 17;
 pub const MODEL_TEMPLATE_FLAG_DOOR: u32 = 1 << 18;
 /// Native grass crosses use a coordinate-derived three-axis component displacement.
 pub const MODEL_TEMPLATE_FLAG_SHORT_GRASS: u32 = 1 << 19;
+/// Template keeps the placed chorus envelope and selects its distinct inventory shape.
+pub const MODEL_TEMPLATE_FLAG_CHORUS: u32 = 1 << 20;
+/// Heavy-core templates retain their placed shape with a larger inventory preview.
+pub const MODEL_TEMPLATE_FLAG_HEAVY_CORE: u32 = 1 << 21;
+/// Shelf templates retain their placed size with a larger inventory preview.
+pub const MODEL_TEMPLATE_FLAG_SHELF: u32 = 1 << 22;
+/// Azalea templates select a separate stem and canopy for inventory previews.
+pub const MODEL_TEMPLATE_FLAG_AZALEA: u32 = 1 << 23;
+
+/// Standalone plant templates that may follow their separate pot-content geometry.
+pub(crate) const fn potted_world_template_flags_are_valid(flags: u32) -> bool {
+    matches!(
+        flags,
+        0 | MODEL_TEMPLATE_FLAG_BAMBOO
+            | MODEL_TEMPLATE_FLAG_SHORT_GRASS
+            | MODEL_TEMPLATE_FLAG_AZALEA
+    )
+}
 /// Number of positional sprite variants in each bubble-column surface group.
 pub const BUBBLE_COLUMN_POSITION_VARIANTS: u32 = 4;
 /// Submerged and exposed bubble-column templates, in that order.
@@ -172,6 +190,10 @@ pub(crate) const fn model_template_flags_are_valid(flags: u32) -> bool {
             | MODEL_TEMPLATE_FLAG_TORCH
             | MODEL_TEMPLATE_FLAG_DOOR
             | MODEL_TEMPLATE_FLAG_SHORT_GRASS
+            | MODEL_TEMPLATE_FLAG_CHORUS
+            | MODEL_TEMPLATE_FLAG_HEAVY_CORE
+            | MODEL_TEMPLATE_FLAG_SHELF
+            | MODEL_TEMPLATE_FLAG_AZALEA
     ) || flags == MODEL_TEMPLATE_FLAG_COMPOUND_NEXT | MODEL_TEMPLATE_FLAG_GATE_AXIS_X
         || flags == MODEL_TEMPLATE_FLAG_COMPOUND_NEXT | MODEL_TEMPLATE_FLAG_GATE_AXIS_Z
 }
@@ -341,8 +363,14 @@ const _: () = assert!(std::mem::size_of::<ModelQuad>() == 48);
 pub const MODEL_QUAD_FLAG_FACE_MASK: u32 = 0x07;
 pub const MODEL_QUAD_FLAG_TWO_SIDED: u32 = 1 << 3;
 pub const MODEL_QUAD_FLAG_CULL_FACE_MASK: u32 = 0x70;
-pub(crate) const MODEL_QUAD_FLAGS_MASK: u32 =
-    MODEL_QUAD_FLAG_FACE_MASK | MODEL_QUAD_FLAG_TWO_SIDED | MODEL_QUAD_FLAG_CULL_FACE_MASK;
+/// Detail quad that native tessellation draws straight after a cuboid without setting a new
+/// vertex colour or light. It keeps the shade and final vertex light of the last face that
+/// cuboid drew; the cuboid is the run of distinct faced quads just before the detail quads.
+pub const MODEL_QUAD_FLAG_INHERITED_SHADE: u32 = 1 << 7;
+pub(crate) const MODEL_QUAD_FLAGS_MASK: u32 = MODEL_QUAD_FLAG_FACE_MASK
+    | MODEL_QUAD_FLAG_TWO_SIDED
+    | MODEL_QUAD_FLAG_CULL_FACE_MASK
+    | MODEL_QUAD_FLAG_INHERITED_SHADE;
 
 pub(crate) const fn model_quad_flags_are_valid(flags: u32) -> bool {
     flags & !MODEL_QUAD_FLAGS_MASK == 0

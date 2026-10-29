@@ -104,9 +104,9 @@ fn authorized_ticker(enabled: bool) -> MovementTicker {
 
 /// Loads the compiled collision facts used by production reconciliation.
 fn fixture_registries() -> PhysicsCollisionRegistries {
-    let breg = include_bytes!("../../../crates/assets/data/block-registry-v2193.bin");
-    let records = read_registry_for_protocol(breg, 2193).expect("checked-in protocol-2193 BREG");
-    let preg = include_bytes!("../../../crates/assets/data/block-physics-v2193.bin");
+    let breg = include_bytes!("../../../crates/assets/data/block-registry-v2225.bin");
+    let records = read_registry_for_protocol(breg, 2225).expect("checked-in protocol-2225 BREG");
+    let preg = include_bytes!("../../../crates/assets/data/block-physics-v2225.bin");
     PhysicsCollisionRegistries::from_assets(
         breg,
         &records,
@@ -303,6 +303,7 @@ fn committed_teleport_snap_correction_dispatches_through_production_reconciliati
             subject: MovementCorrectionSubject::Player,
             on_ground: true,
             tick: 101,
+            vehicle_angular_velocity: None,
         }),
     );
     app.update();

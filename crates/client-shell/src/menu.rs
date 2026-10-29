@@ -154,6 +154,7 @@ pub struct MenuRuntime {
     shader_pack_reload: bool,
     shader_pack_removing: Option<std::sync::Arc<str>>,
     shader_pack_remove_request: Option<String>,
+    shader_pack_import: renderer::PackImport,
     vsync_override: Option<bool>,
     display_name: String,
     launcher: bool,
@@ -180,6 +181,8 @@ pub struct MenuRuntime {
     player_skin: crate::player_skin::LocalPlayerSkin,
     dressing_room: std::sync::Arc<launcher::dressing_room::DressingRoomView>,
     dressing_room_worker: Option<dressing_room::Worker>,
+    /// Fallback pixels for catalog entries created before world assets were ready.
+    default_player_skin: Option<render_api::StandardSkin>,
     skin_update_pending: bool,
     skin_outbound: Option<(u64, protocol::Packet)>,
     skin_packet_pending: Option<protocol::Packet>,
@@ -451,6 +454,10 @@ impl MenuRuntime {
         std::mem::take(&mut self.intents.disconnect)
     }
 
+    pub fn exit_requested(&self) -> bool {
+        self.intents.exit
+    }
+
     pub fn take_exit_request(&mut self) -> bool {
         std::mem::take(&mut self.intents.exit)
     }
@@ -576,14 +583,14 @@ impl MenuRuntime {
                     self.death_loading = true;
                     self.death_presentation.exiting_world = true;
                     self.death_presentation.respawn_seconds = Some(0.0);
-                    self.intents.disconnect = true;
+                    self.request_disconnect();
                     self.dialog = None;
                 }
             }
             MenuAction::ConfirmDeathQuit => {
                 if self.dialog == Some(MenuDialog::DeathQuit) {
                     self.dialog = None;
-                    self.intents.disconnect = true;
+                    self.request_disconnect();
                     self.set_visible(false);
                 }
             }
@@ -727,6 +734,7 @@ impl MenuRuntime {
             MenuAction::AddBack => self.go_back(),
             MenuAction::SelectRenderer(choice) => self.select_renderer(choice),
             MenuAction::ReloadShaders => self.activate_shader_reload(),
+            MenuAction::ImportShaderPacks => self.request_shader_pack_import(),
             MenuAction::RemoveShaderPackDialog(index, revision) => {
                 self.remove_shader_pack_dialog(index, revision)
             }
@@ -748,7 +756,7 @@ impl MenuRuntime {
             }
             MenuAction::PauseResume => self.set_visible(false),
             MenuAction::PauseDisconnect => {
-                self.intents.disconnect = true;
+                self.request_disconnect();
                 self.set_visible(false);
             }
             MenuAction::PauseSettings => {

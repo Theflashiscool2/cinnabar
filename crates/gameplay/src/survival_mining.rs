@@ -170,9 +170,9 @@ impl SurvivalTickPayload {
             });
     }
 
+    /// Retains a destroy action in the order this tick produced it.
     fn push(&mut self, kind: BlockActionKind, position: [i32; 3], face: u8) {
-        // A tick emits at most four actions; the bounded list holds eight.
-        let _ = self.actions.push(BlockAction {
+        self.actions.push(BlockAction {
             kind,
             position,
             face,
@@ -541,9 +541,7 @@ impl SurvivalMiningRuntime {
         };
         let mut machine = self.machine.clone();
         let mut cleanup = machine.step(DestroyInput::Released, motion, authority);
-        if cleanup.actions.append(&refusal.actions).is_err() {
-            return false;
-        }
+        cleanup.actions.append(&refusal.actions);
         refusal.actions = cleanup.actions;
         if !ticker.attach_survival_mining(tick, refusal) {
             return false;
@@ -696,11 +694,13 @@ pub fn blocked_mining_reason(
     }
 }
 
-/// Admitted items carrying the creative no-break trait block local destroy prediction.
+/// Admitted attack items block local creative destroy prediction.
 pub fn destroys_in_creative(fact: &assets::facts::ItemFact) -> bool {
-    !fact
-        .traits
-        .contains(assets::facts::ItemTraits::CREATIVE_NO_BREAK)
+    let traits = fact.traits;
+    !traits.contains(assets::facts::ItemTraits::CREATIVE_NO_BREAK)
+        && !traits.contains(assets::facts::ItemTraits::SWORD)
+        && !traits.contains(assets::facts::ItemTraits::TRIDENT)
+        && !traits.contains(assets::facts::ItemTraits::MACE)
 }
 
 /// Flight, not mere airborne movement, exempts the destroy-speed penalty (`PlayerDestroy`).

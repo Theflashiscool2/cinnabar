@@ -247,7 +247,13 @@ fn execute(
             .map_or_else(failed, |()| Event::EulaAccepted),
         Effect::Import(Some(files)) => import_files(manager, files, cancelled),
         Effect::Import(None) => match picker::pick(&WORLD_FILES) {
-            Ok(file) => import_files(manager, file.into_iter().collect(), cancelled),
+            Ok(file) => import_files(
+                manager,
+                file.iter()
+                    .map(|file| file.as_ref().to_path_buf())
+                    .collect(),
+                cancelled,
+            ),
             Err(error) => Event::Imported {
                 worlds: Vec::new(),
                 errors: vec![error],
@@ -256,6 +262,10 @@ fn execute(
         Effect::PollStatus => Event::Status(route.status(manager)),
         Effect::Close => {
             manager.close();
+            return None;
+        }
+        Effect::Leave => {
+            manager.leave();
             return None;
         }
         Effect::SetPaused(paused) => {

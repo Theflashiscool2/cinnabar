@@ -4,6 +4,8 @@ use client_ui::ui_runtime::UiRuntime;
 #[cfg(not(target_arch = "wasm32"))]
 use client_ui::ui_runtime::inventory_drag;
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod data_driven;
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod emotes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod forms;
@@ -11,6 +13,8 @@ pub mod forms;
 pub(crate) mod gameplay_touch;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod interaction;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod mob_effects;
 pub(crate) mod outbound;
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) mod platform_back;
