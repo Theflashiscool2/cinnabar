@@ -112,6 +112,7 @@ fn short_join_status_never_shows_a_scrollbar() {
         glint: false,
     };
     let mut view = MenuView::new(true, "Fixture".into());
+    view.auth_state = launcher::menu::auth::AuthState::Authenticated;
     view.feeds.join = launcher::menu::JoinProgress::new(launcher::menu::JoinKind::External);
     let font = fixture_font();
     let mut layouts = ui::TextLayoutCache::new(128, 1024 * 1024);
@@ -139,6 +140,33 @@ fn short_join_status_never_shows_a_scrollbar() {
             );
         }
     }
+}
+
+#[test]
+fn bedrock_join_notice_tracks_account_and_connection_state() {
+    use launcher::menu::{JoinKind, JoinStage, auth::AuthState};
+    let mut view = MenuView::new(true, "Fixture".into());
+    view.auth_state = AuthState::SignedOut;
+    let message = bedrock_join_message(&view, "Connecting".into());
+    assert!(message.starts_with("Connecting"));
+    assert!(message.contains("not signed in to Microsoft"));
+    assert!(message.contains("allows offline players"));
+    for state in [AuthState::Checking, AuthState::Authenticated] {
+        view.auth_state = state;
+        assert_eq!(
+            bedrock_join_message(&view, "Connecting".into()),
+            "Connecting"
+        );
+    }
+    view.auth_state = AuthState::SignedOut;
+    view.feeds.join.kind = JoinKind::Local;
+    assert_eq!(bedrock_join_message(&view, "Local".into()), "Local");
+    view.feeds.join.kind = JoinKind::External;
+    view.feeds.join.stage = JoinStage::Generating;
+    assert_eq!(
+        bedrock_join_message(&view, "Generating".into()),
+        "Generating"
+    );
 }
 
 #[test]

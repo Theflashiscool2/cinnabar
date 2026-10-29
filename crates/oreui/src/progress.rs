@@ -102,7 +102,7 @@ pub(super) fn join(
         let shown = join_progress::shown(&view.feeds.join, &tr);
         (
             shown.title,
-            shown.message,
+            bedrock_join_message(view, shown.message),
             shown.clipped.map(|clipped| (1.0 - clipped) as f32),
             shown.cancel.then_some(MenuAction::AddBack),
         )
@@ -121,6 +121,18 @@ pub(super) fn join(
             destination: None,
         },
     )
+}
+
+/// Explain signed-out joins without blocking servers that deliberately allow offline clients.
+fn bedrock_join_message(view: &MenuView, mut message: String) -> String {
+    use launcher::menu::{JoinKind, JoinStage, auth::AuthState};
+    if view.feeds.join.kind != JoinKind::Local
+        && view.feeds.join.stage == JoinStage::Connecting
+        && matches!(view.auth_state, AuthState::SignedOut | AuthState::Failed(_))
+    {
+        message.push_str("\n\nYou are not signed in to Microsoft. Authenticated Bedrock servers require sign-in. Cancel and sign in from Accounts, or continue if this server allows offline players.");
+    }
+    message
 }
 
 /// Branding and status share one centered group through every loading stage.
