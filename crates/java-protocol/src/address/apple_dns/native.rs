@@ -24,7 +24,8 @@ type Callback = unsafe extern "C" fn(
     *mut c_void,
 );
 
-#[link(name = "dns_sd")]
+// iOS exposes DNS-SD through libSystem; its SDK has no standalone libdns_sd stub.
+#[link(name = "System")]
 unsafe extern "C" {
     fn DNSServiceQueryRecord(
         service: *mut ServiceRef,
