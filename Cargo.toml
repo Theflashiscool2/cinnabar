@@ -185,6 +185,9 @@ wit-parser = "=0.247.0"
 # Vulkan keeps logical allocation layouts separate and accepts either native image-robustness feature.
 # Every wgpu crate comes from the same rev so wgpu and the shaderpack crate share one naga.
 [patch.crates-io]
+# UIScene window attachment for iOS 27; reviewed 0.30.13 backport of winit PR #4723.
+# Keep the immutable revision until an upstream 0.30 release includes scene support.
+winit = { git = "https://github.com/molenick/winit", rev = "94d6a23c425023810a0879aa7a03abb2e4f1decc" }
 # Keep Linux crash dumps when a thread's stack cannot be read.
 minidump-writer = { git = "https://github.com/cinnabar-mc/minidump-writer", rev = "389d34092fb3323f2253010615eda402212e534f" }
 naga = { git = "https://github.com/cinnabar-mc/wgpu", rev = "060bd0bdbc5975dc9e48840b391e276d5ccb4355" }

@@ -65,12 +65,19 @@ fi
 out="$repo_root/target/ios"
 stage="$out/stage"
 app="$stage/Payload/$executable.app"
-ipa="$out/$product-$version-unsigned.ipa"
+build_number="$(pin build_number)"
+ipa="$out/$product-$version-build$build_number-unsigned.ipa"
 rm -rf "$stage" "$ipa"
 mkdir -p "$app"
 
 # One commit identifies both the app and the core, chosen as the Makefile does.
-export CINNABAR_BUILD_COMMIT="${CINNABAR_BUILD_COMMIT:-$(git rev-parse HEAD)}"
+if [[ -z "${CINNABAR_BUILD_COMMIT:-}" ]]; then
+    CINNABAR_BUILD_COMMIT="$(git rev-parse HEAD)"
+    if ! git diff --quiet HEAD --; then
+        CINNABAR_BUILD_COMMIT+="-dirty"
+    fi
+fi
+export CINNABAR_BUILD_COMMIT
 
 target_flags="-isysroot $sdk_path -arch arm64 -miphoneos-version-min=$IPHONEOS_DEPLOYMENT_TARGET"
 CGO_ENABLED=1 GOOS=ios GOARCH=arm64 CC="$(xcrun --sdk iphoneos --find clang)" \
@@ -110,6 +117,7 @@ stage_shared_resources "$app/$(pin resource_dir)"
 
 sed -e "s|@EXECUTABLE@|$executable|g" -e "s|@BUNDLE_ID@|$(pin bundle_id)|g" \
     -e "s|@PRODUCT_NAME@|$product|g" -e "s|@VERSION@|$version|g" \
+    -e "s|@BUILD_NUMBER@|$build_number|g" -e "s|@SOURCE_COMMIT@|$CINNABAR_BUILD_COMMIT|g" \
     -e "s|@DEPLOYMENT_TARGET@|$IPHONEOS_DEPLOYMENT_TARGET|g" -e "s|@SDK_VERSION@|$sdk_version|g" \
     "$here/Info.plist.in" >"$app/Info.plist"
 if grep -q '@[A-Z_]*@' "$app/Info.plist"; then
@@ -130,4 +138,5 @@ cp "$out/icons/icon-167.png" "$app/AppIcon83.5x83.5@2x~ipad.png"
 codesign --force --sign - --timestamp=none "$app"
 codesign --verify --strict "$app"
 (cd "$stage" && zip -q -r "$ipa" Payload)
+python3 "$here/verify-ipa.py" "$ipa"
 echo "$ipa"

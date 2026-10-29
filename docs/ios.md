@@ -8,7 +8,7 @@ Max: menus, sign-in, joining servers and shader packs work; touch input is light
 
 ## Get the IPA
 
-The iOS workflow builds `Cinnabar-<version>-unsigned.ipa` and attaches it to the run as
+The iOS workflow builds `Cinnabar-<version>-build<build-number>-unsigned.ipa` and attaches it to the run as
 `cinnabar-ios-unsigned`. To get one, push a branch named `ios/<anything>` to your fork of the
 repository (enable Actions on the fork first) or run the iOS workflow by hand, then download it
 with `gh run download <run id> -R <you>/cinnabar -n cinnabar-ios-unsigned`. On a Mac with
@@ -21,6 +21,61 @@ bash packaging/ios/build-ipa.sh
 
 The IPA lands in `target/ios/`. Pinned values (bundle id, deployment target, Xcode major) live in
 `packaging/ios/runtime.json`.
+
+## Scene lifecycle and launch qualification
+
+SDK 27 builds require scene adoption. The old build trapped at
+`UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption` on a physical
+iPhone running iOS 27.0 beta. Build 31.1 declares one `UIWindowScene` and uses the
+immutable Winit 0.30.13 backport pinned in `Cargo.toml` and `Cargo.lock`.
+This is a **candidate repair, not a device-qualified build**.
+
+[Winit PR 4723](https://github.com/rust-windowing/winit/pull/4723) explains the
+blank-window failure when only a scene manifest is added. Its
+[0.30 backport](https://github.com/molenick/winit/commit/94d6a23c425023810a0879aa7a03abb2e4f1decc)
+attaches the window to the connected `UIWindowScene`. The PR is still unmerged;
+the latest published release inspected was 0.30.13. The git dependency also uses
+its own `dpi` 0.1.1 package. No installed Cargo-cache files are modified.
+
+UIKit creates the single scene from the manifest. No custom scene delegate is
+required by this notification-based Winit integration. The existing Bevy runner
+creates the window on `resumed`; Winit attaches its existing root controller to
+the connected scene before exposing the window to the renderer. Its application
+notification observers continue to route activation, suspension, occlusion, memory
+warnings and termination. The existing UIKit view handles layout/rotation, scale,
+safe-area queries and touch input. There is one engine and one event loop, with no
+storyboard-created second window. No URL callback was registered in this host;
+device-code authentication remains unchanged.
+
+References: Apple's [scene configuration](https://developer.apple.com/documentation/uikit/specifying-the-scenes-your-app-supports)
+and [scene lifecycle migration](https://developer.apple.com/documentation/uikit/migrating-to-the-uikit-scene-based-life-cycle).
+Direct Apple-document retrieval was blocked in the Linux environment; the upstream
+patch and pinned UIKit bindings were inspected. Upstream simulator results are
+reference evidence, not Cinnabar launch results.
+
+After rebuilding with the existing workflow, reuse the already compiled assets:
+
+```sh
+CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.1-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.1-assets.ipa --require-assets
+```
+
+The verifier inspects the archived plist, device Mach-O header, single-scene
+configuration, build number, source commit and bundled startup resources, and
+prints the archive's SHA-256. It does not prove linkage, valid signing, carrier
+integrity or successful execution. Sideloadly must sign the new assets IPA; the
+build script's ad-hoc signature is not an installation identity. The old IPA is
+preserved under its old filename.
+
+Acceptance still requires a real menu frame, navigation/touch, background and
+foreground, both supported landscape orientations/safe areas, terminate/relaunch,
+Bedrock and Java menu selection, and a controlled world smoke test. Also exercise
+scene disconnection/reconnection: this backport adds attachment at window creation,
+not a new disconnected-scene recovery implementation. Do not infer that recovery
+from compilation. Record build 31.1, source commit, OS and device alongside screenshots
+and logs; any new crash needs its `.ips` report. Linux cross-checks of the UIKit
+crate are neither simulator execution nor an iPhone build.
 
 ## Add your assets
 
