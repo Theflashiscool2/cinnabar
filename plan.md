@@ -94,7 +94,10 @@ server evidence; complex metadata and entity frame publication remain incomplete
   2560×1440). Java selection, persistence and join routing pass alongside existing
   Bedrock server-form tests. A signed-in graphical connection remains blocked above.
 - [ ] Qualify SRV behavior against an authorized DNS/proxy fixture and custom-pack
-  admission limits. Mid-session reconfiguration, tag replacement, initial relative
+  admission limits. iOS SRV lookup uses Apple's DNS service instead of a Unix
+  resolver file; explicit ports and final host lookup use the OS resolver.
+  Record parsing/routing tests and device/simulator target compile checks pass;
+  runtime iPhone DNS qualification remains pending. Mid-session reconfiguration, tag replacement, initial relative
   teleports without an admitted player anchor,
   required resource packs and interactive server consent/dialogs are unsupported.
 - [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light

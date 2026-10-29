@@ -5,6 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[package.metadata.cinnabar]
+platform-specific = ["macos"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -33,6 +36,9 @@ zeroize = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+libc = "0.2"
 
 [lints]
 workspace = true

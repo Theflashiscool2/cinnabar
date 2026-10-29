@@ -5260,6 +5260,7 @@ dependencies = [
  "cfb8",
  "flate2",
  "hickory-resolver",
+ "libc",
  "md-5",
  "rand 0.8.8",
  "reqwest",
