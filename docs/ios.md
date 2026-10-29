@@ -12,7 +12,7 @@ The iOS workflow builds `Cinnabar-<version>-unsigned.ipa` and attaches it to the
 `cinnabar-ios-unsigned`. To get one, push a branch named `ios/<anything>` to your fork of the
 repository (enable Actions on the fork first) or run the iOS workflow by hand, then download it
 with `gh run download <run id> -R <you>/cinnabar -n cinnabar-ios-unsigned`. On a Mac with
-Xcode 26, the iOS Rust target (`rustup target add aarch64-apple-ios`), Go and librsvg or
+Xcode 27.1, the iOS Rust target (`rustup target add aarch64-apple-ios`), Go and librsvg or
 ImageMagick, build it locally instead:
 
 ```sh
@@ -100,18 +100,22 @@ using the existing `assetc java-physics`, `java-interaction` and `java-entities`
 commands and their explicit EULA acceptance. The running iPhone app never executes
 Java or a data exporter. Desktop `CINNABAR_JAVA_ASSETS` overrides still work.
 
-The build script currently requires the Xcode major in `packaging/ios/runtime.json`:
-26. Xcode 27.1 with SDK 27.1 does not satisfy this pin. Install Xcode 26 alongside
-27.1 and select its developer directory for the build; do not change the system's
-selected Xcode or claim that a different SDK has been validated:
+The build script targets Xcode 27.1 and iPhoneOS SDK 27.1, as recorded in
+`packaging/ios/runtime.json` (patch updates within that version are allowed).
+The minimum device OS remains iOS 17. The script respects an explicit
+`DEVELOPER_DIR`, otherwise uses the selected matching Xcode or a matching
+side-by-side install. Check the tools before starting the build:
 
 ```sh
-# Set this to the actual Xcode 26 installation on the Mac.
-export DEVELOPER_DIR=/Applications/Xcode_26.app/Contents/Developer
-xcrun --sdk iphoneos --show-sdk-version
+bash packaging/ios/build-ipa.sh --check-toolchain
 rustup target add aarch64-apple-ios
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
 ```
+
+This pin is an intended build target, not proof of an iOS build or device test.
+The CI runner OS label is independent of the Xcode version; its preflight fails
+if that runner image does not contain the pinned Xcode. Select an available
+matching installation rather than bypassing the SDK check.
 
 An unsigned IPA still needs the user's asset injection, signing and device
 installation. This fork's Java sign-in UI and online/iPhone acceptance remain

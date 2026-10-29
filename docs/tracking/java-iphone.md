@@ -6,7 +6,7 @@ exist. The official iOS host/Metal renderer/touch controls and packaging are reu
 
 | Milestone | Implementation and next action | Verified evidence | Open acceptance / blocker |
 | --- | --- | --- | --- |
-| iOS host and shared resources | Upstream `packaging/ios` and host `InstallLayout` | Upstream documents Bedrock device use; not Java evidence | Mac build required; workflow pins Xcode 26, user has 27.1 |
+| iOS host and shared resources | Upstream `packaging/ios` and host `InstallLayout` | Upstream documents Bedrock device use; not Java evidence | Mac build required; workflow targets user’s Xcode/SDK 27.1, not yet build-validated |
 | Java runtime assets | Shared layout discovery for terrain, extensions and entities; hash-checked `add-assets.py --java-assets` | Linux Rust layout regression and synthetic IPA injection tests | Real pinned inputs, iOS build and device loading not verified |
 | Microsoft account | Native device-flow/refresh and private cache exist; GUI integration remains necessary in this recovered branch | Existing protocol fixtures only | Owner application registration/service approval and interactive authorization; never use another launcher's identity |
 | Controlled authenticated Java server | Native session path retained separately from Bedrock | Linux compilation; historical offline fixtures are not online qualification | Legitimate account plus controlled online-mode acceptance |

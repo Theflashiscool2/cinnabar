@@ -3,7 +3,7 @@
 # the app as a static archive. The app ships the shared resources only: no prep kit (iOS runs no
 # helper executables) and no game assets; add-assets.py injects a user's own compiled carriers.
 #
-# Needs macOS with the Xcode major runtime.json pins (an /Applications/Xcode_<major>*.app is
+# Needs macOS with the Xcode version runtime.json pins (an /Applications/Xcode_<version>*.app is
 # selected when present), the aarch64-apple-ios Rust target, Go, zip and librsvg or ImageMagick.
 # CINNABAR_IOS_PROFILE picks the Cargo profile (release). The IPA is signed ad hoc only:
 # sideloading tools sign it with the installer's identity.
@@ -20,6 +20,13 @@ pin() {
     python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$here/runtime.json" "$1"
 }
 
+case "${1:-}" in
+    "") check_toolchain=false ;;
+    --check-toolchain) check_toolchain=true ;;
+    *) echo 'usage: build-ipa.sh [--check-toolchain]' >&2; exit 2 ;;
+esac
+[[ $# -le 1 ]] || { echo 'too many arguments' >&2; exit 2; }
+
 triple=aarch64-apple-ios
 profile="${CINNABAR_IOS_PROFILE:-release}"
 xcode="$(pin xcode)"
@@ -30,20 +37,30 @@ product="$(sed -n '/macro_rules! product_name/,/^}/s/^[[:space:]]*"\([^"]*\)"$/\
 version="$(version_of)"
 [[ -n "$product" ]] || { echo 'cannot read the launcher product name' >&2; exit 1; }
 
-# The newest side-by-side install of the pinned Xcode major, as CI images name them.
+# Use the selected Xcode when it matches; respect an explicit DEVELOPER_DIR.
+# Otherwise look for a side-by-side install, as CI images name them.
 shopt -s nullglob
 installed=(/Applications/Xcode_"$xcode".app /Applications/Xcode_"$xcode".*.app)
 shopt -u nullglob
-if ((${#installed[@]})); then
+if [[ -z "${DEVELOPER_DIR:-}" ]] && \
+    [[ "$(xcodebuild -version | head -n 1)" != "Xcode $xcode"* ]] && \
+    ((${#installed[@]})); then
     DEVELOPER_DIR="$(printf '%s\n' "${installed[@]}" | sort -V | tail -n 1)/Contents/Developer"
     export DEVELOPER_DIR
 fi
+xcode_version="$(xcodebuild -version | awk 'NR == 1 && $1 == "Xcode" {print $2}')"
 sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
-[[ "${sdk_version%%.*}" == "$xcode" ]] || {
-    echo "the iPhoneOS SDK is $sdk_version; install Xcode $xcode or point DEVELOPER_DIR at it" >&2
-    exit 1
-}
+for actual in "$xcode_version" "$sdk_version"; do
+    [[ "$actual" == "$xcode" || "$actual" == "$xcode".* ]] || {
+        echo "requires Xcode/iPhoneOS SDK $xcode (patch updates allowed); found Xcode $xcode_version, SDK $sdk_version. Select a matching installation with DEVELOPER_DIR." >&2
+        exit 1
+    }
+done
 sdk_path="$(xcrun --sdk iphoneos --show-sdk-path)"
+if "$check_toolchain"; then
+    printf 'Xcode %s; iPhoneOS SDK %s; deployment target %s\n' "$xcode_version" "$sdk_version" "$IPHONEOS_DEPLOYMENT_TARGET"
+    exit 0
+fi
 
 out="$repo_root/target/ios"
 stage="$out/stage"
