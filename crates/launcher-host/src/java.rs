@@ -11,6 +11,30 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
     let address: Address = address
         .parse()
         .map_err(|e: java_protocol::ProtocolError| e.to_string())?;
+    let load_root = root.clone();
+    let (client_id, account) = tokio::task::spawn_blocking(move || {
+        let account = launcher::java_accounts::active(&load_root).map_err(|_| {
+            "A separate Minecraft Java sign-in is required. The Bedrock/Xbox account does not sign you into Java servers. Java sign-in is not yet available in this app's account screen.".to_owned()
+        })?;
+        let config: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(load_root.join("oauth-client.json"))
+                .map_err(|_| auth::Error::MissingClient.to_string())?,
+        )
+        .map_err(|_| "Invalid Java OAuth application configuration".to_owned())?;
+        let client = config["client_id"]
+            .as_str()
+            .ok_or_else(|| auth::Error::MissingClient.to_string())?
+            .to_owned();
+        Ok::<_, String>((client, account))
+    })
+    .await
+    .map_err(|_| "Java account task failed".to_owned())??;
+    let _ = auth::Client::new(client_id.clone()).map_err(|e| e.to_string())?;
+    if !account.belongs_to_application(&client_id) {
+        return Err(
+            "Java account belongs to a different OAuth application; sign in again".to_owned(),
+        );
+    }
     let report =
         java_protocol::transport::discover(&address, Duration::from_secs(5), &Default::default())
             .await
@@ -26,30 +50,6 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
             java_protocol::target::GAME_VERSION,
             java_protocol::target::PROTOCOL
         ));
-    }
-    let load_root = root.clone();
-    let (client_id, account) = tokio::task::spawn_blocking(move || {
-        let config: serde_json::Value = serde_json::from_slice(
-            &std::fs::read(load_root.join("oauth-client.json"))
-                .map_err(|_| auth::Error::MissingClient.to_string())?,
-        )
-        .map_err(|_| "Invalid Java OAuth application configuration".to_owned())?;
-        let client = config["client_id"]
-            .as_str()
-            .ok_or_else(|| auth::Error::MissingClient.to_string())?
-            .to_owned();
-        let account = launcher::java_accounts::active(&load_root).map_err(|_| {
-            "Sign in to a Minecraft Java account with java-connect account-login first".to_owned()
-        })?;
-        Ok::<_, String>((client, account))
-    })
-    .await
-    .map_err(|_| "Java account task failed".to_owned())??;
-    let _ = auth::Client::new(client_id.clone()).map_err(|e| e.to_string())?;
-    if !account.belongs_to_application(&client_id) {
-        return Err(
-            "Java account belongs to a different OAuth application; sign in again".to_owned(),
-        );
     }
     let account = if account.valid_at(auth::unix_now()) {
         account
@@ -142,10 +142,13 @@ impl Discovery {
                                 .unwrap_or(u32::MAX),
                         }
                     }
-                    Err(error) => launcher::menu::PingInfo {
-                        motd: format!("Java discovery: {error}"),
-                        ..Default::default()
-                    },
+                    Err(error) => {
+                        tracing::warn!(%error, "Java server discovery failed");
+                        launcher::menu::PingInfo {
+                            motd: discovery_message(&error).into(),
+                            ..Default::default()
+                        }
+                    }
                 };
                 if tx.send(DiscoveryResult { address, info }).await.is_err() {
                     return;
@@ -159,6 +162,20 @@ impl Discovery {
     }
     pub fn finished(&self) -> bool {
         self.task.is_finished()
+    }
+}
+
+/// Keep the actionable summary visible on a phone; full errors remain in the client log.
+fn discovery_message(error: &java_protocol::transport::QueryError) -> &'static str {
+    use java_protocol::transport::QueryError;
+    use std::io::ErrorKind;
+    match error {
+        QueryError::Timeout => "Java timed out. Check address and network.",
+        QueryError::Io(error) if error.kind() == ErrorKind::ConnectionRefused => {
+            "Java refused connection. Check server port."
+        }
+        QueryError::Io(_) => "Java network error. Try explicit host:port; see logs.",
+        QueryError::Protocol(_) => "Invalid Java status response. See client logs.",
     }
 }
 impl Drop for Discovery {
@@ -204,4 +221,20 @@ pub async fn run(
         }
     };
     tokio::select! { result=java_protocol::session::run(options,events,Default::default())=>result.map_err(|e|e.to_string()), result=monitor=>result }
+}
+
+#[cfg(test)]
+mod account_preflight_tests {
+    #[tokio::test]
+    async fn signed_out_join_explains_java_account_before_discovery_or_app_config() {
+        let root = tempfile::tempdir().unwrap();
+        let result = super::prepare("unresolvable.invalid".into(), 1, root.path().into()).await;
+        let error = match result {
+            Ok(_) => panic!("signed-out join must not prepare a connection"),
+            Err(error) => error,
+        };
+        assert!(error.contains("separate Minecraft Java sign-in"), "{error}");
+        assert!(error.contains("Bedrock/Xbox"), "{error}");
+        assert!(!root.path().join("oauth-client.json").exists());
+    }
 }

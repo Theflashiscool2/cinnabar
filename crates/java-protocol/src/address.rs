@@ -69,6 +69,13 @@ pub async fn resolve(address: &Address) -> Result<Vec<SocketAddr>, std::io::Erro
     if let Ok(ip) = address.host.parse::<IpAddr>() {
         return Ok(vec![SocketAddr::new(ip, address.port)]);
     }
+    // An explicit port disables SRV. Use the OS resolver, including iOS's network-aware
+    // getaddrinfo implementation, rather than requiring a Unix resolv.conf file.
+    if address.explicit_port {
+        return tokio::net::lookup_host((address.host.as_str(), address.port))
+            .await
+            .map(|addresses| addresses.collect());
+    }
     let resolver = TokioResolver::builder_tokio()
         .map_err(std::io::Error::other)?
         .build();
@@ -129,6 +136,18 @@ pub async fn resolve(address: &Address) -> Result<Vec<SocketAddr>, std::io::Erro
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn explicit_hostname_port_uses_system_addresses_without_srv() {
+        let address: Address = "localhost:25566".parse().unwrap();
+        let sockets = resolve(&address).await.unwrap();
+        assert!(!sockets.is_empty());
+        assert!(
+            sockets
+                .iter()
+                .all(|socket| socket.ip().is_loopback() && socket.port() == 25566)
+        );
+        assert_eq!(address.host, "localhost");
+    }
     #[test]
     fn literal_hostname_and_explicit_port_identity() {
         for (input, host, port, explicit) in [

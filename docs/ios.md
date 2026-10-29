@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.1-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.1-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.2-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.2-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -73,7 +73,7 @@ foreground, both supported landscape orientations/safe areas, terminate/relaunch
 Bedrock and Java menu selection, and a controlled world smoke test. Also exercise
 scene disconnection/reconnection: this backport adds attachment at window creation,
 not a new disconnected-scene recovery implementation. Do not infer that recovery
-from compilation. Record build 31.1, source commit, OS and device alongside screenshots
+from compilation. Record the packaged build number, source commit, OS and device alongside screenshots
 and logs; any new crash needs its `.ips` report. Linux cross-checks of the UIKit
 crate are neither simulator execution nor an iPhone build.
 
@@ -128,7 +128,8 @@ keyboard and mouse work only as far as winit's UIKit backend delivers their inpu
 - Local worlds, mods and anything that needs JIT or a second process.
 - Preparing assets on the device: inject them with `add-assets.py` before sideloading.
 - The crash monitor and native crash dumps; Rust panics still write crash folders.
-- Clipboard and opening links. Sign in with the device code on another device.
+- Clipboard. Browser links use UIKit on iOS; if the handoff fails, use the displayed
+  device-code URL and code in a browser manually.
 
 ## Native Java Edition in this fork
 

@@ -17,7 +17,9 @@ pub enum WorldError {
     NotOpen,
     #[error("the Minecraft EULA must be accepted before the server is downloaded")]
     EulaRequired,
-    #[error("world backend is not available on this platform")]
+    #[error(
+        "Local worlds are not supported on this platform because the world server cannot run here. Join a multiplayer server instead."
+    )]
     BackendUnavailable,
     #[error("still checking whether Docker is running; try again")]
     RuntimePending,

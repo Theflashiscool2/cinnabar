@@ -59,6 +59,13 @@ rustix = { version = "1", default-features = false, features = ["fs", "process",
 jni = "0.21"
 ndk-context = "0.1"
 
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.5.2"
+objc2-foundation = { version = "0.2.2", features = ["NSDictionary", "NSString", "NSURL", "NSThread"] }
+objc2-ui-kit = { version = "0.2.2", features = ["UIApplication", "UIResponder", "block2"] }
+block2 = "0.5.1"
+dispatch2 = "0.3"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 async-io = "2"
 futures-lite = "2"
