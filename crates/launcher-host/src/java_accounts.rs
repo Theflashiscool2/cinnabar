@@ -192,8 +192,14 @@ fn snapshot(root: &std::path::Path) -> View {
     view
 }
 fn configuration(root: &std::path::Path) -> Result<String, String> {
-    let bytes = std::fs::read(root.join("oauth-client.json"))
-        .map_err(|_| auth::Error::MissingClient.to_string())?;
+    let bytes = match std::fs::read(root.join("oauth-client.json")) {
+        Ok(bytes) => bytes,
+        #[cfg(target_os = "ios")]
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(launcher::java_accounts::IOS_PUBLIC_CLIENT_ID.to_owned());
+        }
+        Err(_) => return Err(auth::Error::MissingClient.to_string()),
+    };
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|_| "Invalid Java OAuth configuration".to_owned())?;
     let id = value["client_id"]

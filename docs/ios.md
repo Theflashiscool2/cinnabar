@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.5-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.5-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.6-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.6-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -202,6 +202,11 @@ the owner's Microsoft authorization. The in-app setup stores only its public ID 
 ```json
 {"client_id":"YOUR-OWNED-PUBLIC-APPLICATION-ID"}
 ```
+
+The official iOS build embeds the owner's public ID
+`76e54634-fa88-4777-ae76-41d004eecebc`, so ordinary users go directly to
+**Sign in with Microsoft**. This identifier is public and forks can replace it
+through the setup screen; no secret is embedded.
 
 iOS reusable Java credentials use Keychain generic-password items under service
 `app.cinnabar.java.accounts`, keyed by verified Java profile UUID. Items are
