@@ -24,6 +24,14 @@ pub enum Error {
     )]
     Rejected(&'static str, u16),
     #[error(
+        "Minecraft login rejected authentication (HTTP {status}; code: {code}; request: {request_id}). This does not by itself establish an application approval failure."
+    )]
+    MinecraftRejected {
+        status: u16,
+        code: &'static str,
+        request_id: String,
+    },
+    #[error(
         "Xbox denied Java authorization (account restriction code {0}); check the account's Xbox profile, family and regional requirements"
     )]
     AccountRestricted(u64),
@@ -90,6 +98,7 @@ impl Default for HttpService {
     fn default() -> Self {
         Self(
             reqwest::Client::builder()
+                .user_agent(concat!("Cinnabar/", env!("CARGO_PKG_VERSION")))
                 .redirect(reqwest::redirect::Policy::none())
                 .timeout(Duration::from_secs(30))
                 .build()
@@ -138,6 +147,13 @@ impl Service for HttpService {
                 )
             })?;
         let status = response.status();
+        let request_id = ["x-request-id", "x-ms-request-id"].iter().find_map(|key| {
+            response
+                .headers()
+                .get(*key)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|s| uuid::Uuid::parse_str(s).ok())
+        });
         let mut bytes = Vec::new();
         while let Some(chunk) = response
             .chunk()
@@ -152,6 +168,9 @@ impl Service for HttpService {
         if status == reqwest::StatusCode::NO_CONTENT {
             return Ok(Value::Null);
         }
+        if stage == "Minecraft login" && !status.is_success() {
+            return Err(minecraft_rejection(status.as_u16(), &bytes, request_id));
+        }
         let value = response_value(stage, status.as_u16(), &bytes)?;
         // Only OAuth polling errors are admitted as data; never echo response bodies.
         if !status.is_success() && !(stage == "Microsoft token" && value.get("error").is_some()) {
@@ -163,6 +182,31 @@ impl Service for HttpService {
             return Err(Error::Rejected(stage, status.as_u16()));
         }
         Ok(value)
+    }
+}
+/// Only known symbolic codes and UUID request identifiers may leave the HTTP boundary.
+fn minecraft_rejection(status: u16, bytes: &[u8], header_id: Option<uuid::Uuid>) -> Error {
+    let value: Value = serde_json::from_slice(bytes).unwrap_or(Value::Null);
+    let code = match value["error"].as_str() {
+        Some("ForbiddenOperationException") => "ForbiddenOperationException",
+        Some("UnauthorizedOperationException") => "UnauthorizedOperationException",
+        Some("IllegalArgumentException") => "IllegalArgumentException",
+        Some("Forbidden") => "Forbidden",
+        Some("Unauthorized") => "Unauthorized",
+        _ => "not supplied or unrecognized",
+    };
+    let request_id = header_id
+        .or_else(|| {
+            value["requestId"]
+                .as_str()
+                .and_then(|s| uuid::Uuid::parse_str(s).ok())
+        })
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "not supplied".into());
+    Error::MinecraftRejected {
+        status,
+        code,
+        request_id,
     }
 }
 /// Preserve HTTP rejection even when Xbox returns an empty or non-JSON error body.
@@ -374,6 +418,23 @@ pub async fn join(account: &Account, hash: &str) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn minecraft_diagnostics_never_echo_tokens_or_arbitrary_messages() {
+        let body = br#"{"error":"ForbiddenOperationException","errorMessage":"secret-token","access_token":"secret-token","requestId":"00000000-0000-4000-8000-000000000001"}"#;
+        let message = super::minecraft_rejection(403, body, None).to_string();
+        assert!(message.contains("HTTP 403") && message.contains("ForbiddenOperationException"));
+        assert!(message.contains("00000000-0000-4000-8000-000000000001"));
+        assert!(!message.contains("secret-token"));
+        for body in [
+            br#"{"error":"secret-token","requestId":"secret-token"}"#.as_slice(),
+            b"secret-token",
+            b"",
+        ] {
+            let message = super::minecraft_rejection(403, body, None).to_string();
+            assert!(!message.contains("secret-token"));
+            assert!(message.contains("HTTP 403"));
+        }
+    }
+    #[test]
     fn empty_xbox_rejections_keep_status_without_echoing_body() {
         for body in [b"".as_slice(), b"private diagnostic".as_slice()] {
             assert!(matches!(
@@ -404,6 +465,26 @@ mod tests {
                     _body.as_ref().unwrap()["RelyingParty"],
                     "rp://api.minecraftservices.com/"
                 );
+            }
+            if stage == "Xbox user authentication" {
+                let body = _body.as_ref().unwrap();
+                assert_eq!(body["Properties"]["AuthMethod"], "RPS");
+                assert_eq!(body["Properties"]["SiteName"], "user.auth.xboxlive.com");
+                assert!(
+                    body["Properties"]["RpsTicket"]
+                        .as_str()
+                        .unwrap()
+                        .starts_with("d=fixture-")
+                );
+                assert_eq!(body["RelyingParty"], "http://auth.xboxlive.com");
+                assert_eq!(body["TokenType"], "JWT");
+            }
+            if stage == "Minecraft login" {
+                assert_eq!(
+                    _body.as_ref().unwrap(),
+                    &json!({"identityToken":"XBL3.0 x=fixture-hash;fixture-xsts"})
+                );
+                assert!(_bearer.is_none() && !_form);
             }
             if stage == "Minecraft entitlements" || stage == "Minecraft Java profile" {
                 assert!(_bearer.is_some());

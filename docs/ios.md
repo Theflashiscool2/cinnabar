@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.8-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.8-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.9-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.9-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -215,6 +215,14 @@ backup. Metadata/selection stay in the Java account directory; Keychain failures
 do not fall back to plaintext. Desktop's existing private credential-file backend
 is unchanged. Old plaintext iOS credentials are not imported into the new picker;
 reauthorize instead. No account tokens should enter a source bundle or IPA.
+
+Minecraft login rejections now show the HTTP status, an allowlisted symbolic error
+code and a UUID request identifier when supplied. Arbitrary response messages and
+tokens are never displayed. A 403 alone does not prove an approval restriction.
+The exchange was compared with `minecraft-launcher-lib`'s `microsoft_account.py`
+at commit `2eec8cd52dcf0f9c5e1faa92edd642252d92de80`: scope, RPS ticket, relying
+parties and identity-token format agree. Cinnabar uses the user hash in the XSTS
+claims with the XSTS token. No reference implementation code was copied.
 
 The integrated flow still requires physical-device Keychain/browser acceptance,
 legitimate authorization, and controlled online-server testing. Compilation and
