@@ -203,7 +203,7 @@ the owner's Microsoft authorization. The in-app setup stores only its public ID 
 {"client_id":"YOUR-OWNED-PUBLIC-APPLICATION-ID"}
 ```
 
-The official iOS build embeds the owner's public ID
+Official builds on all platforms embed the owner's public ID
 `76e54634-fa88-4777-ae76-41d004eecebc`, so ordinary users go directly to
 **Sign in with Microsoft**. This identifier is public and forks can replace it
 through the setup screen; no secret is embedded.

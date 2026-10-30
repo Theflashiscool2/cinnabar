@@ -115,6 +115,7 @@ impl Service for HttpService {
         body: Option<Value>,
         form: bool,
     ) -> Result<Value, Error> {
+        tracing::info!(target: "java_auth", stage, "authentication request started");
         let mut request = if body.is_some() {
             self.0.post(url)
         } else {
@@ -135,6 +136,7 @@ impl Service for HttpService {
             .send()
             .await
             .map_err(|error| {
+                tracing::warn!(target: "java_auth", stage, timeout = error.is_timeout(), connect = error.is_connect(), "authentication transport failed");
                 Error::Transport(
                     stage,
                     if error.is_timeout() {
@@ -147,6 +149,7 @@ impl Service for HttpService {
                 )
             })?;
         let status = response.status();
+        tracing::info!(target: "java_auth", stage, status = status.as_u16(), "authentication HTTP response");
         let request_id = ["x-request-id", "x-ms-request-id"].iter().find_map(|key| {
             response
                 .headers()
@@ -169,7 +172,9 @@ impl Service for HttpService {
             return Ok(Value::Null);
         }
         if stage == "Minecraft login" && !status.is_success() {
-            return Err(minecraft_rejection(status.as_u16(), &bytes, request_id));
+            let error = minecraft_rejection(status.as_u16(), &bytes, request_id);
+            tracing::warn!(target: "java_auth", %error, "Minecraft login rejected");
+            return Err(error);
         }
         let value = response_value(stage, status.as_u16(), &bytes)?;
         // Only OAuth polling errors are admitted as data; never echo response bodies.

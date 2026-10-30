@@ -194,9 +194,8 @@ fn snapshot(root: &std::path::Path) -> View {
 pub(crate) fn configuration(root: &std::path::Path) -> Result<String, String> {
     let bytes = match std::fs::read(root.join("oauth-client.json")) {
         Ok(bytes) => bytes,
-        #[cfg(target_os = "ios")]
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(launcher::java_accounts::IOS_PUBLIC_CLIENT_ID.to_owned());
+            return Ok(launcher::java_accounts::PUBLIC_CLIENT_ID.to_owned());
         }
         Err(_) => return Err(auth::Error::MissingClient.to_string()),
     };
@@ -246,6 +245,7 @@ async fn run(
                         match configuration(&root).and_then(|id| auth::Client::new(id).map_err(|e| e.to_string())) {
                             Err(error) => Err(error),
                             Ok(client) => {
+                                tracing::info!(target: "java_auth", operation = if action == Action::Refresh { "refresh" } else { "sign-in" }, "Java account operation started");
                                 let old = if action == Action::Refresh {
                                     Some(target.as_ref().ok_or("No Java account selected".to_owned())
                                         .and_then(|profile| store::load_id(&root, profile.id).map_err(|e| e.to_string())))
@@ -313,7 +313,7 @@ mod tests {
     fn public_application_setup_persists_without_account_credentials() {
         let root = tempfile::tempdir().unwrap();
         let public_id = "00000000-0000-4000-8000-000000000001";
-        assert!(configuration(root.path()).is_err());
+        assert_eq!(configuration(root.path()).unwrap(), store::PUBLIC_CLIENT_ID);
         store::configure(root.path(), store::parse_application_id(public_id).unwrap()).unwrap();
         assert_eq!(configuration(root.path()).unwrap(), public_id);
         let mut manager = Manager::new(root.path().into());
@@ -392,8 +392,9 @@ mod tests {
         });
     }
     #[test]
-    fn missing_configuration_never_starts_authorization_and_can_cancel_retry() {
+    fn invalid_override_never_starts_authorization_and_can_cancel_retry() {
         let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("oauth-client.json"), b"{}").unwrap();
         let mut manager = Manager::new(root.path().into());
         manager.request(Action::Open);
         settle(&mut manager);

@@ -97,9 +97,11 @@ server evidence; complex metadata and entity frame publication remain incomplete
   and each answered two actual keepalives before explicit teardown. The offline
   fixture was checksum verified, loopback bound, whitelisted and EULA authorized.
   This establishes protocol handoff, not a playable/rendered Java world.
-- [ ] Qualify online mode. No OAuth application is configured for this fork;
-  registered/approved public-client configuration, user sign-in and Java entitlement
-  are required. No unrelated application ID is borrowed.
+- [ ] Qualify online mode. The owner's public application is the default on all
+  platforms and the owner reports Mojang allowlist approval. Real sign-in and
+  authenticated server acceptance remain pending. The production Linux auth probe
+  builds, but this workspace's proxy denies Microsoft device authorization.
+  Stage/status diagnostics are redacted; see `docs/java-auth-testing.md`.
 - [x] Validate launcher edition form and diagnostic with rendered fixtures and input
   regressions. CPU frames were inspected on Linux at 1280×720, GUI scale 2;
   native pointer/keyboard input tests passed at DPI 1 and 2 (1280×720 and

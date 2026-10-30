@@ -4,9 +4,8 @@ use java_protocol::auth::Account;
 use std::{io, path::Path};
 mod credentials;
 
-/// Public client used by the official iOS build; forks can override it in-app.
-#[cfg(target_os = "ios")]
-pub const IOS_PUBLIC_CLIENT_ID: &str = "76e54634-fa88-4777-ae76-41d004eecebc";
+/// Public client shared by official builds; forks can override it in-app.
+pub const PUBLIC_CLIENT_ID: &str = "76e54634-fa88-4777-ae76-41d004eecebc";
 
 /// Public metadata, kept separate from reusable credentials.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
