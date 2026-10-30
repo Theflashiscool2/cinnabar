@@ -203,6 +203,11 @@ the owner's Microsoft authorization. The in-app setup stores only its public ID 
 {"client_id":"YOUR-OWNED-PUBLIC-APPLICATION-ID"}
 ```
 
+The official iOS build embeds the owner's public ID
+`76e54634-fa88-4777-ae76-41d004eecebc`, so ordinary users go directly to
+**Sign in with Microsoft**. This identifier is public and forks can replace it
+through the setup screen; no secret is embedded.
+
 iOS reusable Java credentials use Keychain generic-password items under service
 `app.cinnabar.java.accounts`, keyed by verified Java profile UUID. Items are
 accessible only while unlocked and do not migrate to another device through a

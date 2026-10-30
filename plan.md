@@ -90,6 +90,8 @@ server evidence; complex metadata and entity frame publication remain incomplete
   registration instructions/browser link, bounded public-ID entry, validation,
   persistence and automatic device-flow start after saving. Registration and
   Minecraft service approval still require the owner; no automatic grant is claimed.
+  The official iOS build embeds the owner's public client ID for direct sign-in;
+  forks retain the setup screen and may configure their own ID.
 - [x] Local vanilla acceptance on 2026-10-22: two successive sessions completed
   login/configuration/play, admitted 32 registries and initial world/position facts,
   and each answered two actual keepalives before explicit teardown. The offline
