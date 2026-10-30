@@ -109,6 +109,9 @@ impl MenuRuntime {
                 .map(|m| {
                     let mut view = m.view.clone();
                     view.pending_server = self.java_pending_server.clone();
+                    view.client_id_input = self
+                        .field_text(launcher::menu::MenuField::JavaClientId)
+                        .to_owned();
                     view
                 })
                 .unwrap_or_default(),

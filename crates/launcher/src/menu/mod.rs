@@ -99,6 +99,7 @@ pub enum MenuDialog {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MenuField {
+    JavaClientId,
     /// Filters the friends drawer by gamertag.
     FriendQuery,
     /// Searches options across settings categories.

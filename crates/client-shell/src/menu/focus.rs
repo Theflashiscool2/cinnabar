@@ -359,6 +359,17 @@ impl MenuRuntime {
                 MenuDialog::Accounts => {
                     if let Some(manager) = self.java_accounts.as_ref().filter(|m| m.view.open) {
                         use launcher::java_accounts::Action;
+                        if manager.view.setup || (!manager.view.configured && !manager.view.busy) {
+                            return [
+                                Action::OpenRegistration,
+                                Action::EditClientId,
+                                Action::SaveSetup,
+                                Action::Cancel,
+                            ]
+                            .into_iter()
+                            .map(MenuAction::JavaAccount)
+                            .collect();
+                        }
                         let mut actions: Vec<_> = (0..manager.view.accounts.len())
                             .map(|index| MenuAction::JavaAccount(Action::Select(index)))
                             .collect();
@@ -366,6 +377,7 @@ impl MenuRuntime {
                             actions.push(MenuAction::JavaAccount(Action::OpenLink));
                         }
                         if !manager.view.busy {
+                            actions.push(MenuAction::JavaAccount(Action::Setup));
                             actions.push(MenuAction::JavaAccount(Action::Add));
                             if manager.view.selected.is_some() {
                                 actions.push(MenuAction::JavaAccount(Action::Refresh));

@@ -6,6 +6,9 @@ impl MenuAction {
     /// The text field a press on this control focuses.
     pub fn text_field(self) -> Option<MenuField> {
         match self {
+            Self::JavaAccount(crate::java_accounts::Action::EditClientId) => {
+                Some(MenuField::JavaClientId)
+            }
             Self::SettingsMacroCommand(slot) => Some(MenuField::MacroCommand(slot)),
             Self::RealmMembership(realm_membership::Action::EditCode) => Some(MenuField::RealmCode),
             Self::AddName => Some(MenuField::Name),

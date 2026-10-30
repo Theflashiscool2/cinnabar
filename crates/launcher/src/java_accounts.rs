@@ -13,6 +13,11 @@ pub struct Summary {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
+    Setup,
+    EditClientId,
+    SaveSetup,
+    Configure(uuid::Uuid),
+    OpenRegistration,
     Open,
     Add,
     Select(usize),
@@ -25,6 +30,9 @@ pub enum Action {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct View {
+    pub configured: bool,
+    pub setup: bool,
+    pub client_id_input: String,
     pub open: bool,
     pub pending_server: Option<String>,
     pub accounts: Vec<Summary>,
@@ -34,6 +42,27 @@ pub struct View {
     pub ready: bool,
     pub message: String,
     pub prompt: Option<java_protocol::auth::DevicePrompt>,
+}
+
+/// Saves only the owner's public application identity, never a secret or account token.
+pub fn configure(root: &Path, id: uuid::Uuid) -> io::Result<()> {
+    if id.is_nil() {
+        return Err(io::Error::other("Enter a nonempty Application (client) ID"));
+    }
+    private_directory(root)?;
+    write_private(
+        &root.join("oauth-client.json"),
+        &serde_json::to_vec(&serde_json::json!({"client_id":id})).map_err(io::Error::other)?,
+    )
+}
+
+/// Accepts only a public application UUID; rejects secrets and empty placeholders.
+pub fn parse_application_id(input: &str) -> Option<uuid::Uuid> {
+    input
+        .trim()
+        .parse::<uuid::Uuid>()
+        .ok()
+        .filter(|id| !id.is_nil())
 }
 
 fn metadata(root: &Path, account: &Account) -> io::Result<()> {

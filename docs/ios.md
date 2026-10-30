@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.4-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.4-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.5-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.5-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -183,11 +183,20 @@ accounts. During sign-in the chosen server remains visible on the Join button
 once the selected account is ready. Account management is disabled while a world
 is connected or connecting; switching never replaces an active session identity.
 
+When no application is configured, Java Accounts opens **Java sign-in setup**.
+Its registration button opens Microsoft Entra in the browser; the owner completes
+registration there and returns to paste the public **Application (client) ID**.
+**Save ID and sign in** validates and saves the ID on the device, then starts the
+existing device-code flow. No JSON editing or rebuild is needed. The public ID
+survives restart; **Application setup** lets the owner change it later. Existing
+accounts must reauthorize if their application identity changes.
+
 Configure an owned Microsoft public-client application with personal-account
 support and public-client device authorization enabled. No client secret or
 redirect URL is required for this device-code flow. Application registration
 does not establish Minecraft service-access approval; the owner must obtain
-that separately where required. Put only its public ID in
+that separately where required; the app cannot register or approve itself without
+the owner's Microsoft authorization. The in-app setup stores only its public ID in
 `Documents/data/auth/java/oauth-client.json` in this app's Files container:
 
 ```json

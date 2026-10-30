@@ -107,6 +107,7 @@ impl MenuRuntime {
 
     fn editor(&self, field: MenuField) -> &ChatEditor {
         match field {
+            MenuField::JavaClientId => &self.java_client_id,
             MenuField::FriendQuery => &self.friend_query,
             MenuField::SettingsQuery => &self.settings_query,
             MenuField::RealmCode => &self.realm_membership.code,
@@ -123,6 +124,7 @@ impl MenuRuntime {
 
     fn editor_mut(&mut self, field: MenuField) -> &mut ChatEditor {
         match field {
+            MenuField::JavaClientId => &mut self.java_client_id,
             MenuField::FriendQuery => &mut self.friend_query,
             MenuField::SettingsQuery => &mut self.settings_query,
             MenuField::RealmCode => &mut self.realm_membership.code,
@@ -917,6 +919,13 @@ pub fn drive_menu_input(
             KeyCode::Enter | KeyCode::NumpadEnter if menu.field == Some(MenuField::SkinName) => {
                 menu.activate(launcher::menu::MenuAction::DressingRoom(
                     launcher::dressing_room::Action::SaveRename,
+                ));
+            }
+            KeyCode::Enter | KeyCode::NumpadEnter
+                if menu.field == Some(MenuField::JavaClientId) =>
+            {
+                menu.activate(launcher::menu::MenuAction::JavaAccount(
+                    launcher::java_accounts::Action::SaveSetup,
                 ));
             }
             KeyCode::Enter | KeyCode::NumpadEnter => menu.activate_focused(),

@@ -128,6 +128,7 @@ pub struct MenuRuntime {
     java_targets: Vec<String>,
     java_next_probe: std::time::Instant,
     skin_name: ui::ChatEditor,
+    java_client_id: ui::ChatEditor,
     friend_query: ui::ChatEditor,
     settings_query: ui::ChatEditor,
     /// Command macro command boxes; edits write through to persisted settings.

@@ -241,7 +241,22 @@ fn draw_fitted(
         let mut y = b[1] + pad;
         for (label, variant, action) in &modal.buttons {
             let button_bounds = [b[0] + pad, y, b[2] - pad, y + canvas.r(BUTTON)];
-            button(canvas, view, button_bounds, *variant, label, *action)?;
+            if let Some(field) = action.and_then(MenuAction::text_field) {
+                super::widgets::text_field(
+                    canvas,
+                    view,
+                    button_bounds,
+                    label,
+                    match field {
+                        launcher::menu::MenuField::JavaClientId => "Application (client) ID",
+                        _ => "",
+                    },
+                    view.field == Some(field),
+                    *action,
+                )?;
+            } else {
+                button(canvas, view, button_bounds, *variant, label, *action)?;
+            }
             y = button_bounds[3] + canvas.r(BUTTON_GAP);
         }
     }

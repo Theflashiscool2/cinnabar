@@ -252,6 +252,7 @@ impl UiPresentationRuntime {
                     | launcher::menu::MenuField::SettingsQuery
                     | launcher::menu::MenuField::SkinName
                     | launcher::menu::MenuField::RealmCode
+                    | launcher::menu::MenuField::JavaClientId
                     | launcher::menu::MenuField::MacroCommand(_) => {
                         return None;
                     }

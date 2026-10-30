@@ -86,6 +86,10 @@ server evidence; complex metadata and entity frame publication remain incomplete
   refresh, removal and pending-server continuation. iOS credentials use Keychain;
   metadata remains separate. Device Keychain/browser/touch acceptance and real
   two-account authorization are pending, as is authenticated server acceptance.
+  Missing application configuration now opens in-app owner setup with Microsoft
+  registration instructions/browser link, bounded public-ID entry, validation,
+  persistence and automatic device-flow start after saving. Registration and
+  Minecraft service approval still require the owner; no automatic grant is claimed.
 - [x] Local vanilla acceptance on 2026-10-22: two successive sessions completed
   login/configuration/play, admitted 32 registries and initial world/position facts,
   and each answered two actual keepalives before explicit teardown. The offline

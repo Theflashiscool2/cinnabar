@@ -79,8 +79,10 @@ impl Manager {
         let state = self.published.lock().unwrap();
         if state.0 == self.generation.load(Ordering::SeqCst) {
             let open = self.view.open;
+            let setup = self.view.setup;
             self.view = state.1.clone();
             self.view.open = open;
+            self.view.setup = setup;
         }
         if self.view.ready && !self.ready_for_join() {
             self.view.ready = false;
@@ -100,7 +102,27 @@ impl Manager {
         let Some(prompt) = &self.view.prompt else {
             return;
         };
-        let url = prompt.verification_uri.clone();
+        self.open_url(prompt.verification_uri.clone());
+    }
+    pub fn open_registration(&self) {
+        self.open_url("https://entra.microsoft.com/".into());
+    }
+    /// Validate public configuration locally; invalid input never starts authorization.
+    pub fn configure_input(&mut self, input: &str) -> bool {
+        match store::parse_application_id(input) {
+            Some(id) => {
+                self.request(Action::Configure(id));
+                true
+            }
+            _ => {
+                self.view.message = "Enter the Application (client) ID as a UUID, not a secret, password or directory ID.".into();
+                *self.published.lock().unwrap() =
+                    (self.generation.load(Ordering::SeqCst), self.view.clone());
+                false
+            }
+        }
+    }
+    fn open_url(&self, url: String) {
         let state = self.published.clone();
         let current = self.generation.clone();
         let id = current.load(Ordering::SeqCst);
@@ -108,7 +130,7 @@ impl Manager {
             if !crate::desktop::open_sign_in_link(&url) && current.load(Ordering::SeqCst) == id {
                 let mut state = state.lock().unwrap();
                 if state.0 == id {
-                    state.1.message = "Could not open Microsoft. Open the displayed address in your browser and enter the code, or cancel and retry.".into();
+                    state.1.message = format!("Could not open Microsoft. Open {url} in your browser, then return here.");
                 }
             }
         });
@@ -125,6 +147,8 @@ fn snapshot(root: &std::path::Path) -> View {
     }
     view.selected = store::active_id(root).ok();
     let client = configuration(root);
+    view.configured = client.is_ok();
+    view.client_id_input = client.as_ref().cloned().unwrap_or_default();
     view.labels = view
         .accounts
         .iter()
@@ -172,10 +196,11 @@ fn configuration(root: &std::path::Path) -> Result<String, String> {
         .map_err(|_| auth::Error::MissingClient.to_string())?;
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|_| "Invalid Java OAuth configuration".to_owned())?;
-    value["client_id"]
+    let id = value["client_id"]
         .as_str()
-        .map(str::to_owned)
-        .ok_or_else(|| auth::Error::MissingClient.to_string())
+        .and_then(store::parse_application_id)
+        .ok_or_else(|| auth::Error::MissingClient.to_string())?;
+    Ok(id.to_string())
 }
 async fn run(
     root: PathBuf,
@@ -194,6 +219,16 @@ async fn run(
             command = commands.recv() => {
                 let Some((id, mut action, mut target)) = command else { break; };
                 if let Some((_, task, _)) = job.take() { task.abort(); }
+                if generation.load(Ordering::SeqCst) != id { continue; }
+                if let Action::Configure(client_id) = action {
+                    if let Err(error) = store::configure(&root, client_id) {
+                        let mut view = snapshot(&root);
+                        view.message = format!("Could not save Java setup: {error}");
+                        *published.lock().unwrap() = (id, view);
+                        continue;
+                    }
+                    action = Action::Add;
+                }
                 let mut view = snapshot(&root);
                 if action == Action::Open && let Ok(account) = store::active(&root)
                     && !account.valid_at(auth::unix_now()) {
@@ -268,6 +303,34 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn public_application_setup_persists_without_account_credentials() {
+        let root = tempfile::tempdir().unwrap();
+        let public_id = "00000000-0000-4000-8000-000000000001";
+        assert!(configuration(root.path()).is_err());
+        store::configure(root.path(), store::parse_application_id(public_id).unwrap()).unwrap();
+        assert_eq!(configuration(root.path()).unwrap(), public_id);
+        let mut manager = Manager::new(root.path().into());
+        manager.request(Action::Open);
+        settle(&mut manager);
+        assert!(manager.view.configured);
+        assert!(!manager.view.ready);
+        assert!(manager.view.accounts.is_empty());
+        for invalid in [
+            "",
+            "not-an-application-id",
+            "00000000-0000-0000-0000-000000000000",
+        ] {
+            assert!(!manager.configure_input(invalid));
+            manager.poll();
+            assert!(manager.view.message.contains("Application (client) ID"));
+            assert!(!manager.view.busy);
+            assert!(manager.view.prompt.is_none());
+            assert_eq!(configuration(root.path()).unwrap(), public_id);
+        }
+        assert!(!root.path().join("active").exists());
+        assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+    }
     #[test]
     #[cfg(not(target_os = "ios"))]
     fn stored_fixture_accounts_survive_restart_select_and_remove_independently() {

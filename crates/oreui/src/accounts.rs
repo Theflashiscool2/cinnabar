@@ -88,6 +88,21 @@ fn java_modal(view: &MenuView) -> Modal<'_> {
     use launcher::java_accounts::Action;
     let java = &view.java_accounts;
     let action = |a| Some(MenuAction::JavaAccount(a));
+    if java.setup || (!java.configured && !java.busy) {
+        return Modal {
+            title: "Java sign-in setup",
+            items: Vec::new(),
+            body: format!("{}\n\nOne-time setup for the owner of this fork. Players normally use the application's registered ID.\n\n1. Open Microsoft Entra → App registrations → New registration. Include personal Microsoft accounts; leave redirect URI empty.\n2. In Authentication, enable public client flows.\n3. Copy Application (client) ID from Overview into the field below. Never enter a secret or password.\n\nMinecraft service-access approval is separate from registration and may require owner action. Saving an ID does not grant approval. After saving, this app starts sign-in and stores your credentials in iOS Keychain.", java.message).into(),
+            body_color: TEXT,
+            buttons: vec![
+                ("Open Microsoft registration".into(), Variant::Secondary, action(Action::OpenRegistration)),
+                (java.client_id_input.as_str().into(), Variant::Secondary, action(Action::EditClientId)),
+                ("Save ID and sign in".into(), Variant::Primary, action(Action::SaveSetup)),
+                ("Cancel / close".into(), Variant::Secondary, action(Action::Cancel)),
+            ],
+            close: action(Action::Cancel),
+        };
+    }
     let mut buttons = Vec::new();
     if java.prompt.is_some() {
         buttons.push((
@@ -97,6 +112,11 @@ fn java_modal(view: &MenuView) -> Modal<'_> {
         ));
     }
     if !java.busy {
+        buttons.push((
+            "Application setup".into(),
+            Variant::Secondary,
+            action(Action::Setup),
+        ));
         buttons.push((
             "Add / sign in again".into(),
             Variant::Primary,
@@ -307,10 +327,55 @@ impl OreUiScreen {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn unconfigured_java_setup_exposes_native_field_and_owner_steps() {
+        use launcher::java_accounts::Action;
+        let mut view = MenuView::new(true, "Fixture".into());
+        view.java_accounts.open = true;
+        view.field = Some(launcher::menu::MenuField::JavaClientId);
+        let picker = modal(&view, &HashMap::new());
+        assert_eq!(picker.title, "Java sign-in setup");
+        assert!(picker.body.contains("approval is separate"));
+        let (_, hits, _) = draw(&view);
+        for action in [
+            Action::OpenRegistration,
+            Action::EditClientId,
+            Action::SaveSetup,
+            Action::Cancel,
+        ] {
+            assert!(hits.contains(&MenuAction::JavaAccount(action)));
+        }
+        assert!(!hits.contains(&MenuAction::AddAccount));
+        assert!(!hits.contains(&MenuAction::JavaAccount(Action::Add)));
+        assert_eq!(
+            MenuAction::JavaAccount(Action::EditClientId).text_field(),
+            view.field
+        );
+        for size in [[390.0, 844.0], [844.0, 390.0], [390.0, 400.0]] {
+            let (_, hits, _) = paint(HashMap::new(), |canvas| {
+                super::super::modal::draw(canvas, &view, size, &modal(&view, &HashMap::new()))
+                    .unwrap();
+            });
+            for action in [Action::EditClientId, Action::SaveSetup, Action::Cancel] {
+                let bounds = hits
+                    .iter()
+                    .find(|(a, _)| *a == MenuAction::JavaAccount(action))
+                    .unwrap()
+                    .1;
+                assert!(bounds.min().x() >= 0.0 && bounds.min().y() >= 0.0);
+                assert!(bounds.max().x() <= size[0] && bounds.max().y() <= size[1]);
+            }
+        }
+        view.java_accounts.configured = true;
+        assert_eq!(modal(&view, &HashMap::new()).title, "Java Accounts");
+        view.java_accounts.setup = true;
+        assert_eq!(modal(&view, &HashMap::new()).title, "Java sign-in setup");
+    }
+    #[test]
     fn java_picker_uses_separate_actions_and_cancels_during_authorization() {
         use launcher::java_accounts::Action;
         let mut view = MenuView::new(true, "Fixture".into());
         view.java_accounts.open = true;
+        view.java_accounts.configured = true;
         view.java_accounts.message = "Needs Java sign-in".into();
         let picker = modal(&view, &HashMap::new());
         assert_eq!(picker.title, "Java Accounts");

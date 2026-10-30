@@ -130,6 +130,7 @@ impl MenuRuntime {
             java_targets: Vec::new(),
             java_next_probe: std::time::Instant::now(),
             skin_name: field_editor(MenuField::SkinName),
+            java_client_id: field_editor(MenuField::JavaClientId),
             friend_query: field_editor(MenuField::FriendQuery),
             settings_query: field_editor(MenuField::SettingsQuery),
             macro_commands: macro_editors(&settings_options),

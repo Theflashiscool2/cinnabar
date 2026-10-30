@@ -94,6 +94,20 @@ impl MenuRuntime {
         }
         let manager = self.java_accounts.as_mut().unwrap();
         match action {
+            Action::Setup => {
+                self.java_client_id.set_text(&manager.view.client_id_input);
+                manager.request(Action::Cancel);
+                manager.view.setup = true;
+                self.field = None;
+            }
+            Action::EditClientId => self.focus_field(launcher::menu::MenuField::JavaClientId),
+            Action::OpenRegistration => manager.open_registration(),
+            Action::SaveSetup => {
+                if manager.configure_input(self.java_client_id.as_str()) {
+                    manager.view.setup = false;
+                    self.field = None;
+                }
+            }
             Action::Open => {
                 manager.view.open = true;
                 manager.request(Action::Open);
@@ -106,10 +120,13 @@ impl MenuRuntime {
             Action::Cancel => {
                 manager.request(Action::Cancel);
                 manager.view.open = false;
+                manager.view.setup = false;
+                self.field = None;
                 self.dialog = None;
                 self.java_pending_server = None;
             }
             Action::Continue if manager.view.ready && !manager.view.busy => {
+                self.field = None;
                 manager.view.open = false;
                 self.dialog = None;
                 if let Some(address) = self.java_pending_server.take() {
