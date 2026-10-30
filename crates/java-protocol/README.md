@@ -10,8 +10,12 @@ protocol-data revisions live in [data/target.json](data/target.json).
 `build.rs` derives state-specific packet tables from the pinned, MIT-licensed
 `data/MinecraftCodec.java` reference and checks its version against the manifest.
 That file is build input only, never compiled or run as a Java client.
-`Cargo.lock` pins Rust dependencies. Other Java versions are rejected by the
-launcher and acceptance tool; a status response alone never establishes support.
+`Cargo.lock` pins Rust dependencies. The launcher always uses this implemented
+protocol. An advertised mismatch is unknown compatibility, since proxies can
+accept multiple versions; a status response alone never establishes support.
+Launcher joins do not require status discovery to succeed. Actual login rejects
+are reported by the native session. The acceptance tool retains its strict
+version qualification checks.
 
 ## Integration and exercise
 

@@ -35,22 +35,9 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
             "Java account belongs to a different OAuth application; sign in again".to_owned(),
         );
     }
-    let report =
-        java_protocol::transport::discover(&address, Duration::from_secs(5), &Default::default())
-            .await
-            .map_err(|e| e.to_string())?;
-    if !report
-        .status
-        .version
-        .as_ref()
-        .is_some_and(|v| v.protocol == java_protocol::target::PROTOCOL)
-    {
-        return Err(format!(
-            "Unsupported Java server version; select a Java {} server (protocol {})",
-            java_protocol::target::GAME_VERSION,
-            java_protocol::target::PROTOCOL
-        ));
-    }
+    // Status is advisory: proxies may advertise one version while accepting others,
+    // and servers may disable status entirely. The session uses only our implemented
+    // protocol and reports the server's actual login rejection.
     let account = if account.valid_at(auth::unix_now()) {
         account
     } else {
@@ -112,8 +99,6 @@ impl Discovery {
                 let info = match result {
                     Ok(report) => {
                         let version = report.status.version.as_ref();
-                        let compatible =
-                            version.is_some_and(|v| v.protocol == java_protocol::target::PROTOCOL);
                         let version_text = version
                             .map(|v| v.name.as_str())
                             .unwrap_or("unknown version");
@@ -127,11 +112,7 @@ impl Discovery {
                         launcher::menu::PingInfo {
                             motd: format!(
                                 "Java {version_text}: {motd}{}",
-                                if compatible {
-                                    " — protocol foundation; gameplay unavailable"
-                                } else {
-                                    " — incompatible"
-                                }
+                                compatibility_message(version.map(|v| v.protocol))
                             ),
                             online: true,
                             players: population.map(|p| p.online.max(0) as u32).unwrap_or(0),
@@ -162,6 +143,24 @@ impl Discovery {
     }
     pub fn finished(&self) -> bool {
         self.task.is_finished()
+    }
+}
+
+/// An advertised protocol match is not evidence of successful login or gameplay.
+fn compatibility_message(advertised: Option<i32>) -> String {
+    let target = format!(
+        "{} / protocol {}",
+        java_protocol::target::GAME_VERSION,
+        java_protocol::target::PROTOCOL
+    );
+    match advertised {
+        Some(protocol) if protocol == java_protocol::target::PROTOCOL => {
+            format!(" — client {target}; advertised protocol matches; gameplay unverified")
+        }
+        Some(protocol) => {
+            format!(" — advertises protocol {protocol}; client {target}; compatibility unknown")
+        }
+        None => format!(" — client {target}; server protocol unknown"),
     }
 }
 
@@ -225,6 +224,44 @@ pub async fn run(
 
 #[cfg(test)]
 mod account_preflight_tests {
+    #[test]
+    fn advertised_protocol_is_not_a_gameplay_verdict() {
+        let matching = super::compatibility_message(Some(java_protocol::target::PROTOCOL));
+        assert!(matching.contains("matches") && matching.contains("unverified"));
+        for protocol in [Some(-1), Some(java_protocol::target::PROTOCOL + 1), None] {
+            let message = super::compatibility_message(protocol);
+            assert!(message.contains("unknown"));
+            assert!(!message.contains("incompatible"));
+        }
+    }
+
+    #[tokio::test]
+    async fn valid_account_prepares_join_without_requiring_status_or_dns() {
+        let root = tempfile::tempdir().unwrap();
+        let client_id = "00000000-0000-4000-8000-000000000001";
+        let account = serde_json::from_value(serde_json::json!({
+            "profile": {"id": "00000000-0000-4000-8000-000000000002", "name": "Fixture"},
+            "access_token": "fixture-only", "refresh_token": "fixture-only",
+            "expires_at": u64::MAX, "client_id": client_id
+        }))
+        .unwrap();
+        launcher::java_accounts::save(root.path(), &account).unwrap();
+        std::fs::write(
+            root.path().join("oauth-client.json"),
+            serde_json::to_vec(&serde_json::json!({"client_id": client_id})).unwrap(),
+        )
+        .unwrap();
+        let options = super::prepare("unresolvable.invalid:25566".into(), 7, root.path().into())
+            .await
+            .unwrap();
+        assert_eq!(options.address.host, "unresolvable.invalid");
+        assert_eq!(options.address.port, 25566);
+        assert_eq!(options.generation, 7);
+        assert!(matches!(
+            options.identity,
+            java_protocol::session::Identity::Online(_)
+        ));
+    }
     #[tokio::test]
     async fn signed_out_join_explains_java_account_before_discovery_or_app_config() {
         let root = tempfile::tempdir().unwrap();

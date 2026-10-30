@@ -74,7 +74,9 @@ server evidence; complex metadata and entity frame publication remain incomplete
 - [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
   native task owner and keep Bedrock authentication/transport independent.
 - [x] Implement bounded discovery with original virtual hostname, DNS/SRV,
-  optional latency after valid status, and explicit version compatibility.
+  optional latency after valid status, and advertised protocol information.
+  Advertised matches are not gameplay acceptance; mismatches remain unknown for
+  multi-version proxies and do not prevent a normal implemented-protocol login.
 - [x] Implement native framing, compression, encryption primitives, login/configuration,
   complete registry transfer and generation-scoped player/world/dimension handoff.
 - [x] Implement configured Microsoft device flow, Java service/profile checks,

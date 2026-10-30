@@ -168,7 +168,7 @@ impl<S: Service> Client<S> {
                 true,
             )
             .await?;
-        let secret = required(&device, "device_code")?;
+        let secret = zeroize::Zeroizing::new(required(&device, "device_code")?);
         let expires = device["expires_in"]
             .as_u64()
             .filter(|n| *n <= 86400)
@@ -185,7 +185,23 @@ impl<S: Service> Client<S> {
                 return Err(Error::Expired);
             }
             tokio::time::sleep(Duration::from_secs(interval)).await;
-            let token=self.service.request("Microsoft token",&format!("{AUTHORITY}/token"),None,Some(json!({"grant_type":"urn:ietf:params:oauth:grant-type:device_code","client_id":self.client_id,"device_code":secret})),true).await?;
+            // A request in flight must not extend the device-code lifetime, including
+            // after the app resumes from suspension. A valid token ends device polling.
+            let token = tokio::time::timeout_at(
+                deadline,
+                self.service.request(
+                    "Microsoft token",
+                    &format!("{AUTHORITY}/token"),
+                    None,
+                    Some(
+                        json!({"grant_type":"urn:ietf:params:oauth:grant-type:device_code",
+                    "client_id":self.client_id,"device_code":secret.as_str()}),
+                    ),
+                    true,
+                ),
+            )
+            .await
+            .map_err(|_| Error::Expired)??;
             match token["error"].as_str() {
                 Some("authorization_pending") => continue,
                 Some("slow_down") => {
@@ -415,6 +431,52 @@ mod tests {
                 .await,
             Err(Error::Cancelled)
         ));
+    }
+    struct StalledToken;
+    impl Service for StalledToken {
+        async fn request(
+            &self,
+            stage: &'static str,
+            _: &str,
+            _: Option<&str>,
+            _: Option<Value>,
+            _: bool,
+        ) -> Result<Value, Error> {
+            match stage {
+                "Microsoft device code" => Ok(json!({"device_code":"fixture-secret",
+                    "user_code":"PUBLIC","verification_uri":"https://microsoft.com/devicelogin",
+                    "expires_in":10,"interval":1})),
+                "Microsoft token" => std::future::pending().await,
+                _ => panic!("expired/cancelled grant must not reach Java services"),
+            }
+        }
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn expiry_interrupts_an_in_flight_poll() {
+        let client =
+            Client::with_service("00000000-0000-4000-8000-000000000001".into(), StalledToken)
+                .unwrap();
+        let start = tokio::time::Instant::now();
+        assert!(matches!(
+            client.sign_in(&CancellationToken::new(), |_| {}).await,
+            Err(Error::Expired)
+        ));
+        assert_eq!(start.elapsed(), Duration::from_secs(10));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn cancellation_after_device_prompt_interrupts_polling() {
+        let client =
+            Client::with_service("00000000-0000-4000-8000-000000000001".into(), StalledToken)
+                .unwrap();
+        let cancel = CancellationToken::new();
+        let start = tokio::time::Instant::now();
+        assert!(matches!(
+            client.sign_in(&cancel, |_| cancel.cancel()).await,
+            Err(Error::Cancelled)
+        ));
+        assert_eq!(start.elapsed(), Duration::ZERO);
     }
     #[test]
     fn missing_application_is_actionable() {
