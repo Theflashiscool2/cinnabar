@@ -357,6 +357,27 @@ impl MenuRuntime {
                     .map(MenuAction::MinecraftImport)
                     .collect(),
                 MenuDialog::Accounts => {
+                    if let Some(manager) = self.java_accounts.as_ref().filter(|m| m.view.open) {
+                        use launcher::java_accounts::Action;
+                        let mut actions: Vec<_> = (0..manager.view.accounts.len())
+                            .map(|index| MenuAction::JavaAccount(Action::Select(index)))
+                            .collect();
+                        if manager.view.prompt.is_some() {
+                            actions.push(MenuAction::JavaAccount(Action::OpenLink));
+                        }
+                        if !manager.view.busy {
+                            actions.push(MenuAction::JavaAccount(Action::Add));
+                            if manager.view.selected.is_some() {
+                                actions.push(MenuAction::JavaAccount(Action::Refresh));
+                                actions.push(MenuAction::JavaAccount(Action::Remove));
+                            }
+                            if manager.view.ready {
+                                actions.push(MenuAction::JavaAccount(Action::Continue));
+                            }
+                        }
+                        actions.push(MenuAction::JavaAccount(Action::Cancel));
+                        return actions;
+                    }
                     if let Some(actions) = self.sign_in_focus() {
                         return actions;
                     }
@@ -374,6 +395,7 @@ impl MenuRuntime {
                         .map(|(index, _)| MenuAction::SwitchAccount(index))
                         .collect();
                     actions.extend([
+                        MenuAction::JavaAccount(launcher::java_accounts::Action::Open),
                         MenuAction::AddAccount,
                         MenuAction::Navigate(MenuScreen::Profile),
                         MenuAction::DismissDialog,

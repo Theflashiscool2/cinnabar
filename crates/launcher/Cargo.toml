@@ -39,3 +39,6 @@ thiserror.workspace = true
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "ios")'.dependencies]
+core-foundation = "0.10"

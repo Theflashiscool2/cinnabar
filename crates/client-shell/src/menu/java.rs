@@ -47,6 +47,15 @@ impl MenuRuntime {
             self.request_connect(address);
             return;
         }
+        if !self
+            .java_accounts
+            .as_ref()
+            .is_some_and(|manager| manager.ready_for_join())
+        {
+            self.java_pending_server = Some(address);
+            self.java_account_action(launcher::java_accounts::Action::Open);
+            return;
+        }
         self.feeds.java_diagnostic = Some("Preparing Java authentication".to_owned());
         self.local_world_joined = false;
         self.remember_session_origin();
@@ -68,6 +77,51 @@ impl MenuRuntime {
     }
 }
 
+impl MenuRuntime {
+    pub(super) fn java_account_action(&mut self, action: launcher::java_accounts::Action) {
+        use launcher::java_accounts::Action;
+        if self.over_world() || self.is_connecting() {
+            return;
+        }
+        if self.java_accounts.is_none() {
+            let root = self
+                .layout
+                .auth_cache()
+                .parent()
+                .expect("auth directory")
+                .join("java");
+            self.java_accounts = Some(launcher_host::java_accounts::Manager::new(root));
+        }
+        let manager = self.java_accounts.as_mut().unwrap();
+        match action {
+            Action::Open => {
+                manager.view.open = true;
+                manager.request(Action::Open);
+                self.dialog = Some(launcher::menu::MenuDialog::Accounts);
+                self.focused = 0;
+            }
+            Action::OpenLink => {
+                manager.open_link();
+            }
+            Action::Cancel => {
+                manager.request(Action::Cancel);
+                manager.view.open = false;
+                self.dialog = None;
+                self.java_pending_server = None;
+            }
+            Action::Continue if manager.view.ready && !manager.view.busy => {
+                manager.view.open = false;
+                self.dialog = None;
+                if let Some(address) = self.java_pending_server.take() {
+                    self.request_edition_connect(address, launcher::menu::ServerEdition::Java);
+                }
+            }
+            Action::Continue => {}
+            action => manager.request(action),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,6 +130,22 @@ mod tests {
     fn java_route_never_waits_for_bedrock_sign_in_and_retry_retains_edition() {
         let mut menu = MenuRuntime::new(true, 2, "Fixture".into());
         menu.request_edition_connect("127.0.0.1".into(), ServerEdition::Java);
+        assert!(menu.take_join_intent().is_none());
+        assert_eq!(menu.java_pending_server.as_deref(), Some("127.0.0.1"));
+        assert!(menu.java_accounts.as_ref().unwrap().view.open);
+        // UI fixture only: no real authentication or account credential is fabricated.
+        let manager = menu.java_accounts.as_mut().unwrap();
+        manager.view.ready = true;
+        manager.view.busy = false;
+        manager.view.accounts.push(
+            serde_json::from_value(serde_json::json!({
+                "profile":{"id":"00000000-0000-4000-8000-000000000002","name":"Fixture"},
+                "expires_at":u64::MAX
+            }))
+            .unwrap(),
+        );
+        manager.view.selected = Some(manager.view.accounts[0].profile.id);
+        menu.java_account_action(launcher::java_accounts::Action::Continue);
         let intent = menu
             .take_join_intent()
             .expect("Java join without Bedrock account");

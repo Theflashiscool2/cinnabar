@@ -19,6 +19,14 @@ pub enum Error {
         "Java authentication request failed at {0}; check network access and application approval"
     )]
     Service(&'static str),
+    #[error(
+        "{0} rejected Java authentication (HTTP {1}); check account eligibility and this application's service access"
+    )]
+    Rejected(&'static str, u16),
+    #[error(
+        "Xbox denied Java authorization (account restriction code {0}); check the account's Xbox profile, family and regional requirements"
+    )]
+    AccountRestricted(u64),
     #[error("Java sign-in expired; start again")]
     Expired,
     #[error("Microsoft sign-in was declined")]
@@ -29,7 +37,7 @@ pub enum Error {
     Credentials,
 }
 /// Public sign-in instructions; the device secret is deliberately excluded.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DevicePrompt {
     pub verification_uri: String,
     pub user_code: String,
@@ -128,7 +136,12 @@ impl Service for HttpService {
         let value: Value = serde_json::from_slice(&bytes).map_err(|_| Error::Service(stage))?;
         // Only OAuth polling errors are admitted as data; never echo response bodies.
         if !status.is_success() && !(stage == "Microsoft token" && value.get("error").is_some()) {
-            return Err(Error::Service(stage));
+            if stage == "Xbox Java authorization"
+                && let Some(code) = value["XErr"].as_u64()
+            {
+                return Err(Error::AccountRestricted(code));
+            }
+            return Err(Error::Rejected(stage, status.as_u16()));
         }
         Ok(value)
     }

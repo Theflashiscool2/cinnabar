@@ -103,6 +103,15 @@ impl MenuRuntime {
             storage: std::sync::Arc::clone(&self.storage),
             language_choices: std::sync::Arc::clone(&self.language_choices),
             feeds: self.presented_feeds(),
+            java_accounts: self
+                .java_accounts
+                .as_ref()
+                .map(|m| {
+                    let mut view = m.view.clone();
+                    view.pending_server = self.java_pending_server.clone();
+                    view
+                })
+                .unwrap_or_default(),
             hosting: self.hosting_world(),
             world_settings: self.world_settings_view(),
             invite: self.invite_view(),

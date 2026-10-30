@@ -130,6 +130,7 @@ pub enum MenuAction {
     MinecraftImport(crate::minecraft_import::Action),
     Update(updates::Action),
     OpenAccounts,
+    JavaAccount(crate::java_accounts::Action),
     AddAccount,
     SwitchAccount(usize),
     Inbox(inbox::Action),

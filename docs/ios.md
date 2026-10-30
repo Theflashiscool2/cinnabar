@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.3-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.3-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.4-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.4-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -174,5 +174,34 @@ if that runner image does not contain the pinned Xcode. Select an available
 matching installation rather than bypassing the SDK check.
 
 An unsigned IPA still needs the user's asset injection, signing and device
-installation. This fork's Java sign-in UI and online/iPhone acceptance remain
-incomplete; no account tokens should be transferred in a source bundle or IPA.
+installation. Java Accounts is reached through Accounts → Java Accounts, or by
+joining a Java server before selecting a Java account. Add/sign in again opens
+Microsoft device authorization; choose the intended Microsoft account there.
+The picker supports selection, refresh and removal independently of Bedrock.
+Closing cancels authorization and the pending join; reopening preserves saved
+accounts. During sign-in the chosen server remains visible on the Join button
+once the selected account is ready. Account management is disabled while a world
+is connected or connecting; switching never replaces an active session identity.
+
+Configure an owned Microsoft public-client application with personal-account
+support and public-client device authorization enabled. No client secret or
+redirect URL is required for this device-code flow. Application registration
+does not establish Minecraft service-access approval; the owner must obtain
+that separately where required. Put only its public ID in
+`Documents/data/auth/java/oauth-client.json` in this app's Files container:
+
+```json
+{"client_id":"YOUR-OWNED-PUBLIC-APPLICATION-ID"}
+```
+
+iOS reusable Java credentials use Keychain generic-password items under service
+`app.cinnabar.java.accounts`, keyed by verified Java profile UUID. Items are
+accessible only while unlocked and do not migrate to another device through a
+backup. Metadata/selection stay in the Java account directory; Keychain failures
+do not fall back to plaintext. Desktop's existing private credential-file backend
+is unchanged. Old plaintext iOS credentials are not imported into the new picker;
+reauthorize instead. No account tokens should enter a source bundle or IPA.
+
+The integrated flow still requires physical-device Keychain/browser acceptance,
+legitimate authorization, and controlled online-server testing. Compilation and
+fixture accounts are not evidence of successful Microsoft or Hypixel access.

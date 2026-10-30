@@ -499,6 +499,7 @@ pub struct MenuView {
     pub catalog_loading: bool,
     pub catalog_message: Option<String>,
     pub auth_state: AuthState,
+    pub java_accounts: crate::java_accounts::View,
     /// Result of handing the current sign-in code to the default browser.
     pub sign_in_browser: super::sign_in::BrowserState,
     /// Interactive sign-in may show waiting and recovery prompts over the current route.
@@ -777,6 +778,7 @@ impl MenuView {
             catalog_loading: false,
             catalog_message: None,
             auth_state: AuthState::SignedOut,
+            java_accounts: Default::default(),
             sign_in_browser: Default::default(),
             sign_in_requested: false,
             connecting: false,

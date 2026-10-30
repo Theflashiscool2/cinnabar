@@ -5453,6 +5453,7 @@ version = "0.1.31"
 dependencies = [
  "assets",
  "bridge",
+ "core-foundation 0.10.1",
  "cosmetics",
  "java-protocol",
  "json-ui",

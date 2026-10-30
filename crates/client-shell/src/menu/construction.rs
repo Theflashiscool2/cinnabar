@@ -125,6 +125,8 @@ impl MenuRuntime {
             port: field_editor(MenuField::Port),
             server_edition: Default::default(),
             java_discovery: None,
+            java_accounts: None,
+            java_pending_server: None,
             java_targets: Vec::new(),
             java_next_probe: std::time::Instant::now(),
             skin_name: field_editor(MenuField::SkinName),

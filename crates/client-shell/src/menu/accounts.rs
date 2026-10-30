@@ -42,6 +42,9 @@ impl MenuRuntime {
             return;
         }
         self.reload_accounts();
+        if let Some(manager) = self.java_accounts.as_mut() {
+            manager.view.open = false;
+        }
         self.dialog = Some(MenuDialog::Accounts);
         self.focused = 0;
         self.feeds.account_error = None;
@@ -222,6 +225,14 @@ impl MenuRuntime {
     }
 
     pub(super) fn dismiss_accounts(&mut self) {
+        if self
+            .java_accounts
+            .as_ref()
+            .is_some_and(|manager| manager.view.open)
+        {
+            self.java_account_action(launcher::java_accounts::Action::Cancel);
+            return;
+        }
         if self.dialog == Some(MenuDialog::Accounts) && self.feeds.account_adding {
             self.cancel_add_account();
         }

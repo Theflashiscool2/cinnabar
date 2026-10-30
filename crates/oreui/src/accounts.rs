@@ -20,6 +20,9 @@ use ui_engine::menu_scroll::MenuScrolls;
 
 /// The picker for `view`, with account pictures from `images` once decoded.
 pub(super) fn modal<'a>(view: &'a MenuView, images: &HashMap<String, IconRef>) -> Modal<'a> {
+    if view.java_accounts.open {
+        return java_modal(view);
+    }
     if view.feeds.account_adding
         || view.auth_state.awaiting_browser()
         || (view.sign_in_requested
@@ -60,6 +63,13 @@ pub(super) fn modal<'a>(view: &'a MenuView, images: &HashMap<String, IconRef>) -
         body_color: DESTRUCTIVE_TINT,
         buttons: vec![
             (
+                "Java Accounts".into(),
+                Variant::Secondary,
+                Some(MenuAction::JavaAccount(
+                    launcher::java_accounts::Action::Open,
+                )),
+            ),
+            (
                 "Add account".into(),
                 Variant::Primary,
                 Some(MenuAction::AddAccount),
@@ -71,6 +81,87 @@ pub(super) fn modal<'a>(view: &'a MenuView, images: &HashMap<String, IconRef>) -
             ),
         ],
         close: Some(MenuAction::DismissDialog),
+    }
+}
+
+fn java_modal(view: &MenuView) -> Modal<'_> {
+    use launcher::java_accounts::Action;
+    let java = &view.java_accounts;
+    let action = |a| Some(MenuAction::JavaAccount(a));
+    let mut buttons = Vec::new();
+    if java.prompt.is_some() {
+        buttons.push((
+            "Open Microsoft".into(),
+            Variant::Primary,
+            action(Action::OpenLink),
+        ));
+    }
+    if !java.busy {
+        buttons.push((
+            "Add / sign in again".into(),
+            Variant::Primary,
+            action(Action::Add),
+        ));
+        if java.selected.is_some() {
+            buttons.push((
+                "Refresh selected account".into(),
+                Variant::Secondary,
+                action(Action::Refresh),
+            ));
+            buttons.push((
+                "Remove selected account".into(),
+                Variant::Secondary,
+                action(Action::Remove),
+            ));
+        }
+        if java.ready {
+            buttons.push((
+                java.pending_server
+                    .as_ref()
+                    .map(|server| format!("Join {server}"))
+                    .unwrap_or_else(|| "Done".into())
+                    .into(),
+                Variant::Primary,
+                action(Action::Continue),
+            ));
+        }
+    }
+    buttons.push((
+        "Cancel / close".into(),
+        Variant::Secondary,
+        action(Action::Cancel),
+    ));
+    let body = if let Some(prompt) = &java.prompt {
+        format!(
+            "{}\n\nCode: {}\n{}",
+            java.message, prompt.user_code, prompt.verification_uri
+        )
+    } else {
+        java.message.clone()
+    };
+    Modal {
+        title: "Java Accounts",
+        body: body.into(),
+        body_color: TEXT,
+        items: java
+            .accounts
+            .iter()
+            .enumerate()
+            .map(|(index, account)| MenuItem {
+                label: java
+                    .labels
+                    .get(index)
+                    .map(String::as_str)
+                    .unwrap_or(&account.profile.name),
+                picture_slot: false,
+                picture: None,
+                selected: java.selected == Some(account.profile.id),
+                enabled: true,
+                action: action(Action::Select(index)),
+            })
+            .collect(),
+        buttons,
+        close: action(Action::Cancel),
     }
 }
 
@@ -215,6 +306,39 @@ impl OreUiScreen {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn java_picker_uses_separate_actions_and_cancels_during_authorization() {
+        use launcher::java_accounts::Action;
+        let mut view = MenuView::new(true, "Fixture".into());
+        view.java_accounts.open = true;
+        view.java_accounts.message = "Needs Java sign-in".into();
+        let picker = modal(&view, &HashMap::new());
+        assert_eq!(picker.title, "Java Accounts");
+        assert!(
+            picker
+                .buttons
+                .iter()
+                .any(|b| b.2 == Some(MenuAction::JavaAccount(Action::Add)))
+        );
+        assert!(
+            !picker
+                .buttons
+                .iter()
+                .any(|b| b.2 == Some(MenuAction::AddAccount))
+        );
+        let (_, hits, _) = draw(&view);
+        assert!(hits.contains(&MenuAction::JavaAccount(Action::Add)));
+        assert!(!hits.contains(&MenuAction::AddAccount));
+        view.java_accounts.busy = true;
+        let picker = modal(&view, &HashMap::new());
+        assert_eq!(picker.close, Some(MenuAction::JavaAccount(Action::Cancel)));
+        assert!(
+            !picker
+                .buttons
+                .iter()
+                .any(|b| b.2 == Some(MenuAction::JavaAccount(Action::Add)))
+        );
+    }
     use std::collections::HashMap;
 
     use super::super::theme::{

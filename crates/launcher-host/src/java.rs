@@ -14,7 +14,7 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
     let load_root = root.clone();
     let (client_id, account) = tokio::task::spawn_blocking(move || {
         let account = launcher::java_accounts::active(&load_root).map_err(|_| {
-            "A separate Minecraft Java sign-in is required. The Bedrock/Xbox account does not sign you into Java servers. Java sign-in is not yet available in this app's account screen.".to_owned()
+            "A separate Minecraft Java sign-in is required. Open Accounts → Java Accounts. The Bedrock/Xbox account does not sign you into Java servers.".to_owned()
         })?;
         let config: serde_json::Value = serde_json::from_slice(
             &std::fs::read(load_root.join("oauth-client.json"))

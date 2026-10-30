@@ -123,6 +123,8 @@ pub struct MenuRuntime {
     port: ui::ChatEditor,
     server_edition: launcher::menu::ServerEdition,
     java_discovery: Option<launcher_host::java::Discovery>,
+    java_accounts: Option<launcher_host::java_accounts::Manager>,
+    java_pending_server: Option<String>,
     java_targets: Vec<String>,
     java_next_probe: std::time::Instant,
     skin_name: ui::ChatEditor,
@@ -328,6 +330,9 @@ impl MenuRuntime {
     pub fn observe_session(&mut self, status: SessionStatus) {
         self.session = status;
         self.poll_java_discovery();
+        if let Some(manager) = self.java_accounts.as_mut() {
+            manager.poll();
+        }
     }
 
     pub fn layout(&self) -> &InstallLayout {
@@ -599,6 +604,7 @@ impl MenuRuntime {
                 unreachable!("reconnect is handled before clearing the failure")
             }
             MenuAction::OpenAccounts => self.open_accounts(),
+            MenuAction::JavaAccount(action) => self.java_account_action(action),
             MenuAction::AddAccount => self.add_account(),
             MenuAction::SwitchAccount(index) => self.switch_account(index),
             MenuAction::SelectServerTab(tab) => {

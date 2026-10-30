@@ -30,3 +30,4 @@ pub mod mod_updates;
 pub mod cosmetics;
 
 pub mod java;
+pub mod java_accounts;
