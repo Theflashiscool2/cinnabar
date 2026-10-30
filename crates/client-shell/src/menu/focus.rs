@@ -377,6 +377,7 @@ impl MenuRuntime {
                             actions.push(MenuAction::JavaAccount(Action::OpenLink));
                         }
                         if !manager.view.busy {
+                            actions.push(MenuAction::JavaAccount(Action::Setup));
                             actions.push(MenuAction::JavaAccount(Action::Add));
                             if manager.view.selected.is_some() {
                                 actions.push(MenuAction::JavaAccount(Action::Refresh));
