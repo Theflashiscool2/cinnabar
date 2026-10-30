@@ -15,10 +15,10 @@ pub enum Error {
     MissingClient,
     #[error("Java sign-in was cancelled")]
     Cancelled,
-    #[error(
-        "Java authentication request failed at {0}; check network access and application approval"
-    )]
+    #[error("Java authentication response was invalid at {0}; retry sign-in")]
     Service(&'static str),
+    #[error("Java authentication network failure at {0} ({1}); check connectivity and retry")]
+    Transport(&'static str, &'static str),
     #[error(
         "{0} rejected Java authentication (HTTP {1}); check account eligibility and this application's service access"
     )]
@@ -121,10 +121,29 @@ impl Service for HttpService {
                 request.json(&body)
             };
         }
-        let mut response = request.send().await.map_err(|_| Error::Service(stage))?;
+        let mut response = request
+            .header(reqwest::header::ACCEPT, "application/json")
+            .send()
+            .await
+            .map_err(|error| {
+                Error::Transport(
+                    stage,
+                    if error.is_timeout() {
+                        "timeout"
+                    } else if error.is_connect() {
+                        "connection/DNS/TLS"
+                    } else {
+                        "request transport"
+                    },
+                )
+            })?;
         let status = response.status();
         let mut bytes = Vec::new();
-        while let Some(chunk) = response.chunk().await.map_err(|_| Error::Service(stage))? {
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|_| Error::Transport(stage, "response transfer"))?
+        {
             if bytes.len() + chunk.len() > 1024 * 1024 {
                 return Err(Error::Service(stage));
             }
@@ -133,7 +152,7 @@ impl Service for HttpService {
         if status == reqwest::StatusCode::NO_CONTENT {
             return Ok(Value::Null);
         }
-        let value: Value = serde_json::from_slice(&bytes).map_err(|_| Error::Service(stage))?;
+        let value = response_value(stage, status.as_u16(), &bytes)?;
         // Only OAuth polling errors are admitted as data; never echo response bodies.
         if !status.is_success() && !(stage == "Microsoft token" && value.get("error").is_some()) {
             if stage == "Xbox Java authorization"
@@ -145,6 +164,16 @@ impl Service for HttpService {
         }
         Ok(value)
     }
+}
+/// Preserve HTTP rejection even when Xbox returns an empty or non-JSON error body.
+fn response_value(stage: &'static str, status: u16, bytes: &[u8]) -> Result<Value, Error> {
+    serde_json::from_slice(bytes).map_err(|_| {
+        if !(200..300).contains(&status) {
+            Error::Rejected(stage, status)
+        } else {
+            Error::Service(stage)
+        }
+    })
 }
 pub struct Client<S = HttpService> {
     client_id: String,
@@ -344,6 +373,19 @@ pub async fn join(account: &Account, hash: &str) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn empty_xbox_rejections_keep_status_without_echoing_body() {
+        for body in [b"".as_slice(), b"private diagnostic".as_slice()] {
+            assert!(matches!(
+                super::response_value("Xbox user authentication", 401, body),
+                Err(super::Error::Rejected(_, 401))
+            ));
+        }
+        assert!(matches!(
+            super::response_value("Xbox user authentication", 200, b"invalid"),
+            Err(super::Error::Service(_))
+        ));
+    }
     use super::*;
     use std::sync::Mutex;
     struct Fake(Mutex<std::collections::VecDeque<(&'static str, Value)>>);

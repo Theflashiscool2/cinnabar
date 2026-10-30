@@ -16,15 +16,7 @@ pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<
         let account = launcher::java_accounts::active(&load_root).map_err(|_| {
             "A separate Minecraft Java sign-in is required. Open Accounts → Java Accounts. The Bedrock/Xbox account does not sign you into Java servers.".to_owned()
         })?;
-        let config: serde_json::Value = serde_json::from_slice(
-            &std::fs::read(load_root.join("oauth-client.json"))
-                .map_err(|_| auth::Error::MissingClient.to_string())?,
-        )
-        .map_err(|_| "Invalid Java OAuth application configuration".to_owned())?;
-        let client = config["client_id"]
-            .as_str()
-            .ok_or_else(|| auth::Error::MissingClient.to_string())?
-            .to_owned();
+        let client = crate::java_accounts::configuration(&load_root)?;
         Ok::<_, String>((client, account))
     })
     .await

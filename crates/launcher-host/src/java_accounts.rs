@@ -191,7 +191,7 @@ fn snapshot(root: &std::path::Path) -> View {
     }
     view
 }
-fn configuration(root: &std::path::Path) -> Result<String, String> {
+pub(crate) fn configuration(root: &std::path::Path) -> Result<String, String> {
     let bytes = match std::fs::read(root.join("oauth-client.json")) {
         Ok(bytes) => bytes,
         #[cfg(target_os = "ios")]

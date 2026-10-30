@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.6-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.6-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.7-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.7-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -188,7 +188,7 @@ Its registration button opens Microsoft Entra in the browser; the owner complete
 registration there and returns to paste the public **Application (client) ID**.
 **Save ID and sign in** validates and saves the ID on the device, then starts the
 existing device-code flow. No JSON editing or rebuild is needed. The public ID
-survives restart; **Application setup** lets the owner change it later. Existing
+survives restart. The normal configured picker has no developer setup button. Existing
 accounts must reauthorize if their application identity changes.
 
 Configure an owned Microsoft public-client application with personal-account
