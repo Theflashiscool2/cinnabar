@@ -161,12 +161,19 @@ fn block_entity_events_are_resident_replacement_and_session_scoped() {
         data: None,
     };
     assert!(t.set_block_entity(entity.clone()));
+    let receipt = t.block_entity_revision(pos).unwrap();
+    let identity = t.block_generation(pos);
+    t.set_block_event(pos, 3, 1, 1);
+    assert_eq!(t.block_entity_revision(pos), Some(receipt));
     assert!(t.set_block_entity(entity));
+    assert!(t.block_entity_revision(pos).unwrap() > receipt);
+    assert_eq!(t.block_generation(pos), identity);
     assert_eq!(t.column([-1, -2]).unwrap().block_entities.len(), 1);
     t.set_block_event(pos, 3, 1, 1);
     t.replace([-1, -2], column());
     assert!(t.block_event(pos).is_none());
     assert!(t.column([-1, -2]).unwrap().block_entities.is_empty());
+    assert!(t.block_entity_revision(pos).is_none());
     t.set_block_event(pos, 3, 1, 1);
     t.unload([-1, -2]);
     assert!(t.block_event(pos).is_none());

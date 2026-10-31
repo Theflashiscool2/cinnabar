@@ -177,4 +177,5 @@ mod tests {
 
 pub mod conduit;
 
+pub mod gateway;
 pub mod portal;

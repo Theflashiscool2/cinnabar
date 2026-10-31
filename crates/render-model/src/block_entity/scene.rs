@@ -44,6 +44,7 @@ pub enum BlockEntityKind {
     JavaSkull(super::java_skull::Model),
     JavaStatue(super::java_statue::Model),
     JavaPortal(super::java_portal::Model),
+    JavaGateway(super::java_gateway::Model),
     JavaConduit(super::java_conduit::Model),
     JavaPot(super::java_pot::Model),
     JavaShulker(super::java_shulker::Model),
@@ -97,7 +98,8 @@ impl BlockEntityKind {
             | Self::CrystalBeam(_)
             | Self::LoyaltyRope(_)
             | Self::DragonDeath(_) => false,
-            Self::JavaPortal(_)
+            Self::JavaGateway(_)
+            | Self::JavaPortal(_)
             | Self::JavaConduit(_)
             | Self::JavaPot(_)
             | Self::JavaStatue(_)
@@ -124,7 +126,8 @@ impl BlockEntityKind {
     const fn is_clock_driven(&self) -> bool {
         matches!(
             self,
-            Self::Banner(_)
+            Self::JavaGateway(_)
+                | Self::Banner(_)
                 | Self::JavaBanner(_)
                 | Self::EnchantTable { .. }
                 | Self::Conduit(_)
@@ -538,6 +541,9 @@ fn emit_submission(
 ) {
     let block = submission.block;
     match &submission.kind {
+        BlockEntityKind::JavaGateway(model) => {
+            super::java_gateway::emit(builder, atlas, block, model, clock)
+        }
         BlockEntityKind::JavaPortal(_) => super::java_portal::emit(builder, block),
         BlockEntityKind::JavaConduit(state) => {
             super::java_conduit::emit(builder, atlas, block, state)

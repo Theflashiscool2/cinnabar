@@ -23,12 +23,10 @@ pub(super) fn parameters(
     submissions: &[BlockEntitySubmission],
 ) -> Parameters {
     let mut result = [[0.; 4]; PARAMETER_WORDS];
-    let Some(model) = submissions.iter().find_map(|s| {
-        if let BlockEntityKind::JavaPortal(m) = &s.kind {
-            Some(m)
-        } else {
-            None
-        }
+    let Some(model) = submissions.iter().find_map(|s| match &s.kind {
+        BlockEntityKind::JavaPortal(m) => Some(&m.resources),
+        BlockEntityKind::JavaGateway(m) => Some(&m.resources),
+        _ => None,
     }) else {
         return result;
     };
@@ -44,7 +42,7 @@ pub(super) fn parameters(
             t.rect.height / h,
         ];
     }
-    result[2..].copy_from_slice(&model.resources.colors);
+    result[2..].copy_from_slice(&model.colors);
     result
 }
 pub(super) fn emit(builder: &mut MeshBuilder, block: [i32; 3]) {

@@ -47,3 +47,9 @@ ConduitRenderer; no proprietary model data is committed.
 `InspectPortal.java` prints the pinned native pipeline layer counts, exposed faces and
 transformed portal bounds. Compile/run against the verified client and its extracted
 libraries as above; compare these observations with native portal geometry tests.
+
+`InspectGateway.java` compares every pinned state's native gateway face visibility
+against full-face shape identity. `ExportGatewayVertices.java` invokes the native
+BeaconRenderer through a capture-only SubmitNodeCollector for three clocks/scales and
+both beam materials. Its output feeds `CINNABAR_JAVA_GATEWAY_VERTICES`; these are CPU
+reference observations, not screenshots or live gameplay.

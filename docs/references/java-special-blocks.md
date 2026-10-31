@@ -204,7 +204,26 @@ and teleport acknowledgements remain authoritative. Inspected Linux Xvfb/lavapip
 26.3 offline acceptance covers top/bottom surfaces, animation, removal/replacement,
 negative chunk boundaries, unload/revisit and reconnect. Server-admin portal entry and
 repeated Overworld/End transitions now retain admitted authority; reconnect in the End
-passes. A native movement attempt advanced only one step and did not enter the portal,
-so it is not accepted as walk-through gameplay. The captures also expose Overworld sky/clouds
+passes. The first movement attempt used MCP `press` (one frame), not `hold`, and did not enter
+the portal; it is not walk-through acceptance or evidence of a movement implementation defect. The captures also expose Overworld sky/clouds
 in the End: atmosphere remains a separate implementation defect. User-pack reload,
 iOS and Hypixel acceptance are not established.
+
+## Native End gateway (integration under validation)
+
+Gateway geometry uses a full six-face cube and sixteen projected layers, with native
+neighbor full-face occlusion. Fluid-height coverage is deliberately a different report
+field: the native empty gateway shape makes partial-neighbor rules differ. Schema 2 of
+the verified fluid/host report retains every prior fact and adds the native full-face
+identity mask; an exhaustive independent client probe checks all six directions.
+
+The supplied gateway beam texture uses the native rotating 0.15-radius opaque inner
+column and 0.175-radius, 32/255-alpha outer column. Age and authoritative cooldown events
+control the native sine height/UV scale; BE receipt revisions distinguish repeated age
+updates from unrelated column changes. Generation retirement prevents animation leaking
+across position reuse or sessions. Clock phase is currently local; full native fog/time
+parity remain pending. Linux software-Vulkan offline vanilla captures verify the cube,
+spawn and authoritative cooldown beams, full/partial neighbor occlusion, removal and
+replacement. Native walking remains blocked by the dry-land contact gate before entry;
+teleport, boundary recovery, unload/revisit and reconnect acceptance are unfinished.
+This is an incomplete implementation checkpoint, not iOS/Hypixel qualification.

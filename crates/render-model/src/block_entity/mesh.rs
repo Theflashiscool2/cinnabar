@@ -297,6 +297,42 @@ impl MeshBuilder {
         }
     }
 
+    /// Native beam UVs repeat within an atlas tile in either depth-writing or overlay material.
+    pub(super) fn java_beam_quad(
+        &mut self,
+        layer: Layer,
+        corners: [[f32; 3]; 4],
+        rect: AtlasRect,
+        color: [f32; 4],
+        vertical: [f32; 2],
+    ) {
+        let start = if layer == Layer::Solid {
+            self.solid.len()
+        } else {
+            self.overlay.len()
+        };
+        self.textured_quad(layer, corners, rect, color);
+        let vertices = if layer == Layer::Solid {
+            &mut self.solid[start..]
+        } else {
+            &mut self.overlay[start..]
+        };
+        for v in vertices {
+            v.uv[0] = (2. * rect.x + rect.width) / self.atlas_size[0] - v.uv[0];
+            v.uv[1] = if v.position[1] == corners[0][1] {
+                vertical[0]
+            } else {
+                vertical[1]
+            };
+            v.normal = [
+                rect.y / self.atlas_size[1],
+                rect.height / self.atlas_size[1],
+                0.,
+            ];
+            v.actor_light = u32::MAX - 1;
+        }
+    }
+
     /// A box whose faces each show one whole atlas rect, in `[west, east, down, up, north,
     /// south]` order; `min`/`max` are authoring pixels mapped through `model`.
     pub fn tile_cuboid(

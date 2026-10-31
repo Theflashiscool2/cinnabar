@@ -26,6 +26,7 @@ pub struct Terrain {
     block_events: BTreeMap<[i32; 3], BlockEvent>,
     block_types: Option<Arc<[u32]>>,
     block_generations: BTreeMap<[i32; 3], u64>,
+    block_entity_revisions: BTreeMap<[i32; 3], u64>,
     pub center: Option<[i32; 2]>,
     pub radius: Option<u32>,
     pub ignored_nonresident_updates: u64,
@@ -139,6 +140,8 @@ impl Terrain {
         }
         column.revision = self.next_revision();
         column.incarnation = column.revision;
+        self.block_entity_revisions
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_generations
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_events
@@ -148,6 +151,8 @@ impl Terrain {
         true
     }
     pub fn unload(&mut self, key: [i32; 2]) {
+        self.block_entity_revisions
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_generations
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_events
@@ -205,6 +210,7 @@ impl Terrain {
         if !same_type {
             column.block_entities.retain(|b| b.position != [x, y, z]);
             self.block_events.remove(&[x, y, z]);
+            self.block_entity_revisions.remove(&[x, y, z]);
             self.block_generations.insert([x, y, z], revision);
         }
         self.mark_region(ChangedRegion {
@@ -226,6 +232,22 @@ impl Terrain {
                 .copied()
                 .unwrap_or(column.incarnation),
         )
+    }
+    /// Receipt revision, including equal-value updates, separate from block identity and lighting.
+    pub fn block_entity_revision(&self, position: [i32; 3]) -> Option<u64> {
+        let column = self
+            .columns
+            .get(&[position[0].div_euclid(16), position[2].div_euclid(16)])?;
+        column
+            .block_entities
+            .iter()
+            .any(|e| e.position == position)
+            .then(|| {
+                self.block_entity_revisions
+                    .get(&position)
+                    .copied()
+                    .unwrap_or(column.incarnation)
+            })
     }
     /// Keeps one server event per resident position; no unbounded per-frame event queue.
     pub fn block_event(&self, position: [i32; 3]) -> Option<BlockEvent> {
@@ -273,6 +295,8 @@ impl Terrain {
             entity.position[2].div_euclid(16),
         ];
         let revision = self.next_revision();
+        self.block_entity_revisions
+            .insert(entity.position, revision);
         let column = Arc::make_mut(self.columns.get_mut(&key).expect("resident block"));
         if let Some(old) = column
             .block_entities

@@ -526,6 +526,25 @@ mod tests {
             Some(graphics::Presentation::Portal)
         );
         assert!(g.select(portals[0], [0; 3]).unwrap().is_empty());
+        let gateways: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| super::super::gateway::matches(registry.state(id).unwrap()))
+            .collect();
+        assert_eq!(gateways.len(), 1);
+        let extension = graphics::extend(Arc::clone(g), &mut models, gateways.clone()).unwrap();
+        let g = extension.graphics();
+        assert!(g.gateways.contains(&gateways[0]));
+        assert_eq!(
+            g.presentation(gateways[0]),
+            Some(graphics::Presentation::Portal)
+        );
+        assert!(g.select(gateways[0], [0; 3]).unwrap().is_empty());
+        assert!(
+            g.special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(super::super::gateway::BEAM)
+                .is_some()
+        );
         let palette = &g.portal.as_ref().unwrap().colors;
         assert_eq!(palette[0], [0.022087, 0.098399, 0.110818, 0.]);
         assert_eq!(palette[15], [0.080955, 0.314821, 0.661491, 0.]);

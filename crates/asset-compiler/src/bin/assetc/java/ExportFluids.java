@@ -62,7 +62,7 @@ public final class ExportFluids {
         Bootstrap.bootStrap();
         Set<String> flowBlockers = tag("minecraft:blocks_fluid_flow", new HashSet<>());
         JsonObject root = new JsonObject();
-        root.addProperty("schema", 1);
+        root.addProperty("schema", 2);
         JsonArray states = new JsonArray();
         for (BlockState state : Block.BLOCK_STATE_REGISTRY) {
             FluidState fluid = state.getFluidState();
@@ -83,6 +83,13 @@ public final class ExportFluids {
             JsonArray coverage = new JsonArray();
             for (Direction face : FACES) coverage.add(coverage(state, face));
             entry.add("occlusion", coverage);
+            // Native Block.shouldRenderFace's full-face identity fast path. Distinct
+            // from geometric fluid coverage when the host occlusion shape is empty.
+            int fullFace = 0;
+            for (int face = 0; face < FACES.length; face++) {
+                if (state.getFaceOcclusionShape(FACES[face].getOpposite()) == Shapes.block()) fullFace |= 1 << face;
+            }
+            entry.addProperty("full_face", fullFace);
             states.add(entry);
         }
         root.add("states", states);

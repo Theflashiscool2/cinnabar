@@ -18,6 +18,7 @@ const AIR: State = State {
     invisible: true,
     emission: 0,
     occlusion: [0.; 6],
+    full_face: 0,
 };
 const DELTA: [[i32; 3]; 6] = [
     [-1, 0, 0],

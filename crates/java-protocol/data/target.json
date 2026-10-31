@@ -157,8 +157,8 @@
   },
   "fluid_render_report": {
     "path": "fluids.json",
-    "sha256": "b7071e833409a6ffef89d3e322ef96d9d080a45452114e95d1e69c88fcfd4361",
-    "bytes": 7114748,
+    "sha256": "78cb436c106c184d1dad8d34ae41e848a5ac99fff9cfd6f1226dfc6c65f14e18",
+    "bytes": 7617736,
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportFluids.java"
   }
 }

@@ -27,6 +27,7 @@ pub(crate) struct Presentation {
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
     banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     pots: BTreeMap<[i32; 3], render_model::block_entity::java_pot::Model>,
+    gateways: BTreeMap<[i32; 3], (u64, sim::java::gateway::Motion)>,
     conduits: BTreeMap<[i32; 3], (u64, sim::java::conduit::Motion)>,
     pot_motion: BTreeMap<[i32; 3], (u64, sim::java::pot::Motion)>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
@@ -84,6 +85,7 @@ pub(crate) fn advance(
         p.skulls.clear();
         p.pot_motion.clear();
         p.conduits.clear();
+        p.gateways.clear();
         p.elapsed = std::time::Duration::ZERO;
         return;
     };
@@ -106,6 +108,23 @@ pub(crate) fn advance(
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     p.pot_motion
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
+    p.gateways
+        .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
+    for (pos, (_, motion)) in &mut p.gateways {
+        for _ in 0..ticks {
+            motion.tick();
+        }
+        if let Some(event) = terrain.block_event(*pos).filter(|e| {
+            e.action == 1
+                && terrain
+                    .block(*pos)
+                    .and_then(|id| graphics.block_types.get(id.0 as usize))
+                    .copied()
+                    == Some(e.block)
+        }) {
+            motion.event(event.revision);
+        }
+    }
     for (position, model) in &p.pots {
         let Some(generation) = terrain.block_generation(*position) else {
             continue;
@@ -332,6 +351,7 @@ pub(crate) fn update(
                         || graphics.pots.contains_key(&id.0)
                         || graphics.conduits.contains(&id.0)
                         || graphics.portals.contains(&id.0)
+                        || graphics.gateways.contains(&id.0)
                 }) else {
                     continue;
                 };
@@ -340,7 +360,36 @@ pub(crate) fn update(
                     dimension.min_y + section_index as i32 * 16 + (index / 256) as i32,
                     key[1] * 16 + (index / 16 % 16) as i32,
                 ];
-                if let Some(state) = graphics.pots.get(&id.0) {
+                if graphics.gateways.contains(&id.0) {
+                    let data = column
+                        .block_entities
+                        .iter()
+                        .find(|e| e.position == position)
+                        .and_then(|e| e.data.as_ref());
+                    let age = match render_model::block_entity::java_gateway::age(data) {
+                        Ok(age) => age,
+                        Err(error) => {
+                            terrain_presentation.special_failure(error);
+                            return;
+                        }
+                    };
+                    if let Some(generation) = terrain.block_generation(position) {
+                        let entry = p
+                            .gateways
+                            .entry(position)
+                            .or_insert_with(|| (generation, Default::default()));
+                        if entry.0 != generation {
+                            *entry = (generation, Default::default());
+                        }
+                        entry.1.synchronize(
+                            age,
+                            terrain
+                                .block_entity_revision(position)
+                                .unwrap_or(generation),
+                        );
+                    }
+                    chests.push((position, id.0));
+                } else if let Some(state) = graphics.pots.get(&id.0) {
                     let data = column
                         .block_entities
                         .iter()
@@ -393,6 +442,52 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if graphics.gateways.contains(&id) {
+                if let Some(resources) = &graphics.portal {
+                    let offsets = [
+                        [-1, 0, 0],
+                        [1, 0, 0],
+                        [0, -1, 0],
+                        [0, 1, 0],
+                        [0, 0, -1],
+                        [0, 0, 1],
+                    ];
+                    let mut faces = 0;
+                    for (face, offset) in offsets.iter().enumerate() {
+                        let neighbor =
+                            terrain.block(std::array::from_fn(|i| position[i] + offset[i]));
+                        let hidden = neighbor
+                            .and_then(|id| graphics.fluid_facts.as_ref()?.state(id.0))
+                            .is_some_and(|s| s.full_face & (1 << face) != 0);
+                        if !hidden {
+                            faces |= 1 << face;
+                        }
+                    }
+                    let beam = p
+                        .gateways
+                        .get(&position)
+                        .and_then(|(_, m)| {
+                            m.sample(partial, dimension.min_y + dimension.height - 1)
+                        })
+                        .map(|v| render_model::block_entity::java_gateway::Beam {
+                            height: v.height,
+                            scale: v.scale,
+                            spawning: v.spawning,
+                        });
+                    submissions.push(BlockEntitySubmission {
+                        block: position,
+                        light: BlockEntityLight::Scalar(1.),
+                        kind: BlockEntityKind::JavaGateway(
+                            render_model::block_entity::java_gateway::Model {
+                                resources: Arc::clone(resources),
+                                faces,
+                                beam,
+                            },
+                        ),
+                    });
+                }
+                continue;
+            }
             if graphics.portals.contains(&id) {
                 if let Some(resources) = &graphics.portal {
                     submissions.push(BlockEntitySubmission {
@@ -586,6 +681,7 @@ impl Presentation {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
+            "gateways":self.gateways.iter().take(16).map(|(pos,(generation,m))|serde_json::json!({"position":pos,"generation":generation,"beam":m.sample(0.,self.scope.as_ref().map_or(0,|d|d.min_y+d.height-1)).map(|b|serde_json::json!({"spawning":b.spawning,"height":b.height,"scale":b.scale}))})).collect::<Vec<_>>(),
             "conduits":self.conduits.iter().take(16).map(|(pos,(_,m))|serde_json::json!({"position":pos,"active":m.shape.active,"hunting":m.shape.hunting,"frame_blocks":m.shape.frame_blocks})).collect::<Vec<_>>(),"cached_columns":self.columns.len(),"pots":self.pots.len(),"pot_wobble":self.pot_motion.iter().filter_map(|(pos,(_,m))|m.sample(0.).map(|w|serde_json::json!({"position":pos,"style":w.0,"progress":w.1}))).take(16).collect::<Vec<_>>(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

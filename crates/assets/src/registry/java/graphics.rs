@@ -36,6 +36,7 @@ pub struct Graphics {
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
     pub portals: std::collections::BTreeSet<u32>,
+    pub gateways: std::collections::BTreeSet<u32>,
     pub portal: Option<Arc<super::portal::Resources>>,
     pub conduits: std::collections::BTreeSet<u32>,
     pub conduit: Option<Arc<super::conduit::Resources>>,
@@ -127,6 +128,7 @@ pub fn compile(
         skulls: BTreeMap::new(),
         statues: BTreeMap::new(),
         portals: Default::default(),
+        gateways: Default::default(),
         portal: None,
         conduits: Default::default(),
         conduit: None,
@@ -303,14 +305,22 @@ fn append(
                 );
                 return Ok(());
             }
-            if super::portal::matches(&state) {
+            if super::portal::matches(&state) || super::gateway::matches(&state) {
                 if builder.portal.is_none() {
                     builder.portal = Some(Arc::new(super::portal::load(
                         models.source(),
                         &mut builder.special_images,
                     )?));
                 }
-                builder.portals.insert(id);
+                if super::gateway::matches(&state) {
+                    if models.fluids.is_none() {
+                        return Err(invalid("Java gateway requires native face-occlusion facts"));
+                    }
+                    super::gateway::load(models.source(), &mut builder.special_images)?;
+                    builder.gateways.insert(id);
+                } else {
+                    builder.portals.insert(id);
+                }
                 admitted.insert(
                     id,
                     State {
@@ -559,6 +569,7 @@ fn finish(
     let skulls = builder.skulls.clone();
     let statues = builder.statues.clone();
     let portals = builder.portals.clone();
+    let gateways = builder.gateways.clone();
     let portal = builder.portal.clone();
     let conduits = builder.conduits.clone();
     let conduit = builder.conduit.clone();
@@ -584,6 +595,7 @@ fn finish(
         skulls,
         statues,
         portals,
+        gateways,
         portal,
         conduits,
         conduit,
@@ -614,6 +626,7 @@ struct Builder {
     skulls: BTreeMap<u32, super::skull::Skull>,
     statues: BTreeMap<u32, super::statue::Statue>,
     portals: std::collections::BTreeSet<u32>,
+    gateways: std::collections::BTreeSet<u32>,
     portal: Option<Arc<super::portal::Resources>>,
     conduits: std::collections::BTreeSet<u32>,
     conduit: Option<Arc<super::conduit::Resources>>,

@@ -93,4 +93,5 @@ pub use statue::{Oxidation, StatueModel, StatuePose};
 
 pub mod java_conduit;
 
+pub mod java_gateway;
 pub mod java_portal;
