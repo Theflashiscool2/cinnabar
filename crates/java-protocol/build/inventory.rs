@@ -24,6 +24,41 @@ fn validate(names: &[String], pin: &serde_json::Value) {
 }
 pub fn generate(code: &mut String, target: &serde_json::Value) {
     let schema = &target["inventory_schema"];
+    let modifiers = source(&schema["attribute_modifiers"]);
+    let operations = source(&schema["modifier_operations"]);
+    for (text, name, constant, pin) in [
+        (
+            &modifiers,
+            "EquipmentSlotGroup",
+            "ITEM_ATTRIBUTE_SLOTS",
+            &schema["attribute_modifiers"]["slots"],
+        ),
+        (
+            &modifiers,
+            "DisplayType",
+            "ITEM_ATTRIBUTE_DISPLAYS",
+            &schema["attribute_modifiers"]["display"],
+        ),
+        (
+            &operations,
+            "ModifierOperation",
+            "ATTRIBUTE_OPERATIONS",
+            &schema["modifier_operations"],
+        ),
+    ] {
+        let values = text
+            .split_once(&format!("public enum {name} {{"))
+            .unwrap()
+            .1
+            .split_once(';')
+            .unwrap()
+            .0
+            .split(',')
+            .map(|s| s.trim().to_owned())
+            .collect::<Vec<_>>();
+        validate(&values, pin);
+        *code += &format!("pub const {constant}: &[&str] = &{values:?};\n");
+    }
     let items: Vec<String> = serde_json::from_str(&source(&schema["items"])).unwrap();
     validate(&items, &schema["items"]);
     *code += &format!("pub const ITEM_TYPES: &[&str] = &{items:?};\n");

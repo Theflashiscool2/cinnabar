@@ -116,6 +116,19 @@
     }
   },
   "inventory_schema": {
+    "attribute_modifiers": {
+      "path": "data/ItemAttributeModifiers.java",
+      "sha256": "0b23fe364aa9dd860838602aa13a0a73f1dab8acda85cd55fa288c98b497043b",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/item/component/ItemAttributeModifiers.java",
+      "slots": { "count": 11 },
+      "display": { "count": 3 }
+    },
+    "modifier_operations": {
+      "path": "data/ModifierOperation.java",
+      "sha256": "ad2d32a508d3e5bb236beb8442d815cc84769b8493e54de7299d447c7216ed7e",
+      "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/entity/attribute/ModifierOperation.java",
+      "count": 3
+    },
     "components": {
       "path": "data/DataComponentTypes.java",
       "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/item/component/DataComponentTypes.java",

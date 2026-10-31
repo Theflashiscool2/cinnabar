@@ -186,7 +186,11 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     inventory.extend([0; 47]); // 46 empty slots and an empty cursor.
     wire.write(&inventory).await.unwrap();
     wire.write(&[107, 2]).await.unwrap();
-    wire.write(&[110, 2, 4, 55, 0, 0]).await.unwrap();
+    let mut item = vec![110, 2, 4, 55, 1, 0, 16, 1, 3];
+    text("fixture:attack", &mut item);
+    item.extend(2.5f64.to_be_bytes());
+    item.extend([0, 1, 2, 8, 0, 4, b'B', b'u', b'f', b'f']);
+    wire.write(&item).await.unwrap();
     // Abilities and the new packed velocity are delivered as admitted schemas, not deferred bytes.
     wire.write(&[0x41, 0, 0x3d, 0x4c, 0xcc, 0xcd, 0x3d, 0xcc, 0xcc, 0xcd])
         .await
@@ -295,6 +299,12 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             assert_eq!(slot, 2);
                             let stack = stack.unwrap();
                             assert_eq!((stack.item, stack.count), (55, 4));
+                            let modifier =
+                                &stack.added["minecraft:attribute_modifiers"]["modifiers"][0];
+                            assert_eq!(modifier["attribute"], "minecraft:attack_damage");
+                            assert_eq!(modifier["modifier"]["amount"], 2.5);
+                            assert_eq!(modifier["slot"], "main_hand");
+                            assert_eq!(modifier["display"]["type"], "override");
                             inventory.push("slot");
                         }
                         _ => panic!("unexpected inventory packet"),

@@ -123,7 +123,7 @@ pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, E
 
 /// Network resource identifiers are keys, not filesystem paths. Missing namespaces use vanilla's
 /// default; file-loading owners impose their own stronger path traversal restrictions.
-fn identifier(value: String) -> Result<String, Error> {
+pub(super) fn identifier(value: String) -> Result<String, Error> {
     let (namespace, path) = value.split_once(':').unwrap_or(("minecraft", &value));
     let valid = |b: u8| b.is_ascii_lowercase() || b.is_ascii_digit() || b"_.-".contains(&b);
     if namespace.is_empty()

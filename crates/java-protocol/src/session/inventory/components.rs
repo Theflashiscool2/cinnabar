@@ -1,6 +1,8 @@
 //! Supported component wire values. Unsupported required item data fails with its identifier.
 use super::*;
 use serde_json::json;
+#[cfg(test)]
+mod tests;
 
 pub(super) fn read(spec: &target::ItemComponent, r: &mut Reader<'_>) -> Result<Value, Error> {
     Ok(match spec.reader {
@@ -40,6 +42,7 @@ pub(super) fn read(spec: &target::ItemComponent, r: &mut Reader<'_>) -> Result<V
             json!({"item_damage_per_attack":nonnegative(r)?,"disable_blocking_for_seconds":r.f32()?})
         }
         "ItemTypes::readToolData" => tool(r)?,
+        "ItemTypes::readItemAttributeModifiers" => attribute_modifiers(r)?,
         "ItemTypes::readTooltipDisplay" => {
             let hide = r.bool()?;
             let mut hidden = Vec::new();
@@ -57,6 +60,43 @@ pub(super) fn read(spec: &target::ItemComponent, r: &mut Reader<'_>) -> Result<V
         }
         _ => return Err(Error::UnsupportedItemComponent(spec.name)),
     })
+}
+
+fn attribute_modifiers(r: &mut Reader<'_>) -> Result<Value, Error> {
+    let mut modifiers = Vec::new();
+    // Minimum entry: attribute, key length, double, operation, slot and display.
+    for _ in 0..r.count(r.0.len() / 13)? {
+        let attribute = target::ATTRIBUTES
+            .get(nonnegative(r)? as usize)
+            .ok_or(Error::Invalid("unknown item modifier attribute"))?;
+        let id = super::super::dynamics::identifier(r.string(32767)?)?;
+        let amount = r.f64()?;
+        // Item operations are VarInts, unlike the entity-attribute modifier byte.
+        let operation = target::ATTRIBUTE_OPERATIONS
+            .get(nonnegative(r)? as usize)
+            .ok_or(Error::Invalid("item attribute modifier operation"))?;
+        let slot = target::ITEM_ATTRIBUTE_SLOTS
+            .get(nonnegative(r)? as usize)
+            .ok_or(Error::Invalid("item attribute modifier slot"))?;
+        let display_id = r.var()?;
+        // The pinned DisplayType codec maps unknown IDs to DEFAULT with no extra payload.
+        let display = usize::try_from(display_id)
+            .ok()
+            .and_then(|id| target::ITEM_ATTRIBUTE_DISPLAYS.get(id))
+            .unwrap_or(&target::ITEM_ATTRIBUTE_DISPLAYS[0]);
+        let component = if *display == "OVERRIDE" {
+            Some(nbt::read(r)?)
+        } else {
+            None
+        };
+        modifiers.push(json!({
+            "attribute": attribute.name,
+            "modifier": {"id":id,"amount":amount,"operation":operation.to_ascii_lowercase()},
+            "slot":slot.to_ascii_lowercase(),
+            "display":{"type":display.to_ascii_lowercase(),"component":component}
+        }));
+    }
+    Ok(json!({"modifiers":modifiers}))
 }
 fn holder_set(r: &mut Reader<'_>) -> Result<Value, Error> {
     let count = nonnegative(r)?;
