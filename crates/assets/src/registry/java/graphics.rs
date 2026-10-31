@@ -1,5 +1,6 @@
 //! Worker-owned conversion of Java models into shared graphics buffers, with native state IDs.
 pub mod audit;
+pub mod tints;
 use super::{
     catalog::BlockModels,
     geometry::Quad,
@@ -135,7 +136,8 @@ fn append(
         }
         failures.checked_states += 1;
         let result = (|| -> Result<(), Error> {
-            let name = models.state_name(id)?.to_owned();
+            let state = models.state(id)?.clone();
+            let name = &state.name;
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
             for variant in selection.parts().iter().flatten() {
@@ -143,12 +145,7 @@ fn append(
                     continue;
                 }
                 let quads = models.geometry(variant)?;
-                if quads.is_empty()
-                    && !matches!(
-                        name.as_str(),
-                        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-                    )
-                {
+                if quads.is_empty() && !tints::allows_empty_model(&state) {
                     return Err(invalid(&format!(
                         "{name} needs a special renderer; empty geometry is not air"
                     )));
@@ -162,8 +159,11 @@ fn append(
                     let start = builder.overlay.model_quads.len() as u32;
                     let mut occludes = 0;
                     for quad in part {
-                        let material =
-                            builder.material(models, quad, tint(&name, quad.tint_index)?)?;
+                        let material = builder.material(
+                            models,
+                            quad,
+                            tints::material(&state, quad.tint_index)?,
+                        )?;
                         let flags = face_id(quad.shade_override.unwrap_or(quad.facing))
                             | quad.cull_face.map_or(0, |f| face_id(f) << 4);
                         let positions = quad.positions.map(|p| {
@@ -391,26 +391,6 @@ impl Builder {
             });
         }
         Ok(())
-    }
-}
-/// Java 26.3 BlockColors.register mappings for the initial terrain slice. Other callbacks are
-/// explicit unsupported behavior; they must not inherit Bedrock colours or guessed white tint.
-fn tint(name: &str, index: i32) -> Result<u32, Error> {
-    if index < 0 {
-        return Ok(0);
-    }
-    match (name, index) {
-        (
-            "minecraft:grass_block"
-            | "minecraft:short_grass"
-            | "minecraft:fern"
-            | "minecraft:potted_fern"
-            | "minecraft:bush",
-            0,
-        ) => Ok(crate::MATERIAL_FLAG_GRASS_TINT),
-        _ => Err(invalid(&format!(
-            "Java block tint callback for {name} index {index} is not implemented"
-        ))),
     }
 }
 pub const fn face_id(face: Face) -> u32 {

@@ -76,6 +76,12 @@ Model admission now groups independent state failures, with a separate observed-
 JSON report and whole-registry `make java-audit`. It does not treat unsupported models
 as air. Native fluid geometry remains unimplemented in this checkout; an owner join
 reached the empty lava-model gate after assets were prepared.
+The complete owner audit found 3,003 failed states in 122 groups before repairs.
+Version-checked tint admission now handles foliage, stems, cauldron water and dry
+foliage, and preserves unmodified textures when no callback is registered. Known
+invisible models have narrow admission rules; special renderers remain gated.
+See [block-color support and remaining gaps](docs/references/java-block-colors.md).
+This is CPU compilation coverage, not rendered or server-play acceptance.
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline
 server evidence; complex metadata and entity frame publication remain incomplete.

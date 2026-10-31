@@ -62,9 +62,11 @@ impl BlockModels {
             .collect()
     }
     pub fn state_name(&self, state: u32) -> Result<&str, Error> {
+        Ok(&self.state(state)?.name)
+    }
+    pub fn state(&self, state: u32) -> Result<&super::BlockState, Error> {
         self.registry
             .state(state)
-            .map(|s| &*s.name)
             .ok_or_else(|| Error::Model(format!("unknown Java block state {state}")))
     }
     pub fn source(&mut self) -> &mut dyn Source {

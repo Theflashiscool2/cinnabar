@@ -96,16 +96,6 @@ fn animation_reorders_real_frames_and_rejects_unknown_timing_semantics() {
     );
 }
 #[test]
-fn grass_tint_is_explicit_and_unknown_callbacks_fail() {
-    assert_eq!(
-        tint("minecraft:grass_block", 0).unwrap(),
-        crate::MATERIAL_FLAG_GRASS_TINT
-    );
-    assert_eq!(tint("minecraft:anything", -1).unwrap(), 0);
-    assert!(tint("minecraft:redstone_wire", 0).is_err());
-}
-
-#[test]
 fn extension_keeps_resident_draw_addresses_and_source_pixels_without_reordering_states() {
     for (first, added) in [(0, 2), (2, 0)] {
         let old = Arc::new(compile(&mut models(), [first, 1], 64).unwrap());
@@ -165,6 +155,47 @@ fn extension_does_not_turn_unknown_models_into_air_or_damage_the_old_catalog() {
     assert!(extend(Arc::clone(&old), &mut models(), [99]).is_err());
     assert!(!old.contains(99));
     assert!(!old.select(0, [0; 3]).unwrap().is_empty());
+}
+
+#[test]
+fn authoritative_stem_age_adds_a_material_without_recoloring_resident_states() {
+    let source = || {
+        let bytes = br#"{"minecraft:melon_stem":{"properties":{"age":["0","7"]},"states":[{"id":0,"default":true,"properties":{"age":"0"}},{"id":1,"properties":{"age":"7"}}]}}"#;
+        let registry = BlockRegistry::load(bytes, &format!("{:x}", Sha256::digest(bytes))).unwrap();
+        let files = BTreeMap::from([
+            ("assets/minecraft/blockstates/melon_stem.json".into(), br#"{"variants":{"":{"model":"block/test"}}}"#.to_vec()),
+            ("assets/minecraft/models/block/test.json".into(), br##"{"textures":{"all":"block/test"},"elements":[{"from":[0,0,0],"to":[16,16,16],"faces":{"north":{"texture":"#all","tintindex":0}}}]}"##.to_vec()),
+            ("assets/minecraft/textures/block/test.png".into(), png(&[255,255,255,128],1,1)),
+        ]);
+        BlockModels::new(Arc::new(registry), Box::new(Resources(files)))
+    };
+    let old = Arc::new(compile(&mut source(), [0], 64).unwrap());
+    let extension = extend(Arc::clone(&old), &mut source(), [1]).unwrap();
+    let new = extension.graphics();
+    let material = |graphics: &Graphics, state| {
+        let template = graphics.select(state, [-17, -64, 16]).unwrap()[0];
+        let start = graphics.runtime.model_templates()[template as usize].quad_start;
+        let quad = graphics.runtime.model_quads()[start as usize];
+        graphics.runtime.material(quad.material)
+    };
+    let young = material(new, 0);
+    let mature = material(new, 1);
+    assert_eq!(young, material(&old, 0));
+    assert_eq!(
+        young.texture, mature.texture,
+        "state tints reuse the source sprite"
+    );
+    assert_eq!(crate::stem::material_colour(young.flags), Some([0, 255, 0]));
+    assert_eq!(
+        crate::stem::material_colour(mature.flags),
+        Some([224, 199, 28])
+    );
+    assert_ne!(young.flags & crate::MATERIAL_FLAG_ALPHA_BLEND, 0);
+    assert_ne!(mature.flags & crate::MATERIAL_FLAG_ALPHA_BLEND, 0);
+    assert!(extension.resources().matches(&old.runtime, &new.runtime));
+    let reloaded = compile(&mut source(), [1, 0], 64).unwrap();
+    assert_eq!(material(&reloaded, 0).flags, young.flags);
+    assert_eq!(material(&reloaded, 1).flags, mature.flags);
 }
 
 struct EmptyModels {

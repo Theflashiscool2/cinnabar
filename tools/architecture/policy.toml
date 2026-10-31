@@ -1424,6 +1424,9 @@ reason = "The standalone guest example supplies a concrete named block for its r
 owners = [
     "crates/asset-compiler/src/registry_policy/",
     "crates/assets/src/facts/",
+    # Native Java BlockColors registrations and empty-model facts; pinned-version tests
+    # and reference provenance live with this owner. Bedrock facts cannot define them.
+    "crates/assets/src/registry/java/graphics/tints.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [
@@ -2248,31 +2251,6 @@ name = "java-connect"
 path = "tools/java-connect"
 allowed_dependencies = ["java-protocol", "client-session", "client-world", "launcher", "launcher-host", "assets", "meshing"]
 forbidden_dependencies = ["bevy", "wgpu"]
-
-[[identifier_literal_exceptions]]
-path = "crates/assets/src/registry/java/graphics.rs"
-literal = "minecraft:grass_block"
-reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
-
-[[identifier_literal_exceptions]]
-path = "crates/assets/src/registry/java/graphics.rs"
-literal = "minecraft:short_grass"
-reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
-
-[[identifier_literal_exceptions]]
-path = "crates/assets/src/registry/java/graphics.rs"
-literal = "minecraft:fern"
-reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
-
-[[identifier_literal_exceptions]]
-path = "crates/assets/src/registry/java/graphics.rs"
-literal = "minecraft:bush"
-reason = "Native Java BlockColors callback identity from the hash-pinned client; Bedrock fact membership cannot define Java tint behavior. The native compiler rejects unsupported callbacks and tests grass tint dispatch."
-
-[[identifier_literal_exceptions]]
-path = "crates/assets/src/registry/java/graphics.rs"
-literal = "minecraft:air"
-reason = "Native Java empty-model admission: only Java air identities may be invisible; all other empty models require a special renderer. Tested with distinct native state IDs, without Bedrock facts."
 
 [[crates]]
 name = "experience-space-client"

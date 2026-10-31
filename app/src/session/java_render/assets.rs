@@ -130,6 +130,7 @@ fn load_inner(
     };
     let grass = colormap("colormap/grass")?;
     let foliage = colormap("colormap/foliage")?;
+    let dry_foliage = colormap("colormap/dry_foliage")?;
     let mut tints = Vec::new();
     let mut unsupported_tints = BTreeSet::new();
     for (id, biome) in biomes.into_iter().enumerate() {
@@ -142,9 +143,15 @@ fn load_inner(
         let foliage = biome
             .foliage_color
             .unwrap_or(foliage.climate_color(biome.temperature, biome.downfall)?);
+        let dry = biome
+            .dry_foliage_color
+            .unwrap_or(dry_foliage.climate_color(biome.temperature, biome.downfall)?);
         tints.push(render_scene::chunk::biome_tints::BiomeTint {
             grass: linear(grass),
             foliage: linear(foliage),
+            birch: linear(graphics::tints::BIRCH),
+            evergreen: linear(graphics::tints::SPRUCE),
+            dry_foliage: linear(dry),
             water: linear(biome.water_color),
             ..Default::default()
         });

@@ -77,6 +77,7 @@ pub struct BiomeAppearance {
     pub downfall: f32,
     pub grass_color: Option<[u8; 3]>,
     pub foliage_color: Option<[u8; 3]>,
+    pub dry_foliage_color: Option<[u8; 3]>,
     pub water_color: [u8; 3],
     pub grass_modifier: Option<String>,
 }

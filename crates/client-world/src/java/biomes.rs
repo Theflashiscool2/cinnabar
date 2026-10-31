@@ -24,6 +24,7 @@ pub(super) fn read(entries: &[RegistryEntry]) -> Result<Vec<BiomeAppearance>, &'
                 downfall: float("downfall")?,
                 grass_color: effects.get("grass_color").map(color).transpose()?,
                 foliage_color: effects.get("foliage_color").map(color).transpose()?,
+                dry_foliage_color: effects.get("dry_foliage_color").map(color).transpose()?,
                 water_color: color(
                     effects
                         .get("water_color")
@@ -84,6 +85,31 @@ fn number(value: &Value) -> Result<f32, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dry_foliage_override_survives_registry_admission_and_is_validated() {
+        let mut effects = BTreeMap::from([
+            ("water_color".into(), Value::Int(0x3f76e4)),
+            ("dry_foliage_color".into(), Value::String("#123456".into())),
+        ]);
+        let entry = |effects| RegistryEntry {
+            name: "minecraft:test_biome".into(),
+            value: Value::Compound(BTreeMap::from([
+                ("temperature".into(), Value::Float(0.5)),
+                ("downfall".into(), Value::Float(0.7)),
+                ("effects".into(), Value::Compound(effects)),
+            ])),
+        };
+        let result = read(&[entry(effects.clone())]).unwrap();
+        assert_eq!(result[0].dry_foliage_color, Some([18, 52, 86]));
+        assert_eq!(result[0].foliage_color, None);
+        effects.remove("dry_foliage_color");
+        assert_eq!(
+            read(&[entry(effects.clone())]).unwrap()[0].dry_foliage_color,
+            None
+        );
+        effects.insert("dry_foliage_color".into(), Value::String("bad".into()));
+        assert!(read(&[entry(effects)]).is_err());
+    }
     #[test]
     fn network_rgb_forms_are_validated_without_sign_extension() {
         assert_eq!(
