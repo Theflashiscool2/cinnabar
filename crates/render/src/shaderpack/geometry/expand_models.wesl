@@ -1,5 +1,5 @@
 // Expands placed block-model quads (plants, stairs, slabs, translucent cubes ...) into Iris faces.
-import render::model::{model_quad_at, model_corner_position, model_corner_uv, model_light_sample, model_quad_normal, model_shade_normal, stem_colour};
+import render::model::{model_quad_at, model_corner_position, model_corner_uv, model_light_sample, model_quad_normal, model_shade_normal, model_tint_gamma};
 import render::material::materials;
 import render::biome_tint::blended_biome_tint_gamma;
 import render::lighting::{light_ao_factor, material_ambient_occlusion, material_face_shade};
@@ -47,11 +47,7 @@ fn model_face(job: vec4<u32>) -> JobFace {
     let geometric = cross(corners.positions[1] - corners.positions[0], corners.positions[2] - corners.positions[0]);
     let authored = model_quad_normal(quad);
     let normal = select(authored, normalize(geometric), dot(geometric, geometric) > 1e-12);
-    var tint = stem_colour(material.flags);
-    let tint_kind = material.flags & 0x30u;
-    if (tint_kind != 0u) {
-        tint = blended_biome_tint_gamma(tint_kind, material.flags, u32(quad.chunk_origin.w), quad.block_position, vec3<f32>(quad.chunk_origin.xyz)).rgb;
-    }
+    var tint = model_tint_gamma(quad.quad_flags, material.flags, u32(quad.chunk_origin.w), quad.block_position, vec3<f32>(quad.chunk_origin.xyz));
     if ((material.flags & MATERIAL_CAULDRON_WATER_FLAG) != 0u) {
         tint *= (CAULDRON_WATER_COLOUR).rgb;
     }

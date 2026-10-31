@@ -122,6 +122,20 @@ fn dispatch(world: &mut World) {
                 address,
                 auth_cache,
             } => connect(world, address, auth_cache),
+            Command::ConnectJavaFixture { address } => {
+                let fixture = std::env::var("CINNABAR_JAVA_OFFLINE_FIXTURE").ok();
+                if fixture.as_deref().is_none_or(str::is_empty) {
+                    Err("set CINNABAR_JAVA_OFFLINE_FIXTURE explicitly for controlled native Java acceptance".into())
+                } else {
+                    world
+                        .get_resource_mut::<client_shell::menu::MenuRuntime>()
+                        .ok_or_else(|| "launcher menu unavailable".to_string())
+                        .and_then(|mut menu| {
+                            menu.request_java_fixture(address.clone())
+                                .map(|()| json!({"joining":address,"identity":"offline_fixture"}))
+                        })
+                }
+            }
             Command::Disconnect => disconnect(world),
             Command::Input(command) => input::apply(world, &command),
             Command::ImportSkin { path } => {

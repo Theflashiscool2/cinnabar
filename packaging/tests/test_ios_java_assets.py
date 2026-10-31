@@ -33,6 +33,7 @@ class JavaAssetsTests(unittest.TestCase):
                 ("physics_report", "physics.bin", "physics.bin"),
                 ("interaction_report", "interaction.bin", "interaction.bin"),
                 ("entity_models_report", "models.json", "models.json"),
+                ("fluid_render_report", "fluids.json", "fluids.json"),
             ]:
                 payload = ("fixture:" + filename).encode()
                 (java / filename).write_bytes(payload)

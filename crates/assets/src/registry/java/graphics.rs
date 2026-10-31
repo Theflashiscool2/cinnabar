@@ -16,6 +16,12 @@ use crate::{
 use std::{collections::BTreeMap, sync::Arc};
 
 type VariantKey = (Identifier, [u16; 3], bool);
+#[derive(Clone, Copy, Debug)]
+pub struct FluidMaterials {
+    pub still: u32,
+    pub flowing: u32,
+    pub overlay: Option<u32>,
+}
 fn key(v: &Variant) -> VariantKey {
     (v.model.clone(), v.rotations, v.uv_lock)
 }
@@ -25,10 +31,21 @@ pub struct Graphics {
     states: BTreeMap<u32, State>,
     pub templates: BTreeMap<u32, Template>,
     builder: Builder,
+    pub fluid_facts: Option<Arc<super::fluids::Table>>,
+}
+/// The renderer that owns an admitted state's visible output. Unsupported special renderers
+/// never become an admitted invisible state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Presentation {
+    Model,
+    Invisible,
+    Fluid,
+    WaterloggedModel,
 }
 #[derive(Clone)]
 struct State {
-    selection: Arc<Selection>,
+    presentation: Presentation,
+    selection: Option<Arc<Selection>>,
     variants: BTreeMap<VariantKey, Vec<u32>>,
 }
 #[derive(Clone, Debug)]
@@ -38,6 +55,12 @@ pub struct Template {
     pub occludes: u8,
 }
 impl Graphics {
+    pub fn presentation(&self, id: u32) -> Option<Presentation> {
+        self.states.get(&id).map(|s| s.presentation)
+    }
+    pub fn fluid_materials(&self, kind: super::fluids::Kind) -> Option<FluidMaterials> {
+        self.builder.fluids.get(&kind).copied()
+    }
     pub fn contains(&self, id: u32) -> bool {
         self.states.contains_key(&id)
     }
@@ -46,8 +69,10 @@ impl Graphics {
             .states
             .get(&id)
             .ok_or_else(|| Error::Model(format!("Java state {id} has no compiled graphics")))?;
-        Ok(state
-            .selection
+        let Some(selection) = &state.selection else {
+            return Ok(Vec::new());
+        };
+        Ok(selection
             .choose(position)
             .into_iter()
             .flat_map(|v| state.variants[&key(v)].iter().copied())
@@ -72,11 +97,12 @@ pub fn compile(
         images: Vec::new(),
         sprites: BTreeMap::new(),
         materials: BTreeMap::new(),
+        fluids: BTreeMap::new(),
     };
     let mut admitted = BTreeMap::new();
     let mut templates = BTreeMap::new();
     append(models, states, &mut builder, &mut admitted, &mut templates)?;
-    finish(builder, admitted, templates)
+    finish(builder, admitted, templates, models.fluids.clone())
 }
 /// An append-only catalog revision, valid only against its exact predecessor.
 /// Construction preserves every old material, template, animation and texture address.
@@ -107,7 +133,12 @@ pub fn extend(
     let mut admitted = previous.states.clone();
     let mut templates = previous.templates.clone();
     append(models, states, &mut builder, &mut admitted, &mut templates)?;
-    let next = Arc::new(finish(builder, admitted, templates)?);
+    let next = Arc::new(finish(
+        builder,
+        admitted,
+        templates,
+        previous.fluid_facts.clone(),
+    )?);
     let resources = crate::DrawResourceExtension::checked(
         Arc::clone(&previous.runtime),
         Arc::clone(&next.runtime),
@@ -138,6 +169,26 @@ fn append(
         let result = (|| -> Result<(), Error> {
             let state = models.state(id)?.clone();
             let name = &state.name;
+            if let Some(fluid) = models
+                .fluids
+                .as_ref()
+                .and_then(|table| table.state(id))
+                .cloned()
+                && fluid.kind != super::fluids::Kind::Empty
+            {
+                builder.fluid(models, fluid.kind)?;
+                if fluid.invisible {
+                    admitted.insert(
+                        id,
+                        State {
+                            presentation: Presentation::Fluid,
+                            selection: None,
+                            variants: BTreeMap::new(),
+                        },
+                    );
+                    return Ok(());
+                }
+            }
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
             for variant in selection.parts().iter().flatten() {
@@ -164,7 +215,8 @@ fn append(
                             quad,
                             tints::material(&state, quad.tint_index)?,
                         )?;
-                        let flags = face_id(quad.shade_override.unwrap_or(quad.facing))
+                        let flags = tints::quad_flags(&state, quad.tint_index)?
+                            | face_id(quad.shade_override.unwrap_or(quad.facing))
                             | quad.cull_face.map_or(0, |f| face_id(f) << 4);
                         let positions = quad.positions.map(|p| {
                             p.map(|v| (v * f32::from(crate::MODEL_POSITION_SCALE)).round() as i16)
@@ -213,7 +265,19 @@ fn append(
             admitted.insert(
                 id,
                 State {
-                    selection,
+                    presentation: if models
+                        .fluids
+                        .as_ref()
+                        .and_then(|t| t.state(id))
+                        .is_some_and(|s| s.kind != super::fluids::Kind::Empty)
+                    {
+                        Presentation::WaterloggedModel
+                    } else if variants.values().all(Vec::is_empty) {
+                        Presentation::Invisible
+                    } else {
+                        Presentation::Model
+                    },
+                    selection: Some(selection),
                     variants,
                 },
             );
@@ -237,6 +301,7 @@ fn finish(
     mut builder: Builder,
     states: BTreeMap<u32, State>,
     templates: BTreeMap<u32, Template>,
+    fluid_facts: Option<Arc<super::fluids::Table>>,
 ) -> Result<Graphics, Error> {
     builder.finish_textures()?;
     let base = RuntimeAssets::diagnostic();
@@ -250,6 +315,7 @@ fn finish(
         states,
         templates,
         builder,
+        fluid_facts,
     })
 }
 #[derive(Clone)]
@@ -264,8 +330,47 @@ struct Builder {
     images: Vec<Arc<Image>>,
     sprites: BTreeMap<Identifier, SpriteRef>,
     materials: BTreeMap<(Identifier, u32), u32>,
+    fluids: BTreeMap<super::fluids::Kind, FluidMaterials>,
 }
 impl Builder {
+    fn fluid(&mut self, models: &mut BlockModels, kind: super::fluids::Kind) -> Result<(), Error> {
+        use super::fluids::Kind;
+        if self.fluids.contains_key(&kind) {
+            return Ok(());
+        }
+        let (name, flags) = match kind {
+            Kind::Water => (
+                "water",
+                crate::MATERIAL_FLAG_WATER_TINT | crate::MATERIAL_FLAG_ALPHA_BLEND,
+            ),
+            Kind::Lava => ("lava", crate::MATERIAL_FLAG_LIQUID_DEPTH_WRITE),
+            Kind::Empty => return Err(invalid("empty fluid has no material")),
+        };
+        let mut load = |suffix| -> Result<u32, Error> {
+            let id = Identifier::parse(&format!("minecraft:block/{name}_{suffix}"))?;
+            self.sprite(models, &id)?;
+            let sprite = &self.sprites[&id];
+            let index = self.overlay.materials.len() as u32;
+            self.overlay.materials.push(Material {
+                texture: sprite.texture,
+                flags,
+                animation: sprite.animation,
+                ..Material::unvaried()
+            });
+            Ok(index)
+        };
+        let materials = FluidMaterials {
+            still: load("still")?,
+            flowing: load("flow")?,
+            overlay: if kind == Kind::Water {
+                Some(load("overlay")?)
+            } else {
+                None
+            },
+        };
+        self.fluids.insert(kind, materials);
+        Ok(())
+    }
     fn reference(&self, index: usize) -> Result<TextureRef, Error> {
         let limit = self.overlay.max_page_layers as usize;
         Ok(TextureRef::new(

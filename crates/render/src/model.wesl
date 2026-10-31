@@ -9,7 +9,7 @@ import render::material::{MaterialGpu, materials, positional_material_id, textur
 @if(ENHANCED_SHADOW)
 import render::enhanced::caster::caster_clip;
 import render::world_projection::{section_camera_offset, camera_offset_clip};
-import render::biome_tint::{blended_biome_tint, blended_biome_tint_gamma};
+import render::biome_tint::{blended_biome_tint, blended_biome_tint_gamma, blended_biome_tint_below};
 import render::lighting::{light_ao_factor, light_colour, material_ambient_occlusion, material_face_shade, tint_to_gamma, tint_to_linear, terrain_light_levels, terrain_light_colour};
 @if(ALPHA_TO_COVERAGE)
 import render::lighting::{CutoutSample, cutout_alpha_array, cutout_mix};
@@ -435,18 +435,13 @@ fn model_vertex(vertex_index: u32, instance_index: u32) -> VertexOutput {
     out.native_light_levels = terrain_light_levels(light_sample);
     @if(!ENHANCED)
     out.native_ao_face = terrain_shade;
-    out.visibility.y = select(0u, 1u, (quad_flags & 8u) != 0u);
+    out.visibility.y = (quad_flags & ~255u) | select(0u, 1u, (quad_flags & 8u) != 0u);
     out.world_position = world;
     out.world_origin = vec3<f32>(quad.chunk_origin.xyz);
     @if(!ENHANCED)
     out.tint_gamma = stem_colour(material.flags);
-    // Every corner belongs to the same block; keep its exact tint flat across the model.
     @if(!ENHANCED && !ENHANCED_SHADOW && !OPAQUE_OVERDRAW)
-    let tint_kind = material.flags & 0x30u;
-    @if(!ENHANCED && !ENHANCED_SHADOW && !OPAQUE_OVERDRAW)
-    if (tint_kind != 0u) {
-        out.tint_gamma = blended_biome_tint_gamma(tint_kind, material.flags, out.biome_record, block_position, out.world_origin).rgb;
-    }
+    out.tint_gamma = model_tint_gamma(quad_flags, material.flags, out.biome_record, block_position, out.world_origin);
     @if(ENHANCED)
     out.surface_class = material_class(material_id);
     @if(ENHANCED)
@@ -494,13 +489,24 @@ transform: u32) -> vec3<f32> {
 
 // STEM_COLOURS
 
-fn tinted(sampled: vec4<f32>, flags: u32, record: u32, position: vec3<f32>, world_origin: vec3<f32>) -> vec4<f32> {
-    if ((flags & MATERIAL_STEM_FLAG) != 0u) {
-        return vec4(sampled.rgb * tint_to_linear(vec4(stem_colour(flags), 1.0)).rgb, sampled.a);
-    }
+// JAVA_COLOURS
+
+/// Shared native and shaderpack tint dispatch; Java upper plants sample exactly one block below.
+fn model_tint_gamma(quad_flags: u32, flags: u32, record: u32, position: vec3<f32>, world_origin: vec3<f32>) -> vec3<f32> {
+    let callback = quad_flags & JAVA_TINT_MASK;
+    if (callback == JAVA_TINT_REDSTONE) { return JAVA_REDSTONE[(quad_flags >> JAVA_POWER_SHIFT) & 15u]; }
+    if (callback == JAVA_TINT_LILY) { return JAVA_LILY; }
     let tint_kind = flags & 0x30u;
-    if (tint_kind == 0u) { return vec4(sampled.rgb, sampled.a); }
-    return vec4(sampled.rgb * blended_biome_tint(tint_kind, flags, record, position, world_origin).rgb, sampled.a);
+    if (tint_kind == 0u) { return stem_colour(flags); }
+    if (callback == JAVA_TINT_BELOW) {
+        return tint_to_gamma(blended_biome_tint_below(tint_kind, flags, record, position, world_origin)).rgb;
+    }
+    return blended_biome_tint_gamma(tint_kind, flags, record, position, world_origin).rgb;
+}
+
+fn tinted(sampled: vec4<f32>, quad_flags: u32, flags: u32, record: u32, position: vec3<f32>, world_origin: vec3<f32>) -> vec4<f32> {
+    let tint = model_tint_gamma(quad_flags, flags, record, position, world_origin);
+    return vec4(sampled.rgb * tint_to_linear(vec4(tint, 1.0)).rgb, sampled.a);
 }
 
 fn sample_ref(texture_ref: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
@@ -726,7 +732,7 @@ fn fragment(
     @builtin(front_facing) front_facing: bool,
 ) -> @location(0) vec4<f32> {
     if (in.visibility.x == 0u) { discard; }
-    if (!front_facing && in.visibility.y == 0u) { discard; }
+    if (!front_facing && (in.visibility.y & 1u) == 0u) { discard; }
     let dx = dpdx(in.uv);
     let dy = dpdy(in.uv);
     // Both views already hold the working colour space, so frames blend before the alpha test.
@@ -750,7 +756,7 @@ fn fragment(
     @if(OPAQUE_OVERDRAW)
     return vec4(1.0);
     @if(!OPAQUE_OVERDRAW && ENHANCED)
-    let colour = tinted(sampled, in.material_flags, in.biome_record, in.local_position, in.world_origin);
+    let colour = tinted(sampled, in.visibility.y, in.material_flags, in.biome_record, in.local_position, in.world_origin);
     @if(!OPAQUE_OVERDRAW && ENHANCED)
     let shaded = shade_surface(
         colour.rgb,
@@ -782,7 +788,7 @@ fn fragment_blend(
 // uniform control flow.
 fn shade_blend(in: VertexOutput, front_facing: bool, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
     if (in.visibility.x == 0u) { discard; }
-    if (!front_facing && in.visibility.y == 0u) { discard; }
+    if (!front_facing && (in.visibility.y & 1u) == 0u) { discard; }
     var sampled = sample_model_ref(in, in.current_texture, dx, dy);
     if (in.frame_blend > 0.0) {
         sampled = mix(sampled, sample_model_ref(in, in.next_texture, dx, dy), in.frame_blend);
@@ -796,7 +802,7 @@ fn shade_blend(in: VertexOutput, front_facing: bool, dx: vec2<f32>, dy: vec2<f32
     // The background is fogged by the same transfer, so preserving source
     // alpha composes to one fog application instead of double-counting it.
     @if(ENHANCED)
-    let colour = tinted(sampled, in.material_flags, in.biome_record, in.local_position, in.world_origin);
+    let colour = tinted(sampled, in.visibility.y, in.material_flags, in.biome_record, in.local_position, in.world_origin);
     @if(ENHANCED)
     let shaded = shade_surface(
         colour.rgb,

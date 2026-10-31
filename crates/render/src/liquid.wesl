@@ -4,7 +4,7 @@ import render::chunk_bindings::{
     terrain_gamma_page_1, terrain_gamma_page_2, terrain_gamma_page_3, terrain_gamma_page_4,
     animations, animation_frames, clock,
     geometry_streams, atmosphere, transparent_refs,
-    LIQUID_FACE_INSET, LIQUID_TOP_INSET_BIT, LIQUID_DEPTH_WRITE_BIT, LIQUID_TWO_SIDED_BIT,
+    LIQUID_FACE_INSET, LIQUID_TOP_INSET_BIT, LIQUID_DEPTH_WRITE_BIT, LIQUID_TWO_SIDED_BIT, LIQUID_JAVA_BIT, LIQUID_BOTTOM_INSET_BIT,
     TRANSPARENT_WATER_RECORD_FLAG,
 };
 import render::material::{MaterialGpu, materials, positional_material_id, texture_layer, texture_page, texture_uv_scale, texture_gradient_scale};
@@ -43,7 +43,7 @@ const SIDE_HEIGHT_BIAS: f32 = 1.0;
 const SIDE_HEIGHT_SCALE: f32 = -1.0;
 const FLOW_FACE: u32 = 3u;
 const SIDE_FACE_MASK: u32 = 51u;
-const LIQUID_MATERIAL_MASK: u32 = ~(LIQUID_DEPTH_WRITE_BIT | LIQUID_TOP_INSET_BIT | LIQUID_TWO_SIDED_BIT);
+const LIQUID_MATERIAL_MASK: u32 = ~(LIQUID_DEPTH_WRITE_BIT | LIQUID_TOP_INSET_BIT | LIQUID_TWO_SIDED_BIT | LIQUID_JAVA_BIT | LIQUID_BOTTOM_INSET_BIT);
 
 struct VertexOutput {
     @builtin(position) @invariant clip_position: vec4<f32>,
@@ -112,6 +112,9 @@ fn liquid_corner(geometry: u32, height_word: u32, corner: u32, packed_material: 
     if (face == 1u) { xz.x -= LIQUID_FACE_INSET; }
     if (face == 4u) { xz.y += LIQUID_FACE_INSET; }
     if (face == 5u) { xz.y -= LIQUID_FACE_INSET; }
+    if ((packed_material & LIQUID_BOTTOM_INSET_BIT) != 0u && (face == 2u || (face != 3u && (corner == 0u || corner == 3u)))) {
+        height += LIQUID_FACE_INSET;
+    }
     return origin + vec3(xz.x, height, xz.y);
 }
 
@@ -135,17 +138,22 @@ fn liquid_uv(
     height: f32,
     flow_x: i32,
     flow_z: i32,
+    java: bool,
 ) -> vec2<f32> {
     var uv = LIQUID_BASE_UV[face * 4u + corner];
     if (((SIDE_FACE_MASK >> face) & 1u) != 0u) {
         uv.y = SIDE_HEIGHT_BIAS + SIDE_HEIGHT_SCALE * height;
+        if (java) {
+            uv *= 0.5;
+            if (corner == 0u || corner == 3u) { uv.y = 0.5; }
+        }
     }
     if (face == FLOW_FACE) {
         if (flow_x != 0 || flow_z != 0) {
             let radians = FLOW_ANGLE_DIRECTION * atan2(f32(flow_z), f32(flow_x)) + FLOW_ANGLE_OFFSET;
             let cosine = cos(radians);
             let sine = sin(radians);
-            let centered = (uv - vec2(0.5)) / (abs(cosine) + abs(sine));
+            let centered = (uv - vec2(0.5)) * select(1.0 / (abs(cosine) + abs(sine)), 0.5, java);
             uv = vec2(
                 centered.x * cosine - centered.y * sine,
                 centered.x * sine + centered.y * cosine,
@@ -268,6 +276,7 @@ fn liquid_record_corner(record_index: u32, corner: u32) -> LiquidCorner {
         local_position.y - f32(block_coordinate.y),
         signed_i8(geometry, 16u),
         signed_i8(geometry, 24u),
+        (packed_material & LIQUID_JAVA_BIT) != 0u,
     );
     let selected_material_id = positional_material_id(packed_material & LIQUID_MATERIAL_MASK, chunk_origin.value.xyz + vec3<i32>(block_coordinate));
     return LiquidCorner(face, local_position, block_coordinate, uv, chunk_origin.value, light_sample, packed_material, selected_material_id);

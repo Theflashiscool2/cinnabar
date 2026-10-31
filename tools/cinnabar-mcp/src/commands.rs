@@ -54,6 +54,24 @@ pub fn command(
     control_dir: &Path,
 ) -> Result<(Command, Duration), String> {
     Ok(match name {
+        "connect_java_fixture" => {
+            let address = arguments
+                .get("address")
+                .and_then(Value::as_str)
+                .ok_or("address is required")?;
+            let socket = address
+                .parse::<std::net::SocketAddr>()
+                .map_err(|_| "explicit loopback IP:port required")?;
+            if !socket.ip().is_loopback() {
+                return Err("Java fixture requires loopback".into());
+            }
+            (
+                Command::ConnectJavaFixture {
+                    address: address.to_owned(),
+                },
+                CALL_TIMEOUT,
+            )
+        }
         "input" => (
             Command::Input(parse::<InputCommand>(arguments, "input")?),
             CALL_TIMEOUT,
@@ -204,4 +222,43 @@ pub fn is_loopback(address: &str) -> bool {
     let host = host.trim_start_matches('[').trim_end_matches(']');
     host.eq_ignore_ascii_case("localhost")
         || host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback())
+}
+
+#[cfg(test)]
+mod java_fixture_tests {
+    use super::*;
+    #[test]
+    fn fixture_connect_is_explicit_loopback_without_account_inputs() {
+        for address in ["127.0.0.1:25575", "[::1]:25575"] {
+            let (cmd, _) = command(
+                "connect_java_fixture",
+                &json!({"address":address}),
+                Path::new("."),
+                Path::new("."),
+            )
+            .unwrap();
+            assert_eq!(
+                cmd,
+                Command::ConnectJavaFixture {
+                    address: address.into()
+                }
+            );
+        }
+        for address in [
+            "example.com:25565",
+            "192.0.2.1:25565",
+            "localhost:25565",
+            "127.0.0.1",
+        ] {
+            assert!(
+                command(
+                    "connect_java_fixture",
+                    &json!({"address":address}),
+                    Path::new("."),
+                    Path::new(".")
+                )
+                .is_err()
+            );
+        }
+    }
 }

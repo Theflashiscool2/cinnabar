@@ -26,6 +26,7 @@ struct Target {
     protocol: u32,
     client_assets: Report,
     block_registry_report: Report,
+    fluid_render_report: Option<Report>,
 }
 
 pub(super) fn run(options: Options) -> Result<(), Box<dyn Error>> {
@@ -56,7 +57,21 @@ fn run_target(options: Options, target: Target) -> Result<(), Box<dyn Error>> {
         &target.client_assets.sha256,
         target.client_assets.bytes,
     )?;
-    let report = audit(Arc::clone(&registry), Box::new(jar))?;
+    let fluids = target
+        .fluid_render_report
+        .as_ref()
+        .map(|pin| -> Result<_, Box<dyn Error>> {
+            let path = root.join("fluids.json");
+            super::validate_output_bundle(&path, &options.out)?;
+            verify(&path, &pin.sha256, pin.bytes)?;
+            Ok(Arc::new(assets::registry::java::fluids::Table::load(
+                &fs::read(path)?,
+                &pin.sha256,
+                registry.len(),
+            )?))
+        })
+        .transpose()?;
+    let report = audit(Arc::clone(&registry), Box::new(jar), fluids)?;
     let document = serde_json::json!({
         "schema": 1,
         "scope": "all_pinned_block_states",
@@ -64,6 +79,7 @@ fn run_target(options: Options, target: Target) -> Result<(), Box<dyn Error>> {
         "protocol": target.protocol,
         "block_report_sha256": target.block_registry_report.sha256,
         "client_sha256": target.client_assets.sha256,
+        "fluid_report_sha256": target.fluid_render_report.as_ref().map(|r| &r.sha256),
         "model_admission": report,
         "limitations": "First compiler failure per state, grouped with bounded samples. Does not test rendering, gameplay, network packets, or behavior hidden behind an earlier failure in the same state."
     });
@@ -94,6 +110,7 @@ fn run_target(options: Options, target: Target) -> Result<(), Box<dyn Error>> {
 fn audit(
     registry: Arc<BlockRegistry>,
     source: Box<dyn assets::registry::java::source::Source + Send>,
+    fluids: Option<Arc<assets::registry::java::fluids::Table>>,
 ) -> Result<graphics::audit::Report, ResourceError> {
     let mut groups = BTreeMap::<String, Vec<u32>>::new();
     for id in 0..registry.len() as u32 {
@@ -109,6 +126,7 @@ fn audit(
             .push(id);
     }
     let mut models = BlockModels::new(registry, source);
+    models.fluids = fluids;
     let mut report = graphics::audit::Report::default();
     // Release each block's GPU-shaped buffers before the next block; this is not a world atlas.
     for (name, states) in groups {
@@ -149,7 +167,7 @@ mod tests {
         let bytes =
             br#"{"minecraft:first":{"states":[{"id":0,"default":true},{"id":1}]},"minecraft:last":{"states":[{"id":2,"default":true}]}}"#;
         let registry = BlockRegistry::load(bytes, &format!("{:x}", Sha256::digest(bytes))).unwrap();
-        let report = audit(Arc::new(registry), Box::new(Empty)).unwrap();
+        let report = audit(Arc::new(registry), Box::new(Empty), None).unwrap();
         assert_eq!(report.checked_states, 3);
         assert_eq!(report.failed_states, 3);
         assert_eq!(report.issues.len(), 2);
@@ -168,6 +186,7 @@ mod tests {
             .unwrap();
         let archive = fs::read(&client).unwrap();
         let pin = || Target {
+            fluid_render_report: None,
             game_version: "fixture".into(),
             protocol: 0,
             client_assets: Report {

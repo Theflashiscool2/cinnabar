@@ -4,11 +4,7 @@
     reason = "assetc reports compiled outputs and prepare progress on stdout and prepare failures on stderr"
 )]
 
-use std::{
-    fs::{self, File},
-    io::{self, Read},
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use assets::{
     AssetError, AtmosphereRole, BlobProvenance, EntityAssetSource, EntityAssetSymbol,
@@ -28,6 +24,9 @@ use pack_font_compiler::{FontCompileError, compile_fonts};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+#[path = "assetc/input.rs"]
+mod input;
+use input::{read_bounded, read_bounded_with_limit};
 #[path = "assetc/actor_command.rs"]
 mod actor_command;
 #[path = "assetc/audio_bank_command.rs"]
@@ -61,6 +60,8 @@ use output_bundle::write_output_bundle;
 mod java_audit;
 #[path = "assetc/java_entities.rs"]
 mod java_entities;
+#[path = "assetc/java_fluids.rs"]
+mod java_fluids;
 #[path = "assetc/java_interaction.rs"]
 mod java_interaction;
 #[path = "assetc/java_physics.rs"]
@@ -534,6 +535,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
+        Command::JavaFluids(options) => java_fluids::generate(options)?,
         Command::JavaPrepare(options) => java_prepare::prepare(options)?,
         Command::JavaAudit(options) => java_audit::run(options)?,
         Command::JavaEntities(options) => java_entities::generate(options)?,
@@ -958,38 +960,6 @@ fn build_atmosphere_report(
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
-fn read_bounded(path: &Path) -> Result<Vec<u8>, AssetError> {
-    read_bounded_with_limit(path, MAX_REGISTRY_FILE_BYTES, "registry")
-}
-
-fn read_bounded_with_limit(
-    path: &Path,
-    max_bytes: usize,
-    label: &'static str,
-) -> Result<Vec<u8>, AssetError> {
-    let file = File::open(path).map_err(|source| AssetError::Io {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    let mut bytes = Vec::new();
-    file.take((max_bytes + 1) as u64)
-        .read_to_end(&mut bytes)
-        .map_err(|source| AssetError::Io {
-            path: path.to_path_buf(),
-            source,
-        })?;
-    if bytes.len() > max_bytes {
-        return Err(AssetError::Io {
-            path: path.to_path_buf(),
-            source: io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("{label} exceeds the {max_bytes}-byte compiler input limit"),
-            ),
-        });
-    }
-    Ok(bytes)
 }
 
 #[cfg(test)]

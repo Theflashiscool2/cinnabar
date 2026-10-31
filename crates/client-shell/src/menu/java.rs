@@ -56,6 +56,24 @@ impl MenuRuntime {
             self.java_account_action(launcher::java_accounts::Action::Open);
             return;
         }
+        self.queue_java_join(address);
+    }
+
+    /// Explicit developer fixture entry; no stored account is read or replaced.
+    #[cfg(feature = "developer-control")]
+    pub fn request_java_fixture(&mut self, address: String) -> Result<(), String> {
+        let socket = address
+            .parse::<std::net::SocketAddr>()
+            .map_err(|_| "Java fixture requires an explicit loopback IP:port".to_string())?;
+        if !socket.ip().is_loopback() {
+            return Err("Java fixture requires loopback".into());
+        }
+        self.queue_java_join(address);
+        Ok(())
+    }
+
+    fn queue_java_join(&mut self, address: String) {
+        let edition = launcher::menu::ServerEdition::Java;
         self.feeds.java_diagnostic = Some("Preparing Java authentication".to_owned());
         self.local_world_joined = false;
         self.remember_session_origin();

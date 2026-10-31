@@ -21,18 +21,21 @@ using Bedrock biome colors. Leaf litter uses the authoritative optional biome
 Attached stems use the mature stem color. Material selection follows authoritative
 state properties; append-only graphics extensions preserve old draw addresses.
 
-Upper tall grass/large fern must sample the block below; the current shader path
-does not carry that offset and still rejects these states. Redstone power and
-lily-pad constant colors also remain explicit unsupported callbacks. Biome grass
-modifiers remain gated separately. These bindings do not prove complete biome
-sampling, blending, lighting or resource-pack parity.
+Upper tall grass/large fern carry a quad tint callback that samples the block below,
+including the previous section's lattice halo. Redstone carries authoritative power
+and uses the reference's quantized gamma vertex color; lily pads use the in-world
+constant, separately from their item/default color. Colors multiply sampled pixels
+in the shaders rather than baking another quantization into the atlas. The shared
+native, enhanced and shaderpack model paths use the same callback selection.
+Nonuniform Java biome fields and biome grass modifiers remain gated separately;
+these bindings do not establish complete sampling, blending or resource-pack parity.
 
 Known empty terrain models are air, structure void, non-waterlogged barrier/light,
 and upper pitcher crop ages zero through two. Reference: `BarrierBlock`, `LightBlock`
 and `StructureVoidBlock.getRenderShape` plus the three empty pitcher-top resources.
-Invisible terrain does not imply no collision. Waterlogged invisible hosts remain
-blocked because native fluid geometry is not implemented. Fluids, chests, portals,
-and other special renderer types are not converted into invisible blocks.
+Invisible terrain does not imply no collision. Waterlogged invisible hosts use the separate [native fluid path](java-fluids.md).
+Chests, portals and other unsupported special renderer types are not converted into
+invisible blocks.
 
 Run focused deterministic tests:
 

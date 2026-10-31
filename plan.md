@@ -74,14 +74,28 @@ reports group observed gaps next to client.log without retaining packet payloads
 [coverage and remaining gates](docs/references/java-item-components.md).
 Model admission now groups independent state failures, with a separate observed-model
 JSON report and whole-registry `make java-audit`. It does not treat unsupported models
-as air. Native fluid geometry remains unimplemented in this checkout; an owner join
-reached the empty lava-model gate after assets were prepared.
+as air. Native fluids now use exported Java state/occlusion facts and shared liquid
+geometry, texture animation and publication infrastructure; waterlogged model hosts
+retain both representations. This replaces the empty lava-model admission failure,
+and has Linux Xvfb/lavapipe offline-vanilla world-entry evidence. Mixed water/lava
+publication now preserves the shared renderer's transparent-prefix/depth-writing-suffix
+contract. See [fluid scope](docs/references/java-fluids.md).
 The complete owner audit found 3,003 failed states in 122 groups before repairs.
 Version-checked tint admission now handles foliage, stems, cauldron water and dry
 foliage, and preserves unmodified textures when no callback is registered. Known
-invisible models have narrow admission rules; special renderers remain gated.
+invisible models have narrow admission rules. Redstone power, lily-pad color and
+upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
+and spatial grass modifiers remain gated. The integrated audit records 1,238 failing
+states in 87 groups, with no omitted failures: banners, shulker boxes, chests,
+heads/skulls, copper golem statues, conduit, decorated pots, End portals/gateways
+and moving pistons. These require actual special-renderer integration, not empty-model
+admission. Incremental block-entity updates and block events remain deferred.
 See [block-color support and remaining gaps](docs/references/java-block-colors.md).
-This is CPU compilation coverage, not rendered or server-play acceptance.
+The audit itself is structural coverage. Separate controlled vanilla 26.3 Linux software-GPU
+acceptance exercised water/lava, source removal, waterlogged slab replacement, redstone
+power changes, lily pads, tall plants, chunk-boundary remeshing, unload/revisit and reconnect.
+A newly placed chest reproduced the next special-renderer failure. No iOS, online-mode or
+Hypixel acceptance is established by these tests; Java resource-pack reload remains open.
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline
 server evidence; complex metadata and entity frame publication remain incomplete.

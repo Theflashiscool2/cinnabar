@@ -41,7 +41,7 @@ mod lang;
 mod light_registry;
 pub mod material_keys;
 mod material_variations;
-mod model;
+pub mod model;
 pub mod native_material;
 mod ogg;
 pub mod oreui_icons;

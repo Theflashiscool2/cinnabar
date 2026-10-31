@@ -1,7 +1,10 @@
 use world::SubChunk;
 
 use crate::SIDE;
-use crate::liquid::{LIQUID_DEPTH_WRITE_BIT, LIQUID_TOP_INSET_BIT, LIQUID_TWO_SIDED_BIT};
+use crate::liquid::{
+    LIQUID_BOTTOM_INSET_BIT, LIQUID_DEPTH_WRITE_BIT, LIQUID_JAVA_BIT, LIQUID_TOP_INSET_BIT,
+    LIQUID_TWO_SIDED_BIT,
+};
 
 const CONNECTIVITY_MASK: u64 = (1_u64 << (Face::ALL.len() * Face::ALL.len())) - 1;
 
@@ -317,7 +320,7 @@ impl PackedQuadLighting {
 /// NW/SW/SE/NE; -X bottom-N/top-N/top-S/bottom-S; +X
 /// bottom-S/top-S/top-N/bottom-N; -Z bottom-E/top-E/top-W/bottom-W; and +Z
 /// bottom-W/top-W/top-E/bottom-E. Word 2 stores the selected material in bits
-/// 0..28, opposite-winding admission in bit 29, top-emitted corner-height inset
+/// 0..26, bottom inset in bit 27, Java UVs in bit 28, opposite-winding admission in bit 29, top-emitted corner-height inset
 /// in bit 30, and the immutable
 /// depth-writing route in bit 31; word 3 stores the
 /// relative index in the independently allocated liquid-light stream.
@@ -349,7 +352,12 @@ impl PackedLiquidQuad {
         if origin[0] >= 16
             || origin[1] >= 16
             || origin[2] >= 16
-            || material_id & (LIQUID_DEPTH_WRITE_BIT | LIQUID_TOP_INSET_BIT | LIQUID_TWO_SIDED_BIT)
+            || material_id
+                & (LIQUID_DEPTH_WRITE_BIT
+                    | LIQUID_TOP_INSET_BIT
+                    | LIQUID_TWO_SIDED_BIT
+                    | LIQUID_JAVA_BIT
+                    | LIQUID_BOTTOM_INSET_BIT)
                 != 0
         {
             return None;
@@ -412,7 +420,12 @@ impl PackedLiquidQuad {
 
     #[must_use]
     pub const fn material_id(self) -> u32 {
-        self.0[2] & !(LIQUID_DEPTH_WRITE_BIT | LIQUID_TOP_INSET_BIT | LIQUID_TWO_SIDED_BIT)
+        self.0[2]
+            & !(LIQUID_DEPTH_WRITE_BIT
+                | LIQUID_TOP_INSET_BIT
+                | LIQUID_TWO_SIDED_BIT
+                | LIQUID_JAVA_BIT
+                | LIQUID_BOTTOM_INSET_BIT)
     }
 
     /// Returns whether this record belongs to the opaque depth-writing liquid route.
@@ -476,6 +489,22 @@ impl PackedLiquidQuad {
     #[must_use]
     pub const fn is_falling(self) -> bool {
         self.0[0] & (1 << 15) != 0
+    }
+    pub(crate) const fn with_java_fluid(mut self, enabled: bool) -> Self {
+        if enabled {
+            self.0[2] |= LIQUID_JAVA_BIT;
+        } else {
+            self.0[2] &= !LIQUID_JAVA_BIT;
+        }
+        self
+    }
+    pub(crate) const fn with_bottom_inset(mut self, enabled: bool) -> Self {
+        if enabled {
+            self.0[2] |= LIQUID_BOTTOM_INSET_BIT;
+        } else {
+            self.0[2] &= !LIQUID_BOTTOM_INSET_BIT;
+        }
+        self
     }
 }
 

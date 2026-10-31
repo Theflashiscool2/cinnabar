@@ -100,14 +100,6 @@ fn stem_colors_follow_authoritative_age_and_reject_malformed_states() {
         crate::stem::material_colour(material(&state("attached_melon_stem", &[]), 0).unwrap()),
         Some([224, 199, 28])
     );
-    for name in ["redstone_wire", "lily_pad"] {
-        assert!(material(&state(name, &[]), 0).is_err());
-    }
-    assert!(material(&state("tall_grass", &[("half", "upper")]), 0).is_err());
-    assert_eq!(
-        material(&state("tall_grass", &[("half", "lower")]), 0).unwrap(),
-        MATERIAL_FLAG_GRASS_TINT
-    );
 }
 
 #[test]
@@ -188,6 +180,18 @@ fn pinned_resources_compile_tints_and_empty_models_without_erasing_real_geometry
         state("stonecutter", &[("facing", "west")]),
         state("bamboo_sapling", &[]),
         state("tall_grass", &[("half", "lower")]),
+        state("tall_grass", &[("half", "upper")]),
+        state("lily_pad", &[]),
+        state(
+            "redstone_wire",
+            &[
+                ("power", "15"),
+                ("north", "none"),
+                ("south", "none"),
+                ("east", "none"),
+                ("west", "none"),
+            ],
+        ),
         state("pitcher_crop", &[("age", "3"), ("half", "upper")]),
         state("structure_void", &[]),
         state("barrier", &[("waterlogged", "false")]),
@@ -213,10 +217,26 @@ fn pinned_resources_compile_tints_and_empty_models_without_erasing_real_geometry
             &[("age", "1"), ("leaves", "large"), ("stage", "0")],
         ),
     ];
-    let report = cases.iter().enumerate().map(|(id, state)| {
-        let properties = state.properties.iter().map(|(key,value)| (key, vec![value])).collect::<BTreeMap<_,_>>();
-        (state.name.to_string(), json!({"properties":properties,"states":[{"id":id, "default":true, "properties":state.properties}]}))
-    }).collect::<BTreeMap<_,_>>();
+    let mut report = BTreeMap::<String, serde_json::Value>::new();
+    for (id, state) in cases.iter().enumerate() {
+        let entry = report
+            .entry(state.name.to_string())
+            .or_insert_with(|| json!({"properties":{},"states":[]}));
+        for (key, value) in &state.properties {
+            let values = entry["properties"]
+                .as_object_mut()
+                .unwrap()
+                .entry(key.clone())
+                .or_insert_with(|| json!([]))
+                .as_array_mut()
+                .unwrap();
+            if !values.contains(&json!(value)) {
+                values.push(json!(value));
+            }
+        }
+        let states = entry["states"].as_array_mut().unwrap();
+        states.push(json!({"id":id,"default":states.is_empty(),"properties":state.properties}));
+    }
     let bytes = serde_json::to_vec(&report).unwrap();
     let registry = BlockRegistry::load(&bytes, &format!("{:x}", Sha256::digest(&bytes))).unwrap();
     let mut models = BlockModels::new(Arc::new(registry), Box::new(jar));
@@ -232,7 +252,13 @@ fn pinned_resources_compile_tints_and_empty_models_without_erasing_real_geometry
     }
     // Petals retain untinted flowers and a separately biome-tinted stem layer.
     let flags = compiled
-        .select(11, [0; 3])
+        .select(
+            cases
+                .iter()
+                .position(|s| &*s.name == "minecraft:pink_petals")
+                .unwrap() as u32,
+            [0; 3],
+        )
         .unwrap()
         .iter()
         .flat_map(|id| {
@@ -246,4 +272,48 @@ fn pinned_resources_compile_tints_and_empty_models_without_erasing_real_geometry
         })
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(flags, [0, MATERIAL_FLAG_GRASS_TINT].into());
+}
+
+#[test]
+fn power_lily_and_tall_plant_callbacks_preserve_layer_and_position_semantics() {
+    pin();
+    assert_eq!(LILY, [32, 128, 48]);
+    for (power, expected) in [
+        (0, [76, 0, 0]),
+        (1, [112, 0, 0]),
+        (7, [173, 0, 0]),
+        (15, [255, 50, 0]),
+    ] {
+        assert_eq!(redstone(power), Some(expected));
+        let s = state("redstone_wire", &[("power", &power.to_string())]);
+        let flags = quad_flags(&s, 0).unwrap();
+        assert_eq!(
+            flags,
+            crate::model::MODEL_QUAD_JAVA_TINT_REDSTONE
+                | u32::from(power) << crate::model::MODEL_QUAD_JAVA_POWER_SHIFT
+        );
+        assert!(crate::model::model_quad_flags_are_valid(flags));
+        assert_eq!(material(&s, 0).unwrap(), 0);
+        assert_eq!(quad_flags(&s, 1).unwrap(), 0);
+    }
+    assert_eq!(redstone(16), None);
+    assert!(quad_flags(&state("redstone_wire", &[("power", "16")]), 0).is_err());
+    assert_eq!(
+        quad_flags(&state("lily_pad", &[]), 0).unwrap(),
+        crate::model::MODEL_QUAD_JAVA_TINT_LILY
+    );
+    for name in ["tall_grass", "large_fern"] {
+        assert_eq!(
+            quad_flags(&state(name, &[("half", "upper")]), 0).unwrap(),
+            crate::model::MODEL_QUAD_JAVA_TINT_BELOW
+        );
+        assert_eq!(
+            quad_flags(&state(name, &[("half", "lower")]), 0).unwrap(),
+            0
+        );
+        assert_eq!(
+            material(&state(name, &[("half", "upper")]), 0).unwrap(),
+            MATERIAL_FLAG_GRASS_TINT
+        );
+    }
 }

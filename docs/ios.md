@@ -146,7 +146,7 @@ make java-assets JAVA_ACCEPT_EULA=1
 ```
 
 This downloads and verifies the official client/server archives, generates missing
-reports, and installs all five runtime files under `.local/assets/java/<pinned-version>`.
+reports, and installs all six runtime files under `.local/assets/java/<pinned-version>`.
 Valid existing files are reused. Report generation requires the target's JDK (including
 `javac`); discovery checks `JAVA_HOME`, PATH, macOS `java_home`, then Homebrew
 `openjdk@<major>`. It does not install a JDK or change the system installation.
@@ -166,7 +166,7 @@ python3 packaging/ios/add-assets.py path/to/Cinnabar-<version>-unsigned.ipa \
 ```
 
 The directory must contain `client.jar`, `blocks.json`, `physics.bin`,
-`interaction.bin` and `models.json`. The injector verifies the bytes it writes
+`interaction.bin`, `models.json` and `fluids.json`. The injector verifies the bytes it writes
 against the tracked Java target's sizes and SHA-256 hashes. A mismatch leaves any
 existing output untouched. It copies only these Java files into
 `local/assets/java/<pinned-version>/`; server binaries, exporter programs and account

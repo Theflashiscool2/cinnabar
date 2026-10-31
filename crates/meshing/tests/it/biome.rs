@@ -510,3 +510,40 @@ fn compact_lattice_preserves_all_stencil_fraction_bits_and_full_width_indices() 
         assert!(sample.tint_index >= u32::from(u16::MAX) - BIOME_NEIGHBOUR_SLOT_COUNT as u32);
     }
 }
+
+#[test]
+fn upper_plant_tint_crosses_vertical_section_seam_without_clamping() {
+    let record_at = |section_y: i32| {
+        let mut halo = std::array::from_fn(|_| None);
+        for x in -1..=1 {
+            for y in -1..=1 {
+                for z in -1..=1 {
+                    halo[biome_volume_index(x, y, z).unwrap()] =
+                        Some(uniform_storage(if section_y + i32::from(y) < 0 {
+                            1
+                        } else {
+                            2
+                        }));
+                }
+            }
+        }
+        PackedBiomeRecord::from_neighbourhood(&halo, |id| id)
+    };
+    let above = record_at(0);
+    let below = record_at(-1);
+    let weights = |samples: &[meshing::BiomeBlendSample]| {
+        let mut w = [0f32; 3];
+        for s in samples {
+            w[s.tint_index as usize] += s.weight;
+        }
+        w
+    };
+    let upper = weights(&above.blend_samples_below([7, 0, 7]).unwrap());
+    let lower = weights(&below.blend_samples([7, 15, 7]).unwrap());
+    for i in 0..3 {
+        assert!((upper[i] - lower[i]).abs() < 0.00001);
+    }
+    assert!(upper[1] > weights(&above.blend_samples([7, 0, 7]).unwrap())[1]);
+    assert!(above.blend_samples([-1, 0, 7]).is_none());
+    assert!(above.blend_samples_below([7, -1, 7]).is_none());
+}

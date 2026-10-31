@@ -94,6 +94,24 @@ pub(crate) fn glint_tint_source() -> String {
     format!("vec3<f32>({red:?}, {green:?}, {blue:?})")
 }
 
+/// Generates native Java model vertex colors without quantizing the source atlas.
+fn java_colours_source() -> String {
+    let colour = |rgb: [u8; 3]| format!("vec3<f32>({}, {}, {}) / 255.0", rgb[0], rgb[1], rgb[2]);
+    let palette = (0..=15)
+        .map(|power| colour(assets::registry::java::graphics::tints::redstone(power).unwrap()))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "const JAVA_REDSTONE: array<vec3<f32>,16> = array({palette});\nconst JAVA_LILY: vec3<f32> = {};\nconst JAVA_TINT_MASK: u32 = {}u;\nconst JAVA_TINT_BELOW: u32 = {}u;\nconst JAVA_TINT_REDSTONE: u32 = {}u;\nconst JAVA_TINT_LILY: u32 = {}u;\nconst JAVA_POWER_SHIFT: u32 = {}u;\n",
+        colour(assets::registry::java::graphics::tints::LILY),
+        assets::model::MODEL_QUAD_JAVA_TINT_MASK,
+        assets::model::MODEL_QUAD_JAVA_TINT_BELOW,
+        assets::model::MODEL_QUAD_JAVA_TINT_REDSTONE,
+        assets::model::MODEL_QUAD_JAVA_TINT_LILY,
+        assets::model::MODEL_QUAD_JAVA_POWER_SHIFT
+    )
+}
+
 /// Generates stem colours from the same bounded material contract as the compiler.
 fn stem_colours_source() -> String {
     let colours = (0..=7)
@@ -125,6 +143,7 @@ pub(crate) fn source(source: &str) -> String {
         .replace("FAR_TERRAIN_FACE_POSITIVE_Z", &format!("{}u", far_terrain::FACE_POSITIVE_Z))
         .replace("FAR_TERRAIN_FACE_NEGATIVE_Z", &format!("{}u", far_terrain::FACE_NEGATIVE_Z))
         .replace("// STEM_COLOURS", &stem_colours_source())
+        .replace("// JAVA_COLOURS", &java_colours_source())
         .replace("MATERIAL_STEM_FLAG", &format!("{}u", assets::stem::MATERIAL_FLAG))
         .replace("ITEM_GLINT_UV_SCALE", &format!("{:?}", render_model::ITEM_GLINT_UV_SCALE))
         .replace("GLINT_TINT_RGB", &glint_tint_source())
@@ -184,13 +203,15 @@ pub(crate) fn source(source: &str) -> String {
         .replace("CAULDRON_WATER_COLOUR", &format!("vec4<f32>({}) / 255.0", assets::CAULDRON_WATER_COLOUR.map(|c| format!("{c}.0")).join(", ")))
         .replace("// ANIMATION_GPU_LAYOUT", "struct AnimationGpu { frame_start: u32, frame_count: u32, ticks_per_frame: u32, flags: u32 }")
         .replace("// LIQUID_GEOMETRY_CONSTANTS", &format!(
-            "const LIQUID_FACE_INSET: f32 = {:?};\nconst LIQUID_TOP_INSET_BIT: u32 = {}u;\nconst LIQUID_DEPTH_WRITE_BIT: u32 = {}u;\nconst LIQUID_TWO_SIDED_BIT: u32 = {}u;\nconst TRANSPARENT_WATER_DRAW_FLAG: u32 = {}u;\nconst TRANSPARENT_WATER_RECORD_FLAG: u32 = {}u;",
+            "const LIQUID_FACE_INSET: f32 = {:?};\nconst LIQUID_TOP_INSET_BIT: u32 = {}u;\nconst LIQUID_DEPTH_WRITE_BIT: u32 = {}u;\nconst LIQUID_TWO_SIDED_BIT: u32 = {}u;\nconst TRANSPARENT_WATER_DRAW_FLAG: u32 = {}u;\nconst TRANSPARENT_WATER_RECORD_FLAG: u32 = {}u;\nconst LIQUID_JAVA_BIT: u32 = {}u;\nconst LIQUID_BOTTOM_INSET_BIT: u32 = {}u;",
             meshing::liquid::LIQUID_FACE_INSET,
             meshing::liquid::LIQUID_TOP_INSET_BIT,
             meshing::liquid::LIQUID_DEPTH_WRITE_BIT,
             meshing::liquid::LIQUID_TWO_SIDED_BIT,
             meshing::liquid::TRANSPARENT_WATER_DRAW_FLAG,
             meshing::liquid::TRANSPARENT_WATER_RECORD_FLAG,
+            meshing::liquid::LIQUID_JAVA_BIT,
+            meshing::liquid::LIQUID_BOTTOM_INSET_BIT,
         ))
         .replace(
             "// ACTOR_SHADE_CONSTANTS",

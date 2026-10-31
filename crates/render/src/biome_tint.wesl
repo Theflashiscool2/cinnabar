@@ -258,10 +258,19 @@ fn blended_biome_tint(
     local_position: vec3<f32>,
     world_origin: vec3<f32>,
 ) -> vec4<f32> {
+    return blended_biome_tint_at(tint_kind, material_flags, record, local_position, world_origin, vec3(0));
+}
+
+// A model-owned sample can address y=-1 using the existing -4..20 lattice halo.
+fn blended_biome_tint_below(tint_kind: u32, material_flags: u32, record: u32, local_position: vec3<f32>, world_origin: vec3<f32>) -> vec4<f32> {
+    return blended_biome_tint_at(tint_kind, material_flags, record, local_position - vec3(0.0,1.0,0.0), world_origin, vec3(0,-1,0));
+}
+
+fn blended_biome_tint_at(tint_kind: u32, material_flags: u32, record: u32, local_position: vec3<f32>, world_origin: vec3<f32>, minimum: vec3<i32>) -> vec4<f32> {
     // Blend the block that owns the fragment, the domain `blend_samples` answers. Interpolated
     // positions leave the sub-chunk at face edges and in derivative helper lanes extrapolated
     // past the horizon; unclamped, their lattice index reads unrelated words as sample counts.
-    let coordinate = clamp(vec3<i32>(floor(local_position)), vec3(0), vec3(BIOME_QUERY_SIDE - 1));
+    let coordinate = clamp(vec3<i32>(floor(local_position)), minimum, vec3(BIOME_QUERY_SIDE - 1));
     let block_position = coordinate + vec3<i32>(world_origin);
     if (!biome_record_span_valid(record, BIOME_DESCRIPTOR_WORDS)) { return tint_domain_colour(0u, tint_kind, material_flags, block_position); }
     if (!biome_descriptor_valid(biome_records[record])) { return tint_domain_colour(0u, tint_kind, material_flags, block_position); }

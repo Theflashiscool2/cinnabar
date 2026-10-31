@@ -1,5 +1,9 @@
 /// Native liquid face separation from contacting block geometry.
 pub const LIQUID_FACE_INSET: f32 = 0.001;
+/// Word 2 flag selecting Java's half-tile fluid UVs, independent of Bedrock texture cropping.
+pub const LIQUID_JAVA_BIT: u32 = 1 << 28;
+/// Java exposed bottoms and adjoining lower side vertices are raised off the cell plane.
+pub const LIQUID_BOTTOM_INSET_BIT: u32 = 1 << 27;
 /// Word 2 flag: native tessellation admits the opposite winding for this face.
 pub const LIQUID_TWO_SIDED_BIT: u32 = 1 << 29;
 /// Word 2 flag: visible top emission lowered the shared liquid corner heights.

@@ -122,8 +122,12 @@
       "path": "data/ItemAttributeModifiers.java",
       "sha256": "0b23fe364aa9dd860838602aa13a0a73f1dab8acda85cd55fa288c98b497043b",
       "source_path": "protocol/src/main/java/org/geysermc/mcprotocollib/protocol/data/game/item/component/ItemAttributeModifiers.java",
-      "slots": { "count": 11 },
-      "display": { "count": 3 }
+      "slots": {
+        "count": 11
+      },
+      "display": {
+        "count": 3
+      }
     },
     "modifier_operations": {
       "path": "data/ModifierOperation.java",
@@ -150,5 +154,11 @@
       "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
       "generator": "ordered minecraft:item entries from the pinned server reports/registries.json"
     }
+  },
+  "fluid_render_report": {
+    "path": "fluids.json",
+    "sha256": "b7071e833409a6ffef89d3e322ef96d9d080a45452114e95d1e69c88fcfd4361",
+    "bytes": 7114748,
+    "generator": "crates/asset-compiler/src/bin/assetc/java/ExportFluids.java"
   }
 }

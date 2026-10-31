@@ -199,6 +199,10 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         auth_cache: Option<PathBuf>,
     },
+    /// Controlled loopback native Java acceptance; requires the explicit offline fixture environment.
+    ConnectJavaFixture {
+        address: String,
+    },
     Disconnect,
     Input(InputCommand),
     /// Imports a skin image or pack through the same path as the Dressing Room file picker.

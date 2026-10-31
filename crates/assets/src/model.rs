@@ -367,13 +367,25 @@ pub const MODEL_QUAD_FLAG_CULL_FACE_MASK: u32 = 0x70;
 /// vertex colour or light. It keeps the shade and final vertex light of the last face that
 /// cuboid drew; the cuboid is the run of distinct faced quads just before the detail quads.
 pub const MODEL_QUAD_FLAG_INHERITED_SHADE: u32 = 1 << 7;
+/// Native Java tint callback encoded separately from shared material flags.
+pub const MODEL_QUAD_JAVA_TINT_SHIFT: u32 = 8;
+pub const MODEL_QUAD_JAVA_TINT_MASK: u32 = 3 << MODEL_QUAD_JAVA_TINT_SHIFT;
+pub const MODEL_QUAD_JAVA_TINT_BELOW: u32 = 1 << MODEL_QUAD_JAVA_TINT_SHIFT;
+pub const MODEL_QUAD_JAVA_TINT_REDSTONE: u32 = 2 << MODEL_QUAD_JAVA_TINT_SHIFT;
+pub const MODEL_QUAD_JAVA_TINT_LILY: u32 = 3 << MODEL_QUAD_JAVA_TINT_SHIFT;
+pub const MODEL_QUAD_JAVA_POWER_SHIFT: u32 = 10;
+pub const MODEL_QUAD_JAVA_POWER_MASK: u32 = 15 << MODEL_QUAD_JAVA_POWER_SHIFT;
 pub(crate) const MODEL_QUAD_FLAGS_MASK: u32 = MODEL_QUAD_FLAG_FACE_MASK
     | MODEL_QUAD_FLAG_TWO_SIDED
     | MODEL_QUAD_FLAG_CULL_FACE_MASK
-    | MODEL_QUAD_FLAG_INHERITED_SHADE;
+    | MODEL_QUAD_FLAG_INHERITED_SHADE
+    | MODEL_QUAD_JAVA_TINT_MASK
+    | MODEL_QUAD_JAVA_POWER_MASK;
 
 pub(crate) const fn model_quad_flags_are_valid(flags: u32) -> bool {
     flags & !MODEL_QUAD_FLAGS_MASK == 0
+        && (flags & MODEL_QUAD_JAVA_POWER_MASK == 0
+            || flags & MODEL_QUAD_JAVA_TINT_MASK == MODEL_QUAD_JAVA_TINT_REDSTONE)
         && flags & MODEL_QUAD_FLAG_FACE_MASK <= 6
         && (flags & MODEL_QUAD_FLAG_CULL_FACE_MASK) >> 4 <= 6
 }

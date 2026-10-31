@@ -43,6 +43,7 @@ struct Target {
     physics_report: Report,
     interaction_report: Report,
     entity_models_report: Report,
+    fluid_render_report: Report,
 }
 
 #[derive(Deserialize)]
@@ -77,6 +78,7 @@ impl Target {
                 &self.physics_report,
                 &self.interaction_report,
                 &self.entity_models_report,
+                &self.fluid_render_report,
             ]
             .map(|r| (r.name(), &r.integrity)),
         )
@@ -170,6 +172,17 @@ fn prepare_target(options: Options, pin: Target) -> Result<(), Box<dyn Error>> {
             io::install(&generated, &blocks, &pin.block_registry_report.integrity)?;
         }
         let physics = out.join(pin.physics_report.name());
+        let fluids = out.join(pin.fluid_render_report.name());
+        if !io::current(&fluids, &pin.fluid_render_report.integrity) {
+            super::java_fluids::generate(java_physics::Options {
+                server: server.clone(),
+                out: fluids,
+                java: java.clone(),
+                javac: javac.clone(),
+                compiler_jar: None,
+                accept_eula: true,
+            })?;
+        }
         if !io::current(&physics, &pin.physics_report.integrity) {
             java_physics::generate(java_physics::Options {
                 server: server.clone(),

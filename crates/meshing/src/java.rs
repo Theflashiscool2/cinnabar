@@ -13,6 +13,7 @@ use std::{
 use world::java::{Column, Dimension, PublicationKey};
 
 const HALO: i32 = 1;
+mod fluids;
 /// Sections whose cell/light halo intersects an authoritative changed region.
 /// Coalesced regions remain section-local; this never walks an unbounded world-volume box.
 pub fn affected_sections(region: world::java::ChangedRegion) -> impl Iterator<Item = [i32; 3]> {
@@ -70,7 +71,7 @@ impl Snapshot {
     }
 }
 /// Builds the selected absolute section Y. Flat server lighting is supported; smooth Java AO,
-/// liquid meshing and partial-face occlusion remain separate work, not inherited Bedrock rules.
+/// and partial-face occlusion remain separate work. Native fluids use their own state semantics.
 pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<ChunkMesh, Error> {
     let [cx, cz] = snapshot.key.chunk;
     let origin = |v: i32| {
@@ -175,6 +176,18 @@ pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<
             }
         }
     }
+    let mut liquids = Vec::new();
+    let mut liquid_lighting = Vec::new();
+    fluids::emit(
+        snapshot,
+        [x0, y0, z0],
+        graphics,
+        &mut liquids,
+        &mut liquid_lighting,
+    )?;
+    // The upload ABI requires one transparent prefix followed by a depth-writing suffix.
+    // Lighting is addressed by the index carried in each quad, not by stream order.
+    liquids.sort_by_key(|quad| quad.is_depth_writing());
     // Every shared stream is assembled here; no Bedrock network or visual identity is involved.
     let result = ChunkMesh::try_from_streams_with_cube_lighting(
         Vec::new(),
@@ -182,8 +195,8 @@ pub fn mesh(snapshot: &Snapshot, section_y: i32, graphics: &Graphics) -> Result<
         refs,
         lighting,
         opaque,
-        Vec::new(),
-        Vec::new(),
+        liquids,
+        liquid_lighting,
         FaceConnectivity::all(),
     )
     .expect("empty cube streams agree");
@@ -226,5 +239,7 @@ fn invalid(message: &str) -> Error {
     Error::Invalid(message.into())
 }
 
+#[cfg(test)]
+mod fluid_tests;
 #[cfg(test)]
 mod tests;

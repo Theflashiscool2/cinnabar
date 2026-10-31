@@ -23,6 +23,7 @@ fn fixture(root: &std::path::Path) -> Target {
         "physics_report",
         "interaction_report",
         "entity_models_report",
+        "fluid_render_report",
     ] {
         value[key]["bytes"] = (data.len() as u64).into();
         value[key]["sha256"] = format!("{:x}", Sha256::digest(data)).into();
@@ -63,6 +64,13 @@ fn missing_client_is_installed_alongside_reports_without_a_jdk() {
 fn corrupted_import_preserves_existing_output_and_leaves_no_staging_file() {
     let root = tempfile::tempdir().unwrap();
     let pin = fixture(root.path());
+    let entries = || {
+        fs::read_dir(root.path().join("runtime"))
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    let original_entries = entries();
     let client = root.path().join("runtime/client.jar");
     fs::write(&client, "previous incomplete input").unwrap();
     let supplied = root.path().join("bad.jar");
@@ -79,10 +87,7 @@ fn corrupted_import_preserves_existing_output_and_leaves_no_staging_file() {
         fs::read_to_string(client).unwrap(),
         "previous incomplete input"
     );
-    assert_eq!(
-        fs::read_dir(root.path().join("runtime")).unwrap().count(),
-        5
-    );
+    assert_eq!(entries(), original_entries);
 }
 
 #[test]
@@ -132,7 +137,7 @@ fn cli_exposes_complete_setup_and_local_imports() {
 }
 
 #[test]
-fn target_runtime_inventory_includes_all_five_inputs() {
+fn target_runtime_inventory_includes_all_six_inputs() {
     let pin: Target = serde_json::from_str(java_runtime::TARGET).unwrap();
     let names = pin
         .inputs()
@@ -146,7 +151,8 @@ fn target_runtime_inventory_includes_all_five_inputs() {
             "blocks.json",
             "physics.bin",
             "interaction.bin",
-            "models.json"
+            "models.json",
+            "fluids.json"
         ]
         .map(String::from)
         .into()

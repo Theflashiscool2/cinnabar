@@ -89,7 +89,7 @@ fn native_liquid_planes_and_flow_uvs_execute_on_gpu() {
             [
                 [0.; 4],
                 [0.; 4],
-                [3., 0., 1., 0.5],
+                [3., 0., 1., 0.],
                 [flow[0], flow[1], expected[0], expected[1]],
             ],
             "uv",
@@ -108,6 +108,66 @@ fn native_liquid_planes_and_flow_uvs_execute_on_gpu() {
         ],
         "uv",
         "side spans the whole tile",
+    );
+}
+
+#[test]
+fn java_fluid_half_tile_uvs_and_bottom_separation_execute_on_gpu() {
+    let Some(gpu) =
+        Gpu::for_fixture("java_fluid_half_tile_uvs_and_bottom_separation_execute_on_gpu")
+    else {
+        return;
+    };
+    let source = format!(
+        "{}\n{WITNESS}",
+        shader_source::standalone(include_str!("../../src/liquid.wesl"), &[])
+    );
+    for (flow, expected) in [
+        ([1., 0.], [0.75, 0.25]),
+        ([0., 1.], [0.25, 0.25]),
+        ([-1., 0.], [0.25, 0.75]),
+        ([0., -1.], [0.75, 0.75]),
+    ] {
+        assert_case(
+            &gpu,
+            &source,
+            [
+                [0.; 4],
+                [0.; 4],
+                [3., 0., 0.8, 1.],
+                [flow[0], flow[1], expected[0], expected[1]],
+            ],
+            "uv",
+            "Java flowing top uses half tile",
+        );
+    }
+    assert_case(
+        &gpu,
+        &source,
+        [[0.; 4], [0.; 4], [1., 2., 0.8, 1.], [0., 0., 0.5, 0.1]],
+        "uv",
+        "Java side uses half tile and height",
+    );
+    let q = PackedLiquidQuad::try_pack([3, 4, 5], Face::NegativeY, [0; 4], 7, 0, [0; 2], false)
+        .unwrap();
+    let mut words = q.words();
+    words[2] |= meshing::liquid::LIQUID_JAVA_BIT | meshing::liquid::LIQUID_BOTTOM_INSET_BIT;
+    assert_case(
+        &gpu,
+        &source,
+        [
+            [
+                f32::from_bits(words[0]),
+                f32::from_bits(words[1]),
+                f32::from_bits(words[2]),
+                0.,
+            ],
+            [3., 4.001, 5., 0.],
+            [0.; 4],
+            [0.; 4],
+        ],
+        "geometry",
+        "Java bottom lifts without altering material ID",
     );
 }
 
@@ -153,7 +213,7 @@ struct WitnessOutput { @builtin(position) position: vec4<f32>, }
 @fragment fn uv() -> @location(0) vec4<f32> {
     let data = witness_case[2];
     let expected = witness_case[3];
-    let actual = liquid_uv(u32(data.x), u32(data.y), data.z, i32(expected.x), i32(expected.y));
+    let actual = liquid_uv(u32(data.x), u32(data.y), data.z, i32(expected.x), i32(expected.y), data.w != 0.0);
     return select(vec4(1., 0., 0., 1.), vec4(0., 1., 0., 1.), distance(actual, expected.zw) < 0.000002);
 }
 "#;

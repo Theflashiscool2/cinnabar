@@ -75,6 +75,12 @@ fn main() {
     );
     let client = &target["client_assets"];
     let physics = &target["physics_report"];
+    let fluids = &target["fluid_render_report"];
+    code += &format!(
+        "pub const FLUID_RENDER_SHA256:&str={:?};\npub const FLUID_RENDER_BYTES:u64={};\n",
+        fluids["sha256"].as_str().unwrap(),
+        fluids["bytes"].as_u64().unwrap()
+    );
     let interaction = &target["interaction_report"];
     code += &format!(
         "pub const INTERACTION_REPORT_SHA256:&str={:?};\npub const INTERACTION_REPORT_BYTES:u64={};\n",

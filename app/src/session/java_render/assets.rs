@@ -26,6 +26,22 @@ struct CancelSource {
     jar: Jar,
     cancel: Arc<AtomicBool>,
 }
+fn load_fluids(
+    root: &std::path::Path,
+) -> Result<Arc<assets::registry::java::fluids::Table>, String> {
+    use java_protocol::target;
+    let bytes = read_input(root, "fluids.json")?;
+    if bytes.len() as u64 != target::FLUID_RENDER_BYTES {
+        return Err("Java fluid report length does not match target".into());
+    }
+    assets::registry::java::fluids::Table::load(
+        &bytes,
+        target::FLUID_RENDER_SHA256,
+        target::BLOCK_STATE_COUNT,
+    )
+    .map(Arc::new)
+    .map_err(|e| e.to_string())
+}
 pub(super) fn root() -> Result<PathBuf, String> {
     launcher::install_layout::discover_java_assets().map_err(|error| error.to_string())
 }
@@ -58,6 +74,7 @@ pub(super) fn extend(
                 cancel: Arc::clone(&cancel),
             }),
         );
+        models.fluids = Some(load_fluids(&root)?);
         let extension = graphics::extend(previous, &mut models, states)
             .map_err(|error| model_error(error, &cancel))?;
         if cancel.load(Ordering::Acquire) {
@@ -163,6 +180,7 @@ fn load_inner(
         .map(|id| id.0)
         .collect::<BTreeSet<_>>();
     let mut models = BlockModels::new(registry, Box::new(source));
+    models.fluids = Some(load_fluids(&root)?);
     // Baseline device array limit; the renderer validates the actual adapter before upload.
     let graphics = Arc::new(
         graphics::compile(

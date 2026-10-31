@@ -34,14 +34,7 @@ pub(super) fn material(state: &BlockState, index: i32) -> Result<u32, Error> {
         | "minecraft:potted_fern"
         | "minecraft:bush"
         | "minecraft:sugar_cane" => MATERIAL_FLAG_GRASS_TINT,
-        "minecraft:tall_grass" | "minecraft:large_fern" => {
-            if state.properties.get("half").map(String::as_str) != Some("lower") {
-                return Err(Error::Model(format!(
-                    "Java block tint callback for {name}: upper-half sampling at the block below is not implemented"
-                )));
-            }
-            MATERIAL_FLAG_GRASS_TINT
-        }
+        "minecraft:tall_grass" | "minecraft:large_fern" => MATERIAL_FLAG_GRASS_TINT,
         "minecraft:oak_leaves"
         | "minecraft:jungle_leaves"
         | "minecraft:acacia_leaves"
@@ -63,13 +56,55 @@ pub(super) fn material(state: &BlockState, index: i32) -> Result<u32, Error> {
             .and_then(|age| age.parse().ok())
             .and_then(crate::stem::material_flags)
             .ok_or_else(|| Error::Model(format!("invalid Java stem age for {name}")))?,
-        "minecraft:redstone_wire" | "minecraft:lily_pad" => {
-            return Err(Error::Model(format!(
-                "Java block tint callback for {name} index {index} is not implemented"
-            )));
+        _ => 0,
+    })
+}
+
+/// Additional quad-local callbacks; absent layers must never modify texture colors.
+pub(super) fn quad_flags(state: &BlockState, index: i32) -> Result<u32, Error> {
+    if index != 0 {
+        return Ok(0);
+    }
+    Ok(match &*state.name {
+        "minecraft:redstone_wire" => {
+            let power = state
+                .properties
+                .get("power")
+                .and_then(|v| v.parse::<u32>().ok())
+                .filter(|v| *v <= 15)
+                .ok_or_else(|| Error::Model("invalid Java redstone power".into()))?;
+            crate::model::MODEL_QUAD_JAVA_TINT_REDSTONE
+                | power << crate::model::MODEL_QUAD_JAVA_POWER_SHIFT
+        }
+        "minecraft:lily_pad" => crate::model::MODEL_QUAD_JAVA_TINT_LILY,
+        "minecraft:tall_grass" | "minecraft:large_fern" => {
+            match state.properties.get("half").map(String::as_str) {
+                Some("upper") => crate::model::MODEL_QUAD_JAVA_TINT_BELOW,
+                Some("lower") => 0,
+                _ => return Err(Error::Model("invalid Java tall plant half".into())),
+            }
         }
         _ => 0,
     })
+}
+
+/// Java BlockColors' in-world lily color (item/default color is deliberately different).
+pub const LILY: [u8; 3] = [32, 128, 48];
+
+/// RedStoneWireBlock's quantized gamma-space vertex color, before texture multiplication.
+pub fn redstone(power: u8) -> Option<[u8; 3]> {
+    if power > 15 {
+        return None;
+    }
+    let f = f32::from(power) / 15.;
+    Some(
+        [
+            f * 0.6 + if power > 0 { 0.4 } else { 0.3 },
+            (f * f * 0.7 - 0.5).clamp(0., 1.),
+            (f * f * 0.6 - 0.7).clamp(0., 1.),
+        ]
+        .map(|v| (v * 255.) as u8),
+    )
 }
 
 /// Known intentionally empty models. This does not erase fluids inside invisible hosts.

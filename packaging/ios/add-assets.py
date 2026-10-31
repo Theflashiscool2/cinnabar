@@ -103,7 +103,7 @@ def java_sources(directory):
     manifest = json.loads(JAVA_TARGET.read_text(encoding="utf-8"))
     relative = f"assets/java/{manifest['game_version']}"
     specs = [("client.jar", manifest["client_assets"])]
-    for key in ("block_registry_report", "physics_report", "interaction_report", "entity_models_report"):
+    for key in ("block_registry_report", "physics_report", "interaction_report", "entity_models_report", "fluid_render_report"):
         spec = manifest[key]
         specs.append((PurePosixPath(spec["path"]).name, spec))
     for name, _ in specs:

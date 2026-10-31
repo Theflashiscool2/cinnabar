@@ -275,9 +275,33 @@ impl PackedBiomeRecord {
         &self,
         coordinate: [i32; 3],
     ) -> Option<[BiomeBlendSample; BLEND_SAMPLE_COUNT]> {
+        self.blend_samples_at(coordinate, 0)
+    }
+
+    /// Upper Java plants use the previous block's tint, including y=-1 at a section boundary.
+    pub fn blend_samples_below(
+        &self,
+        mut coordinate: [i32; 3],
+    ) -> Option<[BiomeBlendSample; BLEND_SAMPLE_COUNT]> {
         if coordinate
             .iter()
-            .any(|&v| !(0..BIOME_QUERY_SIDE).contains(&v))
+            .any(|v| !(0..BIOME_QUERY_SIDE).contains(v))
+        {
+            return None;
+        }
+        coordinate[1] -= 1;
+        self.blend_samples_at(coordinate, -1)
+    }
+
+    fn blend_samples_at(
+        &self,
+        coordinate: [i32; 3],
+        minimum_y: i32,
+    ) -> Option<[BiomeBlendSample; BLEND_SAMPLE_COUNT]> {
+        if coordinate
+            .iter()
+            .enumerate()
+            .any(|(axis, v)| !(if axis == 1 { minimum_y } else { 0 }..BIOME_QUERY_SIDE).contains(v))
         {
             return None;
         }
