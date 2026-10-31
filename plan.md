@@ -69,7 +69,8 @@ loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
 All pinned item component types now have bounded readers and a batch wire corpus.
 A play dispatch census records remaining interactive/session gates; neither check
-proves complete item behavior or live server compatibility. See
+proves complete item behavior or live server compatibility. Automatic bounded join
+reports group observed gaps next to client.log without retaining packet payloads. See
 [coverage and remaining gates](docs/references/java-item-components.md).
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline

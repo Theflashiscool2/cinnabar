@@ -71,3 +71,28 @@ forces review. It deliberately retains required gates instead of silently callin
 unsupported behavior successful. Signed chat, reconfiguration and server-menu
 behavior are likely priorities for network-server play, not confirmed observations
 of a particular Hypixel session.
+
+## Automatic join reports
+
+The graphical app enables bounded reporting for each Java attempt automatically.
+After a failure, normal close, cancellation or replacement, send
+`java-join-latest.json` **and** the corresponding `client.log`. Both are in the
+application's log directory. Development Mac runs normally use `.local/logs` in
+the checkout (`open .local/logs`); a custom data-root setting changes that location.
+On iPhone, use Files → Cinnabar → data → logs. The client logs the saved report path.
+If an attempt remains stuck, cancel it to save the report. Hard process crashes
+still require the existing crash log; this reporter does not run after process death.
+
+The report groups deferred packet names/counts, unsupported entity serializers,
+observed item-component names, reached phases, the last 32 event types and static
+local admission/presentation notices. It excludes packet bodies, item text, player
+names/UUIDs, server addresses, cookies and credentials. Terminal classification is
+best-effort: only known protocol packet/component identities and a category enter
+the JSON; the exact error remains in `client.log`. Five completed reports are kept
+(`java-join-latest.json`, then `java-join-1.json` through `java-join-4.json`). Report
+write failures warn without replacing the original connection error. The reporter
+writes on termination, not every packet or frame; slow-frame logs remain opt-in.
+
+This collects multiple **observed** issues together. It cannot expose packets the
+server never sent after a fatal error. Required decoder failures still terminate
+the session; reporting never skips broken authority or invents successful gameplay.

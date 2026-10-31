@@ -388,6 +388,11 @@ pub(crate) fn update(
         p.uploaded.contains(&section)
     });
     if let Some(error) = &p.failure {
+        if let Some(java) = controller.java.as_mut()
+            && java.diagnostic_notice("terrain_presentation_failed")
+        {
+            bevy::log::warn!(target: "java_session", %error, "Java terrain presentation failed");
+        }
         if p.opened {
             menu.show_connecting();
             controller.connecting = true;

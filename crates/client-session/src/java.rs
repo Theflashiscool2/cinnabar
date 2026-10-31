@@ -1,4 +1,5 @@
 //! Native Java task ownership. This path never constructs a Bedrock NetworkHandle.
+mod report;
 use java_protocol::session::{self, Command, Envelope, Options};
 use std::{future::Future, sync::OnceLock};
 use tokio::{
@@ -24,6 +25,7 @@ pub struct Session {
     result: oneshot::Receiver<Result<(), String>>,
     task: JoinHandle<()>,
     commands: mpsc::Sender<Command>,
+    report: report::Report,
 }
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -69,6 +71,28 @@ impl Session {
             result,
             task,
             commands,
+            report: report::Report::default(),
+        }
+    }
+    /// Enable bounded, payload-free attempt reports beside the app's normal logs.
+    pub fn with_report_directory(mut self, directory: std::path::PathBuf) -> Self {
+        self.report.directory(directory);
+        self
+    }
+    /// Add a static local admission/presentation warning, deduplicated across frames.
+    pub fn diagnostic_notice(&mut self, notice: &'static str) -> bool {
+        self.report.notice(notice)
+    }
+    /// End an attempt rejected by world admission, keeping the local static error in its report.
+    pub fn fail_admission(&mut self, notice: &'static str) {
+        self.task.abort();
+        self.observe_pending();
+        self.report.notice(notice);
+        self.report.finish("world_admission_error", None);
+    }
+    fn observe_pending(&mut self) {
+        while let Ok(event) = self.events.try_recv() {
+            self.report.observe(&event);
         }
     }
     /// Reports full/retired input queues instead of dropping required intent silently.
@@ -76,7 +100,9 @@ impl Session {
         self.commands.try_send(command)
     }
     pub async fn next(&mut self) -> Option<Envelope> {
-        self.events.recv().await
+        let event = self.events.recv().await?;
+        self.report.observe(&event);
+        Some(event)
     }
     pub async fn shutdown(mut self) {
         self.task.abort();
@@ -84,15 +110,38 @@ impl Session {
     }
     /// Waits for the terminal result after the event FIFO closes, avoiding a close/send race.
     pub async fn outcome(&mut self) -> Result<(), String> {
-        (&mut self.result)
+        let result = (&mut self.result)
             .await
-            .unwrap_or_else(|_| Err("Java session task terminated".to_owned()))
+            .unwrap_or_else(|_| Err("Java session task terminated".to_owned()));
+        self.observe_pending();
+        self.report.finish(
+            if result.is_err() { "error" } else { "closed" },
+            result.as_ref().err().map(String::as_str),
+        );
+        result
     }
     pub fn poll(&mut self) -> Option<Envelope> {
-        self.events.try_recv().ok()
+        let event = self.events.try_recv().ok()?;
+        self.report.observe(&event);
+        Some(event)
     }
     pub fn result(&mut self) -> Option<Result<(), String>> {
-        self.result.try_recv().ok()
+        // Preserve ordered diagnostics/admission before returning a terminal task result.
+        if !self.events.is_empty() {
+            return None;
+        }
+        let result = match self.result.try_recv() {
+            Ok(result) => result,
+            Err(oneshot::error::TryRecvError::Closed) => {
+                Err("Java session task terminated".to_owned())
+            }
+            Err(oneshot::error::TryRecvError::Empty) => return None,
+        };
+        self.report.finish(
+            if result.is_err() { "error" } else { "closed" },
+            result.as_ref().err().map(String::as_str),
+        );
+        Some(result)
     }
     pub fn is_finished(&self) -> bool {
         self.task.is_finished()
@@ -104,6 +153,14 @@ impl Session {
 impl Drop for Session {
     fn drop(&mut self) {
         self.task.abort();
+        self.observe_pending();
+        match self.result.try_recv() {
+            Ok(result) => self.report.finish(
+                if result.is_err() { "error" } else { "closed" },
+                result.as_ref().err().map(String::as_str),
+            ),
+            Err(_) => self.report.finish("cancelled_or_retired", None),
+        }
     }
 }
 

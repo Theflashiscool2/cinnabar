@@ -14,9 +14,12 @@ pub(super) fn connect(
     if let Ok(name) = std::env::var("CINNABAR_JAVA_OFFLINE_FIXTURE") {
         match intent.address.parse() {
             Ok(address) => {
-                session.controller.java = Some(client_session::java::Session::spawn(
-                    java_protocol::session::Options::fixture(address, name, generation),
-                ))
+                session.controller.java = Some(
+                    client_session::java::Session::spawn(java_protocol::session::Options::fixture(
+                        address, name, generation,
+                    ))
+                    .with_report_directory(menu.layout().log_dir()),
+                )
             }
             Err(error) => session
                 .controller
@@ -30,11 +33,12 @@ pub(super) fn connect(
         .parent()
         .expect("authentication directory")
         .join("java");
-    session.controller.java = Some(client_session::java::Session::run(
-        move |events, commands| {
+    session.controller.java = Some(
+        client_session::java::Session::run(move |events, commands| {
             launcher_host::java::run(intent.address, generation, root, events, commands)
-        },
-    ));
+        })
+        .with_report_directory(menu.layout().log_dir()),
+    );
 }
 pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
     let controller = &mut *session.controller;
@@ -60,7 +64,11 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
             java_protocol::session::Event::DeferredPlay { .. }
                 | java_protocol::session::Event::Terrain { .. }
         );
-        if controller.java_world.admit(event) && display {
+        let admitted = controller.java_world.admit(event);
+        if !admitted {
+            java.diagnostic_notice("world_event_not_admitted");
+        }
+        if admitted && display {
             let state = &controller.java_world;
             let message = if let Some(bootstrap) = &state.bootstrap {
                 format!(
@@ -81,8 +89,18 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
             menu.set_java_diagnostic(message);
         }
     }
+    if controller.java_world.deferred_entity_dynamics > 0 {
+        java.diagnostic_notice("remote_entity_dynamics_deferred");
+    }
+    if controller.java_world.status.unimplemented_notifications > 0 {
+        java.diagnostic_notice("hud_notifications_not_implemented");
+    }
+    if controller.java_world.status.odd_values > 0 {
+        java.diagnostic_notice("invalid_hud_values_rejected");
+    }
     if let Some(error) = controller.java_world.terrain_error {
-        java.cancel();
+        java.fail_admission(error);
+        bevy::log::warn!(target: "java_session", error, "Java world admission failed");
         controller.java = None;
         controller.fail_join(menu, launcher::menu::disconnect::from_java(error));
         return;
