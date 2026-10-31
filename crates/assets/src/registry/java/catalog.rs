@@ -16,6 +16,9 @@ pub struct BlockModels {
     geometry: BTreeMap<(Identifier, [u16; 3], bool), Arc<[Quad]>>,
 }
 impl BlockModels {
+    pub fn cancelled(&self) -> bool {
+        self.source.cancelled()
+    }
     pub fn new(registry: Arc<BlockRegistry>, source: Box<dyn Source + Send>) -> Self {
         Self {
             registry,

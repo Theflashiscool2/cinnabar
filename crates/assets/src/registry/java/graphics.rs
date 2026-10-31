@@ -1,4 +1,5 @@
 //! Worker-owned conversion of Java models into shared graphics buffers, with native state IDs.
+pub mod audit;
 use super::{
     catalog::BlockModels,
     geometry::Quad,
@@ -124,93 +125,113 @@ fn append(
     admitted: &mut BTreeMap<u32, State>,
     templates: &mut BTreeMap<u32, Template>,
 ) -> Result<(), Error> {
+    let mut failures = audit::Report::default();
     for id in states {
         if admitted.contains_key(&id) {
             continue;
         }
-        let name = models.state_name(id)?.to_owned();
-        let selection = models.selection(id)?;
-        let mut variants = BTreeMap::new();
-        for variant in selection.parts().iter().flatten() {
-            if variants.contains_key(&key(variant)) {
-                continue;
-            }
-            let quads = models.geometry(variant)?;
-            if quads.is_empty()
-                && !matches!(
-                    name.as_str(),
-                    "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
-                )
-            {
-                return Err(invalid(&format!(
-                    "{name} needs a special renderer; empty geometry is not air"
-                )));
-            }
-            let mut parts = Vec::new();
-            for part in quads.chunks(crate::MAX_MODEL_TEMPLATE_QUADS) {
-                let template = builder.overlay.model_templates.len() as u32;
-                if template as usize >= crate::MAX_MODEL_TEMPLATES {
-                    return Err(Error::Budget("Java model templates".into()));
-                }
-                let start = builder.overlay.model_quads.len() as u32;
-                let mut occludes = 0;
-                for quad in part {
-                    let material = builder.material(models, quad, tint(&name, quad.tint_index)?)?;
-                    let flags = face_id(quad.shade_override.unwrap_or(quad.facing))
-                        | quad.cull_face.map_or(0, |f| face_id(f) << 4);
-                    let positions = quad.positions.map(|p| {
-                        p.map(|v| (v * f32::from(crate::MODEL_POSITION_SCALE)).round() as i16)
-                    });
-                    let mut uvs = [[0; 2]; 4];
-                    // Signed UVs need a renderer representation extension, never saturating casts.
-                    for (out, input) in uvs.iter_mut().zip(quad.uvs) {
-                        for (out, v) in out.iter_mut().zip(input) {
-                            let v = (v * f32::from(crate::MODEL_UV_SCALE)).round();
-                            if !(0. ..=u16::MAX as f32).contains(&v) {
-                                return Err(invalid("signed or oversized Java model UV"));
-                            }
-                            *out = v as u16;
-                        }
-                    }
-                    if builder.overlay.materials[material as usize].flags
-                        & (crate::MATERIAL_FLAG_ALPHA_BLEND | crate::MATERIAL_FLAG_ALPHA_CUTOUT)
-                        == 0
-                        && full_face(quad)
-                    {
-                        occludes |= face_bit(quad.facing);
-                    }
-                    builder.overlay.model_quads.push(ModelQuad {
-                        positions,
-                        uvs,
-                        material,
-                        flags,
-                    });
-                }
-                builder.overlay.model_templates.push(ModelTemplate {
-                    quad_start: start,
-                    quad_count: part.len() as u32,
-                    flags: 0,
-                });
-                templates.insert(
-                    template,
-                    Template {
-                        quads: Arc::from(part),
-                        occludes,
-                    },
-                );
-                parts.push(template);
-            }
-            variants.insert(key(variant), parts);
+        if models.cancelled() {
+            return Err(invalid("Java asset load cancelled"));
         }
-        admitted.insert(
-            id,
-            State {
-                selection,
-                variants,
-            },
-        );
+        failures.checked_states += 1;
+        let result = (|| -> Result<(), Error> {
+            let name = models.state_name(id)?.to_owned();
+            let selection = models.selection(id)?;
+            let mut variants = BTreeMap::new();
+            for variant in selection.parts().iter().flatten() {
+                if variants.contains_key(&key(variant)) {
+                    continue;
+                }
+                let quads = models.geometry(variant)?;
+                if quads.is_empty()
+                    && !matches!(
+                        name.as_str(),
+                        "minecraft:air" | "minecraft:cave_air" | "minecraft:void_air"
+                    )
+                {
+                    return Err(invalid(&format!(
+                        "{name} needs a special renderer; empty geometry is not air"
+                    )));
+                }
+                let mut parts = Vec::new();
+                for part in quads.chunks(crate::MAX_MODEL_TEMPLATE_QUADS) {
+                    let template = builder.overlay.model_templates.len() as u32;
+                    if template as usize >= crate::MAX_MODEL_TEMPLATES {
+                        return Err(Error::Budget("Java model templates".into()));
+                    }
+                    let start = builder.overlay.model_quads.len() as u32;
+                    let mut occludes = 0;
+                    for quad in part {
+                        let material =
+                            builder.material(models, quad, tint(&name, quad.tint_index)?)?;
+                        let flags = face_id(quad.shade_override.unwrap_or(quad.facing))
+                            | quad.cull_face.map_or(0, |f| face_id(f) << 4);
+                        let positions = quad.positions.map(|p| {
+                            p.map(|v| (v * f32::from(crate::MODEL_POSITION_SCALE)).round() as i16)
+                        });
+                        let mut uvs = [[0; 2]; 4];
+                        // Signed UVs need a renderer representation extension, never saturating casts.
+                        for (out, input) in uvs.iter_mut().zip(quad.uvs) {
+                            for (out, v) in out.iter_mut().zip(input) {
+                                let v = (v * f32::from(crate::MODEL_UV_SCALE)).round();
+                                if !(0. ..=u16::MAX as f32).contains(&v) {
+                                    return Err(invalid("signed or oversized Java model UV"));
+                                }
+                                *out = v as u16;
+                            }
+                        }
+                        if builder.overlay.materials[material as usize].flags
+                            & (crate::MATERIAL_FLAG_ALPHA_BLEND | crate::MATERIAL_FLAG_ALPHA_CUTOUT)
+                            == 0
+                            && full_face(quad)
+                        {
+                            occludes |= face_bit(quad.facing);
+                        }
+                        builder.overlay.model_quads.push(ModelQuad {
+                            positions,
+                            uvs,
+                            material,
+                            flags,
+                        });
+                    }
+                    builder.overlay.model_templates.push(ModelTemplate {
+                        quad_start: start,
+                        quad_count: part.len() as u32,
+                        flags: 0,
+                    });
+                    templates.insert(
+                        template,
+                        Template {
+                            quads: Arc::from(part),
+                            occludes,
+                        },
+                    );
+                    parts.push(template);
+                }
+                variants.insert(key(variant), parts);
+            }
+            admitted.insert(
+                id,
+                State {
+                    selection,
+                    variants,
+                },
+            );
+            Ok(())
+        })();
+        if let Err(error) = result {
+            failures.record(
+                id,
+                models.state_name(id).unwrap_or("unknown"),
+                &error.to_string(),
+            );
+        }
     }
-    Ok(())
+    if failures.failed_states == 0 {
+        Ok(())
+    } else {
+        Err(Error::ModelBatch(failures))
+    }
 }
 fn finish(
     mut builder: Builder,

@@ -197,6 +197,7 @@ pub(super) fn validate_command_outputs(command: &Command) -> Result<(), AssetErr
         | JavaPrepare(_) => {
             return Ok(());
         }
+        JavaAudit(_) => return Ok(()),
     }
     match command {
         ItemFacts { out, .. } => {

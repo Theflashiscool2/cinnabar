@@ -68,9 +68,14 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("unsupported or invalid Java model: {0}")]
     Model(String),
+    #[error("{0}")]
+    ModelBatch(super::graphics::audit::Report),
 }
 /// Resource access runs on asset workers; callers never do file work on the render thread.
 pub trait Source {
+    fn cancelled(&self) -> bool {
+        false
+    }
     fn read(&mut self, path: &str) -> Result<Vec<u8>, Error>;
     fn optional_json(&mut self, path: &str) -> Result<Option<serde_json::Value>, Error> {
         match self.read(path) {

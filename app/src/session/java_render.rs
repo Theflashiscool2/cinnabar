@@ -252,11 +252,7 @@ pub(crate) fn update(
                 p.unsupported_tints = prepared.unsupported_tints;
                 p.stream = chunk_pipeline::java::Stream::new(&state.terrain, prepared.graphics);
             }
-            Err(error) => {
-                p.failure = Some(format!(
-                    "Java runtime assets: {error}. On the build computer, run make java-assets JAVA_ACCEPT_EULA=1. For iPhone, include the prepared assets with packaging/ios/add-assets.py and reinstall the new IPA."
-                ))
-            }
+            Err(error) => p.failure = Some(format!("Java terrain preparation: {error}")),
         }
     }
     p.frame += 1;

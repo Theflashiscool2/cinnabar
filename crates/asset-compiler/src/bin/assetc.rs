@@ -57,6 +57,8 @@ mod lang_command;
 #[path = "assetc/output_bundle.rs"]
 mod output_bundle;
 use output_bundle::write_output_bundle;
+#[path = "assetc/java_audit.rs"]
+mod java_audit;
 #[path = "assetc/java_entities.rs"]
 mod java_entities;
 #[path = "assetc/java_interaction.rs"]
@@ -533,6 +535,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
         Command::JavaPrepare(options) => java_prepare::prepare(options)?,
+        Command::JavaAudit(options) => java_audit::run(options)?,
         Command::JavaEntities(options) => java_entities::generate(options)?,
         Command::JavaInteraction(options) => java_interaction::generate(options)?,
         Command::Prepare {

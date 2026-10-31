@@ -174,6 +174,20 @@ credentials are excluded. The individual `assetc java-physics`, `java-interactio
 and `java-entities` commands remain available. The running iPhone app never executes
 Java or a data exporter. Desktop `CINNABAR_JAVA_ASSETS` overrides still work.
 
+Asset preparation does not prove renderer support. A message such as lava needing a
+special renderer is an implementation gap, not a corrupt download. Run `make java-audit`
+to check every state in the pinned block registry through the current model compiler.
+It saves `.local/logs/java-model-audit.json` and exits unsuccessfully when gaps exist.
+It needs the prepared client archive and block report, but no JDK, login or server.
+The app also batches failures among observed states into `java-models-latest.json`
+beside `client.log` (iOS: Files → Cinnabar → data → logs). This is separate from the
+packet/session report `java-join-latest.json`.
+
+Audits record the first compiler failure per state, grouped with up to four example
+IDs and 1,024 distinct reasons; omitted failures are counted explicitly. They do not
+predict later protocol errors, inspect unvisited server content, or establish rendered
+acceptance. Unsupported states still block publication; they are never converted to air.
+
 The build script targets Xcode 27.1 and iPhoneOS SDK 27.1, as recorded in
 `packaging/ios/runtime.json` (patch updates within that version are allowed).
 The minimum device OS remains iOS 17. The script respects an explicit

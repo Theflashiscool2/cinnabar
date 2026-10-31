@@ -166,3 +166,70 @@ fn extension_does_not_turn_unknown_models_into_air_or_damage_the_old_catalog() {
     assert!(!old.contains(99));
     assert!(!old.select(0, [0; 3]).unwrap().is_empty());
 }
+
+struct EmptyModels {
+    cancelled: bool,
+}
+impl Source for EmptyModels {
+    fn cancelled(&self) -> bool {
+        self.cancelled
+    }
+    fn read(&mut self, path: &str) -> Result<Vec<u8>, Error> {
+        assert!(
+            !self.cancelled,
+            "cancelled jobs must not read more resources"
+        );
+        Ok(if path.contains("/blockstates/") {
+            br#"{"variants":{"":{"model":"block/empty"}}}"#.to_vec()
+        } else {
+            br#"{"elements":[]}"#.to_vec()
+        })
+    }
+}
+
+fn empty_models(cancelled: bool) -> BlockModels {
+    let bytes = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]},"minecraft:lava":{"states":[{"id":1,"default":true},{"id":2}]},"minecraft:water":{"states":[{"id":3,"default":true}]},"minecraft:chest":{"states":[{"id":4,"default":true}]}}"#;
+    let registry = BlockRegistry::load(bytes, &format!("{:x}", Sha256::digest(bytes))).unwrap();
+    BlockModels::new(Arc::new(registry), Box::new(EmptyModels { cancelled }))
+}
+
+#[test]
+fn admission_batches_independent_failures_without_turning_special_models_into_air() {
+    let Error::ModelBatch(report) = compile(&mut empty_models(false), [0, 1, 2, 3, 4, 99], 64)
+        .err()
+        .unwrap()
+    else {
+        panic!("expected grouped model failures");
+    };
+    assert_eq!(report.checked_states, 6);
+    assert_eq!(report.failed_states, 5);
+    assert_eq!(report.issues.len(), 4);
+    assert_eq!(report.issues[0].block, "minecraft:lava");
+    assert_eq!(report.issues[0].affected_states, 2);
+    assert_eq!(report.issues[1].block, "minecraft:water");
+    assert_eq!(report.issues[2].block, "minecraft:chest");
+    assert_eq!(report.issues[3].sample_state_ids, [99]);
+    assert!(
+        report.issues[..3]
+            .iter()
+            .all(|i| i.reason.contains("special renderer"))
+    );
+    let valid = compile(&mut empty_models(false), [0], 64).unwrap();
+    assert!(valid.select(0, [0; 3]).unwrap().is_empty());
+    let valid = Arc::new(valid);
+    assert!(matches!(
+        extend(Arc::clone(&valid), &mut empty_models(false), [1, 3]),
+        Err(Error::ModelBatch(_))
+    ));
+    assert!(!valid.contains(1));
+    assert!(!valid.contains(3));
+}
+
+#[test]
+fn batch_checks_stop_on_cancellation_instead_of_reporting_more_missing_features() {
+    let error = compile(&mut empty_models(true), [0, 1, 2, 3, 4], 64)
+        .err()
+        .unwrap();
+    assert!(!matches!(error, Error::ModelBatch(_)));
+    assert!(error.to_string().contains("cancelled"));
+}

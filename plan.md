@@ -72,6 +72,10 @@ A play dispatch census records remaining interactive/session gates; neither chec
 proves complete item behavior or live server compatibility. Automatic bounded join
 reports group observed gaps next to client.log without retaining packet payloads. See
 [coverage and remaining gates](docs/references/java-item-components.md).
+Model admission now groups independent state failures, with a separate observed-model
+JSON report and whole-registry `make java-audit`. It does not treat unsupported models
+as air. Native fluid geometry remains unimplemented in this checkout; an owner join
+reached the empty lava-model gate after assets were prepared.
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline
 server evidence; complex metadata and entity frame publication remain incomplete.

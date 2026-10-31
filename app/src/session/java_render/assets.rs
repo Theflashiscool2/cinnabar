@@ -58,7 +58,8 @@ pub(super) fn extend(
                 cancel: Arc::clone(&cancel),
             }),
         );
-        let extension = graphics::extend(previous, &mut models, states)?;
+        let extension = graphics::extend(previous, &mut models, states)
+            .map_err(|error| model_error(error, &cancel))?;
         if cancel.load(Ordering::Acquire) {
             return Err("Java asset load cancelled".into());
         }
@@ -67,6 +68,9 @@ pub(super) fn extend(
     work().map_err(|e| e.to_string())
 }
 impl Source for CancelSource {
+    fn cancelled(&self) -> bool {
+        self.cancel.load(Ordering::Acquire)
+    }
     fn read(&mut self, path: &str) -> Result<Vec<u8>, Error> {
         if self.cancel.load(Ordering::Acquire) {
             return Err(Error::Model("Java asset load cancelled".into()));
@@ -117,7 +121,10 @@ fn load_inner(
         target::CLIENT_ASSETS_SHA256,
         target::CLIENT_ASSETS_BYTES,
     )?;
-    let mut source = CancelSource { jar, cancel };
+    let mut source = CancelSource {
+        jar,
+        cancel: Arc::clone(&cancel),
+    };
     let mut colormap = |name: &str| -> Result<Image, Error> {
         Image::decode(&source.read(&Identifier::parse(name)?.asset_path("textures", "png"))?)
     };
@@ -150,11 +157,14 @@ fn load_inner(
         .collect::<BTreeSet<_>>();
     let mut models = BlockModels::new(registry, Box::new(source));
     // Baseline device array limit; the renderer validates the actual adapter before upload.
-    let graphics = Arc::new(graphics::compile(
-        &mut models,
-        states,
-        assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
-    )?);
+    let graphics = Arc::new(
+        graphics::compile(
+            &mut models,
+            states,
+            assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
+        )
+        .map_err(|error| model_error(error, &cancel))?,
+    );
     Ok(Prepared {
         interaction,
         physics,
@@ -166,6 +176,49 @@ fn load_inner(
 fn read_input(root: &std::path::Path, name: &str) -> Result<Vec<u8>, String> {
     let path = root.join(name);
     std::fs::read(&path).map_err(|error| format!("{}: {error}", path.display()))
+}
+
+/// Keeps model diagnostics separate from packet reports; no account or server data is included.
+fn model_error(error: Error, cancel: &AtomicBool) -> String {
+    if cancel.load(Ordering::Acquire) {
+        return "Java asset load cancelled".into();
+    }
+    let Error::ModelBatch(ref report) = error else {
+        return error.to_string();
+    };
+    let save = || -> Result<PathBuf, Box<dyn std::error::Error>> {
+        use std::io::Write;
+        let folder = launcher::install_layout::InstallLayout::discover()?.log_dir();
+        std::fs::create_dir_all(&folder)?;
+        let path = folder.join("java-models-latest.json");
+        let document = serde_json::json!({
+            "schema": 1,
+            "scope": "observed_model_batch",
+            "game_version": java_protocol::target::GAME_VERSION,
+            "model_admission": report,
+            "limitations": "First compiler failure per observed state; not all server packets or unvisited terrain. Use make java-audit for the whole pinned model registry."
+        });
+        let mut file = tempfile::NamedTempFile::new_in(folder)?;
+        file.write_all(&serde_json::to_vec_pretty(&document)?)?;
+        file.as_file().sync_all()?;
+        if cancel.load(Ordering::Acquire) {
+            return Err("Java asset load cancelled".into());
+        }
+        file.persist(&path)?;
+        Ok(path)
+    };
+    match save() {
+        Ok(path) => {
+            bevy::log::warn!(path = %path.display(), failed_states = report.failed_states, "Java model audit saved");
+            format!(
+                "{error} Details: java-models-latest.json. This is a rendering support gap, not a request to regenerate assets."
+            )
+        }
+        Err(write_error) => {
+            bevy::log::warn!(%write_error, ?report, "Could not save Java model audit");
+            format!("{error} Could not save model audit: {write_error}")
+        }
+    }
 }
 
 fn linear(rgb: [u8; 3]) -> [f32; 3] {

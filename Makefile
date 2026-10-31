@@ -123,6 +123,10 @@ physics-assets:
 java-assets:
 	$(ASSETC) java-prepare $(if $(filter 1,$(JAVA_ACCEPT_EULA)),--accept-eula) $(JAVA_ASSET_ARGS)
 
+.PHONY: java-audit
+java-audit:
+	$(ASSETC) java-audit $(JAVA_ASSET_ARGS)
+
 $(PACK_SENTINEL): $(VANILLA_SOURCE_MANIFEST)
 	$(VANILLA_ASSET_FETCH)
 

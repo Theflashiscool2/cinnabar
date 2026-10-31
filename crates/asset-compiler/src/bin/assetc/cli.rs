@@ -355,6 +355,8 @@ pub(super) enum Command {
     JavaPhysics(super::java_physics::Options),
     /// Prepare all pinned native Java runtime resources, reusing verified local files.
     JavaPrepare(super::java_prepare::Options),
+    /// Check all pinned block states through the current model compiler and report grouped gaps.
+    JavaAudit(super::java_audit::Options),
     /// Prepare verified native Java entity models from the pinned client/server archives.
     JavaEntities(super::java_entities::Options),
     /// Prepare verified native Java block selection shapes from the pinned server archive.
