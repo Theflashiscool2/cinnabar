@@ -515,5 +515,22 @@ mod tests {
                 assert_eq!((p.width, p.height), (64, 32));
             }
         }
+        let portals: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| registry.state(id).unwrap().name.as_ref() == "minecraft:end_portal")
+            .collect();
+        assert_eq!(portals.len(), 1);
+        let extension = graphics::extend(Arc::clone(g), &mut models, portals.clone()).unwrap();
+        let g = extension.graphics();
+        assert_eq!(
+            g.presentation(portals[0]),
+            Some(graphics::Presentation::Portal)
+        );
+        assert!(g.select(portals[0], [0; 3]).unwrap().is_empty());
+        let palette = &g.portal.as_ref().unwrap().colors;
+        assert_eq!(palette[0], [0.022087, 0.098399, 0.110818, 0.]);
+        assert_eq!(palette[15], [0.080955, 0.314821, 0.661491, 0.]);
+        for name in [super::super::portal::SKY, super::super::portal::STARS] {
+            assert!(g.special_atlas.as_ref().unwrap().placement(name).is_some());
+        }
     }
 }

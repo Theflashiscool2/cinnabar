@@ -38,13 +38,19 @@ pub(super) fn admit(
         rotate_velocity: correction.is_relative(WireRelative::RotateVelocity),
     };
     if state.player_motion.is_none()
-        && (relative.position.into_iter().any(|v| v) || relative.yaw || relative.pitch)
+        && (relative.position.into_iter().any(|v| v)
+            || ((relative.yaw || relative.pitch) && state.respawn_rotation_velocity.is_none()))
     {
         return Err("initial relative Java teleport has no admitted player anchor");
     }
-    let anchor = state.player_motion.unwrap_or_else(|| Motion {
-        velocity: state.player_dynamics.unplaced_velocity.unwrap_or_default(),
-        ..Default::default()
+    let anchor = state.player_motion.unwrap_or_else(|| {
+        let (velocity, yaw, pitch) = state.respawn_rotation_velocity.unwrap_or_default();
+        Motion {
+            velocity: state.player_dynamics.unplaced_velocity.unwrap_or(velocity),
+            yaw,
+            pitch,
+            ..Default::default()
+        }
     });
     let motion = anchor.corrected(
         Motion {
@@ -60,6 +66,7 @@ pub(super) fn admit(
         .checked_add(1)
         .ok_or("Java player pose revision overflow")?;
     state.player_dynamics.unplaced_velocity = None;
+    state.respawn_rotation_velocity = None;
     state.correction_sequence = revision;
     state.player_motion = Some(motion);
     state.teleport = Some(ResolvedTeleport {
@@ -206,5 +213,79 @@ mod tests {
         assert!(!state.admit(invalid));
         assert_eq!(state.player_motion, before);
         assert_eq!(state.correction_command().unwrap().0, 2);
+    }
+    #[test]
+    fn respawn_retains_native_rotation_velocity_without_admitting_old_position() {
+        for keep in [false, true] {
+            let mut s = super::super::tests_support::state();
+            s.player_motion = Some(Motion {
+                position: [12., 65., -30.],
+                velocity: [1., 2., 3.],
+                yaw: 170.,
+                pitch: 25.,
+            });
+            let mut spawn = s.bootstrap.as_ref().unwrap().world.spawn.clone();
+            spawn.world = "fixture:next".into();
+            assert!(s.admit(Envelope {
+                generation: 7,
+                event: Event::Respawn {
+                    spawn,
+                    keep_attribute_modifiers: true,
+                    keep_metadata: keep
+                }
+            }));
+            assert!(s.player_motion.is_none());
+            assert!(s.correction_command().is_none());
+            let relative = WireRelative::Yaw.mask()
+                | WireRelative::Pitch.mask()
+                | WireRelative::VelocityX.mask();
+            assert!(!s.admit(correction(7, 1, 1, relative)));
+            assert!(s.admit(correction(7, 2, 2, relative)));
+            let m = s.player_motion.unwrap();
+            assert_eq!(m.position, [1., 64., 2.]);
+            assert_eq!(
+                (m.yaw, m.pitch),
+                if keep { (170., 25.) } else { (-180., 0.) }
+            );
+            assert_eq!(m.velocity, if keep { [1., 0., 0.] } else { [0.; 3] });
+            assert!(s.respawn_rotation_velocity.is_none());
+            let (
+                _,
+                Command::AcceptTeleport {
+                    dimension_epoch,
+                    position,
+                    yaw,
+                    pitch,
+                    ..
+                },
+            ) = s.correction_command().unwrap()
+            else {
+                panic!("teleport receipt")
+            };
+            assert_eq!(dimension_epoch, 2);
+            assert_eq!(position, m.position);
+            assert_eq!((yaw, pitch), (m.yaw, m.pitch));
+            s.begin(8);
+            assert!(s.respawn_rotation_velocity.is_none());
+            assert!(s.player_motion.is_none());
+        }
+    }
+    #[test]
+    fn unplaced_velocity_overrides_inheritance_and_relative_position_stays_gated() {
+        let mut s = state();
+        s.respawn_rotation_velocity = Some(([1., 2., 3.], 35., 10.));
+        assert!(!s.admit(correction(7, 2, 1, WireRelative::X.mask())));
+        assert!(s.player_motion.is_none());
+        assert!(s.respawn_rotation_velocity.is_some());
+        s.terrain_error = None;
+        s.player_dynamics.unplaced_velocity = Some([4., 5., 6.]);
+        assert!(s.admit(correction(
+            7,
+            2,
+            2,
+            WireRelative::VelocityY.mask() | WireRelative::Pitch.mask()
+        )));
+        assert_eq!(s.player_motion.unwrap().velocity, [0., 5., 0.]);
+        assert_eq!(s.player_motion.unwrap().pitch, 10.);
     }
 }

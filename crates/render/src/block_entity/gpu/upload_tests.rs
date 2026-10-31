@@ -58,6 +58,30 @@ fn steady_uploads_portal_parameters_skip_unused_and_equal_frames() {
     system.run((), &mut world).unwrap();
     assert_eq!(world.resource::<BlockEntityGpu>().portal_uploads, 3);
     assert_eq!(world.resource::<BlockEntityGpu>().portal.count, 3);
+    world
+        .resource_mut::<render_scene::BlockEntityFrameResource>()
+        .java_portal_parameters[0] = [0.25, 0.5, 0.125, 0.25];
+    system.run((), &mut world).unwrap();
+    assert_eq!(world.resource::<BlockEntityGpu>().portal_uploads, 4);
+    assert_eq!(
+        world
+            .resource::<BlockEntityGpu>()
+            .portal_parameters
+            .unwrap()[4],
+        [0.25, 0.5, 0.125, 0.25]
+    );
+    world
+        .resource_mut::<render_scene::BlockEntityFrameResource>()
+        .java_portal_parameters = Default::default();
+    system.run((), &mut world).unwrap();
+    assert_eq!(world.resource::<BlockEntityGpu>().portal_uploads, 5);
+    assert_eq!(
+        world
+            .resource::<BlockEntityGpu>()
+            .portal_parameters
+            .unwrap()[4],
+        [0.; 4]
+    );
     assert_eq!(
         world.resource::<BlockEntityGpu>().portal_uniform.id(),
         buffer

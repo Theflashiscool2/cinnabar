@@ -331,6 +331,7 @@ pub(crate) fn update(
                         || graphics.statues.contains_key(&id.0)
                         || graphics.pots.contains_key(&id.0)
                         || graphics.conduits.contains(&id.0)
+                        || graphics.portals.contains(&id.0)
                 }) else {
                     continue;
                 };
@@ -392,6 +393,20 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if graphics.portals.contains(&id) {
+                if let Some(resources) = &graphics.portal {
+                    submissions.push(BlockEntitySubmission {
+                        block: position,
+                        light: BlockEntityLight::Scalar(1.),
+                        kind: BlockEntityKind::JavaPortal(
+                            render_model::block_entity::java_portal::Model {
+                                resources: Arc::clone(resources),
+                            },
+                        ),
+                    });
+                }
+                continue;
+            }
             if graphics.conduits.contains(&id) {
                 if let (Some(resources), Some([block, sky])) =
                     (graphics.conduit.as_ref(), terrain.light(position))

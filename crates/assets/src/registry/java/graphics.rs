@@ -35,6 +35,8 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub portals: std::collections::BTreeSet<u32>,
+    pub portal: Option<Arc<super::portal::Resources>>,
     pub conduits: std::collections::BTreeSet<u32>,
     pub conduit: Option<Arc<super::conduit::Resources>>,
     pub pots: BTreeMap<u32, super::pot::Pot>,
@@ -61,6 +63,7 @@ pub enum Presentation {
     Statue,
     Pot,
     Conduit,
+    Portal,
 }
 #[derive(Clone)]
 struct State {
@@ -123,6 +126,8 @@ pub fn compile(
         banners: BTreeMap::new(),
         skulls: BTreeMap::new(),
         statues: BTreeMap::new(),
+        portals: Default::default(),
+        portal: None,
         conduits: Default::default(),
         conduit: None,
         pots: BTreeMap::new(),
@@ -292,6 +297,24 @@ fn append(
                     id,
                     State {
                         presentation: Presentation::Banner,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
+            if super::portal::matches(&state) {
+                if builder.portal.is_none() {
+                    builder.portal = Some(Arc::new(super::portal::load(
+                        models.source(),
+                        &mut builder.special_images,
+                    )?));
+                }
+                builder.portals.insert(id);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Portal,
                         selection: None,
                         variants: BTreeMap::new(),
                     },
@@ -535,6 +558,8 @@ fn finish(
     let banners = builder.banners.clone();
     let skulls = builder.skulls.clone();
     let statues = builder.statues.clone();
+    let portals = builder.portals.clone();
+    let portal = builder.portal.clone();
     let conduits = builder.conduits.clone();
     let conduit = builder.conduit.clone();
     let pots = builder.pots.clone();
@@ -558,6 +583,8 @@ fn finish(
         banners,
         skulls,
         statues,
+        portals,
+        portal,
         conduits,
         conduit,
         pots,
@@ -586,6 +613,8 @@ struct Builder {
     banners: BTreeMap<u32, super::banner::Banner>,
     skulls: BTreeMap<u32, super::skull::Skull>,
     statues: BTreeMap<u32, super::statue::Statue>,
+    portals: std::collections::BTreeSet<u32>,
+    portal: Option<Arc<super::portal::Resources>>,
     conduits: std::collections::BTreeSet<u32>,
     conduit: Option<Arc<super::conduit::Resources>>,
     pots: BTreeMap<u32, super::pot::Pot>,

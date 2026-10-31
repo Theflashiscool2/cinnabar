@@ -43,6 +43,7 @@ pub enum BlockEntityKind {
     JavaBanner(super::java_banner::Model),
     JavaSkull(super::java_skull::Model),
     JavaStatue(super::java_statue::Model),
+    JavaPortal(super::java_portal::Model),
     JavaConduit(super::java_conduit::Model),
     JavaPot(super::java_pot::Model),
     JavaShulker(super::java_shulker::Model),
@@ -96,7 +97,8 @@ impl BlockEntityKind {
             | Self::CrystalBeam(_)
             | Self::LoyaltyRope(_)
             | Self::DragonDeath(_) => false,
-            Self::JavaConduit(_)
+            Self::JavaPortal(_)
+            | Self::JavaConduit(_)
             | Self::JavaPot(_)
             | Self::JavaStatue(_)
             | Self::JavaSkull(_)
@@ -191,6 +193,7 @@ pub struct BlockEntityFrame {
     pub portal: Arc<[BlockEntityVertex]>,
     pub additive: Arc<[BlockEntityVertex]>,
     /// Normalized star texture bounds; wrapping happens within this atlas placement.
+    pub java_portal_parameters: super::java_portal::Parameters,
     pub portal_star_rect: [f32; 4],
     pub portal_time_seconds: f32,
 }
@@ -375,6 +378,7 @@ impl BlockEntityScene {
         };
         self.frame.portal_time_seconds =
             (clock.ticks / f64::from(simulation_clock::TICKS_PER_SECOND)) as f32;
+        self.frame.java_portal_parameters = super::java_portal::parameters(atlas, submissions);
         self.frame.portal_star_rect = super::portal::star_rect(atlas);
         // Rebuilding would emit the same vertices; keeping the revision spares the GPU upload.
         if self.frame.dynamic_revision == text.revision()
@@ -462,6 +466,7 @@ impl BlockEntityScene {
             crack: shared_layer(&self.frame.crack, &builder.crack, &mut self.buffers),
             portal: shared_layer(&self.frame.portal, &builder.portal, &mut self.buffers),
             additive: shared_layer(&self.frame.additive, &builder.additive, &mut self.buffers),
+            java_portal_parameters: self.frame.java_portal_parameters,
             portal_star_rect: self.frame.portal_star_rect,
             portal_time_seconds: self.frame.portal_time_seconds,
         };
@@ -533,6 +538,7 @@ fn emit_submission(
 ) {
     let block = submission.block;
     match &submission.kind {
+        BlockEntityKind::JavaPortal(_) => super::java_portal::emit(builder, block),
         BlockEntityKind::JavaConduit(state) => {
             super::java_conduit::emit(builder, atlas, block, state)
         }

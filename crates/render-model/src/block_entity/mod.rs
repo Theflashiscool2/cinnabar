@@ -92,3 +92,5 @@ pub use skull::{SkullKind, SkullModel, SkullMount, floor_yaw_degrees, skull_geom
 pub use statue::{Oxidation, StatueModel, StatuePose};
 
 pub mod java_conduit;
+
+pub mod java_portal;

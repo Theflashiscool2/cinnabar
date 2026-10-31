@@ -43,3 +43,7 @@ orientations and pitched/yawed eye. It compiles with `ExportHeadVertices` and
 `ExportStatueVertices`; set `CINNABAR_JAVA_CONDUIT_VERTICES` for the native geometry
 fixture. Model factories and transforms were inspected from the verified 26.3
 ConduitRenderer; no proprietary model data is committed.
+
+`InspectPortal.java` prints the pinned native pipeline layer counts, exposed faces and
+transformed portal bounds. Compile/run against the verified client and its extracted
+libraries as above; compare these observations with native portal geometry tests.

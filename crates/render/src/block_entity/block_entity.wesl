@@ -16,6 +16,9 @@ struct PortalParameters {
     time: vec4<f32>,
     fog_color_start: vec4<f32>,
     fog_end: vec4<f32>,
+    java_sky_rect: vec4<f32>,
+    java_star_rect: vec4<f32>,
+    java_colors: array<vec4<f32>, 16>,
 }
 @group(0) @binding(4) var<uniform> portal: PortalParameters;
 
@@ -197,6 +200,7 @@ struct PortalOutput {
     @location(1) @interpolate(perspective, centroid) parallax_uv: vec2<f32>,
     @location(2) phase: f32,
     @location(3) fog: f32,
+    @location(4) projection: vec4<f32>,
 }
 
 @vertex
@@ -206,6 +210,17 @@ fn portal_vertex(@builtin(vertex_index) vertex_index: u32) -> PortalOutput {
     let encoded_normal = vec3(vertex_f32(base + 5u), vertex_f32(base + 6u), vertex_f32(base + 7u));
     let normal = (encoded_normal - vec3(0.5)) * 2.0;
     let phase = vertex_f32(base + 8u);
+    if (phase < 0.0) {
+        var java: PortalOutput;
+        java.position = camera_offset_clip(view.clip_from_world, view.world_position, world_position - view.world_position);
+        // Java's OpenGL projection has upward Y. WGPU's world clip Y has the same orientation.
+        java.projection = vec4((java.position.xy + java.position.ww) * 0.5, java.position.zw);
+        java.color_uv = vec2(0.0);
+        java.parallax_uv = vec2(0.0);
+        java.phase = phase;
+        java.fog = clamp((distance(world_position, view.world_position) - portal.fog_color_start.w) / max(portal.fog_end.x - portal.fog_color_start.w, 0.0001), 0.0, 1.0);
+        return java;
+    }
     let depth = phase * 32.0;
     let ray = world_position - view.world_position;
     let intersection = dot(ray - depth * normal, normal) / dot(ray, normal);
@@ -225,18 +240,41 @@ fn portal_vertex(@builtin(vertex_index) vertex_index: u32) -> PortalOutput {
     out.color_uv = vec2(vertex_f32(base + 3u), vertex_f32(base + 4u));
     out.parallax_uv = uv;
     out.phase = phase;
+    out.projection = vec4(0.0);
     out.fog = clamp((length(ray) - portal.fog_color_start.w) / max(portal.fog_end.x - portal.fog_color_start.w, 0.0001), 0.0, 1.0);
     return out;
 }
 
 @fragment
 fn portal_fragment(input: PortalOutput) -> @location(0) vec4<f32> {
-    // One/OneMinusSrcAlpha clears the surface with the base, then adds the stars.
     let uv = portal.star_rect.xy + fract(input.parallax_uv) * portal.star_rect.zw;
     let uv_dx = dpdx(uv);
     let uv_dy = dpdy(uv);
     let color_uv_dx = dpdx(input.color_uv);
     let color_uv_dy = dpdy(input.color_uv);
+    let screen = input.projection.xy / max(input.projection.w, 0.000001);
+    let screen_dx = dpdx(screen);
+    let screen_dy = dpdy(screen);
+    if (input.phase < 0.0) {
+        let sky_uv = portal.java_sky_rect.xy + fract(screen) * portal.java_sky_rect.zw;
+        var color = tint_to_gamma(textureSampleGrad(atlas, atlas_sampler, sky_uv, screen_dx * portal.java_sky_rect.zw, screen_dy * portal.java_sky_rect.zw)).rgb * portal.java_colors[0].rgb;
+        let day = fract(portal.time.x / 1200.0);
+        let count = min(u32(-input.phase), 16u);
+        for (var i = 0u; i < count; i += 1u) {
+            let layer = f32(i + 1u);
+            let angle = radians(2.0 * (4321.0 * layer * layer + 9.0 * layer));
+            let rotated = vec2(screen.x * cos(angle) - screen.y * sin(angle), screen.x * sin(angle) + screen.y * cos(angle));
+            let translation = vec2(17.0 / layer, (2.0 + layer / 1.5) * day * 1.5);
+            let projected = rotated * (4.5 - layer * 0.25) + translation * 0.5 + vec2(0.25);
+            let uv = portal.java_star_rect.xy + fract(projected) * portal.java_star_rect.zw;
+            let footprint = (4.5 - layer * 0.25) * portal.java_star_rect.zw;
+            let dx = vec2(screen_dx.x * cos(angle) - screen_dx.y * sin(angle), screen_dx.x * sin(angle) + screen_dx.y * cos(angle)) * footprint;
+            let dy = vec2(screen_dy.x * cos(angle) - screen_dy.y * sin(angle), screen_dy.x * sin(angle) + screen_dy.y * cos(angle)) * footprint;
+            color += tint_to_gamma(textureSampleGrad(atlas, atlas_sampler, uv, dx, dy)).rgb * portal.java_colors[i].rgb;
+        }
+        return vec4(mix(tint_to_linear(vec4(color, 1.0)).rgb, portal.fog_color_start.rgb, input.fog), 1.0);
+    }
+    // One/OneMinusSrcAlpha clears the surface with the base, then adds the stars.
     if (input.phase * 32.0 > 31.0) {
         return vec4(portal.fog_color_start.rgb * input.fog, 1.0);
     }

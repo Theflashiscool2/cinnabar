@@ -67,7 +67,8 @@ const VERTEX_BYTES: u64 = (BLOCK_ENTITY_VERTEX_WORDS * size_of::<f32>()) as u64;
 const MIN_BUFFER_VERTICES: u64 = 1024;
 /// Bytes compared per `memcmp` while locating the changed span of a vertex list.
 const COMPARE_BLOCK_BYTES: usize = 4096;
-const PORTAL_PARAMETER_BYTES: u64 = size_of::<[[f32; 4]; 4]>() as u64;
+const PORTAL_PARAMETER_COUNT: usize = 4 + render_model::block_entity::java_portal::PARAMETER_WORDS;
+const PORTAL_PARAMETER_BYTES: u64 = size_of::<[[f32; 4]; PORTAL_PARAMETER_COUNT]>() as u64;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct BlockEntityRenderPlugin;
@@ -197,7 +198,7 @@ pub(crate) struct BlockEntityGpu {
     /// Reused to assemble the crack list before it replaces `uploaded.crack`.
     crack_scratch: Vec<BlockEntityVertex>,
     portal_uniform: Buffer,
-    portal_parameters: Option<[[f32; 4]; 4]>,
+    portal_parameters: Option<[[f32; 4]; PORTAL_PARAMETER_COUNT]>,
     #[cfg(test)]
     portal_uploads: u64,
     texture: Option<Texture>,
@@ -269,12 +270,14 @@ pub(crate) fn prepare_resources(
     let raw_views = crate::actor::gpu::ArtworkRawViews::current(raw_views);
     let atmosphere = atmosphere.as_deref().copied().unwrap_or_default();
     let [red, green, blue] = atmosphere.fog_color();
-    let portal_parameters = [
+    let mut portal_parameters = [[0.; 4]; PORTAL_PARAMETER_COUNT];
+    portal_parameters[..4].copy_from_slice(&[
         frame.portal_star_rect,
         [frame.portal_time_seconds, 0.0, 0.0, 0.0],
         [red, green, blue, atmosphere.fog_start()],
         [atmosphere.fog_end(), 0.0, 0.0, 0.0],
-    ];
+    ]);
+    portal_parameters[4..].copy_from_slice(&frame.java_portal_parameters);
     if !frame.portal.is_empty() && gpu.portal_parameters != Some(portal_parameters) {
         uploads.write(
             &gpu.portal_uniform,

@@ -110,6 +110,7 @@ fn reference_frame(
             crack: builder.crack.into(),
             portal: builder.portal.into(),
             additive: builder.additive.into(),
+            java_portal_parameters: super::super::java_portal::parameters(atlas, submissions),
             portal_star_rect: super::super::portal::star_rect(atlas),
             portal_time_seconds: (clock.ticks / f64::from(simulation_clock::TICKS_PER_SECOND))
                 as f32,

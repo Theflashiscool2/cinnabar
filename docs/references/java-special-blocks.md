@@ -176,3 +176,35 @@ and real-time recording cover inactive shell, 16-frame activation, 42-frame open
 41-frame closed eye, 15-frame deactivation, water obstruction/recovery, removal/replacement,
 negative chunk boundaries, unload/revisit and reconnect. Server effect queries independently
 confirm Conduit Power addition and expiry. No iOS, online or Hypixel acceptance is claimed.
+
+## Native End portal
+
+The pinned archive's `TheEndPortalBlockEntity.shouldRenderFace` exposes both Y faces;
+`TheEndPortalRenderer.TRANSFORMATION` places them at 3/8 and 3/4 block height.
+`RenderPipelines.END_PORTAL` selects 15 star layers, while the gateway selects 16.
+The Java dispatch uses the archive's End sky and portal textures, and reads only the
+bounded numeric palette from its shader resource. Resource shader code is never executed.
+The shared atlas/GPU pass has an explicit Java screen-projection branch; Bedrock's
+world-projected layers are unchanged. Geometry, atlas lifetime and publication reuse the
+existing special-model owners. Local animation phase and shared fog are not claims of
+full server-clock/fog parity. Gateway beam/lifecycle remains gated independently.
+
+Behavior references: verified 26.3 client archive, `AbstractEndPortalRenderer`,
+`TheEndPortalRenderer`, `TheEndPortalBlockEntity`, `RenderTypes`, `RenderPipelines`,
+`GlobalSettingsUniform` and the portal shader's projection/layer behavior. Implementation
+is original Rust/WGSL; copyrighted shader code and artwork are not distributed here.
+
+Controlled portal entry exposed a distinct respawn admission failure: the new dimension
+correctly retired its placed player body, but also discarded the rotation/velocity used by
+vanilla's first relative correction. Native `ClientPacketListener.handleRespawn` retains
+these with KEEP_ENTITY_DATA and otherwise starts at yaw -180, pitch zero and zero velocity.
+Admission now keeps that correction basis separately from movement authority, consumes it
+once, and still rejects relative positions without a placed anchor. Session/epoch checks
+and teleport acknowledgements remain authoritative. Inspected Linux Xvfb/lavapipe vanilla
+26.3 offline acceptance covers top/bottom surfaces, animation, removal/replacement,
+negative chunk boundaries, unload/revisit and reconnect. Server-admin portal entry and
+repeated Overworld/End transitions now retain admitted authority; reconnect in the End
+passes. A native movement attempt advanced only one step and did not enter the portal,
+so it is not accepted as walk-through gameplay. The captures also expose Overworld sky/clouds
+in the End: atmosphere remains a separate implementation defect. User-pack reload,
+iOS and Hypixel acceptance are not established.

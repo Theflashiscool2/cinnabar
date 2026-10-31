@@ -61,6 +61,7 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
     state.block_ack = None;
     state.teleport = None;
     state.player_motion = None;
+    state.respawn_rotation_velocity = None;
     state.player_dynamics.unplaced_velocity = None;
     state.pending_correction = None;
     state.pending_rotation = None;

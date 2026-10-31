@@ -40,6 +40,8 @@ pub struct WorldState {
     pub bootstrap: Option<Box<Bootstrap>>,
     pub teleport: Option<player::ResolvedTeleport>,
     pub player_motion: Option<world::java::player::Motion>,
+    /// Native respawn retains rotation/velocity separately from the new world's unplaced body.
+    respawn_rotation_velocity: Option<([f64; 3], f32, f32)>,
     pub player_dynamics: world::java::dynamics::PlayerDynamics,
     pub player_pose_revision: u64,
     pub deferred_entity_dynamics: u64,
@@ -229,6 +231,16 @@ impl WorldState {
                 keep_attribute_modifiers,
                 keep_metadata,
             } => {
+                // ClientPacketListener.handleRespawn copies these only with KEEP_ENTITY_DATA.
+                // Do not publish the old position as movement authority in the new dimension.
+                let inherited = if keep_metadata {
+                    self.player_motion
+                        .map(|m| (m.velocity, m.yaw, m.pitch))
+                        .or(self.respawn_rotation_velocity)
+                        .unwrap_or(([0.; 3], -180., 0.))
+                } else {
+                    ([0.; 3], -180., 0.)
+                };
                 if !keep_attribute_modifiers {
                     for attribute in self.player_dynamics.attributes.values_mut() {
                         attribute.modifiers.clear();
@@ -243,6 +255,7 @@ impl WorldState {
                     self.terrain_error = Some(error);
                     return false;
                 }
+                self.respawn_rotation_velocity = Some(inherited);
                 self.respawn = Some(spawn);
             }
             Event::Terrain {
