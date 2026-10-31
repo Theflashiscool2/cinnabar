@@ -119,6 +119,11 @@ def add_assets(ipa, local, out, force=False, java_assets=None):
     if out.exists() and not force:
         raise AssetError(f"{out} exists; pass --force to replace it")
     dirs = source_dirs(local)
+    if java_assets is None:
+        version = json.loads(JAVA_TARGET.read_text(encoding="utf-8"))["game_version"]
+        prepared = local / "assets/java" / version
+        if prepared.exists():
+            java_assets = prepared
     java_relative, java_specs = java_sources(java_assets) if java_assets is not None else (None, [])
     added = 0
     with tempfile.NamedTemporaryFile(dir=out.parent, prefix=out.name, suffix=".tmp", delete=False) as handle:
@@ -150,7 +155,7 @@ def main(argv=None):
     parser.add_argument("ipa", type=Path, help="unsigned IPA from build-ipa.sh or the iOS workflow")
     parser.add_argument("--local", type=Path, default=ROOT / ".local", help="checkout .local directory")
     parser.add_argument("--out", type=Path, help="output IPA (default: -unsigned replaced by -assets)")
-    parser.add_argument("--java-assets", type=Path, help="prepared Java runtime directory, verified against the tracked target manifest")
+    parser.add_argument("--java-assets", type=Path, help="prepared Java runtime directory (default: use local/assets/java/<pinned-version> when present); verified against the tracked target manifest")
     parser.add_argument("--force", action="store_true", help="replace an existing output")
     args = parser.parse_args(argv)
     out = args.out

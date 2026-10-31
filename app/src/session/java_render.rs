@@ -254,7 +254,7 @@ pub(crate) fn update(
             }
             Err(error) => {
                 p.failure = Some(format!(
-                    "Java runtime assets: {error}. Prepare the pinned Java runtime inputs in the app resource root assets/java directory, or use CINNABAR_JAVA_ASSETS on desktop."
+                    "Java runtime assets: {error}. On the build computer, run make java-assets JAVA_ACCEPT_EULA=1. For iPhone, include the prepared assets with packaging/ios/add-assets.py and reinstall the new IPA."
                 ))
             }
         }

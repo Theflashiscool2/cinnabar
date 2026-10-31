@@ -353,6 +353,8 @@ pub(super) enum Command {
     },
     /// Export and verify native Java collision facts from a locally supplied pinned server.
     JavaPhysics(super::java_physics::Options),
+    /// Prepare all pinned native Java runtime resources, reusing verified local files.
+    JavaPrepare(super::java_prepare::Options),
     /// Prepare verified native Java entity models from the pinned client/server archives.
     JavaEntities(super::java_entities::Options),
     /// Prepare verified native Java block selection shapes from the pinned server archive.

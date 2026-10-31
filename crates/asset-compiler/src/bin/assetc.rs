@@ -63,6 +63,8 @@ mod java_entities;
 mod java_interaction;
 #[path = "assetc/java_physics.rs"]
 mod java_physics;
+#[path = "assetc/java_prepare.rs"]
+mod java_prepare;
 #[path = "assetc/java_runtime.rs"]
 mod java_runtime;
 #[path = "assetc/output_validation.rs"]
@@ -530,6 +532,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
+        Command::JavaPrepare(options) => java_prepare::prepare(options)?,
         Command::JavaEntities(options) => java_entities::generate(options)?,
         Command::JavaInteraction(options) => java_interaction::generate(options)?,
         Command::Prepare {

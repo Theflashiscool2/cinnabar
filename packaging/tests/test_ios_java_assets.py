@@ -52,6 +52,15 @@ class JavaAssetsTests(unittest.TestCase):
                 with zipfile.ZipFile(out) as archive:
                     actual = {name.removeprefix(prefix): archive.read(name) for name in archive.namelist() if name.startswith(prefix)}
                 self.assertEqual(actual, expected)
+                # The normal packaging command must not silently omit prepared Java inputs.
+                prepared = local / "assets/java/fixture"
+                prepared.parent.mkdir(parents=True)
+                java.rename(prepared)
+                java = prepared
+                module.add_assets(ipa, local, out, force=True)
+                with zipfile.ZipFile(out) as archive:
+                    actual = {name.removeprefix(prefix): archive.read(name) for name in archive.namelist() if name.startswith(prefix)}
+                self.assertEqual(actual, expected)
                 original = out.read_bytes()
                 # Equal-length corruption catches validators that check only file size.
                 (java / "physics.bin").write_bytes(b"x" * len(expected["physics.bin"]))
@@ -60,7 +69,7 @@ class JavaAssetsTests(unittest.TestCase):
                 self.assertEqual(out.read_bytes(), original)
                 (java / "physics.bin").unlink()
                 with self.assertRaisesRegex(module.AssetError, "missing Java runtime input"):
-                    module.add_assets(ipa, local, out, force=True, java_assets=java)
+                    module.add_assets(ipa, local, out, force=True)
                 self.assertEqual(out.read_bytes(), original)
                 self.assertEqual(list(root.glob("*.tmp")), [])
 

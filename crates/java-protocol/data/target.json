@@ -14,11 +14,13 @@
     "path": "reports/blocks.json"
   },
   "client_assets": {
+    "url": "https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar",
     "sha1": "e877b6a07acd633fb3bb475002175cec036e7b87",
     "sha256": "4508d006323f24fa02876310c192d739af56516eb259000ac50f0909a68c9a2d",
     "bytes": 41483720
   },
   "server_sha256": "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64",
+  "server_url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
   "server_bytes": 62294556,
   "physics_report": {
     "sha256": "1c8dc5bb0a37da2b117c35059f7460f0eb90bd6f62751d14c5c0db0779f4ced3",

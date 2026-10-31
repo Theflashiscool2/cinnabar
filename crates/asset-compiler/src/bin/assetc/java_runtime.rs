@@ -77,6 +77,22 @@ impl Runtime {
         self.work.path()
     }
 
+    /// Runs the pinned data generator in isolation using the verified bundled libraries.
+    pub fn reports(&self) -> Result<PathBuf, Box<dyn Error>> {
+        let output = self.work.path().join("generated");
+        let status = Command::new(&self.java)
+            .args(["-Xmx512m", "-cp"])
+            .arg(std::env::join_paths(&self.jars)?)
+            .args(["net.minecraft.data.Main", "--reports", "--output"])
+            .arg(&output)
+            .current_dir(self.work.path())
+            .status()?;
+        if !status.success() {
+            return Err(format!("Java registry report generation failed: {status}").into());
+        }
+        Ok(output)
+    }
+
     /// Adds the client model factories as verified data inputs, without starting the client.
     pub fn add_client(&mut self, client: &Path) -> Result<(), Box<dyn Error>> {
         let pinned = &self.target.client_assets;

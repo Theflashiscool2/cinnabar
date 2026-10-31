@@ -65,7 +65,7 @@ ASSETS_PREPARE = $(ASSETC) prepare --accept-eula $(if $(strip $(CINNABAR_CLOUDS_
 LOCAL_FONT_ASSET_COMPILE = $(ASSETC) font-assets --pack "$(FONT_PACK_DIR)" --source-manifest "$(VANILLA_SOURCE_MANIFEST)" --out "$(LOCAL_ASSET_DIR)/vanilla-v1.mcbefont" --report "$(LOCAL_ASSET_DIR)/font-assets.json"
 LOCAL_HUD_ASSET_COMPILE = $(ASSETC) hud-assets --pack "$(HUD_PACK_DIR)" --source-manifest "$(HUD_SOURCE_MANIFEST)" --out "$(LOCAL_ASSET_DIR)/vanilla-v1.mcbehud" --report "$(LOCAL_ASSET_DIR)/hud-assets.json"
 
-.PHONY: help vanilla-assets assets font-assets-local hud-assets-local physics-assets local-server play dist-local
+.PHONY: help vanilla-assets assets font-assets-local hud-assets-local physics-assets java-assets local-server play dist-local
 .PHONY: registry-foundation-check jsonui-editor figma-plugin
 
 help:
@@ -76,6 +76,7 @@ help:
 	@echo make font-assets-local - Compile a reviewed local bitmap font source via FONT_PACK_DIR
 	@echo make hud-assets-local - Compile from an explicitly selected matching pack via HUD_PACK_DIR
 	@echo make physics-assets  - Compile block movement and selection geometry
+	@echo make java-assets JAVA_ACCEPT_EULA=1 - Prepare verified Java runtime inputs
 	@echo make local-server    - Build the dragonfly local-world server and experience-runtime beside the core binary
 	@echo make play            - Refresh stale assets, build the core, and run the full game from the menu
 	@echo make play-run        - Assemble and launch the existing build without compiling or refreshing assets
@@ -118,6 +119,9 @@ hud-assets-local:
 
 physics-assets:
 	$(ASSETS_PREPARE) --only physics
+
+java-assets:
+	$(ASSETC) java-prepare $(if $(filter 1,$(JAVA_ACCEPT_EULA)),--accept-eula) $(JAVA_ASSET_ARGS)
 
 $(PACK_SENTINEL): $(VANILLA_SOURCE_MANIFEST)
 	$(VANILLA_ASSET_FETCH)

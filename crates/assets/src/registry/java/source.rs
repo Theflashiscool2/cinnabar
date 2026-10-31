@@ -89,7 +89,9 @@ pub struct Jar {
 impl Jar {
     /// The SHA and length come from the Java target manifest, not from the supplied archive.
     pub fn open(path: &Path, sha256: &str, expected_bytes: u64) -> Result<Self, Error> {
-        let mut file = File::open(path)?;
+        let mut file = File::open(path).map_err(|error| {
+            std::io::Error::new(error.kind(), format!("{}: {error}", path.display()))
+        })?;
         if file.metadata()?.len() != expected_bytes {
             return Err(Error::Hash);
         }
@@ -130,6 +132,14 @@ impl Source for Jar {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn missing_archive_error_identifies_the_runtime_file() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("client.jar");
+        let error = Jar::open(&path, "unused", 0).err().unwrap();
+        assert!(error.to_string().contains(&path.display().to_string()));
+        assert!(matches!(error, Error::Io(e) if e.kind() == std::io::ErrorKind::NotFound));
+    }
     #[test]
     fn namespaces_and_archive_paths_cannot_escape_assets() {
         let id = Identifier::parse("example:block/stone").unwrap();

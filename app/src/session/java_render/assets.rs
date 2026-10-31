@@ -41,7 +41,7 @@ pub(super) fn extend(
             return Err("Java asset load cancelled".into());
         }
         let root = root()?;
-        let report = std::fs::read(root.join("blocks.json"))?;
+        let report = read_input(&root, "blocks.json")?;
         if report.len() != target::BLOCK_REPORT_BYTES {
             return Err("Java block report size does not match target manifest".into());
         }
@@ -89,11 +89,7 @@ fn load_inner(
     cancel: Arc<AtomicBool>,
 ) -> Result<Prepared, Box<dyn std::error::Error>> {
     use java_protocol::target;
-    let interaction_path = root.join("interaction.bin");
-    let interaction_bytes = std::fs::read(&interaction_path).map_err(|error| format!(
-        "Could not read Java interaction shapes at {}: {error}. Prepare them with assetc java-interaction",
-        interaction_path.display()
-    ))?;
+    let interaction_bytes = read_input(&root, "interaction.bin")?;
     if interaction_bytes.len() as u64 != target::INTERACTION_REPORT_BYTES {
         return Err("Java interaction report size does not match target manifest".into());
     }
@@ -102,7 +98,7 @@ fn load_inner(
         target::INTERACTION_REPORT_SHA256,
         target::BLOCK_STATE_COUNT,
     )?);
-    let physics_bytes = std::fs::read(root.join("physics.bin"))?;
+    let physics_bytes = read_input(&root, "physics.bin")?;
     if physics_bytes.len() as u64 != target::PHYSICS_REPORT_BYTES {
         return Err("Java physics report size does not match target manifest".into());
     }
@@ -111,7 +107,7 @@ fn load_inner(
         target::PHYSICS_REPORT_SHA256,
         target::BLOCK_STATE_COUNT,
     )?);
-    let report = std::fs::read(root.join("blocks.json"))?;
+    let report = read_input(&root, "blocks.json")?;
     if report.len() != target::BLOCK_REPORT_BYTES {
         return Err("Java block report size does not match target manifest".into());
     }
@@ -167,6 +163,11 @@ fn load_inner(
         unsupported_tints,
     })
 }
+fn read_input(root: &std::path::Path, name: &str) -> Result<Vec<u8>, String> {
+    let path = root.join(name);
+    std::fs::read(&path).map_err(|error| format!("{}: {error}", path.display()))
+}
+
 fn linear(rgb: [u8; 3]) -> [f32; 3] {
     rgb.map(|n| {
         let v = f32::from(n) / 255.;

@@ -138,8 +138,27 @@ qualify native Java networking, authentication, terrain, touch gameplay or Hypix
 The Java release target remains the version in `crates/java-protocol/data/target.json`.
 
 Java terrain and entity workers resolve resources through the host's `InstallLayout`,
-including when UIKit changes the working directory. To include locally prepared Java
-inputs alongside the required shared carriers:
+including when UIKit changes the working directory. Prepare the complete pinned set
+once on the build host, after accepting the [Minecraft EULA](https://www.minecraft.net/eula):
+
+```sh
+make java-assets JAVA_ACCEPT_EULA=1
+```
+
+This downloads and verifies the official client/server archives, generates missing
+reports, and installs all five runtime files under `.local/assets/java/<pinned-version>`.
+Valid existing files are reused. Report generation requires the target's JDK (including
+`javac`); discovery checks `JAVA_HOME`, PATH, macOS `java_home`, then Homebrew
+`openjdk@<major>`. It does not install a JDK or change the system installation.
+Use `JAVA_ASSET_ARGS='--server /path/to/server.jar --client /path/to/client.jar'`
+to import existing archives without downloading them. A complete verified set needs
+neither network access nor a JDK when rerunning the command.
+
+Desktop `make play-run` uses this directory. `client.jar` is required there;
+leaving it in Downloads does not make it available to the renderer. The iOS asset
+injector now includes that directory automatically when present and rejects an
+incomplete/corrupt set before replacing the output. Bedrock-only packaging remains
+available when no Java directory exists. A non-default prepared directory can be used:
 
 ```sh
 python3 packaging/ios/add-assets.py path/to/Cinnabar-<version>-unsigned.ipa \
@@ -151,9 +170,8 @@ The directory must contain `client.jar`, `blocks.json`, `physics.bin`,
 against the tracked Java target's sizes and SHA-256 hashes. A mismatch leaves any
 existing output untouched. It copies only these Java files into
 `local/assets/java/<pinned-version>/`; server binaries, exporter programs and account
-credentials are excluded. Prepare exports on a host with the target's Java runtime,
-using the existing `assetc java-physics`, `java-interaction` and `java-entities`
-commands and their explicit EULA acceptance. The running iPhone app never executes
+credentials are excluded. The individual `assetc java-physics`, `java-interaction`
+and `java-entities` commands remain available. The running iPhone app never executes
 Java or a data exporter. Desktop `CINNABAR_JAVA_ASSETS` overrides still work.
 
 The build script targets Xcode 27.1 and iPhoneOS SDK 27.1, as recorded in

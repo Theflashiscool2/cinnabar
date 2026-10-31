@@ -75,6 +75,9 @@ reports group observed gaps next to client.log without retaining packet payloads
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline
 server evidence; complex metadata and entity frame publication remain incomplete.
+`make java-assets JAVA_ACCEPT_EULA=1` prepares the complete hash-pinned runtime set
+on the build host; iOS asset injection includes the local set automatically when
+present. End-user in-app first-run Java provisioning remains unimplemented.
 
 - [x] Persist explicit Java entries; old entries remain Bedrock. Route Java to its
   native task owner and keep Bedrock authentication/transport independent.

@@ -28,7 +28,7 @@ pub(super) struct Options {
     pub(super) compiler_jar: Option<PathBuf>,
     /// Confirms acceptance of the Minecraft EULA for processing the supplied server assets.
     #[arg(long)]
-    accept_eula: bool,
+    pub(super) accept_eula: bool,
 }
 
 #[derive(Deserialize)]
