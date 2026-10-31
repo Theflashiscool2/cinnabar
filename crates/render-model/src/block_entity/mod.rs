@@ -90,3 +90,5 @@ pub use shulker::ShulkerModel;
 pub use sign::{SignFace, SignModel, SignMount};
 pub use skull::{SkullKind, SkullModel, SkullMount, floor_yaw_degrees, skull_geometry};
 pub use statue::{Oxidation, StatueModel, StatuePose};
+
+pub mod java_conduit;

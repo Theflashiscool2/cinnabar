@@ -36,3 +36,10 @@ reference quad and the shared hierarchy emitter omits the collapsed faces.
 `InspectPotPatterns.java` inspects the actual vanilla item component initializers against
 `VanillaRegistries.createWorldLookup`; pass its output as `CINNABAR_JAVA_POT_ITEMS`.
 It verifies every default pottery-pattern mapping and the positive/negative wobble duration.
+
+`ExportConduitVertices` captures native ModelPart positions, UVs and normals for
+the inactive shell and all active draw transforms, including the three wind
+orientations and pitched/yawed eye. It compiles with `ExportHeadVertices` and
+`ExportStatueVertices`; set `CINNABAR_JAVA_CONDUIT_VERTICES` for the native geometry
+fixture. Model factories and transforms were inspected from the verified 26.3
+ConduitRenderer; no proprietary model data is committed.

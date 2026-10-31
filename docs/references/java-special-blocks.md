@@ -132,7 +132,7 @@ Arbitrary end-user pack reload, iOS and online-server acceptance remain unqualif
 
 ## Remaining special renderers
 
-Player-profile heads, conduit,
+Player-profile heads,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.
 
@@ -154,3 +154,25 @@ reconnect. Native survival use inserts bricks (server pot 0→2, stack 8→6); a
 rejection preserves both counts. Real-time recordings inspect both wobble styles. The native
 hotbar still lacks the held brick icon; this is not inventory UI acceptance. Arbitrary user
 pack reload and iOS/online acceptance remain unqualified. The shared Bedrock pot path remains separate.
+
+## Conduit
+
+The native path exports `ConduitRenderer` shell/cage/wind/eye layers and uses the
+Java PNG/mcmeta wind timeline (22 frames, three ticks each in the pinned archive).
+It reuses the shared special atlas and cutout GPU pass, with native floating cage,
+three wind orientations, inner wind and camera-facing open/closed eye transforms.
+Exported face normals avoid precision loss on the thin eye edges. Existing Bedrock
+conduit behavior is unchanged.
+
+The client derives activation from 27 water-tagged cells and the server's
+`minecraft:conduit_effect_block` tag at the native frame positions: 16 activate,
+42 open the eye. Missing neighbors are temporarily inactive and recover on the
+40-tick check. Block generation, dimension and session changes retire animation
+state. The check cadence is local; synchronization to the server game-time modulo
+40 remains unqualified, as do conduit particles/sounds and arbitrary resource packs.
+Structural admission requires all four verified models and all artwork; it does
+not make unsupported states invisible. Inspected Linux software-Vulkan offline-vanilla frames
+and real-time recording cover inactive shell, 16-frame activation, 42-frame open eye,
+41-frame closed eye, 15-frame deactivation, water obstruction/recovery, removal/replacement,
+negative chunk boundaries, unload/revisit and reconnect. Server effect queries independently
+confirm Conduit Power addition and expiry. No iOS, online or Hypixel acceptance is claimed.

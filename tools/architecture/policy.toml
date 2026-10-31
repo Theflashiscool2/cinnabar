@@ -1435,6 +1435,7 @@ owners = [
     "crates/assets/src/registry/java/skull.rs",
     "crates/assets/src/registry/java/statue.rs",
     "crates/assets/src/registry/java/pot.rs",
+    "crates/assets/src/registry/java/conduit.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [

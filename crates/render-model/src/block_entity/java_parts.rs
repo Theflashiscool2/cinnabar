@@ -1,7 +1,7 @@
 //! Native exported model hierarchy emission into the shared special pass.
 use super::mesh::{Layer, MeshBuilder, WHITE};
 use assets::entity::java::Part;
-use glam::{EulerRot, Mat4, Quat, Vec3};
+use glam::{EulerRot, Mat3, Mat4, Quat, Vec3};
 pub(super) fn part(
     builder: &mut MeshBuilder,
     part: &Part,
@@ -21,6 +21,7 @@ pub(super) fn part(
                 Vec3::from_array(part.offset),
             )
         });
+    let normals = Mat3::from_mat4(pose).inverse().transpose();
     if !part.skip_draw {
         for face in &part.faces {
             // Java exported faces are CCW about their normals. The shared special pass expects
@@ -47,7 +48,17 @@ pub(super) fn part(
             }
             points.reverse();
             uv.reverse();
+            let start = builder.solid.len();
             builder.quad_uv(Layer::Solid, points, uv, WHITE);
+            if builder.actor_light != 0 {
+                // Thin native faces lose normal precision when inferred from world positions.
+                let normal = (normals * Vec3::from_array(face.normal))
+                    .normalize_or_zero()
+                    .to_array();
+                for vertex in &mut builder.solid[start..] {
+                    vertex.normal = normal;
+                }
+            }
         }
     }
     for child in &part.children {

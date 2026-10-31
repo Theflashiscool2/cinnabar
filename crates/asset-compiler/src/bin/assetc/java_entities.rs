@@ -174,12 +174,16 @@ mod tests {
             pin.entity_models_report.bytes,
         )
         .unwrap();
-        assert_eq!(models.iter().count(), 11);
+        assert_eq!(models.iter().count(), 15);
         for name in [
             "statue_standing",
             "statue_running",
             "statue_sitting",
             "statue_star",
+            "conduit_shell",
+            "conduit_cage",
+            "conduit_wind",
+            "conduit_eye",
             "pot_base",
             "pot_sides",
         ] {

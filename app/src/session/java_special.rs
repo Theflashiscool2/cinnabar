@@ -27,6 +27,7 @@ pub(crate) struct Presentation {
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
     banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     pots: BTreeMap<[i32; 3], render_model::block_entity::java_pot::Model>,
+    conduits: BTreeMap<[i32; 3], (u64, sim::java::conduit::Motion)>,
     pot_motion: BTreeMap<[i32; 3], (u64, sim::java::pot::Motion)>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
     boxes: BTreeMap<[i32; 3], BoxMotion>,
@@ -82,6 +83,7 @@ pub(crate) fn advance(
         p.boxes.clear();
         p.skulls.clear();
         p.pot_motion.clear();
+        p.conduits.clear();
         p.elapsed = std::time::Duration::ZERO;
         return;
     };
@@ -96,6 +98,8 @@ pub(crate) fn advance(
         p.elapsed -= simulation_clock::TICK_DURATION;
         ticks += 1;
     }
+    p.conduits
+        .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     p.boxes
         .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
     p.skulls
@@ -122,6 +126,38 @@ pub(crate) fn advance(
     }
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if graphics.conduits.contains(&id) {
+                if terrain.block(position).map(|n| n.0) != Some(id) {
+                    continue;
+                }
+                let Some(generation) = terrain.block_generation(position) else {
+                    continue;
+                };
+                let (_, motion) = p
+                    .conduits
+                    .entry(position)
+                    .or_insert_with(|| (generation, Default::default()));
+                let frame = controller
+                    .as_ref()
+                    .and_then(|c| c.java_world.bootstrap.as_ref())
+                    .and_then(|b| b.configuration.tags.get("minecraft:block"))
+                    .and_then(|t| t.get(assets::registry::java::conduit::EFFECT_TAG));
+                for _ in 0..ticks {
+                    motion.tick(|offset| {
+                        let id = terrain
+                            .block(std::array::from_fn(|i| position[i] + offset[i]))?
+                            .0;
+                        let water = graphics.fluid_facts.as_ref()?.state(id)?.kind
+                            == assets::registry::java::fluids::Kind::Water;
+                        let block = *graphics.block_types.get(id as usize)?;
+                        Some((
+                            water,
+                            frame.is_some_and(|ids| ids.contains(&(block as i32))),
+                        ))
+                    });
+                }
+                continue;
+            }
             if let Some(state) = graphics.skulls.get(&id) {
                 if terrain.block(position).map(|n| n.0) == Some(id) {
                     if let Some(generation) = terrain.block_generation(position) {
@@ -173,6 +209,7 @@ pub(crate) fn update(
     mut presentation: ResMut<Presentation>,
     frame: Option<ResMut<render_scene::BlockEntityFrameResource>>,
     time: Res<Time<Real>>,
+    view: Option<Res<client_presentation::local_player::LocalViewPose>>,
 ) {
     let Some(mut frame) = frame else {
         return;
@@ -293,6 +330,7 @@ pub(crate) fn update(
                         || graphics.skulls.contains_key(&id.0)
                         || graphics.statues.contains_key(&id.0)
                         || graphics.pots.contains_key(&id.0)
+                        || graphics.conduits.contains(&id.0)
                 }) else {
                     continue;
                 };
@@ -354,6 +392,33 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if graphics.conduits.contains(&id) {
+                if let (Some(resources), Some([block, sky])) =
+                    (graphics.conduit.as_ref(), terrain.light(position))
+                {
+                    let motion = p.conduits.get(&position).map(|(_, m)| m);
+                    let shape = motion.map_or(Default::default(), |m| m.shape);
+                    let (ticks, rotation) = motion.map_or((0., 0.), |m| m.sample(partial));
+                    submissions.push(BlockEntitySubmission {
+                        block: position,
+                        light: BlockEntityLight::Actor { block, sky },
+                        kind: BlockEntityKind::JavaConduit(
+                            render_model::block_entity::java_conduit::Model {
+                                resources: Arc::clone(resources),
+                                active: shape.active,
+                                hunting: shape.hunting,
+                                ticks,
+                                texture_ticks: time.elapsed_secs_f64() * 20.,
+                                rotation,
+                                camera: view
+                                    .as_ref()
+                                    .map_or(Quat::IDENTITY, |v| v.camera_rotation()),
+                            },
+                        ),
+                    });
+                }
+                continue;
+            }
             if let Some(state) = graphics.statues.get(&id) {
                 if let Some([block, sky]) = terrain.light(position) {
                     submissions.push(BlockEntitySubmission {
@@ -506,6 +571,6 @@ impl Presentation {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
-            "cached_columns":self.columns.len(),"pots":self.pots.len(),"pot_wobble":self.pot_motion.iter().filter_map(|(pos,(_,m))|m.sample(0.).map(|w|serde_json::json!({"position":pos,"style":w.0,"progress":w.1}))).take(16).collect::<Vec<_>>(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
+            "conduits":self.conduits.iter().take(16).map(|(pos,(_,m))|serde_json::json!({"position":pos,"active":m.shape.active,"hunting":m.shape.hunting,"frame_blocks":m.shape.frame_blocks})).collect::<Vec<_>>(),"cached_columns":self.columns.len(),"pots":self.pots.len(),"pot_wobble":self.pot_motion.iter().filter_map(|(pos,(_,m))|m.sample(0.).map(|w|serde_json::json!({"position":pos,"style":w.0,"progress":w.1}))).take(16).collect::<Vec<_>>(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

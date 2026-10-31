@@ -5,3 +5,5 @@ pub mod selection;
 pub mod shulker;
 pub mod skull;
 pub mod travel;
+
+pub mod conduit;

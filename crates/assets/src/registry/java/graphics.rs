@@ -35,6 +35,8 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub conduits: std::collections::BTreeSet<u32>,
+    pub conduit: Option<Arc<super::conduit::Resources>>,
     pub pots: BTreeMap<u32, super::pot::Pot>,
     pub pot_patterns: BTreeMap<String, String>,
     pub statues: BTreeMap<u32, super::statue::Statue>,
@@ -58,6 +60,7 @@ pub enum Presentation {
     Skull,
     Statue,
     Pot,
+    Conduit,
 }
 #[derive(Clone)]
 struct State {
@@ -120,6 +123,8 @@ pub fn compile(
         banners: BTreeMap::new(),
         skulls: BTreeMap::new(),
         statues: BTreeMap::new(),
+        conduits: Default::default(),
+        conduit: None,
         pots: BTreeMap::new(),
         pot_patterns: BTreeMap::new(),
         special_models: BTreeMap::new(),
@@ -287,6 +292,24 @@ fn append(
                     id,
                     State {
                         presentation: Presentation::Banner,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
+            if super::conduit::matches(&state)? {
+                if builder.conduit.is_none() {
+                    builder.conduit = Some(Arc::new(super::conduit::load(
+                        models,
+                        &mut builder.special_images,
+                    )?));
+                }
+                builder.conduits.insert(id);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Conduit,
                         selection: None,
                         variants: BTreeMap::new(),
                     },
@@ -512,6 +535,8 @@ fn finish(
     let banners = builder.banners.clone();
     let skulls = builder.skulls.clone();
     let statues = builder.statues.clone();
+    let conduits = builder.conduits.clone();
+    let conduit = builder.conduit.clone();
     let pots = builder.pots.clone();
     let pot_patterns = builder.pot_patterns.clone();
     let special_models = builder.special_models.clone();
@@ -533,6 +558,8 @@ fn finish(
         banners,
         skulls,
         statues,
+        conduits,
+        conduit,
         pots,
         pot_patterns,
         special_models,
@@ -559,6 +586,8 @@ struct Builder {
     banners: BTreeMap<u32, super::banner::Banner>,
     skulls: BTreeMap<u32, super::skull::Skull>,
     statues: BTreeMap<u32, super::statue::Statue>,
+    conduits: std::collections::BTreeSet<u32>,
+    conduit: Option<Arc<super::conduit::Resources>>,
     pots: BTreeMap<u32, super::pot::Pot>,
     pot_patterns: BTreeMap<String, String>,
     special_models: BTreeMap<String, Arc<crate::entity::java::Part>>,

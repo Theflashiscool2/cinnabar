@@ -494,5 +494,26 @@ mod tests {
         }
 
         assert_eq!(g.special_models.len(), 6);
+        let conduits: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| registry.state(id).unwrap().name.as_ref() == "minecraft:conduit")
+            .collect();
+        assert_eq!(conduits.len(), 2);
+        let extension = graphics::extend(Arc::clone(g), &mut models, conduits.clone()).unwrap();
+        let g = extension.graphics();
+        for id in conduits {
+            assert_eq!(g.presentation(id), Some(graphics::Presentation::Conduit));
+            assert!(g.conduits.contains(&id));
+        }
+        let conduit = g.conduit.as_ref().unwrap();
+        assert_eq!(conduit.parts.len(), 4);
+        for wind in &conduit.winds {
+            assert_eq!(wind.ticks, 3);
+            assert_eq!(wind.frames.len(), 22);
+            assert_eq!(wind.timeline, (0..22).collect::<Vec<_>>());
+            for frame in &wind.frames {
+                let p = g.special_atlas.as_ref().unwrap().placement(frame).unwrap();
+                assert_eq!((p.width, p.height), (64, 32));
+            }
+        }
     }
 }

@@ -97,11 +97,21 @@ pub struct Sprite {
 }
 impl Sprite {
     pub fn load(source: &mut dyn Source, id: &Identifier) -> Result<Self, Error> {
+        Self::load_shape(source, id, true)
+    }
+    /// Entity atlases retain rectangular frames; terrain texture arrays still require squares.
+    pub fn load_entity(source: &mut dyn Source, id: &Identifier) -> Result<Self, Error> {
+        Self::load_shape(source, id, false)
+    }
+    fn load_shape(source: &mut dyn Source, id: &Identifier, square: bool) -> Result<Self, Error> {
         let path = id.asset_path("textures", "png");
         let image = Image::decode(&source.read(&path)?)?;
         let metadata = source.optional_json(&(path + ".mcmeta"))?;
-        let Some(animation) = metadata.as_ref().and_then(|m| m.get("animation")) else {
-            if image.width != image.height {
+        Self::frames(image, metadata.as_ref(), square)
+    }
+    fn frames(image: Image, metadata: Option<&Value>, square: bool) -> Result<Self, Error> {
+        let Some(animation) = metadata.and_then(|m| m.get("animation")) else {
+            if square && image.width != image.height {
                 return Err(invalid("non-square unanimated block sprite"));
             }
             return Ok(Self {
@@ -121,7 +131,7 @@ impl Sprite {
             (None, Some(h)) => (image.width, h),
             (Some(w), Some(h)) => (w, h),
         };
-        if w != h || !image.width.is_multiple_of(w) || !image.height.is_multiple_of(h) {
+        if (square && w != h) || !image.width.is_multiple_of(w) || !image.height.is_multiple_of(h) {
             return Err(invalid("animation frame dimensions"));
         }
         let count = u64::from(image.width / w) * u64::from(image.height / h);
@@ -219,6 +229,23 @@ fn invalid(message: &str) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rectangular_entity_frames_preserve_pixels_and_terrain_rejection() {
+        let image = Image {
+            width: 4,
+            height: 4,
+            rgba: (0..16).flat_map(|n| [n, 0, 0, 255]).collect(),
+        };
+        let metadata = serde_json::json!({"animation":{"height":2,"frametime":3,"frames":[1,0]}});
+        assert!(Sprite::frames(image.clone(), Some(&metadata), true).is_err());
+        let sprite = Sprite::frames(image, Some(&metadata), false).unwrap();
+        assert_eq!(sprite.timeline, vec![1, 0]);
+        assert_eq!(sprite.ticks, 3);
+        assert_eq!(sprite.frames.len(), 2);
+        assert_eq!(sprite.frames[0].rgba[0], 0);
+        assert_eq!(sprite.frames[1].rgba[0], 8);
+        assert_eq!((sprite.frames[1].width, sprite.frames[1].height), (4, 2));
+    }
     #[test]
     fn native_climate_lookup_promotes_float_climate_before_multiplication() {
         let image = Image {
