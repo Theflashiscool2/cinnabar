@@ -85,13 +85,13 @@ Version-checked tint admission now handles foliage, stems, cauldron water and dr
 foliage, and preserves unmodified textures when no callback is registered. Known
 invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
-and spatial grass modifiers remain gated. The integrated audit records 568 failing
-states in 27 groups, with no omitted failures: heads/skulls, copper golem statues, conduit, decorated pots, End portals/gateways
+and spatial grass modifiers remain gated. The integrated audit records 328 failing
+states in 15 groups, with no omitted failures: player-profile heads, copper golem statues, conduit, decorated pots, End portals/gateways
 and moving pistons. These require actual special-renderer integration, not empty-model
 admission. Incremental block-entity data and block events are now admitted through native
-terrain authority. Native chest, shulker and banner geometry use the shared GPU pass. Chest/shulker lids
+terrain authority. Native chest, shulker, banner and six fixed mob-head geometries use the shared GPU pass. Chest/shulker lids
 follow server events; shulker picking uses tick-based dynamic bounds. Banner pattern layers
-follow authoritative data and native archive mappings; server clock synchronization remains open. Native container UI
+follow authoritative data and native archive mappings; server clock synchronization remains open. Fixed skulls use native mounts/UVs and powered dragon/piglin articulation, checked against 36 independent native model cases and inspected offline gameplay. Native container UI
 and SHULKER_BOX inventory admission remain incomplete; see [native special blocks](docs/references/java-special-blocks.md).
 See [block-color support and remaining gaps](docs/references/java-block-colors.md).
 The audit itself is structural coverage. Separate controlled vanilla 26.3 Linux software-GPU

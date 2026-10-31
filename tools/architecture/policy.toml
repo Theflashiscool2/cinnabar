@@ -1431,6 +1431,8 @@ owners = [
     "crates/assets/src/registry/java/special.rs",
     # Java banner identity/dye owner; all 320 pinned states and archive-derived patterns tested.
     "crates/assets/src/registry/java/banner.rs",
+    # Version-pinned Java skull identity owner, verified against the native state report.
+    "crates/assets/src/registry/java/skull.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [

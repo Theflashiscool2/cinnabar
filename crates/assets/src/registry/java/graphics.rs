@@ -35,6 +35,7 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub skulls: BTreeMap<u32, super::skull::Skull>,
     pub banners: BTreeMap<u32, super::banner::Banner>,
     pub banner_patterns: BTreeMap<String, String>,
     pub special_atlas: Option<Arc<crate::RuntimeBlockEntityAssets>>,
@@ -50,6 +51,7 @@ pub enum Presentation {
     Chest,
     Shulker,
     Banner,
+    Skull,
 }
 #[derive(Clone)]
 struct State {
@@ -110,6 +112,7 @@ pub fn compile(
         chests: BTreeMap::new(),
         shulkers: BTreeMap::new(),
         banners: BTreeMap::new(),
+        skulls: BTreeMap::new(),
         banner_patterns: BTreeMap::new(),
         special_images: BTreeMap::new(),
     };
@@ -280,6 +283,26 @@ fn append(
                 );
                 return Ok(());
             }
+            if let Some(skull) = super::skull::Skull::from_state(&state)? {
+                if !builder.special_images.contains_key(skull.texture) {
+                    let bytes = models
+                        .source()
+                        .read(&format!("assets/minecraft/{}.png", skull.texture))?;
+                    builder
+                        .special_images
+                        .insert(skull.texture.into(), Arc::new(Image::decode(&bytes)?));
+                }
+                builder.skulls.insert(id, skull);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Skull,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
             for variant in selection.parts().iter().flatten() {
@@ -400,6 +423,7 @@ fn finish(
     let chests = builder.chests.clone();
     let shulkers = builder.shulkers.clone();
     let banners = builder.banners.clone();
+    let skulls = builder.skulls.clone();
     let banner_patterns = builder.banner_patterns.clone();
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
@@ -416,6 +440,7 @@ fn finish(
         chests,
         shulkers,
         banners,
+        skulls,
         banner_patterns,
         special_atlas,
         block_types,
@@ -437,6 +462,7 @@ struct Builder {
     chests: BTreeMap<u32, super::special::Chest>,
     shulkers: BTreeMap<u32, super::special::Shulker>,
     banners: BTreeMap<u32, super::banner::Banner>,
+    skulls: BTreeMap<u32, super::skull::Skull>,
     banner_patterns: BTreeMap<String, String>,
     special_images: BTreeMap<String, Arc<Image>>,
 }

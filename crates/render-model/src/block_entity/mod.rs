@@ -23,6 +23,7 @@ pub mod java_banner;
 pub mod java_chest;
 mod java_cube;
 pub mod java_shulker;
+pub mod java_skull;
 
 #[cfg(test)]
 mod head_item_tests;

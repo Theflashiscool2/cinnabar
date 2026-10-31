@@ -91,8 +91,25 @@ with a different banner, a negative chunk boundary, unload/revisit and reconnect
 ordinary-model join gate was reproduced before repair. User resource-pack reload and
 server-synchronized cloth phase remain unqualified; these are not iOS or Hypixel results.
 
+## Fixed mob heads
+
+Skeleton, wither skeleton, zombie, creeper, dragon and piglin heads use native Java
+state admission, archive textures and a separate special-mesh submission. Ground mounts
+have 16 rotations; wall mounts have four directions. Zombie hats retain the reference
+inflation and texture coordinates. Dragon jaws and piglin ears use bounded 20 Hz powered
+animation, preserving the stopped pose until power resumes. Block generations retire the
+clock on replacement, unload and world/session changes.
+
+Original emitter code was checked against SkullBlockRenderer, SkullModel, PiglinHeadModel,
+DragonHeadModel and ModelPart in the verified target archive. The independent probe under
+`tools/java-reference` compares all positions and UVs for four models, three rotations and
+three animation phases (36 cases), including mirrored dragon horns. A verified-asset fixture
+covers all 240 fixed-head states and six textures. These CPU checks are not visual acceptance. Linux software-Vulkan offline vanilla frames additionally inspected standing/wall mounts, native creative breaking, authoritative replacement, powered motion and frozen unpowered phases, a negative chunk boundary, unload/revisit and reconnect. The old skull join gate was reproduced before repair.
+Player-profile heads remain explicit unsupported states; a fixed mob texture is never used
+as a substitute for a player skin. End-user resource-pack reload is not yet qualified.
+
 ## Remaining special renderers
 
-Heads/skulls, copper golem statues, conduit, decorated pots,
+Player-profile heads, copper golem statues, conduit, decorated pots,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.

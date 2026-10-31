@@ -395,5 +395,39 @@ mod tests {
                 .unwrap();
             assert_eq!((placement.width, placement.height), (64, 64));
         }
+        let skulls: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| {
+                super::super::skull::Skull::from_state(registry.state(id).unwrap())
+                    .unwrap()
+                    .is_some()
+            })
+            .collect();
+        assert_eq!(skulls.len(), 240);
+        let extension =
+            graphics::extend(Arc::clone(banner_graphics), &mut models, skulls.clone()).unwrap();
+        let skull_graphics = extension.graphics();
+        let mut textures = std::collections::BTreeSet::new();
+        for id in skulls {
+            assert_eq!(
+                skull_graphics.presentation(id),
+                Some(graphics::Presentation::Skull)
+            );
+            assert!(skull_graphics.select(id, [0, 0, 0]).unwrap().is_empty());
+            let skull = &skull_graphics.skulls[&id];
+            textures.insert(skull.texture);
+            let p = skull_graphics
+                .special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(skull.texture)
+                .unwrap();
+            let size = match skull.shape {
+                super::super::skull::Shape::Dragon => (256, 256),
+                super::super::skull::Shape::Cube => (64, 32),
+                _ => (64, 64),
+            };
+            assert_eq!((p.width, p.height), size);
+        }
+        assert_eq!(textures.len(), 6);
     }
 }

@@ -28,6 +28,7 @@ pub(crate) struct Presentation {
     banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
     boxes: BTreeMap<[i32; 3], BoxMotion>,
+    skulls: BTreeMap<[i32; 3], (u64, sim::java::skull::Motion)>,
     elapsed: std::time::Duration,
 }
 
@@ -77,6 +78,7 @@ pub(crate) fn advance(
     let Some(terrain) = terrain.filter(|t| p.scope.is_some() && p.scope.as_ref() == t.dimension())
     else {
         p.boxes.clear();
+        p.skulls.clear();
         p.elapsed = std::time::Duration::ZERO;
         return;
     };
@@ -93,8 +95,25 @@ pub(crate) fn advance(
     }
     p.boxes
         .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
+    p.skulls
+        .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if let Some(state) = graphics.skulls.get(&id) {
+                if terrain.block(position).map(|n| n.0) == Some(id) {
+                    if let Some(generation) = terrain.block_generation(position) {
+                        let (_, motion) = p
+                            .skulls
+                            .entry(position)
+                            .or_insert_with(|| (generation, Default::default()));
+                        motion.set_powered(state.powered);
+                        for _ in 0..ticks {
+                            motion.tick();
+                        }
+                    }
+                }
+                continue;
+            }
             let Some(state) = graphics.shulkers.get(&id) else {
                 continue;
             };
@@ -243,6 +262,7 @@ pub(crate) fn update(
                     graphics.chests.contains_key(&id.0)
                         || graphics.shulkers.contains_key(&id.0)
                         || graphics.banners.contains_key(&id.0)
+                        || graphics.skulls.contains_key(&id.0)
                 }) else {
                     continue;
                 };
@@ -284,6 +304,24 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if let Some(state) = graphics.skulls.get(&id) {
+                if let Some([block, sky]) = terrain.light(position) {
+                    submissions.push(BlockEntitySubmission {
+                        block: position,
+                        light: BlockEntityLight::Actor { block, sky },
+                        kind: BlockEntityKind::JavaSkull(
+                            render_model::block_entity::java_skull::Model {
+                                state: state.clone(),
+                                animation: p
+                                    .skulls
+                                    .get(&position)
+                                    .map_or(0., |(_, m)| m.sample(partial)),
+                            },
+                        ),
+                    });
+                }
+                continue;
+            }
             let chest = graphics.chests.get(&id);
             let (block_id, half, partner) = if let Some(chest) = chest {
                 let (half, partner) = half(terrain, &graphics, position, chest);
@@ -353,6 +391,8 @@ pub(crate) fn update(
     p.lids.retain(|pos, _| alive.contains(pos));
     p.boxes
         .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
+    p.skulls
+        .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     frame.0 = p
         .scene
         .update(
@@ -386,6 +426,6 @@ impl Presentation {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
-            "cached_columns":self.columns.len(),"banners":self.banners.len(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
+            "cached_columns":self.columns.len(),"banners":self.banners.len(),"skulls":self.skulls.len(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

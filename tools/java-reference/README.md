@@ -1,0 +1,20 @@
+# Native model reference probes
+
+These small original probes call the verified target client's public model API. They do
+not ship Minecraft code, textures, or generated model data. Use only the Java version
+and archive hashes pinned in `crates/java-protocol/data/target.json`.
+
+For head geometry, set `JAVA_HOME` to JDK 25 and `JAVA_REFERENCE_CP` to the verified
+client JAR plus its verified dependencies (including the server export libraries):
+
+```sh
+mkdir -p .local/java-reference
+"$JAVA_HOME/bin/javac" -cp "$JAVA_REFERENCE_CP" -d .local/java-reference tools/java-reference/ExportHeadVertices.java
+"$JAVA_HOME/bin/java" -cp ".local/java-reference:$JAVA_REFERENCE_CP" ExportHeadVertices > .local/java-reference/head-vertices.txt
+CINNABAR_JAVA_HEAD_VERTICES="$PWD/.local/java-reference/head-vertices.txt" cargo test -p render-model pinned_native_model_vertices_and_uvs --lib
+```
+
+The probe exercises the target's actual baked models and animation methods at three
+phases and three rotations. The Rust test compares both directions of the position/UV
+set, allowing only floating-point tolerance and quad-to-triangle duplication. These are
+CPU model comparisons, not rendered acceptance. Keep generated data out of Git.
