@@ -24,6 +24,7 @@ pub mod java_chest;
 mod java_cube;
 pub mod java_shulker;
 pub mod java_skull;
+pub mod java_statue;
 
 #[cfg(test)]
 mod head_item_tests;

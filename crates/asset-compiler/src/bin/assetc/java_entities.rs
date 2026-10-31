@@ -174,6 +174,15 @@ mod tests {
             pin.entity_models_report.bytes,
         )
         .unwrap();
+        assert_eq!(models.iter().count(), 9);
+        for name in [
+            "statue_standing",
+            "statue_running",
+            "statue_sitting",
+            "statue_star",
+        ] {
+            assert!(models.get(name).is_some(), "missing {name}");
+        }
         let pig = models.get("pig").unwrap();
         let head = pig.children.iter().find(|p| p.name == "head").unwrap();
         // Independently inspected pinned model factory: head + snout, two cubes in pixel space.

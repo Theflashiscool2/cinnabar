@@ -429,5 +429,45 @@ mod tests {
             assert_eq!((p.width, p.height), size);
         }
         assert_eq!(textures.len(), 6);
+        let statues: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| {
+                super::super::statue::Statue::from_state(registry.state(id).unwrap())
+                    .unwrap()
+                    .is_some()
+            })
+            .collect();
+        assert_eq!(statues.len(), 256);
+        // No invisible admission when the required hierarchy is unavailable.
+        assert!(graphics::extend(Arc::clone(skull_graphics), &mut models, [statues[0]]).is_err());
+        models.entity_models = Some(Arc::new(
+            crate::entity::java::Models::load(
+                &std::fs::read(root.join("models.json")).unwrap(),
+                hash("entity_models_report"),
+                pin["entity_models_report"]["bytes"].as_u64().unwrap(),
+            )
+            .unwrap(),
+        ));
+        let extension =
+            graphics::extend(Arc::clone(skull_graphics), &mut models, statues.clone()).unwrap();
+        let g = extension.graphics();
+        let mut textures = std::collections::BTreeSet::new();
+        let mut poses = std::collections::BTreeSet::new();
+        for id in statues {
+            assert_eq!(g.presentation(id), Some(graphics::Presentation::Statue));
+            let state = &g.statues[&id];
+            textures.insert(state.texture);
+            poses.insert(state.model);
+            assert!(g.special_models.contains_key(state.model));
+            let p = g
+                .special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(state.texture)
+                .unwrap();
+            assert_eq!((p.width, p.height), (64, 64));
+        }
+        assert_eq!(textures.len(), 4);
+        assert_eq!(poses.len(), 4);
+        assert_eq!(g.special_models.len(), 4);
     }
 }

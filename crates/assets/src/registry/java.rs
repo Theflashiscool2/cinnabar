@@ -11,6 +11,7 @@ pub mod selectors;
 pub mod skull;
 pub mod source;
 pub mod special;
+pub mod statue;
 pub mod textures;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};

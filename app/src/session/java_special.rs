@@ -263,6 +263,7 @@ pub(crate) fn update(
                         || graphics.shulkers.contains_key(&id.0)
                         || graphics.banners.contains_key(&id.0)
                         || graphics.skulls.contains_key(&id.0)
+                        || graphics.statues.contains_key(&id.0)
                 }) else {
                     continue;
                 };
@@ -304,6 +305,21 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if let Some(state) = graphics.statues.get(&id) {
+                if let Some([block, sky]) = terrain.light(position) {
+                    submissions.push(BlockEntitySubmission {
+                        block: position,
+                        light: BlockEntityLight::Actor { block, sky },
+                        kind: BlockEntityKind::JavaStatue(
+                            render_model::block_entity::java_statue::Model {
+                                state: state.clone(),
+                                root: Arc::clone(&graphics.special_models[state.model]),
+                            },
+                        ),
+                    });
+                }
+                continue;
+            }
             if let Some(state) = graphics.skulls.get(&id) {
                 if let Some([block, sky]) = terrain.light(position) {
                     submissions.push(BlockEntitySubmission {
@@ -426,6 +442,6 @@ impl Presentation {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
-            "cached_columns":self.columns.len(),"banners":self.banners.len(),"skulls":self.skulls.len(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
+            "cached_columns":self.columns.len(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

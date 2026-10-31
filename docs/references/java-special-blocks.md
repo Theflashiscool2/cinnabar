@@ -108,8 +108,30 @@ covers all 240 fixed-head states and six textures. These CPU checks are not visu
 Player-profile heads remain explicit unsupported states; a fixed mob texture is never used
 as a substitute for a player skin. End-user resource-pack reload is not yet qualified.
 
+## Copper golem statues
+
+Native statue admission covers four oxidation stages, waxing, four poses, four facings
+and waterlogging. Geometry comes from the existing verified `ExportEntities` pipeline:
+CopperGolemModel's standing/running/sitting/star factories are added to `models.json`.
+The original five actor hierarchies remain unchanged. `assetc java-prepare` detects an
+old report by its pinned hash and regenerates it; packaging retains the same six input files.
+No proprietary model geometry is committed and no official game process is used at runtime.
+
+The native special pass retains the exported hierarchy, face UVs and visibility. It applies
+CopperGolemStatueModel's root overrides and the block renderer's facing transform; shared
+actor lighting and resource publication remain the GPU owners. Water uses the existing native
+fluid host facts. A missing model report fails explicitly rather than admitting empty geometry.
+
+An independent Java probe compares positions, UVs and outward normals for all 16 pose/facing
+combinations. Tests also cover negative-coordinate translation, 256 states, the four textures,
+missing hierarchy rejection, exporter reproducibility and existing automatic preparation.
+Linux software-Vulkan offline-vanilla captures inspect the oxidation/pose gallery, native
+right-click pose cycle confirmed by server state, waterlogging at a negative chunk boundary,
+and authoritative removal/replacement. Unload/revisit and reconnect are checked separately.
+Arbitrary end-user pack reload, iOS and online-server acceptance remain unqualified.
+
 ## Remaining special renderers
 
-Player-profile heads, copper golem statues, conduit, decorated pots,
+Player-profile heads, conduit, decorated pots,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.

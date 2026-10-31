@@ -42,6 +42,7 @@ pub enum BlockEntityKind {
     JavaChest(super::java_chest::Model),
     JavaBanner(super::java_banner::Model),
     JavaSkull(super::java_skull::Model),
+    JavaStatue(super::java_statue::Model),
     JavaShulker(super::java_shulker::Model),
     Shulker(ShulkerModel),
     Skull(SkullModel),
@@ -93,7 +94,8 @@ impl BlockEntityKind {
             | Self::CrystalBeam(_)
             | Self::LoyaltyRope(_)
             | Self::DragonDeath(_) => false,
-            Self::JavaSkull(_)
+            Self::JavaStatue(_)
+            | Self::JavaSkull(_)
             | Self::JavaBanner(_)
             | Self::JavaShulker(_)
             | Self::JavaChest(_)
@@ -527,6 +529,9 @@ fn emit_submission(
 ) {
     let block = submission.block;
     match &submission.kind {
+        BlockEntityKind::JavaStatue(state) => {
+            super::java_statue::emit(builder, atlas, block, state)
+        }
         BlockEntityKind::JavaSkull(state) => super::java_skull::emit(builder, atlas, block, state),
         BlockEntityKind::JavaBanner(model) => {
             super::java_banner::emit(builder, atlas, block, model, clock)

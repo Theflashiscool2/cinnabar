@@ -9,6 +9,7 @@ use super::{
 use std::{collections::BTreeMap, sync::Arc};
 
 pub struct BlockModels {
+    pub entity_models: Option<Arc<crate::entity::java::Models>>,
     pub fluids: Option<Arc<super::fluids::Table>>,
     registry: Arc<BlockRegistry>,
     source: Box<dyn Source + Send>,
@@ -23,6 +24,7 @@ impl BlockModels {
     pub fn new(registry: Arc<BlockRegistry>, source: Box<dyn Source + Send>) -> Self {
         Self {
             fluids: None,
+            entity_models: None,
             registry,
             source,
             selections: BTreeMap::new(),

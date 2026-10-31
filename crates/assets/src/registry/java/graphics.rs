@@ -35,6 +35,8 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub statues: BTreeMap<u32, super::statue::Statue>,
+    pub special_models: BTreeMap<String, Arc<crate::entity::java::Part>>,
     pub skulls: BTreeMap<u32, super::skull::Skull>,
     pub banners: BTreeMap<u32, super::banner::Banner>,
     pub banner_patterns: BTreeMap<String, String>,
@@ -52,6 +54,7 @@ pub enum Presentation {
     Shulker,
     Banner,
     Skull,
+    Statue,
 }
 #[derive(Clone)]
 struct State {
@@ -113,6 +116,8 @@ pub fn compile(
         shulkers: BTreeMap::new(),
         banners: BTreeMap::new(),
         skulls: BTreeMap::new(),
+        statues: BTreeMap::new(),
+        special_models: BTreeMap::new(),
         banner_patterns: BTreeMap::new(),
         special_images: BTreeMap::new(),
     };
@@ -283,6 +288,41 @@ fn append(
                 );
                 return Ok(());
             }
+            if let Some(statue) = super::statue::Statue::from_state(&state)? {
+                if !builder.special_models.contains_key(statue.model) {
+                    let root = models
+                        .entity_models
+                        .as_ref()
+                        .and_then(|m| m.get(statue.model))
+                        .ok_or_else(|| {
+                            Error::Model(format!(
+                                "native Java statue {} requires the pinned models.json report",
+                                statue.model
+                            ))
+                        })?;
+                    builder
+                        .special_models
+                        .insert(statue.model.into(), Arc::new(root.clone()));
+                }
+                if !builder.special_images.contains_key(statue.texture) {
+                    let bytes = models
+                        .source()
+                        .read(&format!("assets/minecraft/{}.png", statue.texture))?;
+                    builder
+                        .special_images
+                        .insert(statue.texture.into(), Arc::new(Image::decode(&bytes)?));
+                }
+                builder.statues.insert(id, statue);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Statue,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
             if let Some(skull) = super::skull::Skull::from_state(&state)? {
                 if !builder.special_images.contains_key(skull.texture) {
                     let bytes = models
@@ -424,6 +464,8 @@ fn finish(
     let shulkers = builder.shulkers.clone();
     let banners = builder.banners.clone();
     let skulls = builder.skulls.clone();
+    let statues = builder.statues.clone();
+    let special_models = builder.special_models.clone();
     let banner_patterns = builder.banner_patterns.clone();
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
@@ -441,6 +483,8 @@ fn finish(
         shulkers,
         banners,
         skulls,
+        statues,
+        special_models,
         banner_patterns,
         special_atlas,
         block_types,
@@ -463,6 +507,8 @@ struct Builder {
     shulkers: BTreeMap<u32, super::special::Shulker>,
     banners: BTreeMap<u32, super::banner::Banner>,
     skulls: BTreeMap<u32, super::skull::Skull>,
+    statues: BTreeMap<u32, super::statue::Statue>,
+    special_models: BTreeMap<String, Arc<crate::entity::java::Part>>,
     banner_patterns: BTreeMap<String, String>,
     special_images: BTreeMap<String, Arc<Image>>,
 }

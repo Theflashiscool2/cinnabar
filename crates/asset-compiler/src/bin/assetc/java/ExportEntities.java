@@ -92,6 +92,10 @@ public final class ExportEntities {
         models.add("baby_pig", part(BabyPigModel.createBodyLayer(CubeDeformation.NONE).bakeRoot(), "root"));
         models.add("player_wide", part(LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64).bakeRoot(), "root"));
         models.add("player_slim", part(LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, true), 64, 64).bakeRoot(), "root"));
+        models.add("statue_standing", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createBodyLayer().bakeRoot(), "root"));
+        models.add("statue_running", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createRunningPoseBodyLayer().bakeRoot(), "root"));
+        models.add("statue_sitting", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createSittingPoseBodyLayer().bakeRoot(), "root"));
+        models.add("statue_star", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createStarPoseBodyLayer().bakeRoot(), "root"));
         Files.writeString(Path.of(args[0]), JSON.toJson(models)+"\n");
         JsonObject facts = new JsonObject();
         JsonArray types = new JsonArray();

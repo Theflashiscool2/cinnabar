@@ -26,6 +26,16 @@ struct CancelSource {
     jar: Jar,
     cancel: Arc<AtomicBool>,
 }
+fn load_models(root: &std::path::Path) -> Result<Arc<assets::entity::java::Models>, String> {
+    use java_protocol::target;
+    assets::entity::java::Models::load(
+        &read_input(root, target::ENTITY_MODELS_REPORT_PATH)?,
+        target::ENTITY_MODELS_REPORT_SHA256,
+        target::ENTITY_MODELS_REPORT_BYTES,
+    )
+    .map(Arc::new)
+    .map_err(|e| e.to_string())
+}
 fn load_fluids(
     root: &std::path::Path,
 ) -> Result<Arc<assets::registry::java::fluids::Table>, String> {
@@ -75,6 +85,7 @@ pub(super) fn extend(
             }),
         );
         models.fluids = Some(load_fluids(&root)?);
+        models.entity_models = Some(load_models(&root)?);
         let extension = graphics::extend(previous, &mut models, states)
             .map_err(|error| model_error(error, &cancel))?;
         if cancel.load(Ordering::Acquire) {
@@ -187,6 +198,7 @@ fn load_inner(
         .collect::<BTreeSet<_>>();
     let mut models = BlockModels::new(registry, Box::new(source));
     models.fluids = Some(load_fluids(&root)?);
+    models.entity_models = Some(load_models(&root)?);
     // Baseline device array limit; the renderer validates the actual adapter before upload.
     let graphics = Arc::new(
         graphics::compile(
