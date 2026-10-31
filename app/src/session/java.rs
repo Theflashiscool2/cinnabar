@@ -84,17 +84,23 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
     if let Some(error) = controller.java_world.terrain_error {
         java.cancel();
         controller.java = None;
-        controller.fail_join(menu, error.to_owned());
+        controller.fail_join(menu, launcher::menu::disconnect::from_java(error));
         return;
     }
     if let Some(result) = java.result() {
         controller.java = None;
         controller.java_world.begin(controller.generation);
+        let reason = result
+            .err()
+            .unwrap_or_else(|| "Java connection closed".to_owned());
+        bevy::log::warn!(target: "java_session", %reason, "Java connection ended");
         controller.fail_join(
             menu,
-            result
-                .err()
-                .unwrap_or_else(|| "Java connection closed".to_owned()),
+            launcher::menu::disconnect::from_java(&format!(
+                "{reason}\nClient: Java {} / protocol {}",
+                java_protocol::target::GAME_VERSION,
+                java_protocol::target::PROTOCOL
+            )),
         );
     }
 }

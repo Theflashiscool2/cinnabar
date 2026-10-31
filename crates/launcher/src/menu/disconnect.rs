@@ -25,6 +25,17 @@ const DISCONNECTED: (&str, &str) = (
 const CONNECT_FAILED: (&str, &str) = ("connect.failed", "Failed to connect to the server");
 /// The prefix the session puts before a server's disconnect reason.
 const SERVER_PREFIX: &str = "server disconnected: ";
+const JAVA_PREFIX: &str = "java connection failure: ";
+
+/// Keeps native Java failures out of Bedrock's heuristic reason classification.
+pub fn from_java(reason: &str) -> String {
+    let reason: String = reason
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n')
+        .take(4096)
+        .collect();
+    format!("{JAVA_PREFIX}{reason}")
+}
 
 /// The error chain for a disconnect the launcher core reported with the
 /// server's `reason` (empty when the server sent none).
@@ -35,6 +46,9 @@ pub fn from_server(reason: &str) -> String {
 /// Vanilla's wording for a session that ended with `error`.
 pub fn describe(error: &str) -> DisconnectText {
     let text = |title, body| DisconnectText { title, body };
+    if let Some(reason) = error.strip_prefix(JAVA_PREFIX) {
+        return text(CONNECT_FAILED, DisconnectBody::Server(reason.to_owned()));
+    }
     if let Some(rest) = error.trim().strip_prefix(SERVER_PREFIX) {
         // "<reason> (<transport>)": the reason is everything before the last " (".
         let reason = rest
@@ -142,6 +156,19 @@ pub fn requires_client_update(error: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_java_rejections_and_protocol_errors_remain_visible() {
+        for reason in [
+            "Java server disconnected: Please use Minecraft 1.21 (supported)",
+            "invalid protocol data: unknown login packet",
+            "Minecraft session join rejected Java authentication (HTTP 403)",
+        ] {
+            assert_eq!(
+                describe(&from_java(reason)).body,
+                DisconnectBody::Server(reason.into())
+            );
+        }
+    }
 
     #[test]
     fn only_an_outdated_client_reason_requires_a_client_update() {

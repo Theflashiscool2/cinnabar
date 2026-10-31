@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.9-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.9-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.10-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.10-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
