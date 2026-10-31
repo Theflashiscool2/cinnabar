@@ -36,13 +36,17 @@ impl Connection {
                 .ok()
                 .and_then(|n| target::game::clientbound::NAMES.get(n))
                 .ok_or(ProtocolError::Invalid("unknown play packet"))?;
+            let packet_error = |source| Error::PlayPacket {
+                packet: *name,
+                source,
+            };
             if self.common(name, &mut r).await? {
-                r.finish()?;
+                r.finish().map_err(packet_error)?;
                 continue;
             }
             if *name == "ClientboundBlockChangedAckPacket" {
                 let sequence = r.var()?;
-                r.finish()?;
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped || sequence < 0 {
                     return Err(ProtocolError::Invalid(
                         "Java block acknowledgement state/sequence",
@@ -56,8 +60,8 @@ impl Connection {
                 .await?;
                 continue;
             }
-            if let Some(packet) = roster::decode(name, &mut r)? {
-                r.finish()?;
+            if let Some(packet) = roster::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(
                         ProtocolError::Invalid("player list before Java world login").into(),
@@ -66,8 +70,8 @@ impl Connection {
                 self.emit(Event::Roster(packet)).await?;
                 continue;
             }
-            if let Some(packet) = inventory::decode(name, &mut r)? {
-                r.finish()?;
+            if let Some(packet) = inventory::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("inventory before Java world login").into());
                 }
@@ -78,16 +82,16 @@ impl Connection {
                 .await?;
                 continue;
             }
-            if let Some(packet) = hud::decode(name, &mut r)? {
-                r.finish()?;
+            if let Some(packet) = hud::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("status before Java world login").into());
                 }
                 self.emit(Event::Hud(packet)).await?;
                 continue;
             }
-            if let Some(packet) = entities::decode(name, &mut r)? {
-                r.finish()?;
+            if let Some(packet) = entities::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("entity before Java world login").into());
                 }
@@ -98,8 +102,8 @@ impl Connection {
                 .await?;
                 continue;
             }
-            if let Some(packet) = dynamics::decode(name, &mut r)? {
-                r.finish()?;
+            if let Some(packet) = dynamics::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("player dynamics before world login").into());
                 }
@@ -142,9 +146,9 @@ impl Connection {
                 continue;
             }
             if let Some(context) = self.terrain
-                && let Some(packet) = context.decode(name, &mut r)?
+                && let Some(packet) = context.decode(name, &mut r).map_err(packet_error)?
             {
-                r.finish()?;
+                r.finish().map_err(packet_error)?;
                 self.emit(Event::Terrain {
                     dimension_epoch: self.dimension_epoch,
                     packet: Box::new(packet),
@@ -159,7 +163,7 @@ impl Connection {
                         return Err(ProtocolError::Invalid("duplicate play login").into());
                     }
                     let world = facts::World::read(&mut r)?;
-                    r.finish()?;
+                    r.finish().map_err(packet_error)?;
                     self.prepare_terrain()?;
                     self.terrain = Some(self.terrain_context(&world.spawn)?);
                     self.dimension_epoch += 1;
@@ -180,7 +184,7 @@ impl Connection {
                         return Err(ProtocolError::Invalid("position before world login").into());
                     }
                     let position = facts::Teleport::read(&mut r)?;
-                    r.finish()?;
+                    r.finish().map_err(packet_error)?;
                     if self.commands.is_none() {
                         return Err(Error::ConsumerClosed);
                     }
@@ -262,7 +266,7 @@ impl Connection {
                 }
                 _ => return Err(Error::Unsupported(name)),
             }
-            r.finish()?;
+            r.finish().map_err(packet_error)?;
         }
     }
 }

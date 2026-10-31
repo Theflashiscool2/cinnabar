@@ -38,7 +38,7 @@ fn independent_native_item_and_container_vectors_preserve_patch_semantics() {
     assert_eq!(r.0, [123]);
 }
 #[test]
-fn malformed_or_unimplemented_components_never_publish_a_partial_snapshot() {
+fn malformed_components_never_publish_a_partial_snapshot() {
     let bytes = [0, 1, 2, 64, 55, 0, 0, 1, 0x97, 8, 1, 0, 3, 7, 0];
     for end in 0..bytes.len() {
         assert!(
@@ -60,7 +60,7 @@ fn malformed_or_unimplemented_components_never_publish_a_partial_snapshot() {
     }
     assert!(matches!(
         stack(&mut Reader(&[1, 55, 1, 0, 24, 0])),
-        Err(Error::UnsupportedItemComponent("minecraft:consumable"))
+        Err(Error::Truncated)
     ));
 }
 #[test]

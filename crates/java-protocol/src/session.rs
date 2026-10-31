@@ -37,6 +37,12 @@ pub enum Phase {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Java play packet {packet} could not be decoded: {source}")]
+    PlayPacket {
+        packet: &'static str,
+        #[source]
+        source: ProtocolError,
+    },
     #[error(transparent)]
     Protocol(#[from] ProtocolError),
     #[error(transparent)]

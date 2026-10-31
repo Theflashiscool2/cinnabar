@@ -120,8 +120,8 @@ the renderer receives no synthetic Bedrock packets or fabricated world.
 
 Unsupported required resource packs, experimental features, transfer, consent
 or interactive dialogs, an initial relative teleport without an admitted anchor,
-mid-session reconfiguration and tag replacement fail
-clearly. Inventory interaction/presentation and chat signing remain incomplete. Native
+mid-session reconfiguration fail clearly. Configuration/play tag replacements are
+admitted per registry; omitted registries remain unchanged. Inventory interaction/presentation and chat signing remain incomplete. Native
 movement, entity and terrain presentation have the limited offline rendered
 evidence below; complete world and gameplay acceptance remain open. No modded-server or proxy compatibility is claimed. Unknown state packet IDs are protocol errors.
 
@@ -627,8 +627,10 @@ real keepalives and 49 chunks were observed. The encrypted fixture also covers
 metadata delivery. Local metadata follows respawn retention without creating a
 second local-player entity. Invalid updates are atomic and stale epochs are rejected.
 
-Complex item components, nonempty particle metadata, embedded profile metadata and inline painting
-holders remain unimplemented. Their known passive metadata notification produces an
+Item stacks now decode every component type in the pinned registry (see
+[batch coverage](../../docs/references/java-item-components.md)); decoded metadata
+does not establish its complete UI/gameplay behavior. Nonempty particle metadata,
+embedded entity-profile metadata and inline entity-painting holders remain unimplemented. Their known passive metadata notification produces an
 explicit, persistent incomplete-entity diagnostic; no parsed prefix is admitted.
 Other entity accessor schemas remain incomplete. Correctly framed unused accessor
 values (including names/equipment-related metadata) do not imply implemented visuals.

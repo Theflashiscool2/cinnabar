@@ -67,6 +67,10 @@ The app renders an experimental native terrain slice through the existing render
 Dry-land movement has narrow Linux offline fixture coverage; the complete playable
 loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
+All pinned item component types now have bounded readers and a batch wire corpus.
+A play dispatch census records remaining interactive/session gates; neither check
+proves complete item behavior or live server compatibility. See
+[coverage and remaining gates](docs/references/java-item-components.md).
 Native entity model preparation is reproducible against pinned archives; model loading
 has deterministic coverage. Pig variant/baby/glow/health admission has Linux offline
 server evidence; complex metadata and entity frame publication remain incomplete.
@@ -111,7 +115,7 @@ server evidence; complex metadata and entity frame publication remain incomplete
   admission limits. iOS SRV lookup uses Apple's DNS service instead of a Unix
   resolver file; explicit ports and final host lookup use the OS resolver.
   Record parsing/routing tests and device/simulator target compile checks pass;
-  runtime iPhone DNS qualification remains pending. Mid-session reconfiguration, tag replacement, initial relative
+  runtime iPhone DNS qualification remains pending. Mid-session reconfiguration, initial relative
   teleports without an admitted player anchor,
   required resource packs and interactive server consent/dialogs are unsupported.
 - [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light

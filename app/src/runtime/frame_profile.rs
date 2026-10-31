@@ -10,13 +10,17 @@ use {
 
 use crate::present_mode::DisplayRefresh;
 
-/// Builds rolling attribution and sends owned reports to the background console.
+/// Keeps bounded attribution; verbose per-frame console reports require an explicit opt-in.
 pub(crate) fn profiler(
     enabled: bool,
     trace_path: Option<std::path::PathBuf>,
 ) -> RuntimeStageProfiler {
-    RuntimeStageProfiler::for_gameplay(enabled, trace_path)
-        .with_diagnostic_sink(diagnostics::console::defer_stderr)
+    let profiler = RuntimeStageProfiler::for_gameplay(enabled, trace_path);
+    if std::env::var("CINNABAR_SLOW_FRAME_LOG").as_deref() == Ok("1") {
+        profiler.with_diagnostic_sink(diagnostics::console::defer_stderr)
+    } else {
+        profiler
+    }
 }
 
 /// Feeds slow-frame thresholds the primary window's monitor interval, or a slower frame cap.

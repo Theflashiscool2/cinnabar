@@ -1,0 +1,493 @@
+{
+  "reference": "MCProtocolLib b4fa8b23064bb85d7c7966cc2cd6bf369c9c1405 ItemTypes/MinecraftTypes; independently assembled wire values",
+  "fixtures": [
+    {
+      "component": "minecraft:custom_data",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:max_stack_size",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:max_damage",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:damage",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:unbreakable",
+      "hex": ""
+    },
+    {
+      "component": "minecraft:use_effects",
+      "hex": "01003e4ccccd"
+    },
+    {
+      "component": "minecraft:custom_name",
+      "hex": "08000746697874757265"
+    },
+    {
+      "component": "minecraft:minimum_attack_charge",
+      "hex": "3fa00000"
+    },
+    {
+      "component": "minecraft:damage_type",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:item_name",
+      "hex": "08000746697874757265"
+    },
+    {
+      "component": "minecraft:item_model",
+      "hex": "0b666978747572653a6b6579"
+    },
+    {
+      "component": "minecraft:lore",
+      "hex": "010800044c6f7265"
+    },
+    {
+      "component": "minecraft:rarity",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:enchantments",
+      "hex": "010003"
+    },
+    {
+      "component": "minecraft:can_place_on",
+      "hex": "010000000000"
+    },
+    {
+      "component": "minecraft:can_break",
+      "hex": "010000000000"
+    },
+    {
+      "component": "minecraft:attribute_modifiers",
+      "hex": "00"
+    },
+    {
+      "component": "minecraft:custom_model_data",
+      "hex": "013fa0000002010001056d6f64656c0100123456"
+    },
+    {
+      "component": "minecraft:tooltip_display",
+      "hex": "0000"
+    },
+    {
+      "component": "minecraft:repair_cost",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:creative_slot_lock",
+      "hex": ""
+    },
+    {
+      "component": "minecraft:enchantment_glint_override",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:intangible_projectile",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:food",
+      "hex": "043f00000000"
+    },
+    {
+      "component": "minecraft:consumable",
+      "hex": "3fcccccd0101010102"
+    },
+    {
+      "component": "minecraft:use_remainder",
+      "hex": "37020000"
+    },
+    {
+      "component": "minecraft:use_cooldown",
+      "hex": "400000000110666978747572653a636f6f6c646f776e"
+    },
+    {
+      "component": "minecraft:damage_resistant",
+      "hex": "0205"
+    },
+    {
+      "component": "minecraft:tool",
+      "hex": "003f8000000100"
+    },
+    {
+      "component": "minecraft:weapon",
+      "hex": "0100000000"
+    },
+    {
+      "component": "minecraft:attack_range",
+      "hex": "00000000404000000000000040a000003dcccccd3f800000"
+    },
+    {
+      "component": "minecraft:enchantable",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:equippable",
+      "hex": "0001000000010101000001"
+    },
+    {
+      "component": "minecraft:repairable",
+      "hex": "0205"
+    },
+    {
+      "component": "minecraft:glider",
+      "hex": ""
+    },
+    {
+      "component": "minecraft:tooltip_style",
+      "hex": "0b666978747572653a6b6579"
+    },
+    {
+      "component": "minecraft:death_protection",
+      "hex": "01034180000001"
+    },
+    {
+      "component": "minecraft:blocks_attacks",
+      "hex": "3e8000003f8000000000000000000000003f800000000000"
+    },
+    {
+      "component": "minecraft:piercing_weapon",
+      "hex": "01000000"
+    },
+    {
+      "component": "minecraft:kinetic_weapon",
+      "hex": "01020000003e800000400000000000"
+    },
+    {
+      "component": "minecraft:attack_animation",
+      "hex": "0006"
+    },
+    {
+      "component": "minecraft:interact_animation",
+      "hex": "0006"
+    },
+    {
+      "component": "minecraft:additional_trade_cost",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:block_transformer",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:villager_food",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:stored_enchantments",
+      "hex": "010003"
+    },
+    {
+      "component": "minecraft:dye",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:dyed_color",
+      "hex": "0000002a"
+    },
+    {
+      "component": "minecraft:map_id",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:map_decorations",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:map_post_processing",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:charged_projectiles",
+      "hex": "0137020000"
+    },
+    {
+      "component": "minecraft:bundle_contents",
+      "hex": "0137020000"
+    },
+    {
+      "component": "minecraft:potion_contents",
+      "hex": "01010100123456010001c801000101000106506f74696f6e"
+    },
+    {
+      "component": "minecraft:potion_duration_scale",
+      "hex": "3fa00000"
+    },
+    {
+      "component": "minecraft:suspicious_stew_effects",
+      "hex": "0101c801"
+    },
+    {
+      "component": "minecraft:writable_book_content",
+      "hex": "0103726177010866696c7465726564"
+    },
+    {
+      "component": "minecraft:written_book_content",
+      "hex": "055469746c650006417574686f720001080004506167650001"
+    },
+    {
+      "component": "minecraft:trim",
+      "hex": "0102"
+    },
+    {
+      "component": "minecraft:debug_stick_state",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:entity_data",
+      "hex": "010a00"
+    },
+    {
+      "component": "minecraft:bucket_entity_data",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:block_entity_data",
+      "hex": "010a00"
+    },
+    {
+      "component": "minecraft:instrument",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:provides_trim_material",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:ominous_bottle_amplifier",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:jukebox_playable",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:provides_banner_patterns",
+      "hex": "0205"
+    },
+    {
+      "component": "minecraft:recipes",
+      "hex": "090800000001000141"
+    },
+    {
+      "component": "minecraft:lodestone_tracker",
+      "hex": "01136d696e6563726166743a6f766572776f726c64000000000000000001"
+    },
+    {
+      "component": "minecraft:firework_explosion",
+      "hex": "020100ff000001000000ff0100"
+    },
+    {
+      "component": "minecraft:fireworks",
+      "hex": "0101020100ff000001000000ff0100"
+    },
+    {
+      "component": "minecraft:profile",
+      "hex": "0111111111111111111111111111111111074669787475726501087465787475726573176f706171756520666978747572652070726f7065727479000000000101"
+    },
+    {
+      "component": "minecraft:note_block_sound",
+      "hex": "0b666978747572653a6b6579"
+    },
+    {
+      "component": "minecraft:banner_patterns",
+      "hex": "010103"
+    },
+    {
+      "component": "minecraft:base_color",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:pot_decorations",
+      "hex": "0137020000000000"
+    },
+    {
+      "component": "minecraft:container",
+      "hex": "02013702000000"
+    },
+    {
+      "component": "minecraft:block_state",
+      "hex": "0106666163696e67056e6f727468"
+    },
+    {
+      "component": "minecraft:bees",
+      "hex": "01010a000a14"
+    },
+    {
+      "component": "minecraft:sulfur_cube_content",
+      "hex": "37020000"
+    },
+    {
+      "component": "minecraft:lock",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:container_loot",
+      "hex": "0a00"
+    },
+    {
+      "component": "minecraft:break_sound",
+      "hex": "000d666978747572653a736f756e640141800000"
+    },
+    {
+      "component": "minecraft:compostable",
+      "hex": "0100000003"
+    },
+    {
+      "component": "minecraft:cooking_fuel",
+      "hex": "0100000001013f000000"
+    },
+    {
+      "component": "minecraft:brewing_fuel",
+      "hex": "0100000001013f000000"
+    },
+    {
+      "component": "minecraft:mob_visibility",
+      "hex": "02033f000000"
+    },
+    {
+      "component": "minecraft:villager/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:wolf/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:wolf/sound_variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:wolf/collar",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:fox/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:salmon/size",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:parrot/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:tropical_fish/pattern",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:tropical_fish/base_color",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:tropical_fish/pattern_color",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:mooshroom/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:rabbit/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:pig/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:pig/sound_variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:cow/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:cow/sound_variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:chicken/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:chicken/sound_variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:zombie_nautilus/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:frog/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:horse/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:painting/variant",
+      "hex": "00020310666978747572653a7061696e74696e67010800055469746c6500"
+    },
+    {
+      "component": "minecraft:llama/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:axolotl/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:cat/variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:cat/sound_variant",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:cat/collar",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:sheep/color",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:shulker/color",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:provides_pottery_pattern",
+      "hex": "01"
+    },
+    {
+      "component": "minecraft:sign_text_front",
+      "hex": "08000131080001320800013308000134000301"
+    },
+    {
+      "component": "minecraft:sign_text_back",
+      "hex": "08000131080001320800013308000134000301"
+    },
+    {
+      "component": "minecraft:waxed",
+      "hex": ""
+    },
+    {
+      "component": "minecraft:cushion/color",
+      "hex": "01"
+    }
+  ]
+}

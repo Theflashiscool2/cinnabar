@@ -13,6 +13,13 @@ pub struct Stack {
     pub added: BTreeMap<&'static str, Value>,
     pub removed: BTreeSet<&'static str>,
 }
+/// Decode one complete native optional item, used by asset/protocol validation tools.
+pub fn decode_stack(bytes: &[u8]) -> Result<Option<Stack>, Error> {
+    let mut r = Reader(bytes);
+    let value = stack(&mut r)?;
+    r.finish()?;
+    Ok(value)
+}
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
     Content {
@@ -121,6 +128,15 @@ pub(super) fn stack(r: &mut Reader<'_>) -> Result<Option<Stack>, Error> {
         return Ok(None);
     }
     let item = nonnegative(r)? as u32;
+    Ok(Some(stack_components(r, item, count as u32, 0)?))
+}
+
+fn stack_components(
+    r: &mut Reader<'_>,
+    item: u32,
+    count: u32,
+    depth: usize,
+) -> Result<Stack, Error> {
     if target::ITEM_TYPES.get(item as usize).is_none() {
         return Err(Error::Invalid("unknown native item"));
     }
@@ -131,9 +147,14 @@ pub(super) fn stack(r: &mut Reader<'_>) -> Result<Option<Stack>, Error> {
     }
     let mut added = BTreeMap::new();
     let mut removed = BTreeSet::new();
+    let mut retained = 0usize;
     for _ in 0..added_count {
         let spec = component(r)?;
-        let value = components::read(spec, r)?;
+        let value = components::read(spec, r, depth)?;
+        retained = retained.saturating_add(components::retained_bytes(&value)?);
+        if retained > crate::stream::MAX_UNCOMPRESSED {
+            return Err(Error::Invalid("expanded item patch budget"));
+        }
         if added.insert(spec.name, value).is_some() {
             return Err(Error::Invalid("duplicate added item component"));
         }
@@ -144,12 +165,12 @@ pub(super) fn stack(r: &mut Reader<'_>) -> Result<Option<Stack>, Error> {
             return Err(Error::Invalid("duplicate removed item component"));
         }
     }
-    Ok(Some(Stack {
+    Ok(Stack {
         item,
-        count: count as u32,
+        count,
         added,
         removed,
-    }))
+    })
 }
 
 #[cfg(test)]

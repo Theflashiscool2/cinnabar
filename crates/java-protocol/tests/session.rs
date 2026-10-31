@@ -8,6 +8,8 @@ use java_protocol::{
 use std::time::Duration;
 use tokio::{net::TcpListener, sync::mpsc};
 use tokio_util::sync::CancellationToken;
+#[path = "session/batch.rs"]
+mod batch;
 #[path = "session/tags.rs"]
 mod tags;
 

@@ -95,8 +95,8 @@ hardware gets lower resolution or view distance, never permission to stutter.
   allocations, geometry or text rebuilds, pipeline creations and redundant upload bytes. A change
   rebuilds only its dependents, once per object per publication. Streaming queues stay bounded,
   obsolete work is cancelled, and no chunk version is processed twice.
-- **Slow-frame trigger.** `CINNABAR_SLOW_FRAME` fires on an interval over 1.1T (9.17 ms at
-  120 Hz, 18.33 ms at 60 Hz) or a frame over its main CPU, render CPU or GPU budget above. T comes
+- **Slow-frame trigger.** With `CINNABAR_SLOW_FRAME_LOG=1`, `CINNABAR_SLOW_FRAME` fires
+  on an interval over 1.1T (9.17 ms at 120 Hz, 18.33 ms at 60 Hz) or a frame over its main CPU, render CPU or GPU budget above. T comes
   from the window's current monitor, or a slower frame cap. Text is rate-limited; every event is
   counted, marked in the frame trace and totalled as `slow_frames` in `CINNABAR_STAGE_PROFILE`.
 
@@ -210,7 +210,8 @@ worker and main-thread stages as attribution rather than additive wall time, and
 run the final performance gate again without the variable because profiling
 changes the measured workload.
 
-Normal play also emits `CINNABAR_SLOW_FRAME` without any environment setting,
+Normal play keeps bounded frame attribution without printing per-frame reports.
+Set `CINNABAR_SLOW_FRAME_LOG=1` to emit `CINNABAR_SLOW_FRAME`
 on the trigger in Frame budgets, at most once per second with the number of
 suppressed slow frames and the violated budgets. `main_ms` covers frame-start timing to
 `Last`; `between_updates_ms` covers the rest of the preceding start-to-start
