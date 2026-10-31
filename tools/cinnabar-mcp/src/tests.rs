@@ -37,6 +37,7 @@ fn tools_list_names_every_tool() {
         [
             "launch_client",
             "connect",
+            "connect_java_fixture",
             "input",
             "import_skin",
             "import_cape",
