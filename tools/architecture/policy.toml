@@ -1429,6 +1429,8 @@ owners = [
     "crates/assets/src/registry/java/graphics/tints.rs",
     # Version-pinned native special-renderer identities; verified archive tests own admission.
     "crates/assets/src/registry/java/special.rs",
+    # Java banner identity/dye owner; all 320 pinned states and archive-derived patterns tested.
+    "crates/assets/src/registry/java/banner.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [

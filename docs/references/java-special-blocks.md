@@ -62,8 +62,37 @@ The Java inventory model still rejects SHULKER_BOX and has no usable container s
 These tests establish presentation and interaction packet delivery, not item transactions.
 Dynamic physical pushing, sound, and end-user resource-pack reload remain unqualified.
 
+## Banners
+
+Native banner dispatch uses Java BannerModel/BannerFlagModel geometry and the 26.3
+BannerRenderer mount transforms. Standing rotation has 16 segments; wall mounts have
+four directions. Cloth uses the reference position-dependent 100-tick wave and pivot.
+Its current phase uses the scene clock; synchronization to the server's new world-clock
+packet is not yet implemented. This is not a claim of full atmosphere/time parity.
+
+Pattern registry keys and asset IDs come from the pinned archive's 43 data definitions,
+not Bedrock short codes or guessed filenames. Base dye colors were independently checked
+against the verified runtime's DyeColor.getTextureDiffuseColor. The first 16 authoritative
+NBT pattern layers render in order, with matching coplanar geometry, alpha blending and
+shared actor lighting. Missing block-entity data gives the reference plain banner; malformed
+or unsupported pattern content produces an explicit diagnostic. Arbitrary custom pattern
+registries/artwork and end-user pack reload remain outside this admitted default-asset path.
+
+Changed-column extraction caches parsed patterns. Data updates, replacement, resource
+identity changes and world retirement invalidate that cache. The special atlas loads on
+workers and is published only against its requested resource identity. No Bedrock renderer
+or numeric dye mapping is changed.
+
+Automated coverage includes all 320 states and verified pattern textures, geometry for
+all standing/wall orientations, layer order/bounds, negative positions and malformed data.
+Linux software-Vulkan offline vanilla acceptance inspected the mount gallery, layered colors,
+authoritative pattern updates, native creative breaking with server confirmation, position reuse
+with a different banner, a negative chunk boundary, unload/revisit and reconnect. The prior
+ordinary-model join gate was reproduced before repair. User resource-pack reload and
+server-synchronized cloth phase remain unqualified; these are not iOS or Hypixel results.
+
 ## Remaining special renderers
 
-Banners, heads/skulls, copper golem statues, conduit, decorated pots,
+Heads/skulls, copper golem statues, conduit, decorated pots,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.

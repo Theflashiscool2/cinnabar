@@ -25,6 +25,7 @@ pub(crate) struct Presentation {
     scene: BlockEntityScene,
     graphics: Option<Arc<Graphics>>,
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
+    banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
     boxes: BTreeMap<[i32; 3], BoxMotion>,
     elapsed: std::time::Duration,
@@ -210,12 +211,15 @@ pub(crate) fn update(
         .is_none_or(|old| !Arc::ptr_eq(old, &graphics))
     {
         p.columns.clear();
+        p.banners.clear();
         p.graphics = Some(Arc::clone(&graphics));
     }
     let controller = controller.as_ref().expect("active session");
     let terrain = &controller.java_world.terrain;
     let resident: BTreeSet<_> = terrain.columns().map(|(key, _)| key).collect();
     p.columns.retain(|key, _| resident.contains(key));
+    p.banners
+        .retain(|pos, _| resident.contains(&[pos[0].div_euclid(16), pos[2].div_euclid(16)]));
     let mut budget = 4;
     for (key, column) in terrain.columns() {
         if p.columns
@@ -226,6 +230,8 @@ pub(crate) fn update(
         }
         // Changed positions cannot retain old geometry while a bounded rescan is pending.
         p.columns.remove(&key);
+        p.banners
+            .retain(|pos, _| [pos[0].div_euclid(16), pos[2].div_euclid(16)] != key);
         if budget == 0 {
             continue;
         }
@@ -234,7 +240,9 @@ pub(crate) fn update(
         for (section_index, section) in column.sections.iter().enumerate() {
             for index in 0..4096 {
                 let Some(id) = section.blocks.get(index).filter(|id| {
-                    graphics.chests.contains_key(&id.0) || graphics.shulkers.contains_key(&id.0)
+                    graphics.chests.contains_key(&id.0)
+                        || graphics.shulkers.contains_key(&id.0)
+                        || graphics.banners.contains_key(&id.0)
                 }) else {
                     continue;
                 };
@@ -243,7 +251,28 @@ pub(crate) fn update(
                     dimension.min_y + section_index as i32 * 16 + (index / 256) as i32,
                     key[1] * 16 + (index / 16 % 16) as i32,
                 ];
-                chests.push((position, id.0));
+                if let Some(state) = graphics.banners.get(&id.0) {
+                    let data = column
+                        .block_entities
+                        .iter()
+                        .find(|e| e.position == position)
+                        .and_then(|e| e.data.as_ref());
+                    match render_model::block_entity::java_banner::Model::from_data(
+                        state.clone(),
+                        data,
+                        &graphics.banner_patterns,
+                    ) {
+                        Ok(model) => {
+                            p.banners.insert(position, model);
+                        }
+                        Err(error) => {
+                            terrain_presentation.special_failure(error);
+                            return;
+                        }
+                    }
+                } else {
+                    chests.push((position, id.0));
+                }
             }
         }
         p.columns.insert(key, (column.revision(), chests));
@@ -311,6 +340,16 @@ pub(crate) fn update(
             });
         }
     }
+    for (position, model) in &p.banners {
+        let Some([block, sky]) = terrain.light(*position) else {
+            continue;
+        };
+        submissions.push(BlockEntitySubmission {
+            block: *position,
+            light: BlockEntityLight::Actor { block, sky },
+            kind: BlockEntityKind::JavaBanner(model.clone()),
+        });
+    }
     p.lids.retain(|pos, _| alive.contains(pos));
     p.boxes
         .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
@@ -347,6 +386,6 @@ impl Presentation {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
-            "cached_columns":self.columns.len(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
+            "cached_columns":self.columns.len(),"banners":self.banners.len(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

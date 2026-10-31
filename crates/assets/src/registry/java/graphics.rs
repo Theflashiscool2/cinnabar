@@ -35,6 +35,8 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub banners: BTreeMap<u32, super::banner::Banner>,
+    pub banner_patterns: BTreeMap<String, String>,
     pub special_atlas: Option<Arc<crate::RuntimeBlockEntityAssets>>,
 }
 /// The renderer that owns an admitted state's visible output. Unsupported special renderers
@@ -47,6 +49,7 @@ pub enum Presentation {
     WaterloggedModel,
     Chest,
     Shulker,
+    Banner,
 }
 #[derive(Clone)]
 struct State {
@@ -106,6 +109,8 @@ pub fn compile(
         fluids: BTreeMap::new(),
         chests: BTreeMap::new(),
         shulkers: BTreeMap::new(),
+        banners: BTreeMap::new(),
+        banner_patterns: BTreeMap::new(),
         special_images: BTreeMap::new(),
     };
     let mut admitted = BTreeMap::new();
@@ -259,6 +264,22 @@ fn append(
                 );
                 return Ok(());
             }
+            if let Some(banner) = super::banner::Banner::from_state(&state)? {
+                if builder.banner_patterns.is_empty() {
+                    builder.banner_patterns =
+                        super::banner::load(models.source(), &mut builder.special_images)?;
+                }
+                builder.banners.insert(id, banner);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Banner,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
             for variant in selection.parts().iter().flatten() {
@@ -378,6 +399,8 @@ fn finish(
     let special_atlas = super::special::atlas(&builder.special_images)?;
     let chests = builder.chests.clone();
     let shulkers = builder.shulkers.clone();
+    let banners = builder.banners.clone();
+    let banner_patterns = builder.banner_patterns.clone();
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
     // Keep source pixels and stable addresses, not a duplicate copy of the generated mip chains.
@@ -392,6 +415,8 @@ fn finish(
         fluid_facts,
         chests,
         shulkers,
+        banners,
+        banner_patterns,
         special_atlas,
         block_types,
     })
@@ -411,6 +436,8 @@ struct Builder {
     fluids: BTreeMap<super::fluids::Kind, FluidMaterials>,
     chests: BTreeMap<u32, super::special::Chest>,
     shulkers: BTreeMap<u32, super::special::Shulker>,
+    banners: BTreeMap<u32, super::banner::Banner>,
+    banner_patterns: BTreeMap<String, String>,
     special_images: BTreeMap<String, Arc<Image>>,
 }
 impl Builder {

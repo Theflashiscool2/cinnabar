@@ -40,6 +40,7 @@ use super::{
 pub enum BlockEntityKind {
     Chest(ChestModel),
     JavaChest(super::java_chest::Model),
+    JavaBanner(super::java_banner::Model),
     JavaShulker(super::java_shulker::Model),
     Shulker(ShulkerModel),
     Skull(SkullModel),
@@ -91,7 +92,8 @@ impl BlockEntityKind {
             | Self::CrystalBeam(_)
             | Self::LoyaltyRope(_)
             | Self::DragonDeath(_) => false,
-            Self::JavaShulker(_)
+            Self::JavaBanner(_)
+            | Self::JavaShulker(_)
             | Self::JavaChest(_)
             | Self::Chest(_)
             | Self::Shulker(_)
@@ -112,7 +114,11 @@ impl BlockEntityKind {
     const fn is_clock_driven(&self) -> bool {
         matches!(
             self,
-            Self::Banner(_) | Self::EnchantTable { .. } | Self::Conduit(_) | Self::Beacon(_)
+            Self::Banner(_)
+                | Self::JavaBanner(_)
+                | Self::EnchantTable { .. }
+                | Self::Conduit(_)
+                | Self::Beacon(_)
         )
     }
 }
@@ -519,6 +525,9 @@ fn emit_submission(
 ) {
     let block = submission.block;
     match &submission.kind {
+        BlockEntityKind::JavaBanner(model) => {
+            super::java_banner::emit(builder, atlas, block, model, clock)
+        }
         BlockEntityKind::JavaShulker(model) => {
             super::java_shulker::emit(builder, atlas, block, model)
         }

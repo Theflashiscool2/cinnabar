@@ -77,6 +77,11 @@ pub trait Source {
         false
     }
     fn read(&mut self, path: &str) -> Result<Vec<u8>, Error>;
+    /// Bounded resource keys, never extracted filesystem paths. Sources without enumeration
+    /// fail explicitly when a renderer needs data-driven resource discovery.
+    fn entries(&mut self, _prefix: &str) -> Result<Vec<String>, Error> {
+        Err(Error::Model("Java resource enumeration unavailable".into()))
+    }
     fn optional_json(&mut self, path: &str) -> Result<Option<serde_json::Value>, Error> {
         match self.read(path) {
             Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
@@ -119,6 +124,19 @@ impl Jar {
     }
 }
 impl Source for Jar {
+    fn entries(&mut self, prefix: &str) -> Result<Vec<String>, Error> {
+        let entries: Vec<_> = self
+            .archive
+            .file_names()
+            .filter(|p| p.starts_with(prefix) && !p.ends_with('/'))
+            .take(4097)
+            .map(str::to_owned)
+            .collect();
+        if entries.len() > 4096 {
+            return Err(Error::Budget("Java resource enumeration".into()));
+        }
+        Ok(entries)
+    }
     fn read(&mut self, path: &str) -> Result<Vec<u8>, Error> {
         // A provisional per-resource parser budget, not a pack compatibility claim.
         const MAX_RESOURCE: u64 = 16 * 1024 * 1024;

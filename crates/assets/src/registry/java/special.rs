@@ -346,5 +346,54 @@ mod tests {
                 assert_eq!(shape.texture, "textures/entity/shulker/shulker_light_gray");
             }
         }
+        let banners: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| {
+                super::super::banner::Banner::from_state(registry.state(id).unwrap())
+                    .unwrap()
+                    .is_some()
+            })
+            .collect();
+        assert_eq!(banners.len(), 320);
+        let next = Arc::clone(next);
+        let extension = graphics::extend(Arc::clone(&next), &mut models, banners.clone()).unwrap();
+        let banner_graphics = extension.graphics();
+        assert_eq!(banner_graphics.banner_patterns.len(), 43);
+        assert_eq!(
+            banner_graphics.banner_patterns["minecraft:diagonal_left"],
+            "minecraft:textures/entity/banner/diagonal_left"
+        );
+        for id in banners {
+            assert_eq!(
+                banner_graphics.presentation(id),
+                Some(graphics::Presentation::Banner)
+            );
+            assert!(banner_graphics.select(id, [-1, 16, 0]).unwrap().is_empty());
+            let banner = &banner_graphics.banners[&id];
+            let color_name = registry
+                .state(id)
+                .unwrap()
+                .name
+                .strip_prefix("minecraft:")
+                .unwrap()
+                .split("_wall_banner")
+                .next()
+                .unwrap()
+                .trim_end_matches("_banner");
+            assert!(
+                super::super::banner::DYES
+                    .iter()
+                    .any(|(n, c)| *n == color_name && *c == banner.color)
+            );
+            assert!(banner.rotation < 16);
+        }
+        for texture in banner_graphics.banner_patterns.values() {
+            let placement = banner_graphics
+                .special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(texture)
+                .unwrap();
+            assert_eq!((placement.width, placement.height), (64, 64));
+        }
     }
 }

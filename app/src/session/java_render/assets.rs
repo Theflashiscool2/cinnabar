@@ -85,6 +85,12 @@ pub(super) fn extend(
     work().map_err(|e| e.to_string())
 }
 impl Source for CancelSource {
+    fn entries(&mut self, prefix: &str) -> Result<Vec<String>, Error> {
+        if self.cancelled() {
+            return Err(Error::Model("Java asset load cancelled".into()));
+        }
+        self.jar.entries(prefix)
+    }
     fn cancelled(&self) -> bool {
         self.cancel.load(Ordering::Acquire)
     }
