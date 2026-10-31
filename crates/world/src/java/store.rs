@@ -23,6 +23,9 @@ pub struct Terrain {
     dirty: BTreeSet<[i32; 2]>,
     changed_regions: BTreeMap<[i32; 3], ChangedRegion>,
     revision: u64,
+    block_events: BTreeMap<[i32; 3], BlockEvent>,
+    block_types: Option<Arc<[u32]>>,
+    block_generations: BTreeMap<[i32; 3], u64>,
     pub center: Option<[i32; 2]>,
     pub radius: Option<u32>,
     pub ignored_nonresident_updates: u64,
@@ -135,11 +138,20 @@ impl Terrain {
             return false;
         }
         column.revision = self.next_revision();
+        column.incarnation = column.revision;
+        self.block_generations
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.block_events
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.columns.insert(key, Arc::new(column));
         self.mark_dirty(key);
         true
     }
     pub fn unload(&mut self, key: [i32; 2]) {
+        self.block_generations
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.block_events
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         if self.columns.remove(&key).is_some() {
             self.mark_dirty(key);
         }
@@ -169,9 +181,14 @@ impl Terrain {
             self.ignored_nonresident_updates += 1;
             return;
         }
-        if self.block([x, y, z]) == Some(state) {
+        let old = self.block([x, y, z]);
+        if old == Some(state) {
             return;
         }
+        let same_type = self.block_types.as_ref().is_some_and(|types| {
+            let before = old.and_then(|id| types.get(id.0 as usize));
+            before.is_some() && before == types.get(state.0 as usize)
+        });
         let revision = self.next_revision();
         let column = Arc::make_mut(self.columns.get_mut(&key).unwrap());
         let section = Arc::make_mut(&mut column.sections[local_y as usize / 16]);
@@ -185,11 +202,81 @@ impl Terrain {
         // The next full chunk supplies replacement heightmaps/block-entity data. Retaining these
         // across an authoritative block replacement would expose facts about the previous block.
         column.heightmaps.clear();
-        column.block_entities.retain(|b| b.position != [x, y, z]);
+        if !same_type {
+            column.block_entities.retain(|b| b.position != [x, y, z]);
+            self.block_events.remove(&[x, y, z]);
+            self.block_generations.insert([x, y, z], revision);
+        }
         self.mark_region(ChangedRegion {
             min: [x, y, z],
             max: [x, y, z],
         });
+    }
+    /// Version-verified native state-to-block identities; no model or edition translation.
+    pub fn install_block_types(&mut self, types: Arc<[u32]>) {
+        self.block_types = Some(types);
+    }
+    pub fn block_generation(&self, position: [i32; 3]) -> Option<u64> {
+        let column = self
+            .columns
+            .get(&[position[0].div_euclid(16), position[2].div_euclid(16)])?;
+        Some(
+            self.block_generations
+                .get(&position)
+                .copied()
+                .unwrap_or(column.incarnation),
+        )
+    }
+    /// Keeps one server event per resident position; no unbounded per-frame event queue.
+    pub fn block_event(&self, position: [i32; 3]) -> Option<BlockEvent> {
+        self.block_events.get(&position).copied()
+    }
+    pub fn set_block_event(
+        &mut self,
+        position: [i32; 3],
+        block: u32,
+        action: u8,
+        value: u8,
+    ) -> bool {
+        if self.block(position).is_none() {
+            self.ignored_nonresident_updates += 1;
+            return false;
+        }
+        let revision = self.next_revision();
+        self.block_events.insert(
+            position,
+            BlockEvent {
+                block,
+                action,
+                value,
+                revision,
+            },
+        );
+        true
+    }
+    pub fn set_block_entity(&mut self, entity: BlockEntity) -> bool {
+        if self.block(entity.position).is_none() {
+            self.ignored_nonresident_updates += 1;
+            return false;
+        }
+        let key = [
+            entity.position[0].div_euclid(16),
+            entity.position[2].div_euclid(16),
+        ];
+        let revision = self.next_revision();
+        let column = Arc::make_mut(self.columns.get_mut(&key).expect("resident block"));
+        if let Some(old) = column
+            .block_entities
+            .iter_mut()
+            .find(|old| old.position == entity.position)
+        {
+            *old = entity;
+        } else {
+            column.block_entities.push(entity);
+        }
+        column.revision = revision;
+        self.mark_dirty(key);
+        true
     }
     pub fn update_light(&mut self, key: [i32; 2], update: Light) -> bool {
         let Some(column) = self.columns.get(&key) else {

@@ -478,6 +478,11 @@ pub(super) fn snapshot(world: &World) -> Value {
             "alive":ui.local_player_alive(),"visual_parity":false,
         })
     }));
+    snapshot["native_java_special"] = json!(
+        world
+            .get_resource::<crate::session::java_special::Presentation>()
+            .map(|p| p.diagnostic())
+    );
     snapshot["native_java_render"] = json!(
         world
             .get_resource::<crate::session::java_render::Presentation>()

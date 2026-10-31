@@ -19,6 +19,7 @@ mod crystal_beam;
 mod dragon_death;
 pub mod draw_ranges;
 mod frame;
+pub mod java_chest;
 
 #[cfg(test)]
 mod head_item_tests;

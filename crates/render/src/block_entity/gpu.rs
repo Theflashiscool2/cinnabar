@@ -167,6 +167,22 @@ struct UploadedLists {
     crack: Vec<BlockEntityVertex>,
 }
 
+impl UploadedLists {
+    // A replacement scene can restart its local revision. Retained snapshots distinguish it
+    // without copying vertices or allowing allocator address reuse after the old scene drops.
+    fn matches_frame(
+        &self,
+        frame: &render_model::block_entity::BlockEntityFrame,
+        cracks: u32,
+    ) -> bool {
+        Arc::ptr_eq(&self.solid, &frame.solid)
+            && Arc::ptr_eq(&self.overlay, &frame.overlay)
+            && Arc::ptr_eq(&self.portal, &frame.portal)
+            && Arc::ptr_eq(&self.additive, &frame.additive)
+            && self.crack.get(..cracks as usize) == Some(frame.crack.as_ref())
+    }
+}
+
 #[derive(Resource)]
 pub(crate) struct BlockEntityGpu {
     solid: VertexList,
@@ -335,7 +351,9 @@ pub(crate) fn prepare_resources(
     // Snapshots and revisions advance only for lists the GPU received, so a failed upload
     // retries against what the GPU still holds.
     let mut frame_published = true;
-    if *frame_revision != frame.revision {
+    let frame_changed =
+        *frame_revision != frame.revision || !uploaded.matches_frame(&frame, *frame_crack_count);
+    if frame_changed {
         for (list, previous, vertices, label) in [
             (
                 &mut *solid,
@@ -381,7 +399,7 @@ pub(crate) fn prepare_resources(
             uploaded.outline = Arc::clone(&selection.outline);
         }
     }
-    if *frame_revision != frame.revision || *selection_revision != selection.revision {
+    if frame_changed || *selection_revision != selection.revision {
         crack_scratch.clear();
         crack_scratch.extend_from_slice(&frame.crack);
         crack_scratch.extend_from_slice(&selection.highlight);

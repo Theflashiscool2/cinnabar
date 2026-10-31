@@ -8,6 +8,7 @@ pub mod models;
 pub mod physics;
 pub mod selectors;
 pub mod source;
+pub mod special;
 pub mod textures;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -31,6 +32,7 @@ pub struct BlockState {
 pub struct BlockRegistry {
     states: Box<[BlockState]>,
     digest: [u8; 32],
+    block_ids: Arc<[u32]>,
 }
 #[derive(Deserialize)]
 struct Block {
@@ -92,16 +94,42 @@ impl BlockRegistry {
                 });
             }
         }
+        let states: Box<[BlockState]> = states
+            .into_iter()
+            .map(|s| s.ok_or(Error::Invalid("missing state ID")))
+            .collect::<Result<_, _>>()?;
+        // Block.BLOCK_STATE_REGISTRY traverses BuiltInRegistries.BLOCK in registry order.
+        // Each block contributes one contiguous state-definition run in this pinned report.
+        let mut seen = std::collections::BTreeSet::new();
+        let mut previous: Option<&str> = None;
+        let mut block_id = 0;
+        let mut block_ids = Vec::with_capacity(states.len());
+        for state in &states {
+            if previous != Some(&state.name) {
+                if !seen.insert(state.name.as_ref()) {
+                    return Err(Error::Invalid("non-contiguous block states"));
+                }
+                if previous.is_some() {
+                    block_id += 1;
+                }
+                previous = Some(&state.name);
+            }
+            block_ids.push(block_id);
+        }
         Ok(Self {
-            states: states
-                .into_iter()
-                .map(|s| s.ok_or(Error::Invalid("missing state ID")))
-                .collect::<Result<_, _>>()?,
+            states,
             digest,
+            block_ids: block_ids.into(),
         })
     }
     pub fn state(&self, id: u32) -> Option<&BlockState> {
         self.states.get(id as usize)
+    }
+    pub fn block_types(&self) -> Arc<[u32]> {
+        Arc::clone(&self.block_ids)
+    }
+    pub fn block_id(&self, state: u32) -> Option<u32> {
+        self.block_ids.get(state as usize).copied()
     }
     pub fn len(&self) -> usize {
         self.states.len()

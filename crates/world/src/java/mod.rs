@@ -35,6 +35,13 @@ pub struct Light {
     pub sky: Vec<Option<Arc<[u8]>>>,
     pub block: Vec<Option<Arc<[u8]>>>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BlockEvent {
+    pub block: u32,
+    pub action: u8,
+    pub value: u8,
+    pub revision: u64,
+}
 #[derive(Clone, Debug)]
 pub struct BlockEntity {
     pub position: [i32; 3],
@@ -48,6 +55,7 @@ pub struct Column {
     pub heightmaps: Vec<(u32, Vec<u64>)>,
     pub block_entities: Vec<BlockEntity>,
     revision: u64,
+    incarnation: u64,
 }
 impl Column {
     pub fn new(
@@ -62,6 +70,7 @@ impl Column {
             heightmaps,
             block_entities,
             revision: 0,
+            incarnation: 0,
         }
     }
     pub fn revision(&self) -> u64 {

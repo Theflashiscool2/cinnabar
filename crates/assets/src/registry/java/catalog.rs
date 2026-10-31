@@ -63,6 +63,12 @@ impl BlockModels {
             .map(|v| self.geometry(v))
             .collect()
     }
+    pub fn block_types(&self) -> Arc<[u32]> {
+        self.registry.block_types()
+    }
+    pub fn block_id(&self, state: u32) -> Option<u32> {
+        self.registry.block_id(state)
+    }
     pub fn state_name(&self, state: u32) -> Result<&str, Error> {
         Ok(&self.state(state)?.name)
     }

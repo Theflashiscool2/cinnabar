@@ -1427,6 +1427,8 @@ owners = [
     # Native Java BlockColors registrations and empty-model facts; pinned-version tests
     # and reference provenance live with this owner. Bedrock facts cannot define them.
     "crates/assets/src/registry/java/graphics/tints.rs",
+    # Version-pinned native special-renderer identities; verified archive tests own admission.
+    "crates/assets/src/registry/java/special.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [

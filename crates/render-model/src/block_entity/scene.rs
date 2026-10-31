@@ -39,6 +39,7 @@ use super::{
 #[derive(Clone, Debug, PartialEq)]
 pub enum BlockEntityKind {
     Chest(ChestModel),
+    JavaChest(super::java_chest::Model),
     Shulker(ShulkerModel),
     Skull(SkullModel),
     Banner(BannerModel),
@@ -89,7 +90,8 @@ impl BlockEntityKind {
             | Self::CrystalBeam(_)
             | Self::LoyaltyRope(_)
             | Self::DragonDeath(_) => false,
-            Self::Chest(_)
+            Self::JavaChest(_)
+            | Self::Chest(_)
             | Self::Shulker(_)
             | Self::Banner(_)
             | Self::Sign(_)
@@ -515,6 +517,7 @@ fn emit_submission(
 ) {
     let block = submission.block;
     match &submission.kind {
+        BlockEntityKind::JavaChest(model) => super::java_chest::emit(builder, atlas, block, model),
         BlockEntityKind::Chest(model) => super::chest::emit(builder, atlas, block, model),
         BlockEntityKind::Shulker(model) => super::shulker::emit(builder, atlas, block, model),
         BlockEntityKind::Skull(model) => super::skull::emit(builder, atlas, heads, block, model),

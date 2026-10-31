@@ -163,3 +163,33 @@ fn failed_vertex_growth_retries_without_a_new_revision() {
     assert_eq!(gpu.portal.count, 3);
     assert_eq!(gpu.uploaded.portal.len(), 3);
 }
+
+/// Session replacement may reuse a local scene revision and the same vertex count.
+#[test]
+fn scene_replacement_republishes_vertices_even_with_the_same_revision() {
+    let (device, queue) = wgpu::Device::noop(&Default::default());
+    let mut world = World::new();
+    world.insert_resource(RenderDevice::from(device));
+    world.insert_resource(RenderQueue::new(queue));
+    world.init_resource::<render_scene::BlockEntityFrameResource>();
+    world.init_resource::<render_scene::BlockSelectionFrameResource>();
+    world.run_system_once(init_gpu).unwrap();
+    for x in [2., -16.] {
+        let mut frame = render_model::BlockEntityFrame::default();
+        frame.revision = 1;
+        frame.solid = Arc::from(
+            [BlockEntityVertex {
+                position: [x, 32., 1.],
+                ..Default::default()
+            }; 3],
+        );
+        world.insert_resource(render_scene::BlockEntityFrameResource(frame));
+        world.run_system_once(prepare_resources).unwrap();
+        let gpu = world.resource::<BlockEntityGpu>();
+        assert_eq!(gpu.solid.count, 3);
+        assert_eq!(gpu.uploaded.solid[0].position, [x, 32., 1.]);
+    }
+    world.insert_resource(render_scene::BlockEntityFrameResource::default());
+    world.run_system_once(prepare_resources).unwrap();
+    assert_eq!(world.resource::<BlockEntityGpu>().solid.count, 0);
+}

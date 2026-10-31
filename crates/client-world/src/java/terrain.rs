@@ -127,6 +127,27 @@ pub(super) fn admit(
         wire::Packet::Light { x, z, light: l } => {
             state.terrain.update_light([x, z], light(l));
         }
+        wire::Packet::BlockEntity {
+            position,
+            kind,
+            data,
+        } => {
+            state.terrain.set_block_entity(domain::BlockEntity {
+                position,
+                kind,
+                data: data.map(nbt),
+            });
+        }
+        wire::Packet::BlockEvent {
+            position,
+            block,
+            action,
+            value,
+        } => {
+            state
+                .terrain
+                .set_block_event(position, block, action, value);
+        }
         wire::Packet::Blocks(updates) => {
             for b in updates {
                 state

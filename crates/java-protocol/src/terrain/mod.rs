@@ -40,10 +40,31 @@ pub struct BlockUpdate {
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Packet {
     Chunk(Chunk),
-    Light { x: i32, z: i32, light: Light },
+    Light {
+        x: i32,
+        z: i32,
+        light: Light,
+    },
     Blocks(Vec<BlockUpdate>),
-    Unload { x: i32, z: i32 },
-    Center { x: i32, z: i32 },
+    BlockEntity {
+        position: [i32; 3],
+        kind: u32,
+        data: Option<nbt::Value>,
+    },
+    BlockEvent {
+        position: [i32; 3],
+        action: u8,
+        value: u8,
+        block: u32,
+    },
+    Unload {
+        x: i32,
+        z: i32,
+    },
+    Center {
+        x: i32,
+        z: i32,
+    },
     Radius(u32),
     Biomes(Vec<(i32, i32, Vec<Palette>)>),
 }
@@ -89,6 +110,30 @@ impl Context {
                 Packet::Unload {
                     x: p as i32,
                     z: (p >> 32) as i32,
+                }
+            }
+            "ClientboundBlockEventPacket" => Packet::BlockEvent {
+                position: block_position(r.i64()?),
+                action: r.byte()?,
+                value: r.byte()?,
+                block: nonnegative(r)?,
+            },
+            "ClientboundBlockEntityDataPacket" => {
+                let position = block_position(r.i64()?);
+                let kind = nonnegative(r)?;
+                let data = if r.0.first() == Some(&0) {
+                    r.byte()?;
+                    None
+                } else {
+                    match nbt::read(r)? {
+                        v @ nbt::Value::Compound(_) => Some(v),
+                        _ => return Err(Error::Invalid("Java block entity compound")),
+                    }
+                };
+                Packet::BlockEntity {
+                    position,
+                    kind,
+                    data,
                 }
             }
             "ClientboundBlockUpdatePacket" => Packet::Blocks(vec![BlockUpdate {

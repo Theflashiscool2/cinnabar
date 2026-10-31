@@ -32,6 +32,9 @@ pub struct Graphics {
     pub templates: BTreeMap<u32, Template>,
     builder: Builder,
     pub fluid_facts: Option<Arc<super::fluids::Table>>,
+    pub block_types: Arc<[u32]>,
+    pub chests: BTreeMap<u32, super::special::Chest>,
+    pub special_atlas: Option<Arc<crate::RuntimeBlockEntityAssets>>,
 }
 /// The renderer that owns an admitted state's visible output. Unsupported special renderers
 /// never become an admitted invisible state.
@@ -41,6 +44,7 @@ pub enum Presentation {
     Invisible,
     Fluid,
     WaterloggedModel,
+    Chest,
 }
 #[derive(Clone)]
 struct State {
@@ -98,11 +102,19 @@ pub fn compile(
         sprites: BTreeMap::new(),
         materials: BTreeMap::new(),
         fluids: BTreeMap::new(),
+        chests: BTreeMap::new(),
+        special_images: BTreeMap::new(),
     };
     let mut admitted = BTreeMap::new();
     let mut templates = BTreeMap::new();
     append(models, states, &mut builder, &mut admitted, &mut templates)?;
-    finish(builder, admitted, templates, models.fluids.clone())
+    finish(
+        builder,
+        admitted,
+        templates,
+        models.fluids.clone(),
+        models.block_types(),
+    )
 }
 /// An append-only catalog revision, valid only against its exact predecessor.
 /// Construction preserves every old material, template, animation and texture address.
@@ -138,6 +150,7 @@ pub fn extend(
         admitted,
         templates,
         previous.fluid_facts.clone(),
+        Arc::clone(&previous.block_types),
     )?);
     let resources = crate::DrawResourceExtension::checked(
         Arc::clone(&previous.runtime),
@@ -188,6 +201,34 @@ fn append(
                     );
                     return Ok(());
                 }
+            }
+            if let Some(chest) = super::special::Chest::from_state(
+                &state,
+                models
+                    .block_id(id)
+                    .ok_or_else(|| invalid("missing Java block registry identity"))?,
+            )? {
+                for half in [super::special::ChestHalf::Single, chest.half] {
+                    let path = chest.texture_path(half);
+                    if !builder.special_images.contains_key(&path) {
+                        let bytes = models
+                            .source()
+                            .read(&format!("assets/minecraft/{path}.png"))?;
+                        builder
+                            .special_images
+                            .insert(path, Arc::new(Image::decode(&bytes)?));
+                    }
+                }
+                builder.chests.insert(id, chest);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Chest,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
             }
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
@@ -302,8 +343,11 @@ fn finish(
     states: BTreeMap<u32, State>,
     templates: BTreeMap<u32, Template>,
     fluid_facts: Option<Arc<super::fluids::Table>>,
+    block_types: Arc<[u32]>,
 ) -> Result<Graphics, Error> {
     builder.finish_textures()?;
+    let special_atlas = super::special::atlas(&builder.special_images)?;
+    let chests = builder.chests.clone();
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
     // Keep source pixels and stable addresses, not a duplicate copy of the generated mip chains.
@@ -316,6 +360,9 @@ fn finish(
         templates,
         builder,
         fluid_facts,
+        chests,
+        special_atlas,
+        block_types,
     })
 }
 #[derive(Clone)]
@@ -331,6 +378,8 @@ struct Builder {
     sprites: BTreeMap<Identifier, SpriteRef>,
     materials: BTreeMap<(Identifier, u32), u32>,
     fluids: BTreeMap<super::fluids::Kind, FluidMaterials>,
+    chests: BTreeMap<u32, super::special::Chest>,
+    special_images: BTreeMap<String, Arc<Image>>,
 }
 impl Builder {
     fn fluid(&mut self, models: &mut BlockModels, kind: super::fluids::Kind) -> Result<(), Error> {

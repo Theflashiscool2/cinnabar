@@ -241,9 +241,14 @@ fn admission_batches_independent_failures_without_turning_special_models_into_ai
     assert_eq!(report.issues[2].block, "minecraft:chest");
     assert_eq!(report.issues[3].sample_state_ids, [99]);
     assert!(
-        report.issues[..3]
+        report.issues[..2]
             .iter()
             .all(|i| i.reason.contains("special renderer"))
+    );
+    assert!(
+        report.issues[2]
+            .reason
+            .contains("invalid Java chest properties")
     );
     let valid = compile(&mut empty_models(false), [0], 64).unwrap();
     assert!(valid.select(0, [0; 3]).unwrap().is_empty());

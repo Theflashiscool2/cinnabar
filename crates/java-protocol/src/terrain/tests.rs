@@ -111,3 +111,59 @@ fn heightmap_values_must_fit_the_dimension() {
         Err(Error::Invalid("Java heightmap value outside dimension"))
     ));
 }
+
+#[test]
+fn native_block_events_preserve_registry_identity_and_unsigned_parameters() {
+    let context = Context::new(-64, 384, 1).unwrap();
+    let mut bytes = (-1i64).to_be_bytes().to_vec();
+    bytes.extend([1, 255, 0xac, 2]); // event1, parameter255, registry block300.
+    let mut reader = Reader(&bytes);
+    match context
+        .decode("ClientboundBlockEventPacket", &mut reader)
+        .unwrap()
+        .unwrap()
+    {
+        Packet::BlockEvent {
+            position,
+            action,
+            value,
+            block,
+        } => {
+            assert_eq!(position, [-1, -1, -1]);
+            assert_eq!((action, value, block), (1, 255, 300));
+        }
+        _ => panic!("wrong native event route"),
+    }
+    reader.finish().unwrap();
+    for end in 0..bytes.len() {
+        assert!(
+            context
+                .decode("ClientboundBlockEventPacket", &mut Reader(&bytes[..end]))
+                .is_err()
+        );
+    }
+}
+#[test]
+fn block_entity_updates_accept_only_bounded_network_compounds() {
+    let context = Context::new(-64, 384, 1).unwrap();
+    let mut bytes = 0i64.to_be_bytes().to_vec();
+    bytes.extend([3, 10, 0]); // type3, empty unnamed compound.
+    assert!(matches!(
+        context
+            .decode("ClientboundBlockEntityDataPacket", &mut Reader(&bytes))
+            .unwrap(),
+        Some(Packet::BlockEntity {
+            kind: 3,
+            data: Some(nbt::Value::Compound(_)),
+            ..
+        })
+    ));
+    bytes.pop();
+    bytes.pop();
+    bytes.extend([8, 0, 1, b'x']); // strings cannot replace compounds.
+    assert!(
+        context
+            .decode("ClientboundBlockEntityDataPacket", &mut Reader(&bytes))
+            .is_err()
+    );
+}

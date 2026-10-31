@@ -69,6 +69,21 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    pub(super) fn special_inputs(
+        &self,
+    ) -> Option<(Dimension, Arc<::assets::registry::java::graphics::Graphics>)> {
+        if self.failure.is_some() {
+            return None;
+        }
+        Some((
+            self.dimension.clone()?,
+            Arc::clone(self.stream.as_ref()?.graphics()),
+        ))
+    }
+    pub(super) fn special_failure(&mut self, error: String) {
+        self.failure = Some(error);
+    }
+
     pub(super) fn interaction_shapes(
         &self,
     ) -> Option<&::assets::registry::java::interaction::Table> {
@@ -238,6 +253,9 @@ pub(crate) fn update(
         p.pending = None;
         match result {
             Ok(prepared) => {
+                state
+                    .terrain
+                    .install_block_types(Arc::clone(&prepared.graphics.block_types));
                 p.interaction = Some(prepared.interaction);
                 p.physics = Some(prepared.physics);
                 let revision = textures.revision.saturating_add(1);

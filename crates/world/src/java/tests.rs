@@ -135,3 +135,69 @@ fn spatial_edits_coalesce_within_sections_without_dirtying_whole_columns() {
     terrain.replace([-1, 0], column());
     assert!(!terrain.is_current(&key));
 }
+
+#[test]
+fn block_entity_events_are_resident_replacement_and_session_scoped() {
+    let mut t = Terrain::default();
+    t.begin(dimension(1));
+    let pos = [-1, -64, -17];
+    assert!(!t.set_block_event(pos, 3, 1, 1));
+    t.replace([-1, -2], column());
+    assert!(t.set_block_event(pos, 3, 1, 2));
+    let first = t.block_event(pos).unwrap();
+    t.set_block_event(pos, 3, 1, 0);
+    assert!(t.block_event(pos).unwrap().revision > first.revision);
+    assert_eq!(t.block_event(pos).unwrap().value, 0);
+    t.set_block(pos, BlockStateId(8));
+    assert!(t.block_event(pos).is_none());
+    let entity = BlockEntity {
+        position: pos,
+        kind: 5,
+        data: None,
+    };
+    assert!(t.set_block_entity(entity.clone()));
+    assert!(t.set_block_entity(entity));
+    assert_eq!(t.column([-1, -2]).unwrap().block_entities.len(), 1);
+    t.set_block_event(pos, 3, 1, 1);
+    t.replace([-1, -2], column());
+    assert!(t.block_event(pos).is_none());
+    assert!(t.column([-1, -2]).unwrap().block_entities.is_empty());
+    t.set_block_event(pos, 3, 1, 1);
+    t.unload([-1, -2]);
+    assert!(t.block_event(pos).is_none());
+    assert!(!t.set_block_event(pos, 3, 1, 1));
+    t.replace([-1, -2], column());
+    t.set_block_event(pos, 3, 1, 1);
+    t.begin(dimension(2));
+    assert!(t.block_event(pos).is_none());
+    assert!(!t.accepts(7, 1));
+}
+
+#[test]
+fn chest_property_changes_keep_authority_but_reused_positions_get_new_lifetimes() {
+    let mut terrain = Terrain::default();
+    terrain.begin(dimension(1));
+    terrain.replace([0, 0], column());
+    terrain.install_block_types(Arc::from([0, 1, 2, 3, 4, 5, 6, 42, 42, 43]));
+    let pos = [0, -64, 0];
+    let birth = terrain.block_generation(pos).unwrap();
+    terrain.set_block_entity(BlockEntity {
+        position: pos,
+        kind: 1,
+        data: None,
+    });
+    terrain.set_block_event(pos, 42, 1, 1);
+    terrain.set_block(pos, BlockStateId(8)); // same block, another facing/half/waterlogging state.
+    assert_eq!(terrain.block_generation(pos), Some(birth));
+    assert_eq!(terrain.block_event(pos).unwrap().value, 1);
+    assert_eq!(terrain.column([0, 0]).unwrap().block_entities.len(), 1);
+    terrain.set_block(pos, BlockStateId(9)); // different block, not merely a different model.
+    assert!(terrain.block_event(pos).is_none());
+    assert!(terrain.column([0, 0]).unwrap().block_entities.is_empty());
+    terrain.set_block(pos, BlockStateId(7));
+    assert_ne!(terrain.block_generation(pos), Some(birth));
+    assert!(terrain.block_event(pos).is_none());
+    let reused = terrain.block_generation(pos);
+    terrain.replace([0, 0], column());
+    assert_ne!(terrain.block_generation(pos), reused);
+}
