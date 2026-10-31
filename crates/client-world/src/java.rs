@@ -9,6 +9,8 @@ mod inventory;
 mod nbt;
 pub mod player;
 mod roster;
+#[cfg(test)]
+mod tags_tests;
 mod terrain;
 #[cfg(test)]
 mod tests_support;
@@ -142,6 +144,15 @@ impl WorldState {
                 self.player_dynamics = dynamics::initial();
                 self.bootstrap = Some(facts);
                 if let Err(error) = terrain::begin(self, &spawn) {
+                    self.terrain_error = Some(error);
+                    return false;
+                }
+            }
+            Event::Tags(tags) => {
+                let Some(bootstrap) = self.bootstrap.as_mut() else {
+                    return false;
+                };
+                if let Err(error) = bootstrap.configuration.update_tags(tags) {
                     self.terrain_error = Some(error);
                     return false;
                 }

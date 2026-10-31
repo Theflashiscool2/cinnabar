@@ -22,6 +22,8 @@ pub enum Event {
     Hud(hud::Packet),
     Phase(Phase),
     Bootstrap(Box<Bootstrap>),
+    /// Session-scoped registry tag replacements, ordered with other play authority.
+    Tags(facts::Tags),
     Teleport {
         dimension_epoch: u64,
         sequence: u64,

@@ -250,9 +250,6 @@ impl Connection {
                         "server dialogs requiring user interaction",
                     ));
                 }
-                "ClientboundUpdateTagsPacket" => {
-                    return Err(Error::Unsupported("mid-session tag replacement"));
-                }
                 // The target table proves identity, not field validity. These bytes are deliberately
                 // outside admitted world state until the owning gameplay decoder is implemented.
                 name if optional_observation(name) => {

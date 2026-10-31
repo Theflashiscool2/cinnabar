@@ -12,7 +12,39 @@ pub struct RegistryEntry {
 pub struct Configuration {
     pub registries: BTreeMap<String, Vec<RegistryEntry>>,
     pub features: Vec<String>,
-    pub tags: BTreeMap<String, BTreeMap<String, Vec<i32>>>,
+    pub tags: Tags,
+}
+/// Registry -> tag -> registry entry IDs, shared by configuration and play packets.
+pub type Tags = BTreeMap<String, BTreeMap<String, Vec<i32>>>;
+
+impl Configuration {
+    /// Replace the complete tag set of each supplied registry; omitted registries stay bound.
+    /// Check the retained budget before mutation, including across repeated partial updates.
+    pub fn update_tags(&mut self, updates: Tags) -> Result<(), &'static str> {
+        let mut bytes = 0usize;
+        for (registry, tags) in self
+            .tags
+            .iter()
+            .filter(|(registry, _)| !updates.contains_key(*registry))
+            .chain(updates.iter())
+        {
+            // Conservative node allowance as well as the retained string/entry allocations.
+            bytes = bytes
+                .saturating_add(registry.capacity())
+                .saturating_add(128);
+            for (name, ids) in tags {
+                bytes = bytes
+                    .saturating_add(128)
+                    .saturating_add(name.capacity())
+                    .saturating_add(ids.capacity().saturating_mul(size_of::<i32>()));
+            }
+            if bytes > 64 * 1024 * 1024 {
+                return Err("Java tag memory budget exceeded");
+            }
+        }
+        self.tags.extend(updates);
+        Ok(())
+    }
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Spawn {
@@ -104,7 +136,7 @@ pub fn strings(r: &mut Reader<'_>) -> Result<Vec<String>, Error> {
     let n = r.count(65536)?;
     (0..n).map(|_| r.string(32767)).collect()
 }
-pub fn tags(r: &mut Reader<'_>) -> Result<BTreeMap<String, BTreeMap<String, Vec<i32>>>, Error> {
+pub fn tags(r: &mut Reader<'_>) -> Result<Tags, Error> {
     let n = r.count(65536)?;
     let mut registries = BTreeMap::new();
     for _ in 0..n {

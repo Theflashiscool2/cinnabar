@@ -53,7 +53,6 @@ impl Connection {
                         return Err(Error::Unsupported("experimental feature flags"));
                     }
                 }
-                "ClientboundUpdateTagsPacket" => self.configuration.tags = facts::tags(&mut r)?,
                 "ClientboundSelectKnownPacks" => {
                     let n = r.count(1024)?;
                     for _ in 0..n {
@@ -101,6 +100,19 @@ impl Connection {
     /// Handles state-shared packets without crossing their state-specific wire identities.
     pub(super) async fn common(&mut self, name: &str, r: &mut Reader<'_>) -> Result<bool, Error> {
         match name {
+            "ClientboundUpdateTagsPacket" => {
+                let tags = facts::tags(r)?;
+                // Do not publish or mutate authority from a packet with trailing junk.
+                Reader(r.0).finish()?;
+                if self.bootstrapped {
+                    self.emit(Event::Tags(tags)).await?;
+                } else {
+                    // Also covers play tags sent before the initial world login packet.
+                    self.configuration
+                        .update_tags(tags)
+                        .map_err(ProtocolError::Invalid)?;
+                }
+            }
             "ClientboundDisconnectPacket" => {
                 let reason = crate::nbt::read(r)?;
                 return Err(Error::Disconnect(

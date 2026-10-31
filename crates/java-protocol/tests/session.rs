@@ -8,11 +8,13 @@ use java_protocol::{
 use std::time::Duration;
 use tokio::{net::TcpListener, sync::mpsc};
 use tokio_util::sync::CancellationToken;
+#[path = "session/tags.rs"]
+mod tags;
 
 fn text(s: &str, out: &mut Vec<u8>) {
     codec::write_string(s, 32767, out).unwrap();
 }
-async fn through_initial_position(
+async fn through_configuration(
     listener: TcpListener,
     encrypted: bool,
 ) -> Stream<tokio::net::TcpStream> {
@@ -87,8 +89,10 @@ async fn through_initial_position(
     let mut features = vec![0x0d, 1];
     text("minecraft:vanilla", &mut features);
     wire.write(&features).await.unwrap();
-    wire.write(&[3]).await.unwrap();
-    assert_eq!(wire.read().await.unwrap(), [3]);
+    wire
+}
+
+fn world_login() -> Vec<u8> {
     let mut login = vec![0x32];
     login.extend(42i32.to_be_bytes());
     login.extend([0, 1]);
@@ -97,7 +101,17 @@ async fn through_initial_position(
     text("minecraft:overworld", &mut login);
     login.extend(0i64.to_be_bytes());
     login.extend([0, 255, 0, 1, 0, 0, 63, 0, 0]);
-    wire.write(&login).await.unwrap();
+    login
+}
+
+async fn through_initial_position(
+    listener: TcpListener,
+    encrypted: bool,
+) -> Stream<tokio::net::TcpStream> {
+    let mut wire = through_configuration(listener, encrypted).await;
+    wire.write(&[3]).await.unwrap();
+    assert_eq!(wire.read().await.unwrap(), [3]);
+    wire.write(&world_login()).await.unwrap();
     let mut position = vec![0x49, 7];
     for n in [1f64, 64., 2., 0., 0., 0.] {
         position.extend(n.to_be_bytes());
