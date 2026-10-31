@@ -78,6 +78,7 @@ help:
 	@echo make physics-assets  - Compile block movement and selection geometry
 	@echo make local-server    - Build the dragonfly local-world server and experience-runtime beside the core binary
 	@echo make play            - Refresh stale assets, build the core, and run the full game from the menu
+	@echo make play-run        - Assemble and launch the existing build without compiling or refreshing assets
 	@echo make play TRACY=1    - Run with opt-in Tracy frame attribution
 	@echo make dist-local      - Stage an unsigned local-development-only bundle under .local/dist
 	@echo make jsonui-editor   - Build the static JSON-UI editor site into JSONUI_EDITOR_OUT
@@ -146,22 +147,33 @@ ifeq ($(OS),Windows_NT)
 endif
 
 # macOS grants Game Mode only to bundled games, so `make play` runs the build from a dev bundle
-# whose Info.plist comes from the release template; its binaries are refreshed hard links.
+# whose Info.plist comes from the release template; copy when the filesystem lacks hard links.
 DEV_APP = target/$(PROFILE_DIR)/Cinnabar Dev.app
 # The release bundle identifier from build-app.sh, suffixed so dev never shares its preferences.
 DEV_APP_ID = $(shell sed -n 's/^bundle_id="$${BUNDLE_ID:-\(.*\)}"/\1/p' packaging/macos/build-app.sh).dev
 DEV_APP_BINARIES = cinnabar bedrock-core bedrock-local-server mod-host cinnabar-media-helper $(ASSET_COMPILER_BINARY)
 play: play-build
 ifneq ($(findstring Darwin,$(shell uname -s)),)
+	$(MAKE) play-run
+else
+	CINNABAR_BUILD_COMMIT="$(CINNABAR_BUILD_COMMIT)" $(CARGO) run --profile $(PROFILE) -p cinnabar --locked $(CLIENT_FEATURES) -- $(if $(filter 1,$(NO_VSYNC)),--no-vsync)
+endif
+
+play-run:
+ifneq ($(findstring Darwin,$(shell uname -s)),)
 	@mkdir -p "$(DEV_APP)/Contents/MacOS"
 	@sed -e "s|@BUNDLE_ID@|$(DEV_APP_ID)|g" -e "s|@VERSION@|$(PKG_VERSION)|g" packaging/macos/Info.plist.in > "$(DEV_APP)/Contents/Info.plist"
-	@for binary in $(DEV_APP_BINARIES); do \
-		if [ -f "target/$(PROFILE_DIR)/$$binary" ]; then ln -f "target/$(PROFILE_DIR)/$$binary" "$(DEV_APP)/Contents/MacOS/$$binary"; \
+	@set -e; for binary in $(DEV_APP_BINARIES); do \
+		if [ -f "target/$(PROFILE_DIR)/$$binary" ]; then \
+			ln -f "target/$(PROFILE_DIR)/$$binary" "$(DEV_APP)/Contents/MacOS/$$binary" 2>/dev/null || { \
+				rm -f "$(DEV_APP)/Contents/MacOS/$$binary"; \
+				cp -p "target/$(PROFILE_DIR)/$$binary" "$(DEV_APP)/Contents/MacOS/$$binary"; \
+			}; \
 		else rm -f "$(DEV_APP)/Contents/MacOS/$$binary"; fi; \
 	done
 	CINNABAR_BUILD_COMMIT="$(CINNABAR_BUILD_COMMIT)" "$(DEV_APP)/Contents/MacOS/cinnabar" $(if $(filter 1,$(NO_VSYNC)),--no-vsync)
 else
-	CINNABAR_BUILD_COMMIT="$(CINNABAR_BUILD_COMMIT)" $(CARGO) run --profile $(PROFILE) -p cinnabar --locked $(CLIENT_FEATURES) -- $(if $(filter 1,$(NO_VSYNC)),--no-vsync)
+	CINNABAR_BUILD_COMMIT="$(CINNABAR_BUILD_COMMIT)" "target/$(PROFILE_DIR)/cinnabar$(EXE)" $(if $(filter 1,$(NO_VSYNC)),--no-vsync)
 endif
 
 dist-local:
@@ -207,6 +219,6 @@ diag:
 	$(CARGO) run -p devtool --locked -- diag
 
 SECONDS ?= 180
-.PHONY: capture play-build
+.PHONY: capture play-build play-run
 capture:
 	$(CARGO) run -p devtool --locked -- capture --seconds "$(SECONDS)" $(if $(BASELINE),--baseline "$(BASELINE)") $(if $(HZ),--refresh-hz "$(HZ)") $(if $(filter 1,$(NO_VSYNC)),--no-vsync)
