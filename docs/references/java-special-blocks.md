@@ -132,6 +132,25 @@ Arbitrary end-user pack reload, iOS and online-server acceptance remain unqualif
 
 ## Remaining special renderers
 
-Player-profile heads, conduit, decorated pots,
+Player-profile heads, conduit,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.
+
+## Decorated pots
+
+The native path uses the pinned `DecoratedPotRenderer.createBaseLayer/createSidesLayer`
+export, native facing transform, texture UVs and named back/left/right/front item templates.
+Pattern assets resolve through the archive registry. Default item-pattern correspondence is
+checked against all native component initializers; explicit provides-pottery-pattern patches
+and removal override the default. Missing block-entity data produces the native plain pot.
+Malformed decoration structures and unavailable pattern holders remain explicit errors.
+
+Server block-event action 1 starts the positive seven-tick or negative ten-tick wobble.
+The bounded clock deduplicates event revisions, resets when a block generation disappears,
+and retains its state across artwork changes. Geometry/data extraction uses changed columns;
+it does not reparse all block entities each frame. Linux software-Vulkan offline-vanilla captures inspect four decoration faces, authoritative
+pattern changes, removal/replacement, negative-boundary waterlogging, unload/revisit and
+reconnect. Native survival use inserts bricks (server pot 0→2, stack 8→6); a full-pot
+rejection preserves both counts. Real-time recordings inspect both wobble styles. The native
+hotbar still lacks the held brick icon; this is not inventory UI acceptance. Arbitrary user
+pack reload and iOS/online acceptance remain unqualified. The shared Bedrock pot path remains separate.

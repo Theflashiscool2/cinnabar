@@ -469,5 +469,30 @@ mod tests {
         assert_eq!(textures.len(), 4);
         assert_eq!(poses.len(), 4);
         assert_eq!(g.special_models.len(), 4);
+        let pots: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| registry.state(id).unwrap().name.as_ref() == "minecraft:decorated_pot")
+            .collect();
+        assert_eq!(pots.len(), 16);
+        let extension = graphics::extend(Arc::clone(g), &mut models, pots.clone()).unwrap();
+        let g = extension.graphics();
+        assert_eq!(g.pot_patterns.len(), 23);
+        assert!(
+            g.special_models.contains_key("pot_base") && g.special_models.contains_key("pot_sides")
+        );
+        for id in pots {
+            assert_eq!(g.presentation(id), Some(graphics::Presentation::Pot));
+            assert!(g.pots.contains_key(&id));
+        }
+        for texture in g.pot_patterns.values() {
+            let p = g
+                .special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(texture)
+                .unwrap();
+            assert_eq!((p.width, p.height), (16, 16));
+        }
+
+        assert_eq!(g.special_models.len(), 6);
     }
 }

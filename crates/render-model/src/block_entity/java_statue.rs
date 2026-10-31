@@ -1,8 +1,5 @@
 //! Native Java statue parts, retaining the verified model hierarchy and UV/winding data.
-use super::{
-    atlas::BlockEntityAtlas,
-    mesh::{Layer, MeshBuilder, WHITE},
-};
+use super::{atlas::BlockEntityAtlas, mesh::MeshBuilder};
 use assets::{entity::java::Part, registry::java::statue::Statue};
 use glam::{EulerRot, Mat4, Quat, Vec3};
 use std::sync::Arc;
@@ -32,53 +29,15 @@ pub(super) fn emit(
                 -f32::from((model.state.turn + 2) % 4) * std::f32::consts::FRAC_PI_2,
             )
             * Mat4::from_scale(Vec3::splat(1. / 16.));
-    part(builder, &model.root, transform, texture, true);
-}
-fn part(
-    builder: &mut MeshBuilder,
-    part: &Part,
-    parent: Mat4,
-    texture: super::atlas::TextureRef,
-    root: bool,
-) {
-    if !part.visible {
-        return;
-    }
-    let mut offset = part.offset;
-    let [x, y, mut z] = part.rotation;
-    // CopperGolemStatueModel.setupAnim overrides these two root fields, not child poses.
-    if root {
-        offset[1] = 0.;
-        z = std::f32::consts::PI;
-    }
-    let pose = parent
-        * Mat4::from_scale_rotation_translation(
-            Vec3::from_array(part.scale),
-            Quat::from_euler(EulerRot::ZYX, z, y, x),
-            Vec3::from_array(offset),
-        );
-    if !part.skip_draw {
-        for face in &part.faces {
-            // Java exported faces are CCW about their normals. The shared special pass expects
-            // the reverse order and derives an outward normal from cross(v2-v0,v1-v0).
-            let mut points = face.vertices.map(|v| {
-                pose.transform_point3(Vec3::new(v[0], v[1], v[2]))
-                    .to_array()
-            });
-            let mut uv = face.vertices.map(|v| {
-                [
-                    texture.rect.x + v[3] * texture.rect.width,
-                    texture.rect.y + v[4] * texture.rect.height,
-                ]
-            });
-            points.reverse();
-            uv.reverse();
-            builder.quad_uv(Layer::Solid, points, uv, WHITE);
-        }
-    }
-    for child in &part.children {
-        self::part(builder, child, pose, texture, false);
-    }
+    let mut offset = model.root.offset;
+    offset[1] = 0.;
+    let [x, y, _] = model.root.rotation;
+    let pose = Mat4::from_scale_rotation_translation(
+        Vec3::from_array(model.root.scale),
+        Quat::from_euler(EulerRot::ZYX, std::f32::consts::PI, y, x),
+        Vec3::from_array(offset),
+    );
+    super::java_parts::part(builder, &model.root, transform, texture, Some(pose));
 }
 
 #[cfg(test)]

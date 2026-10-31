@@ -7,6 +7,7 @@ pub mod graphics;
 pub mod interaction;
 pub mod models;
 pub mod physics;
+pub mod pot;
 pub mod selectors;
 pub mod skull;
 pub mod source;

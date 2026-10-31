@@ -174,12 +174,14 @@ mod tests {
             pin.entity_models_report.bytes,
         )
         .unwrap();
-        assert_eq!(models.iter().count(), 9);
+        assert_eq!(models.iter().count(), 11);
         for name in [
             "statue_standing",
             "statue_running",
             "statue_sitting",
             "statue_star",
+            "pot_base",
+            "pot_sides",
         ] {
             assert!(models.get(name).is_some(), "missing {name}");
         }

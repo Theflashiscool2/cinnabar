@@ -35,6 +35,8 @@ pub struct Graphics {
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
     pub shulkers: BTreeMap<u32, super::special::Shulker>,
+    pub pots: BTreeMap<u32, super::pot::Pot>,
+    pub pot_patterns: BTreeMap<String, String>,
     pub statues: BTreeMap<u32, super::statue::Statue>,
     pub special_models: BTreeMap<String, Arc<crate::entity::java::Part>>,
     pub skulls: BTreeMap<u32, super::skull::Skull>,
@@ -55,6 +57,7 @@ pub enum Presentation {
     Banner,
     Skull,
     Statue,
+    Pot,
 }
 #[derive(Clone)]
 struct State {
@@ -117,6 +120,8 @@ pub fn compile(
         banners: BTreeMap::new(),
         skulls: BTreeMap::new(),
         statues: BTreeMap::new(),
+        pots: BTreeMap::new(),
+        pot_patterns: BTreeMap::new(),
         special_models: BTreeMap::new(),
         banner_patterns: BTreeMap::new(),
         special_images: BTreeMap::new(),
@@ -282,6 +287,48 @@ fn append(
                     id,
                     State {
                         presentation: Presentation::Banner,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
+            if let Some(pot) = super::pot::Pot::from_state(
+                &state,
+                models
+                    .block_id(id)
+                    .ok_or_else(|| invalid("missing Java block registry identity"))?,
+            )? {
+                for (name, children) in [
+                    ("pot_base", super::pot::BASE_PARTS),
+                    ("pot_sides", super::pot::SIDE_PARTS),
+                ] {
+                    if !builder.special_models.contains_key(name) {
+                        let root = models
+                            .entity_models
+                            .as_ref()
+                            .and_then(|m| m.get(name))
+                            .ok_or_else(|| invalid("Java pot hierarchy unavailable"))?;
+                        if children
+                            .iter()
+                            .any(|n| !root.children.iter().any(|p| p.name == *n))
+                        {
+                            return Err(invalid("Java pot hierarchy incomplete"));
+                        }
+                        builder
+                            .special_models
+                            .insert(name.into(), Arc::new(root.clone()));
+                    }
+                }
+                if builder.pot_patterns.is_empty() {
+                    builder.pot_patterns =
+                        super::pot::load(models.source(), &mut builder.special_images)?;
+                }
+                builder.pots.insert(id, pot);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Pot,
                         selection: None,
                         variants: BTreeMap::new(),
                     },
@@ -465,6 +512,8 @@ fn finish(
     let banners = builder.banners.clone();
     let skulls = builder.skulls.clone();
     let statues = builder.statues.clone();
+    let pots = builder.pots.clone();
+    let pot_patterns = builder.pot_patterns.clone();
     let special_models = builder.special_models.clone();
     let banner_patterns = builder.banner_patterns.clone();
     let base = RuntimeAssets::diagnostic();
@@ -484,6 +533,8 @@ fn finish(
         banners,
         skulls,
         statues,
+        pots,
+        pot_patterns,
         special_models,
         banner_patterns,
         special_atlas,
@@ -508,6 +559,8 @@ struct Builder {
     banners: BTreeMap<u32, super::banner::Banner>,
     skulls: BTreeMap<u32, super::skull::Skull>,
     statues: BTreeMap<u32, super::statue::Statue>,
+    pots: BTreeMap<u32, super::pot::Pot>,
+    pot_patterns: BTreeMap<String, String>,
     special_models: BTreeMap<String, Arc<crate::entity::java::Part>>,
     banner_patterns: BTreeMap<String, String>,
     special_images: BTreeMap<String, Arc<Image>>,

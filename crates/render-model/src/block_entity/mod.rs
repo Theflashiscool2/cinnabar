@@ -22,6 +22,8 @@ mod frame;
 pub mod java_banner;
 pub mod java_chest;
 mod java_cube;
+mod java_parts;
+pub mod java_pot;
 pub mod java_shulker;
 pub mod java_skull;
 pub mod java_statue;

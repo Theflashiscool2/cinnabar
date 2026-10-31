@@ -85,13 +85,13 @@ Version-checked tint admission now handles foliage, stems, cauldron water and dr
 foliage, and preserves unmodified textures when no callback is registered. Known
 invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
-and spatial grass modifiers remain gated. The integrated audit records 72 failing
-states in 7 groups, with no omitted failures: player-profile heads, conduit, decorated pots, End portals/gateways
+and spatial grass modifiers remain gated. The integrated audit records 56 failing
+states in 6 groups, with no omitted failures: player-profile heads, conduit, End portals/gateways
 and moving pistons. These require actual special-renderer integration, not empty-model
 admission. Incremental block-entity data and block events are now admitted through native
-terrain authority. Native chest, shulker, banner, copper-statue and six fixed mob-head geometries use the shared GPU pass. Chest/shulker lids
+terrain authority. Native chest, shulker, banner, decorated-pot, copper-statue and six fixed mob-head geometries use the shared GPU pass. Chest/shulker lids
 follow server events; shulker picking uses tick-based dynamic bounds. Banner pattern layers
-follow authoritative data and native archive mappings; server clock synchronization remains open. Fixed skulls use native mounts/UVs and powered dragon/piglin articulation, checked against 36 independent native model cases and inspected offline gameplay. Copper statues retain the verified native hierarchy for all four poses and facings; native use cycles authoritative poses in inspected offline gameplay. Native container UI
+follow authoritative data and native archive mappings; server clock synchronization remains open. Fixed skulls use native mounts/UVs and powered dragon/piglin articulation, checked against 36 independent native model cases and inspected offline gameplay. Copper statues retain the verified native hierarchy for all four poses and facings; native use cycles authoritative poses in inspected offline gameplay. Decorated pots use native hierarchy/artwork, named item-template decorations and server-event wobble; survival insertion and full-pot rejection were confirmed against vanilla counts and inspected recordings. Native container UI
 and SHULKER_BOX inventory admission remain incomplete; see [native special blocks](docs/references/java-special-blocks.md).
 See [block-color support and remaining gaps](docs/references/java-block-colors.md).
 The audit itself is structural coverage. Separate controlled vanilla 26.3 Linux software-GPU
