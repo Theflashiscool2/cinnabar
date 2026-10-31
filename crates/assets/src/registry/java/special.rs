@@ -87,6 +87,68 @@ impl Chest {
     }
 }
 
+/// Native box identity; the uncolored texture is not the purple dye variant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Shulker {
+    pub block_id: u32,
+    pub texture: String,
+    /// Java Direction order: down, up, north, south, west, east.
+    pub facing: u8,
+}
+impl Shulker {
+    pub fn from_state(state: &BlockState, block_id: u32) -> Result<Option<Self>, Error> {
+        let name = state.name.strip_prefix("minecraft:").unwrap_or("");
+        let suffix = if name == "shulker_box" {
+            String::new()
+        } else if let Some(color) = name.strip_suffix("_shulker_box") {
+            if ![
+                "white",
+                "orange",
+                "magenta",
+                "light_blue",
+                "yellow",
+                "lime",
+                "pink",
+                "gray",
+                "light_gray",
+                "cyan",
+                "purple",
+                "blue",
+                "brown",
+                "green",
+                "red",
+                "black",
+            ]
+            .contains(&color)
+            {
+                return Ok(None);
+            }
+            format!("_{color}")
+        } else {
+            return Ok(None);
+        };
+        let facing = match state.properties.get("facing").map(String::as_str) {
+            Some("down") => 0,
+            Some("up") => 1,
+            Some("north") => 2,
+            Some("south") => 3,
+            Some("west") => 4,
+            Some("east") => 5,
+            _ => {
+                return Err(Error::Model(format!(
+                    "invalid Java shulker properties for {}",
+                    state.name
+                )));
+            }
+        };
+        Ok(Some(Self {
+            block_id,
+            texture: format!("textures/entity/shulker/shulker{suffix}"),
+            facing,
+        }))
+    }
+}
+
 /// Bounded shelf atlas for the shared block-entity GPU pass. Names and pixels determine identity.
 pub fn atlas(
     images: &BTreeMap<String, Arc<Image>>,
@@ -144,6 +206,30 @@ mod tests {
     use crate::registry::java::{
         BlockRegistry, catalog::BlockModels, fluids::Table, graphics, source::Jar,
     };
+    #[test]
+    fn shulker_admission_requires_native_properties_and_texture_identity() {
+        let mut state = BlockState {
+            name: "minecraft:shulker_box".into(),
+            properties: BTreeMap::new(),
+            is_default: true,
+        };
+        assert!(Shulker::from_state(&state, 1).is_err());
+        state.properties.insert("facing".into(), "up".into());
+        assert_eq!(
+            Shulker::from_state(&state, 1).unwrap().unwrap().texture,
+            "textures/entity/shulker/shulker"
+        );
+        state.name = "minecraft:purple_shulker_box".into();
+        assert_eq!(
+            Shulker::from_state(&state, 2).unwrap().unwrap().texture,
+            "textures/entity/shulker/shulker_purple"
+        );
+        state.name = "other:purple_shulker_box".into();
+        assert!(Shulker::from_state(&state, 2).unwrap().is_none());
+        state.name = "minecraft:shulker_box".into();
+        state.properties.insert("facing".into(), "sideways".into());
+        assert!(Shulker::from_state(&state, 1).is_err());
+    }
     #[test]
     fn verified_chest_states_have_java_half_artwork_and_no_ordinary_model() {
         let Some(root) = std::env::var_os("CINNABAR_JAVA_TEST_ASSETS") else {
@@ -229,6 +315,35 @@ mod tests {
                         .fluid_materials(crate::registry::java::fluids::Kind::Water)
                         .is_some()
                 );
+            }
+        }
+        let shulkers: Vec<_> = (0..registry.len() as u32)
+            .filter(|&id| {
+                Shulker::from_state(registry.state(id).unwrap(), registry.block_id(id).unwrap())
+                    .unwrap()
+                    .is_some()
+            })
+            .collect();
+        assert_eq!(shulkers.len(), 102);
+        let old = Arc::new(graphics);
+        let extension = graphics::extend(Arc::clone(&old), &mut models, shulkers.clone()).unwrap();
+        assert!(extension.extends(&old));
+        let next = extension.graphics();
+        assert_eq!(old.special_atlas.as_ref().unwrap().placements().len(), 19);
+        assert_eq!(next.special_atlas.as_ref().unwrap().placements().len(), 36);
+        for id in shulkers {
+            assert_eq!(next.presentation(id), Some(graphics::Presentation::Shulker));
+            let shape = &next.shulkers[&id];
+            assert!(shape.facing < 6);
+            let image = next
+                .special_atlas
+                .as_ref()
+                .unwrap()
+                .placement(&shape.texture)
+                .unwrap();
+            assert_eq!((image.width, image.height), (64, 64));
+            if registry.state(id).unwrap().name.as_ref() == "minecraft:light_gray_shulker_box" {
+                assert_eq!(shape.texture, "textures/entity/shulker/shulker_light_gray");
             }
         }
     }

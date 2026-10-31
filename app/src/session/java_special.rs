@@ -26,6 +26,14 @@ pub(crate) struct Presentation {
     graphics: Option<Arc<Graphics>>,
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
+    boxes: BTreeMap<[i32; 3], BoxMotion>,
+    elapsed: std::time::Duration,
+}
+
+struct BoxMotion {
+    generation: u64,
+    block_id: u32,
+    motion: sim::java::shulker::Motion,
 }
 
 /// Resolves the target's half model only with a resident compatible partner. Both halves draw
@@ -52,6 +60,68 @@ fn half(
         },
         partner,
     )
+}
+
+/// Advances interaction authority before NetworkSend, independently of render publication.
+pub(crate) fn advance(
+    time: Res<Time<Real>>,
+    controller: Option<Res<super::SessionController>>,
+    mut presentation: ResMut<Presentation>,
+) {
+    let p = &mut *presentation;
+    let terrain = controller
+        .as_ref()
+        .filter(|c| c.java.is_some())
+        .map(|c| &c.java_world.terrain);
+    let Some(terrain) = terrain.filter(|t| p.scope.is_some() && p.scope.as_ref() == t.dimension())
+    else {
+        p.boxes.clear();
+        p.elapsed = std::time::Duration::ZERO;
+        return;
+    };
+    let Some(graphics) = p.graphics.as_ref() else {
+        return;
+    };
+    p.elapsed = p.elapsed.saturating_add(time.delta());
+    let mut ticks = 0;
+    while p.elapsed >= simulation_clock::TICK_DURATION
+        && ticks < simulation_clock::MAX_TICKS_PER_FRAME
+    {
+        p.elapsed -= simulation_clock::TICK_DURATION;
+        ticks += 1;
+    }
+    p.boxes
+        .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
+    for (_, positions) in p.columns.values() {
+        for &(position, id) in positions {
+            let Some(state) = graphics.shulkers.get(&id) else {
+                continue;
+            };
+            if terrain.block(position).map(|id| id.0) != Some(id) {
+                continue;
+            }
+            let Some(generation) = terrain.block_generation(position) else {
+                continue;
+            };
+            p.boxes.entry(position).or_insert_with(|| BoxMotion {
+                generation,
+                block_id: state.block_id,
+                motion: Default::default(),
+            });
+        }
+    }
+    // Known hosts keep ticking while a newly received facing awaits graphics admission.
+    for (position, state) in &mut p.boxes {
+        if let Some(event) = terrain
+            .block_event(*position)
+            .filter(|e| e.block == state.block_id && e.action == 1)
+        {
+            state.motion.event(event.binary_transition);
+        }
+        for _ in 0..ticks {
+            state.motion.tick();
+        }
+    }
 }
 
 pub(crate) fn update(
@@ -163,11 +233,9 @@ pub(crate) fn update(
         let mut chests = Vec::new();
         for (section_index, section) in column.sections.iter().enumerate() {
             for index in 0..4096 {
-                let Some(id) = section
-                    .blocks
-                    .get(index)
-                    .filter(|id| graphics.chests.contains_key(&id.0))
-                else {
+                let Some(id) = section.blocks.get(index).filter(|id| {
+                    graphics.chests.contains_key(&id.0) || graphics.shulkers.contains_key(&id.0)
+                }) else {
                     continue;
                 };
                 let position = [
@@ -182,23 +250,39 @@ pub(crate) fn update(
     }
     let mut submissions = Vec::new();
     let mut alive = BTreeSet::new();
+    let partial =
+        (p.elapsed.as_secs_f64() / simulation_clock::TICK_DURATION.as_secs_f64()).min(1.) as f32;
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
-            let chest = &graphics.chests[&id];
-            let (half, partner) = half(terrain, &graphics, position, chest);
+            let chest = graphics.chests.get(&id);
+            let (block_id, half, partner) = if let Some(chest) = chest {
+                let (half, partner) = half(terrain, &graphics, position, chest);
+                (chest.block_id, half, partner)
+            } else {
+                (graphics.shulkers[&id].block_id, ChestHalf::Single, None)
+            };
             let open = |pos| {
                 terrain
                     .block_event(pos)
-                    .is_some_and(|e| e.block == chest.block_id && e.action == 1 && e.value > 0)
+                    .is_some_and(|e| e.block == block_id && e.action == 1 && e.value > 0)
             };
             let target = f32::from(open(position) || partner.is_some_and(open));
-            let generation = terrain.block_generation(position).expect("resident chest");
+            let generation = terrain
+                .block_generation(position)
+                .expect("resident special block");
             let entry = p.lids.entry(position).or_insert((generation, 0.));
             if entry.0 != generation {
                 *entry = (generation, 0.);
             }
             entry.1 += (target - entry.1).clamp(-step, step);
+            if chest.is_none() {
+                entry.1 = p
+                    .boxes
+                    .get(&position)
+                    .filter(|m| m.generation == generation)
+                    .map_or(0., |m| m.motion.sample(partial));
+            }
             alive.insert(position);
             let Some(mut light) = terrain.light(position) else {
                 continue;
@@ -212,15 +296,24 @@ pub(crate) fn update(
                     block: light[0],
                     sky: light[1],
                 },
-                kind: BlockEntityKind::JavaChest(Model {
-                    state: chest.clone(),
-                    half,
-                    lid: entry.1,
-                }),
+                kind: if let Some(chest) = chest {
+                    BlockEntityKind::JavaChest(Model {
+                        state: chest.clone(),
+                        half,
+                        lid: entry.1,
+                    })
+                } else {
+                    BlockEntityKind::JavaShulker(render_model::block_entity::java_shulker::Model {
+                        state: graphics.shulkers[&id].clone(),
+                        open: entry.1,
+                    })
+                },
             });
         }
     }
     p.lids.retain(|pos, _| alive.contains(pos));
+    p.boxes
+        .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
     frame.0 = p
         .scene
         .update(
@@ -234,6 +327,23 @@ pub(crate) fn update(
 }
 
 impl Presentation {
+    /// The picker reads tick state, independently of the interpolated GPU shell.
+    pub(crate) fn outline(
+        &self,
+        terrain: &Terrain,
+        position: [i32; 3],
+        id: u32,
+    ) -> Option<assets::registry::java::physics::Bounds> {
+        if self.scope.as_ref() != terrain.dimension() {
+            return None;
+        }
+        let state = self.graphics.as_ref()?.shulkers.get(&id)?;
+        let state_motion = self.boxes.get(&position)?;
+        if terrain.block_generation(position) != Some(state_motion.generation) {
+            return None;
+        }
+        state_motion.motion.outline(state.facing)
+    }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),

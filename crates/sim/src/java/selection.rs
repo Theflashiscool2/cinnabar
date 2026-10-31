@@ -56,6 +56,18 @@ pub fn pick(
     from: [f64; 3],
     to: [f64; 3],
 ) -> Result<Option<Hit>, Error> {
+    pick_with_context(terrain, table, scope, from, to, |_, _| None)
+}
+
+/// Supplies a native single-box outline for supported dynamic hosts; unresolved hosts still fail.
+pub fn pick_with_context(
+    terrain: &Terrain,
+    table: &Table,
+    scope: (u64, u64),
+    from: [f64; 3],
+    to: [f64; 3],
+    mut context: impl FnMut([i32; 3], u32) -> Option<Bounds>,
+) -> Result<Option<Hit>, Error> {
     let d = terrain
         .dimension()
         .filter(|d| (d.session, d.epoch) == scope)
@@ -68,12 +80,16 @@ pub fn pick(
         }
         let id = terrain.block(block).ok_or(Error::Missing(block))?.0;
         let state = table.state(id).ok_or(Error::Unknown(id))?;
-        let Shape::Static {
-            outline,
-            interaction,
-        } = &state.shape
-        else {
-            return Err(Error::Contextual(id));
+        let dynamic;
+        let (outline, interaction): (&[Bounds], &[Bounds]) = match &state.shape {
+            Shape::Static {
+                outline,
+                interaction,
+            } => (outline, interaction),
+            Shape::Contextual => {
+                dynamic = context(block, id).ok_or(Error::Contextual(id))?;
+                (std::slice::from_ref(&dynamic), &[])
+            }
         };
         let Some(mut hit) = clip(outline, block, from, to) else {
             return Ok(None);

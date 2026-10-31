@@ -9,6 +9,12 @@ pub(crate) fn configure_finish_system(app: &mut App) {
                 .after(crate::session::java_render::update)
                 .after(crate::block_entities::update_block_entity_scene),
         )
+        .add_systems(
+            Update,
+            crate::session::java_special::advance
+                .after(drive_session)
+                .in_set(ClientFrameSet::NetworkSend),
+        )
         .init_resource::<crate::session::java_entities::Presentation>()
         .init_resource::<crate::session::java_render::Presentation>()
         .init_resource::<crate::session::java_movement::Movement>()
@@ -16,6 +22,7 @@ pub(crate) fn configure_finish_system(app: &mut App) {
         .add_systems(
             Update,
             crate::session::java_interaction::update
+                .after(crate::session::java_special::advance)
                 .after(crate::session::java_movement::update)
                 .in_set(ClientFrameSet::NetworkSend),
         )

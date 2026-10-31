@@ -145,9 +145,14 @@ fn block_entity_events_are_resident_replacement_and_session_scoped() {
     t.replace([-1, -2], column());
     assert!(t.set_block_event(pos, 3, 1, 2));
     let first = t.block_event(pos).unwrap();
+    assert_eq!(first.binary_transition, None);
+    t.set_block_event(pos, 3, 1, 1);
+    t.set_block_event(pos, 3, 1, 3);
+    assert_eq!(t.block_event(pos).unwrap().binary_transition, Some(1));
     t.set_block_event(pos, 3, 1, 0);
     assert!(t.block_event(pos).unwrap().revision > first.revision);
     assert_eq!(t.block_event(pos).unwrap().value, 0);
+    assert_eq!(t.block_event(pos).unwrap().binary_transition, Some(0));
     t.set_block(pos, BlockStateId(8));
     assert!(t.block_event(pos).is_none());
     let entity = BlockEntity {

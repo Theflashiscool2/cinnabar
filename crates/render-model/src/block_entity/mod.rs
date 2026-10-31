@@ -20,6 +20,8 @@ mod dragon_death;
 pub mod draw_ranges;
 mod frame;
 pub mod java_chest;
+mod java_cube;
+pub mod java_shulker;
 
 #[cfg(test)]
 mod head_item_tests;

@@ -5,6 +5,79 @@ const CUBE: Bounds = Bounds {
 };
 
 #[test]
+fn dynamic_outline_is_picked_without_bypassing_missing_context_or_retired_worlds() {
+    use sha2::{Digest, Sha256};
+    use std::sync::Arc;
+    use world::java::{BiomeId, BlockStateId, Column, Dimension, Light, Palette, Section};
+    let mut bytes = b"CBJHITS1".to_vec();
+    bytes.extend(2u32.to_be_bytes());
+    for id in 0..2u32 {
+        bytes.extend(id.to_be_bytes());
+        bytes.push(id as u8); // air is static/empty, state one needs context.
+        bytes.extend(1f32.to_be_bytes());
+        bytes.push(0);
+        bytes.extend([0; 8]);
+    }
+    let table = Table::load(&bytes, &format!("{:x}", Sha256::digest(&bytes)), 2).unwrap();
+    let mut terrain = Terrain::default();
+    terrain.begin(Dimension {
+        session: 1,
+        epoch: 2,
+        name: "test".into(),
+        min_y: 0,
+        height: 16,
+        has_skylight: true,
+    });
+    assert!(terrain.replace(
+        [-1, -1],
+        Column::new(
+            vec![Arc::new(Section {
+                blocks: Palette::uniform(BlockStateId(0), 4096),
+                biomes: Palette::uniform(BiomeId(0), 64),
+            })],
+            Light {
+                sky: vec![None; 3],
+                block: vec![None; 3]
+            },
+            vec![],
+            vec![],
+        ),
+    ));
+    terrain.set_block([-2, 1, -2], BlockStateId(1));
+    let from = [-1.5, 1.8, -4.];
+    let to = [-1.5, 1.8, -0.5];
+    assert_eq!(
+        pick(&terrain, &table, (1, 2), from, to),
+        Err(Error::Contextual(1))
+    );
+    let hit = pick_with_context(&terrain, &table, (1, 2), from, to, |p, id| {
+        assert_eq!(p, [-2, 1, -2]);
+        assert_eq!(id, 1);
+        Some(Bounds {
+            min: [0., 0., -0.5],
+            max: [1.; 3],
+        })
+    })
+    .unwrap()
+    .unwrap();
+    assert_eq!(hit.block, [-2, 1, -2]);
+    assert_eq!(hit.position, [-1.5, 1.8, -2.5]);
+    assert_eq!(hit.face, Face::North);
+    terrain.set_block([-2, 1, -2], BlockStateId(0));
+    assert!(
+        pick_with_context(&terrain, &table, (1, 2), from, to, |_, _| panic!(
+            "removed host"
+        ))
+        .unwrap()
+        .is_none()
+    );
+    assert_eq!(
+        pick_with_context(&terrain, &table, (9, 2), from, to, |_, _| Some(CUBE)),
+        Err(Error::Retired)
+    );
+}
+
+#[test]
 fn independent_pinned_native_shape_vectors() {
     let hit = clip(&[CUBE], [-2, -3, -4], [-1.5, -2.5, -7.], [-1.5, -2.5, -2.]).unwrap();
     assert_eq!(hit.position, [-1.5, -2.5, -4.]);

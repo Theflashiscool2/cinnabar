@@ -1,9 +1,6 @@
 //! Java 26.3 ChestModel coordinates and separate 64x64 half textures.
 //! Original geometry emitter; facts checked against the verified client's layer definitions.
-use super::{
-    atlas::{BlockEntityAtlas, TextureRef},
-    mesh::{Layer, MeshBuilder, WHITE},
-};
+use super::{atlas::BlockEntityAtlas, java_cube::cuboid, mesh::MeshBuilder};
 use assets::{
     block_entity_geometry::BoxSpec,
     registry::java::special::{Chest, ChestHalf},
@@ -65,39 +62,6 @@ pub(super) fn emit(
     );
 }
 
-/// Java Cube UV unwrap differs from Bedrock even when the box coordinates coincide.
-/// Checked against the pinned client's ModelPart.Cube polygon positions and texels.
-fn faces(spec: BoxSpec) -> [assets::block_entity_geometry::ModelFace; 6] {
-    let [x, y, z] = spec.size;
-    let [u, v] = spec.uv;
-    let rects = [
-        [u + z + x, v + z + y, -x, -y],
-        [u + 2. * z + 2. * x, v + z + y, -x, -y],
-        [u + 2. * z + x, v + z + y, -z, -y],
-        [u + z, v + z + y, -z, -y],
-        [u + z + 2. * x, v, -x, z],
-        [u + z + x, v + z, -x, -z],
-    ];
-    let mut faces = spec.faces();
-    for (face, uv) in faces.iter_mut().zip(rects) {
-        face.1 = uv;
-    }
-    faces
-}
-fn cuboid(builder: &mut MeshBuilder, texture: &TextureRef, model: Mat4, spec: BoxSpec, mask: u8) {
-    for (index, (corners, texels)) in faces(spec).into_iter().enumerate() {
-        if mask & (1 << index) == 0 {
-            continue;
-        }
-        builder.quad(
-            Layer::Solid,
-            corners.map(|p| model.transform_point3(Vec3::from_array(p)).to_array()),
-            texture.rect_uv(texels),
-            WHITE,
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,7 +71,8 @@ mod tests {
     use std::{collections::BTreeMap, sync::Arc};
     #[test]
     fn java_cube_front_texels_follow_the_reference_not_bedrock_unwrap() {
-        let fs = faces(BoxSpec::new([1., 0., 1.], [14., 10., 14.], [0., 19.]));
+        let fs =
+            super::super::java_cube::faces(BoxSpec::new([1., 0., 1.], [14., 10., 14.], [0., 19.]));
         assert_eq!(
             fs[1].0,
             [

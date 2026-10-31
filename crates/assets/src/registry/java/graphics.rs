@@ -34,6 +34,7 @@ pub struct Graphics {
     pub fluid_facts: Option<Arc<super::fluids::Table>>,
     pub block_types: Arc<[u32]>,
     pub chests: BTreeMap<u32, super::special::Chest>,
+    pub shulkers: BTreeMap<u32, super::special::Shulker>,
     pub special_atlas: Option<Arc<crate::RuntimeBlockEntityAssets>>,
 }
 /// The renderer that owns an admitted state's visible output. Unsupported special renderers
@@ -45,6 +46,7 @@ pub enum Presentation {
     Fluid,
     WaterloggedModel,
     Chest,
+    Shulker,
 }
 #[derive(Clone)]
 struct State {
@@ -103,6 +105,7 @@ pub fn compile(
         materials: BTreeMap::new(),
         fluids: BTreeMap::new(),
         chests: BTreeMap::new(),
+        shulkers: BTreeMap::new(),
         special_images: BTreeMap::new(),
     };
     let mut admitted = BTreeMap::new();
@@ -230,6 +233,32 @@ fn append(
                 );
                 return Ok(());
             }
+            if let Some(shulker) = super::special::Shulker::from_state(
+                models.state(id)?,
+                models
+                    .block_id(id)
+                    .ok_or_else(|| invalid("Java block type missing"))?,
+            )? {
+                let name = shulker.texture.clone();
+                if !builder.special_images.contains_key(&name) {
+                    let bytes = models
+                        .source()
+                        .read(&format!("assets/minecraft/{name}.png"))?;
+                    builder
+                        .special_images
+                        .insert(name, Arc::new(Image::decode(&bytes)?));
+                }
+                builder.shulkers.insert(id, shulker);
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Shulker,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
+            }
             let selection = models.selection(id)?;
             let mut variants = BTreeMap::new();
             for variant in selection.parts().iter().flatten() {
@@ -348,6 +377,7 @@ fn finish(
     builder.finish_textures()?;
     let special_atlas = super::special::atlas(&builder.special_images)?;
     let chests = builder.chests.clone();
+    let shulkers = builder.shulkers.clone();
     let base = RuntimeAssets::diagnostic();
     let runtime = Arc::new(base.with_block_overlay(base.visual_count() as u32, &builder.overlay)?);
     // Keep source pixels and stable addresses, not a duplicate copy of the generated mip chains.
@@ -361,6 +391,7 @@ fn finish(
         builder,
         fluid_facts,
         chests,
+        shulkers,
         special_atlas,
         block_types,
     })
@@ -379,6 +410,7 @@ struct Builder {
     materials: BTreeMap<(Identifier, u32), u32>,
     fluids: BTreeMap<super::fluids::Kind, FluidMaterials>,
     chests: BTreeMap<u32, super::special::Chest>,
+    shulkers: BTreeMap<u32, super::special::Shulker>,
     special_images: BTreeMap<String, Arc<Image>>,
 }
 impl Builder {

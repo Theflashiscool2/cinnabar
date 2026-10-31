@@ -2,7 +2,7 @@
 
 Scope: Java 26.3 / protocol 777, using the verified archives pinned in
 `crates/java-protocol/data/target.json`. Ordinary baked models, invisible blocks,
-fluids and chest submissions have distinct admission paths. Unsupported special
+fluids and native special submissions have distinct admission paths. Unsupported special
 renderers still produce grouped audit errors.
 
 ## Chests
@@ -39,8 +39,31 @@ Seasonal textures, chest sounds/particles and user resource-pack reload are not 
 The existing fluid-height quantization limitation also applies to waterlogged hosts.
 No iOS, simulator, online-mode or Hypixel acceptance follows from these Linux results.
 
+## Shulker boxes
+
+All 17 native texture identities and six attachment directions use Java ShulkerModel
+shell geometry, Direction rotation (including roll), and ShulkerBoxRenderer lid travel
+and rotation. The pinned textures contain deliberate cutouts; the reference uses
+`RenderTypes.entityCutout`. They are preserved. Native cube UV coordinates were checked
+independently against ModelPart.Cube, not inferred from Bedrock unwraps.
+
+Viewer-count events drive a 20 Hz simulation. Zero closes, one opens, and larger counts
+retain the previous direction. Coalesced events preserve the last zero/one transition.
+Picking reads the tick's expanded bounds; rendering interpolates the shell. Motion survives
+same-block facing admission and resets with the authoritative block lifetime. Unresolved
+contextual shapes still fail safely; they do not become empty selection geometry.
+
+Linux software-Vulkan offline vanilla acceptance inspected six directions, native mouse
+opening, another real Cinnabar client's observation of opening/closing, negative-boundary
+side opening, facing updates, atlas extension, removal/replacement, unload/revisit and
+reconnect. Spectator mode did not close the server shulker container; that attempt is not
+passing closure evidence. Closure was observed after the creative viewer disconnected.
+The Java inventory model still rejects SHULKER_BOX and has no usable container screen.
+These tests establish presentation and interaction packet delivery, not item transactions.
+Dynamic physical pushing, sound, and end-user resource-pack reload remain unqualified.
+
 ## Remaining special renderers
 
-Banners, shulker boxes, heads/skulls, copper golem statues, conduit, decorated pots,
+Banners, heads/skulls, copper golem statues, conduit, decorated pots,
 End gateway/portal and moving pistons still require native production integration.
 Their audited states remain explicit failures. Storage alone is not presentation.

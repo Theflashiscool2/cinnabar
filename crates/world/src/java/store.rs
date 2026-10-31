@@ -243,12 +243,21 @@ impl Terrain {
             return false;
         }
         let revision = self.next_revision();
+        let binary_transition = if value <= 1 {
+            Some(value)
+        } else {
+            self.block_events
+                .get(&position)
+                .filter(|event| event.block == block && event.action == action)
+                .and_then(|event| event.binary_transition)
+        };
         self.block_events.insert(
             position,
             BlockEvent {
                 block,
                 action,
                 value,
+                binary_transition,
                 revision,
             },
         );

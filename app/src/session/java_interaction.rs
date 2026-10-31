@@ -31,6 +31,7 @@ pub(crate) fn update(
     view: Res<LocalViewPose>,
     controller: Option<ResMut<SessionController>>,
     presentation: Res<Presentation>,
+    special: Res<super::java_special::Presentation>,
     movement: Res<Movement>,
     mut interaction: ResMut<Interaction>,
 ) {
@@ -42,7 +43,7 @@ pub(crate) fn update(
         return;
     };
     let state = &controller.java_world;
-    let target = pick(state, &presentation, &movement, &view);
+    let target = pick(state, &presentation, &special, &movement, &view);
     let hit = target.as_ref().ok().copied().flatten();
     interaction.1.capture(state, &input.0, hit);
     let snapshot = input.0.snapshot();
@@ -169,6 +170,7 @@ fn send_pending(
 fn pick(
     state: &client_world::java::WorldState,
     presentation: &Presentation,
+    special: &super::java_special::Presentation,
     movement: &Movement,
     view: &LocalViewPose,
 ) -> Result<Option<selection::Hit>, String> {
@@ -190,12 +192,13 @@ fn pick(
     let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
     let direction = world::java::player::look(180. - yaw.to_degrees(), -pitch.to_degrees());
     let to = std::array::from_fn(|i| from[i] + direction[i] * range);
-    selection::pick(
+    selection::pick_with_context(
         &state.terrain,
         shapes,
         (dimension.session, dimension.epoch),
         from,
         to,
+        |position, id| special.outline(&state.terrain, position, id),
     )
     .map_err(|error| error.to_string())
 }

@@ -40,6 +40,8 @@ pub struct BlockEvent {
     pub block: u32,
     pub action: u8,
     pub value: u8,
+    /// Most recent zero/one value for this action, retained across coalesced viewer counts.
+    pub binary_transition: Option<u8>,
     pub revision: u64,
 }
 #[derive(Clone, Debug)]
