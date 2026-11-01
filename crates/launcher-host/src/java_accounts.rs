@@ -102,7 +102,10 @@ impl Manager {
         let Some(prompt) = &self.view.prompt else {
             return;
         };
-        self.open_url(prompt.verification_uri.clone());
+        // Match Bedrock's validated Microsoft handoff, including the public one-time code.
+        let url = launcher::menu::sign_in::device_code_url(&prompt.user_code)
+            .unwrap_or_else(|| prompt.verification_uri.clone());
+        self.open_url(url);
     }
     pub fn open_registration(&self) {
         self.open_url("https://entra.microsoft.com/".into());

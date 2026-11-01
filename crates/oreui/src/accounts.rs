@@ -113,11 +113,6 @@ fn java_modal(view: &MenuView) -> Modal<'_> {
     }
     if !java.busy {
         buttons.push((
-            "Application setup".into(),
-            Variant::Secondary,
-            action(Action::Setup),
-        ));
-        buttons.push((
             "Add / sign in again".into(),
             Variant::Primary,
             action(Action::Add),
