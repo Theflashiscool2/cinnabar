@@ -55,6 +55,9 @@ fn documents(root: &Path) -> Result<Vec<Value>, AssetError> {
                     detail: "authored model input exceeds its traversal bound".into(),
                 });
             }
+            if crate::source_metadata::is_source_metadata(&entry.path()) {
+                continue;
+            }
             let path = entry.path();
             let kind = entry.file_type().map_err(|source| AssetError::Io {
                 path: path.clone(),

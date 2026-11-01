@@ -507,6 +507,9 @@ fn walk(
             return Err(invalid("ui asset tree exceeds the traversal bound"));
         }
         *budget -= 1;
+        if pack_compile_input::source_metadata::is_source_metadata(&entry.path()) {
+            continue;
+        }
         let path = entry.path();
         let file_type = entry.file_type().map_err(|source| AssetError::Io {
             path: path.clone(),

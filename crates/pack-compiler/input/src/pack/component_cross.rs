@@ -54,6 +54,9 @@ pub(super) fn install(
                 .ok_or_else(|| AssetError::InvalidCompiledAssets {
                     detail: "behavior cross input exceeds its traversal bound".into(),
                 })?;
+            if crate::source_metadata::is_source_metadata(&entry.path()) {
+                continue;
+            }
             let path = entry.path();
             let kind = entry.file_type().map_err(|source| AssetError::Io {
                 path: path.clone(),

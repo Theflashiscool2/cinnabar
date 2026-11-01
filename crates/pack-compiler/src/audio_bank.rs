@@ -110,6 +110,9 @@ fn collect(
         .map_err(io_error(dir))?;
     children.sort_by_key(|child| child.file_name());
     for child in children {
+        if pack_compile_input::source_metadata::is_source_metadata(&child.path()) {
+            continue;
+        }
         let path = child.path();
         let meta = fs::symlink_metadata(&path).map_err(io_error(&path))?;
         if meta.is_dir() {

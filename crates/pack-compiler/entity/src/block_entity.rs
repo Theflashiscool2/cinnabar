@@ -210,6 +210,9 @@ fn list(directory: &Path) -> Result<Vec<PathBuf>, AssetError> {
             path: directory.to_path_buf(),
             source,
         })?;
+        if pack_compile_input::source_metadata::is_source_metadata(&entry.path()) {
+            continue;
+        }
         if entry.path().is_file() {
             paths.push(entry.path());
         }

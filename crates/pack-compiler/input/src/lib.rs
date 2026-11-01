@@ -9,6 +9,7 @@ pub mod mapped_face;
 pub mod pack;
 pub mod respawn_anchor;
 pub mod source;
+pub mod source_metadata;
 pub mod texture_path;
 pub use texture_path::static_texture_path;
 

@@ -129,6 +129,9 @@ pub(super) fn sorted_environment_files(
             path: path.to_path_buf(),
             source,
         })?;
+        if pack_compile_input::source_metadata::is_source_metadata(&entry.path()) {
+            continue;
+        }
         let file_type = entry.file_type().map_err(|source| AssetError::Io {
             path: entry.path(),
             source,
@@ -236,5 +239,24 @@ mod tests {
             }
             .is_valid()
         );
+    }
+}
+
+#[cfg(test)]
+mod source_metadata_tests {
+    use super::*;
+
+    #[test]
+    fn metadata_is_ignored_but_invalid_real_json_is_retained() {
+        let root = tempfile::tempdir().unwrap();
+        let real = root.path().join("bamboo.json");
+        fs::write(&real, b"not JSON").unwrap();
+        fs::write(root.path().join("._bamboo.json"), [0, 5, 22, 7]).unwrap();
+        fs::write(root.path().join(".DS_Store"), b"Finder").unwrap();
+        assert_eq!(
+            sorted_environment_files(root.path(), ".json").unwrap(),
+            vec![real.clone()]
+        );
+        assert!(read_environment_json::<serde_json::Value>(&real).is_err());
     }
 }

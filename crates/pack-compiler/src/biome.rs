@@ -238,6 +238,9 @@ fn sorted_files(path: &Path, suffix: &str) -> Result<Vec<PathBuf>, AssetError> {
             path: path.to_path_buf(),
             source,
         })?;
+        if pack_compile_input::source_metadata::is_source_metadata(&entry.path()) {
+            continue;
+        }
         let file_type = entry.file_type().map_err(|source| AssetError::Io {
             path: entry.path(),
             source,
@@ -442,5 +445,28 @@ fn validate_climate(temperature: f32, downfall: f32) -> Result<(), AssetError> {
 fn invalid(detail: impl Into<Box<str>>) -> AssetError {
     AssetError::InvalidCompiledAssets {
         detail: detail.into(),
+    }
+}
+
+#[cfg(test)]
+mod source_metadata_tests {
+    use super::*;
+
+    #[test]
+    fn metadata_is_ignored_but_invalid_real_json_is_retained() {
+        let root = tempfile::tempdir().unwrap();
+        let real = root.path().join("bamboo.client_biome.json");
+        fs::write(&real, b"not JSON").unwrap();
+        fs::write(
+            root.path().join("._bamboo.client_biome.json"),
+            [0, 5, 22, 7],
+        )
+        .unwrap();
+        fs::write(root.path().join(".DS_Store"), b"Finder").unwrap();
+        assert_eq!(
+            sorted_files(root.path(), ".client_biome.json").unwrap(),
+            vec![real.clone()]
+        );
+        assert!(read_json::<serde_json::Value>(&real).is_err());
     }
 }

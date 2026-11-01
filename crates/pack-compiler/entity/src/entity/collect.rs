@@ -133,6 +133,9 @@ fn collect_directory(
         })?;
     entries.sort_by_key(std::fs::DirEntry::file_name);
     for entry in entries {
+        if pack_compile_input::source_metadata::is_source_metadata(&entry.path()) {
+            continue;
+        }
         let path = entry.path();
         let metadata = fs::symlink_metadata(&path).map_err(|source| AssetError::Io {
             path: path.clone(),
@@ -180,4 +183,36 @@ fn collect_directory(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod source_metadata_tests {
+    use super::*;
+
+    #[test]
+    fn nested_metadata_is_skipped_without_relaxing_extension_validation() {
+        let root = tempfile::tempdir().unwrap();
+        let nested = root.path().join("nested");
+        fs::create_dir(&nested).unwrap();
+        fs::write(nested.join("allay.json"), b"{}").unwrap();
+        fs::write(nested.join("._allay"), [0, 5, 22, 7]).unwrap();
+        fs::write(nested.join("._allay.json"), [0, 5, 22, 7]).unwrap();
+        fs::write(nested.join(".DS_Store"), b"Finder").unwrap();
+        let mut output = Vec::new();
+        collect_directory(root.path(), root.path(), &["json"], &mut output, 0, true).unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0].0.as_ref(), "nested/allay.json");
+        fs::write(nested.join("unsupported.txt"), b"not an entity").unwrap();
+        assert!(
+            collect_directory(
+                root.path(),
+                root.path(),
+                &["json"],
+                &mut Vec::new(),
+                0,
+                true
+            )
+            .is_err()
+        );
+    }
 }
