@@ -280,17 +280,20 @@ fn java_biome_tint(record: u32, coordinate: vec3<i32>, tint_kind: u32, flags: u3
     let count = biome_records[record + offset + 1u];
     if (count > JAVA_BIOME_SAMPLES || count * 2u > length - offset - 2u) { return vec4(0.0); }
     var sum = vec3(0u);
+    var alpha = 0.0;
     var total = 0u;
     for (var i=0u; i<count; i+=1u) {
         let index = biome_records[record + offset + 2u + i*2u];
         let weight = biome_records[record + offset + 3u + i*2u];
         if (weight > JAVA_BIOME_SAMPLES || total > JAVA_BIOME_SAMPLES - weight) { return vec4(0.0); }
-        let gamma = tint_to_gamma(tint_domain_colour(index, tint_kind, flags, world)).rgb;
+        let tint = tint_domain_colour(index, tint_kind, flags, world);
+        let gamma = tint_to_gamma(tint).rgb;
         sum += vec3<u32>(round(clamp(gamma, vec3(0.0), vec3(1.0))*255.0))*weight;
+        alpha += tint.a * f32(weight);
         total += weight;
     }
     if (total != JAVA_BIOME_SAMPLES) { return vec4(0.0); }
-    return tint_to_linear(vec4(vec3<f32>(sum / JAVA_BIOME_SAMPLES)/255.0, 1.0));
+    return tint_to_linear(vec4(vec3<f32>(sum / JAVA_BIOME_SAMPLES)/255.0, alpha / f32(JAVA_BIOME_SAMPLES)));
 }
 
 fn blended_biome_tint_at(tint_kind: u32, material_flags: u32, record: u32, local_position: vec3<f32>, world_origin: vec3<f32>, minimum: vec3<i32>) -> vec4<f32> {
