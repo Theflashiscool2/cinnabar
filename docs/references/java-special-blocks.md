@@ -236,3 +236,18 @@ report requires regeneration through `assetc java-physics`. The rebuilt client p
 held-input entry, authoritative teleport, negative-boundary entry, unload/revisit and
 reconnect with inspected software-Vulkan captures. End portal contact remains gated
 separately; arbitrary resource-pack reload and exact server-clock phase are unqualified.
+
+## Player-profile heads (preparation, not admitted)
+
+`java_profile` extracts 26.3 profile NBT, including list-shaped properties and compact
+names, checked with the original `InspectHeadProfile` codec probe. Absent profiles
+remain distinct from present profiles with nil UUIDs. Resource texture patches are
+still explicit gaps. `skull::skin` prepares head texels using the native size and alpha
+rules; legacy body limbs are not synthesized by this head-only helper.
+
+The shell's Java skin resolver validates texture properties and official texture URLs,
+upgrades HTTP, rejects redirects, bounds reads and supports cancellation. Its operational
+property/download budgets are provisional limits, not full resource parity. A host-owned
+bounded cache, per-instance skull texture selection and immutable atlas publication
+are still required. All 40 player-head states remain gated; these helpers alone are
+not player-head presentation or live-download acceptance.

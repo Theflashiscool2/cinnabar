@@ -317,3 +317,6 @@ mod tests {
         assert_eq!(skin.rgba8.as_slice(), original.as_ref());
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod java;

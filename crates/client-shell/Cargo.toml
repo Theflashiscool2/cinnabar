@@ -13,6 +13,7 @@ developer-control = ["dep:developer-control"]
 test-support = ["launcher/test-support", "launcher-host/test-support"]
 
 [dependencies]
+base64 = "0.22"
 bevy.workspace = true
 client-ui = { path = "../client-ui" }
 semantic-input = { path = "../input" }

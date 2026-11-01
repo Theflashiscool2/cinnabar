@@ -2721,6 +2721,7 @@ dependencies = [
 name = "client-shell"
 version = "0.1.31"
 dependencies = [
+ "base64",
  "ash",
  "assets",
  "bevy",

@@ -2315,3 +2315,8 @@ reason = "A door texture suffix in the existing provisional PBR name conversion.
 path = "tools/jsonui-editor/src/figma/convert/button.rs"
 literal = "locked"
 reason = "A button state name in the editor conversion contract, independent of pack asset identifiers."
+
+[[identifier_literal_exceptions]]
+path = "crates/render-model/src/block_entity/java_profile.rs"
+literal = "elytra"
+reason = "PlayerSkin.Patch codec field name in native Java profile NBT, not an item identity decision."

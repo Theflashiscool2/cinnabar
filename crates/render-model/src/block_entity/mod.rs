@@ -95,3 +95,5 @@ pub mod java_conduit;
 
 pub mod java_gateway;
 pub mod java_portal;
+
+pub mod java_profile;
