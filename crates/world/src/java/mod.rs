@@ -4,6 +4,7 @@ pub mod entities;
 pub mod hud;
 mod light;
 mod palette;
+pub mod piston;
 pub mod player;
 pub mod roster;
 mod store;

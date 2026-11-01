@@ -279,3 +279,18 @@ explicit provisional limits. Local head patches currently require 64x64 pixels.
 Additional service-discovered texture hosts, arbitrary pack ordering/reload, unusual
 resource sizes and translucent-alpha visual parity remain unqualified. No iOS,
 physical-iPhone, online-mode or Hypixel acceptance follows from the Linux evidence.
+
+## Moving pistons (incomplete)
+
+Received snapshot decoding, named-state/default-property resolution, the two-tick
+motion clock with client retirement grace, and native head/base model selection are
+implemented as domain components. An independent probe checks all six direction offsets
+against the pinned original client. Extension and source-retraction use different short-head
+thresholds; retracting sources retain a separate stationary extended base. Model-plan tests
+use the pinned registry, including partial-block properties and explicit unknown-state errors.
+
+These components are not yet connected to production rendering or block-event reconstruction.
+The 12-state audit gate remains. Runtime push/pull resolution, moved-model graphics admission,
+fractional GPU placement with native materials/animation, dynamic collision, authoritative
+finalization and graphical lifecycle acceptance still require implementation. Snapshot parsing
+alone is not moving-piston support; no piston visual or live acceptance is claimed.

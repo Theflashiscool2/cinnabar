@@ -53,3 +53,10 @@ against full-face shape identity. `ExportGatewayVertices.java` invokes the nativ
 BeaconRenderer through a capture-only SubmitNodeCollector for three clocks/scales and
 both beam materials. Its output feeds `CINNABAR_JAVA_GATEWAY_VERTICES`; these are CPU
 reference observations, not screenshots or live gameplay.
+
+`InspectMovingPiston.java` samples the real pinned entity's progress and offsets for
+six directions, extension/retraction and partial ticks, without a world or renderer.
+Compile with the verified reference classpath and run `InspectMovingPiston > motion.txt`;
+set `CINNABAR_JAVA_PISTON_MOTION` to that file for the simulation regression. Model-plan
+tests take `CINNABAR_JAVA_PISTON_BLOCKS` pointing to the verified pinned `blocks.json`.
+These are CPU behavior fixtures; they do not establish moving-piston rendering or gameplay.

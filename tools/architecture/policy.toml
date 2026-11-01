@@ -1439,6 +1439,8 @@ owners = [
     "crates/assets/src/registry/java/conduit.rs",
     "crates/assets/src/registry/java/portal.rs",
     "crates/assets/src/registry/java/gateway.rs",
+    # Pinned native piston renderer identities; registry-backed model-plan fixtures.
+    "crates/assets/src/registry/java/piston.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [
@@ -1459,6 +1461,11 @@ baselines = [
 path = "tools/devtool/src/startup.rs"
 literal = "mesa"
 reason = "Directory for the Mesa driver's isolated shader cache, independent of biome identifiers."
+
+[[identifier_literal_exceptions]]
+path = "crates/world/src/java/piston.rs"
+literal = "minecraft:air"
+reason = "Pinned PistonMovingBlockEntity loadAdditional default for an absent blockState in received NBT; no assets dependency or unknown-state fallback. Verified native snapshot probe."
 
 [[identifier_literal_exceptions]]
 path = "tools/cxb/src/project/local.rs"

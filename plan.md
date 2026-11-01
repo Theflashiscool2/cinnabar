@@ -86,7 +86,9 @@ foliage, and preserves unmodified textures when no callback is registered. Known
 invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
 and spatial grass modifiers remain gated. The integrated audit records 12 failing
-states in one group, with no omitted failures: moving pistons. Player-profile heads
+states in one group, with no omitted failures: moving pistons. Their snapshot/motion/model-plan
+components now have focused CPU coverage, but production event reconstruction and rendering
+remain unintegrated and explicitly gated. Player-profile heads
 now connect native defaults, public-resource resolution and immutable GPU publication;
 local/UUID/resource-patch offline presentation and lifecycle pass, while live public
 skin downloads and full pack behavior remain unqualified.

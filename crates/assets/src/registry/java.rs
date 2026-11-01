@@ -7,6 +7,7 @@ pub mod graphics;
 pub mod interaction;
 pub mod models;
 pub mod physics;
+pub mod piston;
 pub mod pot;
 pub mod selectors;
 pub mod skull;
@@ -129,6 +130,22 @@ impl BlockRegistry {
     pub fn state(&self, id: u32) -> Option<&BlockState> {
         self.states.get(id as usize)
     }
+    /// Resolves a named state, retaining the report's defaults for unspecified properties.
+    /// Unknown blocks, properties and values stay explicit rather than becoming air.
+    pub fn state_id(&self, name: &str, properties: &BTreeMap<String, String>) -> Option<u32> {
+        let default = self
+            .states
+            .iter()
+            .find(|s| s.name.as_ref() == name && s.is_default)?;
+        let mut wanted = default.properties.clone();
+        for (key, value) in properties {
+            *wanted.get_mut(key)? = value.clone();
+        }
+        self.states
+            .iter()
+            .position(|s| s.name.as_ref() == name && s.properties == wanted)
+            .and_then(|id| u32::try_from(id).ok())
+    }
     pub fn block_types(&self) -> Arc<[u32]> {
         Arc::clone(&self.block_ids)
     }
@@ -157,6 +174,29 @@ mod tests {
         assert_eq!(&*r.state(1).unwrap().name, "minecraft:test");
         assert_eq!(r.state(1).unwrap().properties["facing"], "south");
         assert!(r.state(2).is_none());
+        assert_eq!(r.state_id("minecraft:test", &BTreeMap::new()), Some(0));
+        assert_eq!(
+            r.state_id(
+                "minecraft:test",
+                &BTreeMap::from([("facing".into(), "south".into())])
+            ),
+            Some(1)
+        );
+        assert_eq!(
+            r.state_id(
+                "minecraft:test",
+                &BTreeMap::from([("facing".into(), "bad".into())])
+            ),
+            None
+        );
+        assert_eq!(
+            r.state_id(
+                "minecraft:test",
+                &BTreeMap::from([("bad".into(), "value".into())])
+            ),
+            None
+        );
+        assert_eq!(r.state_id("minecraft:missing", &BTreeMap::new()), None);
     }
     #[test]
     fn provenance_duplicate_ids_holes_and_bad_properties_are_rejected() {
