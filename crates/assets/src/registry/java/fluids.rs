@@ -1,5 +1,15 @@
-//! Version-pinned fluid/host facts, exported from native Java block states.
-use super::source::Error;
+//! Version-pinned fluid, host and light-transfer facts exported from native Java block states.
+use super::{models::Face, source::Error};
+pub mod optics;
+/// The report's face order, also used by fluid coverage. Schema 3 records and verifies it.
+pub const FACES: [Face; 6] = [
+    Face::West,
+    Face::East,
+    Face::Down,
+    Face::Up,
+    Face::North,
+    Face::South,
+];
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
@@ -14,6 +24,8 @@ pub enum Kind {
 #[derive(Clone, Debug, Deserialize)]
 pub struct State {
     pub id: u32,
+    #[serde(default)]
+    pub light: Option<optics::Optics>,
     pub kind: Kind,
     pub height: f32,
     pub falling: bool,
@@ -52,13 +64,24 @@ impl Table {
         #[derive(Deserialize)]
         struct Report {
             schema: u32,
+            #[serde(default)]
+            light_faces: Vec<Face>,
             states: Vec<State>,
         }
         let report: Report = serde_json::from_slice(bytes)?;
-        if report.schema != 2 || report.states.len() != count || count == 0 {
+        if !matches!(report.schema, 2 | 3)
+            || report.states.len() != count
+            || count == 0
+            || (report.schema == 3 && report.light_faces != FACES)
+        {
             return Err(Error::Model("Java fluid report schema/state count".into()));
         }
         for (id, state) in report.states.iter().enumerate() {
+            if (report.schema == 3 && state.light.is_none())
+                || state.light.as_ref().is_some_and(|l| !l.valid())
+            {
+                return Err(Error::Model("Java light facts invalid/missing".into()));
+            }
             if state.id as usize != id
                 || !state.height.is_finite()
                 || !(0. ..=1.).contains(&state.height)
@@ -74,6 +97,9 @@ impl Table {
             }
         }
         Ok(Self(report.states.into()))
+    }
+    pub fn has_lighting(&self) -> bool {
+        self.0.iter().all(|s| s.light.is_some())
     }
     pub fn state(&self, id: u32) -> Option<&State> {
         self.0.get(id as usize)

@@ -38,6 +38,7 @@ pub struct BlockRegistry {
     states: Box<[BlockState]>,
     digest: [u8; 32],
     block_ids: Arc<[u32]>,
+    names: BTreeMap<Arc<str>, std::ops::Range<usize>>,
 }
 #[derive(Deserialize)]
 struct Block {
@@ -109,7 +110,12 @@ impl BlockRegistry {
         let mut previous: Option<&str> = None;
         let mut block_id = 0;
         let mut block_ids = Vec::with_capacity(states.len());
-        for state in &states {
+        let mut names: BTreeMap<Arc<str>, std::ops::Range<usize>> = BTreeMap::new();
+        for (index, state) in states.iter().enumerate() {
+            names
+                .entry(Arc::clone(&state.name))
+                .and_modify(|r| r.end = index + 1)
+                .or_insert(index..index + 1);
             if previous != Some(&state.name) {
                 if !seen.insert(state.name.as_ref()) {
                     return Err(Error::Invalid("non-contiguous block states"));
@@ -125,6 +131,7 @@ impl BlockRegistry {
             states,
             digest,
             block_ids: block_ids.into(),
+            names,
         })
     }
     pub fn state(&self, id: u32) -> Option<&BlockState> {
@@ -133,18 +140,19 @@ impl BlockRegistry {
     /// Resolves a named state, retaining the report's defaults for unspecified properties.
     /// Unknown blocks, properties and values stay explicit rather than becoming air.
     pub fn state_id(&self, name: &str, properties: &BTreeMap<String, String>) -> Option<u32> {
-        let default = self
-            .states
+        let range = self.names.get(name)?.clone();
+        let states = &self.states[range.clone()];
+        let default = states
             .iter()
             .find(|s| s.name.as_ref() == name && s.is_default)?;
         let mut wanted = default.properties.clone();
         for (key, value) in properties {
             *wanted.get_mut(key)? = value.clone();
         }
-        self.states
+        states
             .iter()
             .position(|s| s.name.as_ref() == name && s.properties == wanted)
-            .and_then(|id| u32::try_from(id).ok())
+            .and_then(|id| u32::try_from(id + range.start).ok())
     }
     pub fn block_types(&self) -> Arc<[u32]> {
         Arc::clone(&self.block_ids)

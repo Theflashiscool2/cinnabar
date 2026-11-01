@@ -1,3 +1,4 @@
+mod local_light;
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 /// A worker publication must match both the dimension and this column revision.
@@ -27,6 +28,9 @@ pub struct Terrain {
     block_types: Option<Arc<[u32]>>,
     block_generations: BTreeMap<[i32; 3], u64>,
     block_entity_revisions: BTreeMap<[i32; 3], u64>,
+    pub pending_pistons: BTreeMap<[i32; 3], super::piston::Pending>,
+    light_changes: BTreeSet<[i32; 3]>,
+    pub pistons: BTreeMap<[i32; 3], super::piston::Moving>,
     pub center: Option<[i32; 2]>,
     pub radius: Option<u32>,
     pub ignored_nonresident_updates: u64,
@@ -139,6 +143,12 @@ impl Terrain {
             return false;
         }
         column.revision = self.next_revision();
+        self.pistons
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.pending_pistons
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.light_changes
+            .retain(|p| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         column.incarnation = column.revision;
         self.block_entity_revisions
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
@@ -151,6 +161,12 @@ impl Terrain {
         true
     }
     pub fn unload(&mut self, key: [i32; 2]) {
+        self.pistons
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.pending_pistons
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
+        self.light_changes
+            .retain(|p| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_entity_revisions
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.block_generations
@@ -190,10 +206,14 @@ impl Terrain {
         if old == Some(state) {
             return;
         }
+        self.light_changes.insert([x, y, z]);
         let same_type = self.block_types.as_ref().is_some_and(|types| {
             let before = old.and_then(|id| types.get(id.0 as usize));
             before.is_some() && before == types.get(state.0 as usize)
         });
+        if !same_type {
+            self.pistons.remove(&[x, y, z]);
+        }
         let revision = self.next_revision();
         let column = Arc::make_mut(self.columns.get_mut(&key).unwrap());
         let section = Arc::make_mut(&mut column.sections[local_y as usize / 16]);

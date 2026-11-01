@@ -2,6 +2,7 @@
 pub const BASE: &str = "minecraft:piston";
 pub const STICKY_BASE: &str = "minecraft:sticky_piston";
 pub const HEAD: &str = "minecraft:piston_head";
+pub const MOVING: &str = "minecraft:moving_piston";
 
 use serde::Deserialize;
 
@@ -93,6 +94,10 @@ struct Report {
     states: usize,
     max_push_depth: usize,
     runs: Vec<Run>,
+    #[serde(default)]
+    variants: Vec<Variant>,
+    #[serde(default)]
+    air: u32,
 }
 #[derive(Deserialize)]
 struct Run {
@@ -104,6 +109,8 @@ pub struct Table {
     states: usize,
     max_push_depth: usize,
     runs: Vec<Run>,
+    variants: Vec<Variant>,
+    pub air: u32,
 }
 impl Table {
     /// Reads the generated, compile-time pinned report. No new per-install runtime asset.
@@ -122,6 +129,8 @@ impl Table {
             states: r.states,
             max_push_depth: r.max_push_depth,
             runs: r.runs,
+            variants: r.variants,
+            air: r.air,
         })
     }
     pub fn state(&self, id: u32) -> Option<&Facts> {
@@ -139,6 +148,49 @@ impl Table {
     pub fn max_push_depth(&self) -> usize {
         self.max_push_depth
     }
+    pub fn variant(&self, id: u32) -> Option<&Variant> {
+        self.variants.iter().find(|v| v.id == id)
+    }
+    pub fn variants(&self) -> &[Variant] {
+        &self.variants
+    }
+    pub fn select(
+        &self,
+        kind: Kind,
+        facing: u8,
+        sticky: bool,
+        extended: bool,
+        short: bool,
+    ) -> Option<u32> {
+        self.variants
+            .iter()
+            .find(|v| {
+                v.kind == kind
+                    && v.facing == facing
+                    && v.sticky == sticky
+                    && v.extended == extended
+                    && v.short == short
+            })
+            .map(|v| v.id)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Kind {
+    Base,
+    Head,
+    Moving,
+}
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct Variant {
+    pub id: u32,
+    pub block: u32,
+    pub kind: Kind,
+    pub facing: u8,
+    pub sticky: bool,
+    pub extended: bool,
+    pub short: bool,
 }
 
 #[cfg(test)]

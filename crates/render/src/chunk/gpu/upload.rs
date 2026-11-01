@@ -604,6 +604,7 @@ pub(in crate::chunk) fn prepare_gpu_chunks(
         arena.allocations.insert(
             entity,
             ArenaAllocation {
+                models: Arc::clone(&instance.model_refs),
                 generation: instance.generation,
                 tint_identity: instance.tint_identity,
                 cube_range,

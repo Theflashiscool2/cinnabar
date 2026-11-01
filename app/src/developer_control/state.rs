@@ -412,6 +412,25 @@ pub(super) fn snapshot(world: &World) -> Value {
     });
     // Keep added diagnostics outside the large snapshot macro's expansion budget.
     snapshot["native_java"] = json!(world.get_resource::<crate::session::SessionController>().and_then(|c|c.native_java_world()).map(|state|json!({"generation":state.generation(),"phase":state.phase,"columns":state.terrain.len(),"terrain_payload_bytes":state.terrain.retained_payload_bytes(),"keepalives":state.keepalives,"teleport":state.teleport.map(|t|json!({"id":t.id,"revision":t.revision,"dimension_epoch":t.dimension_epoch,"position":t.motion.position,"velocity":t.motion.velocity,"yaw":t.motion.yaw,"pitch":t.motion.pitch})),"vitals":state.vitals,"deferred_packets":state.deferred_packets})));
+    snapshot["native_java_lighting"] = json!(
+        world
+            .get_resource::<crate::session::SessionController>()
+            .and_then(|c| c.native_java_world())
+            .map(|s| json!({
+                "pending":s.lighting.pending(),"waiting":s.lighting.waiting(),
+                "operations":s.lighting.operations,"changed_cells":s.lighting.changed,
+            }))
+    );
+    snapshot["native_java_pistons"] = json!(world.get_resource::<crate::session::SessionController>()
+        .and_then(|c| c.native_java_world()).map(|s| json!({
+            "moving": s.terrain.pistons.len(), "awaiting_authority": s.terrain.pending_pistons.len(),
+            "samples": s.terrain.pistons.iter().take(16).map(|(p,m)| json!({
+                "position":p,"state":m.state,"source":m.source,"extending":m.extending,
+                "previous":m.motion.progress(0.),"current":m.motion.progress(1.)
+            })).collect::<Vec<_>>(),
+            "solid_vertices": world.get_resource::<render_scene::posed_block::PosedBlocks>().map_or(0,|p|p.solid.len()),
+            "blend_vertices": world.get_resource::<render_scene::posed_block::PosedBlocks>().map_or(0,|p|p.blend.len()),
+        })));
     snapshot["native_java_movement"] = json!(
         world
             .get_resource::<crate::session::java_movement::Movement>()

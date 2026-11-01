@@ -62,7 +62,10 @@ public final class ExportFluids {
         Bootstrap.bootStrap();
         Set<String> flowBlockers = tag("minecraft:blocks_fluid_flow", new HashSet<>());
         JsonObject root = new JsonObject();
-        root.addProperty("schema", 2);
+        root.addProperty("schema", 3);
+        JsonArray lightFaceNames = new JsonArray();
+        for (Direction face : FACES) lightFaceNames.add(face.getSerializedName());
+        root.add("light_faces", lightFaceNames);
         JsonArray states = new JsonArray();
         for (BlockState state : Block.BLOCK_STATE_REGISTRY) {
             FluidState fluid = state.getFluidState();
@@ -80,6 +83,26 @@ public final class ExportFluids {
             entry.addProperty("overlay", state.getBlock() instanceof HalfTransparentBlock || state.getBlock() instanceof LeavesBlock);
             entry.addProperty("invisible", state.getRenderShape() == RenderShape.INVISIBLE);
             entry.addProperty("emission", state.getLightEmission());
+            JsonObject light = new JsonObject();
+            light.addProperty("dampening", state.getLightDampening());
+            JsonArray lightFaces = new JsonArray();
+            for (Direction direction : FACES) {
+                JsonArray rectangles = new JsonArray();
+                var faceShape = net.minecraft.world.level.lighting.LightEngine.getOcclusionShape(state, direction);
+                for (var box : faceShape.toAabbs()) {
+                    JsonArray rect = new JsonArray();
+                    switch (direction.getAxis()) {
+                        case X -> { rect.add(box.minY); rect.add(box.minZ); rect.add(box.maxY); rect.add(box.maxZ); }
+                        case Y -> { rect.add(box.minX); rect.add(box.minZ); rect.add(box.maxX); rect.add(box.maxZ); }
+                        case Z -> { rect.add(box.minX); rect.add(box.minY); rect.add(box.maxX); rect.add(box.maxY); }
+                    }
+                    rectangles.add(rect);
+                }
+                lightFaces.add(rectangles);
+            }
+            light.add("faces", lightFaces);
+            entry.add("light", light);
+
             JsonArray coverage = new JsonArray();
             for (Direction face : FACES) coverage.add(coverage(state, face));
             entry.add("occlusion", coverage);

@@ -18,6 +18,9 @@ pub struct BlockModels {
     geometry: BTreeMap<(Identifier, [u16; 3], bool), Arc<[Quad]>>,
 }
 impl BlockModels {
+    pub fn registry(&self) -> Arc<BlockRegistry> {
+        Arc::clone(&self.registry)
+    }
     pub fn cancelled(&self) -> bool {
         self.source.cancelled()
     }

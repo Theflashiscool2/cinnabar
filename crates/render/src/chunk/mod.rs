@@ -1,4 +1,5 @@
 use bevy::prelude::IntoScheduleConfigs;
+mod posed;
 use bevy::render::render_resource::ShaderType;
 use render_scene::chunk::{
     biome_record_byte_len, biome_record_is_fallback, chunk_origin, evaluate_model_witness_frame,

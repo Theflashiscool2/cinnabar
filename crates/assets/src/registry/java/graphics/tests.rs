@@ -269,3 +269,14 @@ fn batch_checks_stop_on_cancellation_instead_of_reporting_more_missing_features(
     assert!(!matches!(error, Error::ModelBatch(_)));
     assert!(error.to_string().contains("cancelled"));
 }
+
+#[test]
+fn moving_state_dispatches_to_posed_terrain_without_reading_an_ordinary_model() {
+    let report = br#"{"minecraft:moving_piston":{"properties":{"facing":["east"],"type":["sticky"]},"states":[{"id":0,"default":true,"properties":{"facing":"east","type":"sticky"}}]}}"#;
+    let registry = BlockRegistry::load(report, &format!("{:x}", Sha256::digest(report))).unwrap();
+    let mut models = BlockModels::new(Arc::new(registry), Box::new(Resources(BTreeMap::new())));
+    let graphics = compile(&mut models, [0], 256).unwrap();
+    assert_eq!(graphics.presentation(0), Some(Presentation::Piston));
+    assert!(graphics.select(0, [-16, 0, 15]).unwrap().is_empty());
+    assert!(graphics.templates.is_empty());
+}

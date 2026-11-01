@@ -42,6 +42,7 @@ mod java_heads;
 pub(crate) mod java_hud;
 pub(crate) mod java_interaction;
 pub(crate) mod java_movement;
+pub(crate) mod java_piston;
 pub(crate) mod java_render;
 pub(crate) mod java_special;
 mod startup;

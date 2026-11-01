@@ -6,7 +6,8 @@ use assets::registry::java::{
     graphics::Graphics,
 };
 
-const AIR: State = State {
+static AIR: State = State {
+    light: None,
     id: 0,
     kind: Kind::Empty,
     height: 0.,

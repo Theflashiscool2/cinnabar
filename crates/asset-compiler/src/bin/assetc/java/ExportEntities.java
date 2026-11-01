@@ -33,6 +33,7 @@ public final class ExportEntities {
     }
     static JsonObject pistonBlocks() {
         JsonArray runs = new JsonArray();
+        JsonArray variants = new JsonArray();
         JsonObject previous = null;
         int count = 0;
         for (var state : net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY) {
@@ -40,6 +41,20 @@ public final class ExportEntities {
             if (id != count++) throw new IllegalStateException("noncontiguous block state registry");
             boolean base = state.is(net.minecraft.world.level.block.Blocks.PISTON)
                 || state.is(net.minecraft.world.level.block.Blocks.STICKY_PISTON);
+            boolean head = state.is(net.minecraft.world.level.block.Blocks.PISTON_HEAD);
+            boolean moving = state.is(net.minecraft.world.level.block.Blocks.MOVING_PISTON);
+            if (base || head || moving) {
+                JsonObject variant = new JsonObject();
+                variant.addProperty("id", id);
+                variant.addProperty("block", BuiltInRegistries.BLOCK.getId(state.getBlock()));
+                variant.addProperty("kind", base ? "base" : head ? "head" : "moving");
+                variant.addProperty("facing", state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.FACING).get3DDataValue());
+                variant.addProperty("sticky", base ? state.is(net.minecraft.world.level.block.Blocks.STICKY_PISTON)
+                    : state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.PISTON_TYPE) == net.minecraft.world.level.block.state.properties.PistonType.STICKY);
+                variant.addProperty("extended", base && state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.EXTENDED));
+                variant.addProperty("short", head && state.getValue(net.minecraft.world.level.block.piston.PistonHeadBlock.SHORT));
+                variants.add(variant);
+            }
             JsonObject fact = new JsonObject();
             fact.addProperty("reaction", state.getPistonPushReaction().name());
             fact.addProperty("air", state.isAir());
@@ -60,6 +75,8 @@ public final class ExportEntities {
         out.addProperty("states", count);
         out.addProperty("max_push_depth", net.minecraft.world.level.block.piston.PistonStructureResolver.MAX_PUSH_DEPTH);
         out.add("runs", runs);
+        out.add("variants", variants);
+        out.addProperty("air", net.minecraft.world.level.block.Block.getId(net.minecraft.world.level.block.Blocks.AIR.defaultBlockState()));
         return out;
     }
     @SuppressWarnings("unchecked")

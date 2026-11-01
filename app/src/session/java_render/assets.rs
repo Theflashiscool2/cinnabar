@@ -115,14 +115,16 @@ impl Source for CancelSource {
 pub(super) fn load(
     root: PathBuf,
     columns: Vec<Arc<Column>>,
+    min_y: i32,
     biomes: Vec<BiomeAppearance>,
     cancel: Arc<AtomicBool>,
 ) -> Result<Prepared, String> {
-    load_inner(root, columns, biomes, cancel).map_err(|e| e.to_string())
+    load_inner(root, columns, min_y, biomes, cancel).map_err(|e| e.to_string())
 }
 fn load_inner(
     root: PathBuf,
     columns: Vec<Arc<Column>>,
+    min_y: i32,
     biomes: Vec<BiomeAppearance>,
     cancel: Arc<AtomicBool>,
 ) -> Result<Prepared, Box<dyn std::error::Error>> {
@@ -140,16 +142,17 @@ fn load_inner(
     if physics_bytes.len() as u64 != target::PHYSICS_REPORT_BYTES {
         return Err("Java physics report size does not match target manifest".into());
     }
-    let physics = Arc::new(assets::registry::java::physics::Table::load(
+    let physics = assets::registry::java::physics::Table::load(
         &physics_bytes,
         target::PHYSICS_REPORT_SHA256,
         target::BLOCK_STATE_COUNT,
-    )?);
+    )?;
     let report = read_input(&root, "blocks.json")?;
     if report.len() != target::BLOCK_REPORT_BYTES {
         return Err("Java block report size does not match target manifest".into());
     }
     let registry = Arc::new(BlockRegistry::load(&report, target::BLOCK_REPORT_SHA256)?);
+    let physics = Arc::new(physics.with_registry(Arc::clone(&registry))?);
     let jar = Jar::open(
         &root.join("client.jar"),
         target::CLIENT_ASSETS_SHA256,
@@ -190,12 +193,47 @@ fn load_inner(
             ..Default::default()
         });
     }
-    let states = columns
+    let mut states = columns
         .iter()
         .flat_map(|c| c.sections.iter())
         .flat_map(|s| (0..s.blocks.len()).filter_map(|i| s.blocks.get(i)))
         .map(|id| id.0)
         .collect::<BTreeSet<_>>();
+    let piston_facts = client_world::java::piston::facts()?;
+    states.extend(
+        piston_facts
+            .variants()
+            .iter()
+            .filter(|v| v.kind != assets::registry::java::piston::Kind::Moving)
+            .map(|v| v.id),
+    );
+    for column in &columns {
+        for entity in &column.block_entities {
+            let local_y = entity.position[1] - min_y;
+            let id = usize::try_from(local_y.div_euclid(16))
+                .ok()
+                .and_then(|y| column.sections.get(y))
+                .and_then(|section| {
+                    section.blocks.get(
+                        ((local_y.rem_euclid(16) << 8)
+                            | (entity.position[2].rem_euclid(16) << 4)
+                            | entity.position[0].rem_euclid(16)) as usize,
+                    )
+                });
+            if id
+                .and_then(|id| piston_facts.variant(id.0))
+                .is_some_and(|v| v.kind == assets::registry::java::piston::Kind::Moving)
+                && let Some(data) = entity.data.as_ref()
+            {
+                let snapshot = world::java::piston::Snapshot::read(data)?;
+                states.insert(
+                    registry
+                        .state_id(&snapshot.name, &snapshot.properties)
+                        .ok_or("unresolved Java piston snapshot model")?,
+                );
+            }
+        }
+    }
     let mut models = BlockModels::new(registry, Box::new(source));
     models.fluids = Some(load_fluids(&root)?);
     models.entity_models = Some(load_models(&root)?);

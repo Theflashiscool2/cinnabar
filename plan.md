@@ -85,10 +85,14 @@ Version-checked tint admission now handles foliage, stems, cauldron water and dr
 foliage, and preserves unmodified textures when no callback is registered. Known
 invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
-and spatial grass modifiers remain gated. The integrated audit records 12 failing
-states in one group, with no omitted failures: moving pistons. Their snapshot/motion/model-plan
-components now have focused CPU coverage, but production event reconstruction and rendering
-remain unintegrated and explicitly gated. Player-profile heads
+and spatial grass modifiers remain gated. The integrated default-asset audit now checks all
+35,723 states with zero failures and zero omitted failures; this is structural admission,
+not full rendering or gameplay parity. Native piston events, moving snapshots, contextual
+collision shapes and posed GPU submission are connected. Local lighting and static/posed
+publication handoffs prevent stale black or duplicated moving geometry. Controlled Linux
+offline vanilla tests cover motion, sticky pulls, boundaries, chunk loading during motion,
+position reuse, unload/revisit and reconnect. Entity pushing/carrying, custom-border
+reconstruction and iOS/online acceptance remain unqualified. Player-profile heads
 now connect native defaults, public-resource resolution and immutable GPU publication;
 local/UUID/resource-patch offline presentation and lifecycle pass, while live public
 skin downloads and full pack behavior remain unqualified.

@@ -23,6 +23,7 @@ pub mod motion_blur;
 pub mod nametag;
 pub mod panorama;
 pub mod particles;
+pub mod posed_block;
 pub mod primitive_shapes;
 pub mod readiness;
 pub mod runtime_profile;

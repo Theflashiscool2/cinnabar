@@ -124,6 +124,10 @@ pub(super) fn admit(
                 return Err("Java chunk geometry disagrees with admitted dimension");
             }
             state.decoded_chunks += 1;
+            state.lighting.arrived(&state.terrain, [chunk.x, chunk.z]);
+            if let Some(registry) = state.piston_registry.as_deref() {
+                super::piston::initialize(&mut state.terrain, registry, Some([chunk.x, chunk.z]))?;
+            }
         }
         wire::Packet::Light { x, z, light: l } => {
             state.terrain.update_light([x, z], light(l));
@@ -138,6 +142,13 @@ pub(super) fn admit(
                 kind,
                 data: data.map(nbt),
             });
+            if let Some(registry) = state.piston_registry.as_deref() {
+                super::piston::initialize(
+                    &mut state.terrain,
+                    registry,
+                    Some([position[0].div_euclid(16), position[2].div_euclid(16)]),
+                )?;
+            }
         }
         wire::Packet::BlockEvent {
             position,
@@ -145,6 +156,7 @@ pub(super) fn admit(
             action,
             value,
         } => {
+            super::piston::event(&mut state.terrain, position, block, action, value)?;
             state
                 .terrain
                 .set_block_event(position, block, action, value);
@@ -157,7 +169,10 @@ pub(super) fn admit(
                 state.block_updates += 1;
             }
         }
-        wire::Packet::Unload { x, z } => state.terrain.unload([x, z]),
+        wire::Packet::Unload { x, z } => {
+            state.terrain.unload([x, z]);
+            state.lighting.unloaded([x, z]);
+        }
         wire::Packet::Center { x, z } => state.terrain.center = Some([x, z]),
         wire::Packet::Radius(n) => state.terrain.radius = Some(n),
         wire::Packet::Biomes(chunks) => {

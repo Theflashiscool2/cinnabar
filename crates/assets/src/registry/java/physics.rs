@@ -29,7 +29,10 @@ pub struct State {
 }
 
 #[derive(Debug)]
-pub struct Table(Box<[State]>);
+pub struct Table {
+    states: Box<[State]>,
+    registry: Option<std::sync::Arc<super::BlockRegistry>>,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -109,16 +112,33 @@ impl Table {
         if !r.0.is_empty() {
             return Err(Error::Invalid("trailing bytes"));
         }
-        Ok(Self(states.into()))
+        Ok(Self {
+            states: states.into(),
+            registry: None,
+        })
+    }
+    /// Attaches the same verified native state registry for contextual block-entity shapes.
+    pub fn with_registry(
+        mut self,
+        registry: std::sync::Arc<super::BlockRegistry>,
+    ) -> Result<Self, Error> {
+        if registry.len() != self.states.len() {
+            return Err(Error::Invalid("context registry count"));
+        }
+        self.registry = Some(registry);
+        Ok(self)
+    }
+    pub fn registry(&self) -> Option<&super::BlockRegistry> {
+        self.registry.as_deref()
     }
     pub fn state(&self, id: u32) -> Option<&State> {
-        self.0.get(id as usize)
+        self.states.get(id as usize)
     }
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.states.len()
     }
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.states.is_empty()
     }
 }
 

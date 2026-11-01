@@ -27,6 +27,7 @@ fn key(v: &Variant) -> VariantKey {
 }
 /// Immutable catalog belonging to exactly one graphics-resource revision.
 pub struct Graphics {
+    pub registry: Arc<super::BlockRegistry>,
     pub runtime: Arc<RuntimeAssets>,
     states: BTreeMap<u32, State>,
     pub templates: BTreeMap<u32, Template>,
@@ -65,6 +66,8 @@ pub enum Presentation {
     Pot,
     Conduit,
     Portal,
+    /// Motion snapshots are extracted into canonical posed terrain, not ordinary chunk models.
+    Piston,
 }
 #[derive(Clone)]
 struct State {
@@ -147,6 +150,7 @@ pub fn compile(
         templates,
         models.fluids.clone(),
         models.block_types(),
+        models.registry(),
     )
 }
 /// An append-only catalog revision, valid only against its exact predecessor.
@@ -184,6 +188,7 @@ pub fn extend(
         templates,
         previous.fluid_facts.clone(),
         Arc::clone(&previous.block_types),
+        Arc::clone(&previous.registry),
     )?);
     let resources = crate::DrawResourceExtension::checked(
         Arc::clone(&previous.runtime),
@@ -234,6 +239,19 @@ fn append(
                     );
                     return Ok(());
                 }
+            }
+            if name.as_ref() == super::piston::MOVING {
+                // This state has no ordinary baked model. Its received/event-reconstructed
+                // snapshot owns the fractional geometry through the native posed-block pass.
+                admitted.insert(
+                    id,
+                    State {
+                        presentation: Presentation::Piston,
+                        selection: None,
+                        variants: BTreeMap::new(),
+                    },
+                );
+                return Ok(());
             }
             if let Some(chest) = super::special::Chest::from_state(
                 &state,
@@ -578,6 +596,7 @@ fn finish(
     templates: BTreeMap<u32, Template>,
     fluid_facts: Option<Arc<super::fluids::Table>>,
     block_types: Arc<[u32]>,
+    registry: Arc<super::BlockRegistry>,
 ) -> Result<Graphics, Error> {
     builder.finish_textures()?;
     let special_atlas = super::special::atlas(&builder.special_images)?;
@@ -602,6 +621,7 @@ fn finish(
     builder.overlay.texture_source_sizes.clear();
     builder.overlay.texture_source_grids.clear();
     Ok(Graphics {
+        registry,
         runtime,
         states,
         templates,

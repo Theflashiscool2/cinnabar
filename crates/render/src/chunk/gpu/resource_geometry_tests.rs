@@ -718,6 +718,7 @@ fn far_model_order_in_its_class_commits_without_a_sort_job() {
         .insert(
             identity.entity,
             ArenaAllocation {
+                models: Arc::from([]),
                 generation: gpu.generation,
                 tint_identity: gpu.tint_identity,
                 cube_range: None,
@@ -816,6 +817,7 @@ fn model_groups_app(
             .insert(
                 entity,
                 ArenaAllocation {
+                    models: Arc::from([]),
                     generation: gpu.generation,
                     tint_identity: gpu.tint_identity,
                     cube_range: None,

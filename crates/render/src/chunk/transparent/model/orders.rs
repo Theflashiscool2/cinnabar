@@ -506,6 +506,7 @@ mod tests {
             metadata_index: slot,
         };
         ArenaAllocation {
+            models: Arc::from([]),
             generation,
             tint_identity: gpu.tint_identity,
             cube_range: None,

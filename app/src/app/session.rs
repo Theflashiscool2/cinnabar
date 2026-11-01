@@ -2,6 +2,19 @@ use super::*;
 
 /// Orders transfer, failure recovery and acceptance completion after frame publication.
 pub(crate) fn configure_finish_system(app: &mut App) {
+    app.init_resource::<crate::session::java_piston::Clock>()
+        .init_resource::<render_scene::posed_block::PosedBlocks>()
+        .add_systems(
+            Update,
+            crate::session::java_piston::advance
+                .after(drive_session)
+                .before(crate::session::java_movement::update)
+                .in_set(ClientFrameSet::NetworkSend),
+        )
+        .add_systems(
+            Update,
+            crate::session::java_piston::update.after(crate::session::java_render::update),
+        );
     app.init_resource::<crate::session::java_special::Presentation>()
         .add_systems(
             Update,

@@ -89,7 +89,16 @@ pub fn collect(
                     .0;
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
                 match &state.collision {
-                    Collision::Dynamic => return Err(QueryError::Dynamic { id, position }),
+                    Collision::Dynamic => {
+                        let shape = super::piston::collision::shape(terrain, physics, position)
+                            .ok_or(QueryError::Dynamic { id, position })?;
+                        for bounds in shape {
+                            let bounds = translated(bounds, position.map(f64::from));
+                            if intersects(bounds, region) {
+                                boxes.push(bounds);
+                            }
+                        }
+                    }
                     Collision::Static(shape) => {
                         for bounds in shape {
                             let bounds = translated(*bounds, position.map(f64::from));

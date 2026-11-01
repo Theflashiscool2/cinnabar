@@ -659,6 +659,8 @@ pub(in crate::chunk) struct ChunkDepthLiquidIndirectBatches(
 
 #[derive(Clone)]
 pub(in crate::chunk) struct ArenaAllocation {
+    /// Immutable originals for temporary per-cell geometry replacement and restoration.
+    pub(in crate::chunk) models: Arc<[meshing::PackedModelRef]>,
     pub(in crate::chunk) generation: u64,
     pub(in crate::chunk) tint_identity: ChunkBiomeTintIdentity,
     pub(in crate::chunk) cube_range: Option<Range<u32>>,

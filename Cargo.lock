@@ -2721,9 +2721,9 @@ dependencies = [
 name = "client-shell"
 version = "0.1.31"
 dependencies = [
- "base64",
  "ash",
  "assets",
+ "base64",
  "bevy",
  "bridge",
  "chunk-pipeline",
@@ -2855,6 +2855,7 @@ dependencies = [
  "render-model",
  "serde_json",
  "sha2",
+ "sim",
  "simulation-clock",
  "test-alloc",
  "test-time",

@@ -182,7 +182,7 @@ test_support_features = ["test-support"]
 [[crates]]
 name = "client-world"
 path = "crates/client-world"
-allowed_dependencies = ["java-protocol", "simulation-clock", "actor-animation", "render-api", "render-model", "assets", "protocol", "world", "test-time", "protocol-ids", "inventory"]
+allowed_dependencies = ["java-protocol", "simulation-clock", "actor-animation", "render-api", "render-model", "assets", "protocol", "world", "sim", "test-time", "protocol-ids", "inventory"]
 forbidden_dependencies = ["asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "chunk-pipeline", "meshing", "bevy", "wgpu"]
 forbidden_transitive_dependencies = ["app", "cinnabar", "asset-compiler", "pack-compiler", "pack-compile-input", "pack-entity-compiler", "pack-font-compiler", "chunk-pipeline", "meshing", "ui", "json-ui", "render", "bevy", "bevy_*", "wgpu*"]
 

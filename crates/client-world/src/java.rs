@@ -6,6 +6,7 @@ mod hud;
 #[cfg(test)]
 mod interaction_tests;
 mod inventory;
+pub mod lighting;
 mod nbt;
 pub mod piston;
 pub mod player;
@@ -25,6 +26,8 @@ pub struct WorldState {
     generation: u64,
     dimension_epoch: u64,
     pub terrain: world::java::Terrain,
+    pub lighting: lighting::Engine,
+    piston_registry: Option<std::sync::Arc<assets::registry::java::BlockRegistry>>,
     pub entities: world::java::entities::Entities,
     pub players: world::java::roster::Roster,
     pub player_visual: world::java::entities::visual::Visual,
@@ -55,6 +58,18 @@ pub struct WorldState {
     pub deferred_types: std::collections::BTreeMap<String, u64>,
 }
 impl WorldState {
+    pub fn install_block_registry(
+        &mut self,
+        registry: std::sync::Arc<assets::registry::java::BlockRegistry>,
+    ) -> Result<(), &'static str> {
+        self.terrain.install_block_types(registry.block_types());
+        piston::initialize(&mut self.terrain, &registry, None)?;
+        self.piston_registry = Some(registry);
+        Ok(())
+    }
+    pub fn tick_pistons(&mut self) -> Result<(), &'static str> {
+        piston::tick(&mut self.terrain, self.piston_registry.as_deref())
+    }
     pub fn begin(&mut self, generation: u64) {
         *self = Self {
             generation,

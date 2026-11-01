@@ -2,8 +2,10 @@
 
 Scope: Java 26.3 / protocol 777, using the verified archives pinned in
 `crates/java-protocol/data/target.json`. Ordinary baked models, invisible blocks,
-fluids and native special submissions have distinct admission paths. Unsupported special
-renderers still produce grouped audit errors.
+fluids and native special submissions have distinct admission paths. The integrated
+default-asset audit checks all 35,723 states with zero failures/omissions, including the
+12 moving-piston states formerly gated. This establishes admission only. Runtime behavior
+and platform acceptance remain separate.
 
 ## Chests
 
@@ -130,11 +132,42 @@ right-click pose cycle confirmed by server state, waterlogging at a negative chu
 and authoritative removal/replacement. Unload/revisit and reconnect are checked separately.
 Arbitrary end-user pack reload, iOS and online-server acceptance remain unqualified.
 
-## Remaining special renderers
+## Moving pistons
 
-Moving pistons remain explicit failures (12 states). Player profiles, portals and gateways
-now have production dispatch; their validation limits are described separately.
-Storage or structural admission alone does not establish presentation.
+`client-world::java::piston` reconstructs ordered native block events using the pinned
+push reactions and structure resolver, before authoritative packets are coalesced.
+`world::java::piston` retains moved-state snapshots, block generations and native 20 Hz
+motion. Initial chunk data accepts the target codec's compact name or `id`/`properties`
+compound, alongside legacy saved compounds. Malformed or unresolved visible states fail
+explicitly. Missing neighbors await authoritative data; old events are never replayed over
+a newer chunk. Removal, replacement, unload and world/session changes retire old motion.
+
+`app::session::java_piston` selects the native base/head models and fractional placement.
+The posed GPU pass shares terrain materials, animation, tint, lighting and texture identity.
+Per-cell replacement masks suppress obsolete static models during motion; final authoritative
+cells remain posed until their current static mesh is acknowledged by the GPU uploader.
+Original face masks are restored, and resource identity fences reject obsolete submissions.
+Contextual collision uses the native physics report, independently of visual head geometry.
+
+Client lighting advances bounded local block/sky work using exported native dampening and
+occlusion faces; received server light arrays retain authority. The fluid report's schema 3
+adds these optics without changing fluid-state facts. Existing preparation rebuilds an old
+report from the verified pinned server; players do not run an exporter on their phones.
+
+| Capability | Automated evidence | Linux graphical offline vanilla | Remaining scope |
+| --- | --- | --- | --- |
+| All 12 moving-host states | Full 35,723-state admission audit | Real native session joins | iOS/online unqualified |
+| Events and motion | Ordering, missing-neighbor, generation and native offset fixtures | Six directions; normal and sticky/slab/glass/slime/honey cases | Custom border reconstruction |
+| Native collider shapes | 288 independently probed unions | Presentation checks only | Entity pushing/carrying and NOCLIP remain unimplemented |
+| Static/posed handoff | Replacement-mask regression and shader validation | Intermediate extension/retraction frames inspected | Hardware performance unqualified |
+| Lighting | Native face probes; addition/removal/occluder/boundary fixtures | Retracted face recovers without reload | Full terrain lighting parity remains separate |
+| Initial snapshots/lifecycle | Target compound, replacement and session fixtures | Mid-motion chunk load, negative/section boundaries, unload/revisit, position reuse, GUI disconnect/reconnect | Arbitrary user-pack reload unqualified |
+
+Tests use the verified Java 26.3/protocol 777 artifacts and original native probes under
+`tools/java-reference`. Server administrative commands prepare and power the controlled
+scenes; these are not client placement or combat tests. CPU fixtures, structural admission,
+software-rendered frames and physical iPhone/Hypixel acceptance are distinct evidence.
+
 
 ## Decorated pots
 

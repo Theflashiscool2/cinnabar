@@ -371,3 +371,28 @@ fn direct_terrain_unit_shaders_validate_with_and_without_msaa_cutout() {
         }
     }
 }
+
+#[test]
+fn moving_block_vertices_share_valid_native_material_programs() {
+    for definitions in [
+        &["MOVING_BLOCKS"][..],
+        &["MOVING_BLOCKS", "ALPHA_TO_COVERAGE"][..],
+        &["MOVING_BLOCKS", "PACKED_TERRAIN"][..],
+        &["MOVING_BLOCKS", "PACKED_TERRAIN", "ALPHA_TO_COVERAGE"][..],
+    ] {
+        let source = shader_source::standalone(include_str!("../../src/model.wesl"), definitions);
+        let module = naga::front::wgsl::parse_str(&source).expect("moving model shader parses");
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
+        )
+        .validate(&module)
+        .expect("moving model shader validates");
+        assert!(
+            module
+                .entry_points
+                .iter()
+                .any(|e| e.name == "vertex_moving")
+        );
+    }
+}

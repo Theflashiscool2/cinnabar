@@ -9,7 +9,7 @@ import render::material::{MaterialGpu, materials, positional_material_id, textur
 @if(ENHANCED_SHADOW)
 import render::enhanced::caster::caster_clip;
 import render::world_projection::{section_camera_offset, camera_offset_clip};
-import render::biome_tint::{blended_biome_tint, blended_biome_tint_gamma, blended_biome_tint_below};
+import render::biome_tint::{tint_domain_colour, blended_biome_tint, blended_biome_tint_gamma, blended_biome_tint_below};
 import render::lighting::{light_ao_factor, light_colour, material_ambient_occlusion, material_face_shade, tint_to_gamma, tint_to_linear, terrain_light_levels, terrain_light_colour};
 @if(ALPHA_TO_COVERAGE)
 import render::lighting::{CutoutSample, cutout_alpha_array, cutout_mix};
@@ -834,4 +834,52 @@ in: VertexOutput) {
         sampled = mix(sampled, sample_model_ref(in, in.next_texture, dx, dy), in.frame_blend);
     }
     if (in.visibility.x == 0u || ((in.material_flags & MATERIAL_ALPHA_CUTOUT_FLAG) != 0u && sampled.a < MODEL_ALPHA_THRESHOLD)) { discard; }
+}
+
+// Fractional moving blocks use canonical terrain materials and animation, not entity sprites.
+@if(MOVING_BLOCKS)
+struct MovingInput {
+    @location(0) origin: vec3<i32>,
+    @location(1) position: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+    @location(3) normal: vec3<f32>,
+    @location(4) material: u32,
+    @location(5) light: u32,
+    @location(6) flags: u32,
+    @location(7) biome: u32,
+}
+@if(MOVING_BLOCKS)
+@vertex
+fn vertex_moving(input: MovingInput) -> VertexOutput {
+    var out = invisible_vertex();
+    let material = materials(input.material);
+    let frame = animation_sample(material);
+    let world = vec3<f32>(input.origin) + input.position;
+    out.clip_position = camera_offset_clip(view.clip_from_world, view.world_position,
+        section_camera_offset(input.origin, input.position, view.world_position));
+    out.world_position = world;
+    out.world_origin = vec3<f32>(input.origin);
+    out.local_position = vec3(0.0);
+    out.normal = input.normal;
+    out.uv = input.uv;
+    out.current_texture = frame.current;
+    out.next_texture = frame.next;
+    out.frame_blend = frame.blend;
+    out.material_flags = material.flags;
+    out.visibility.x = MODEL_VISIBLE | MODEL_UNIT_TILE;
+    out.visibility.y = (input.flags & ~255u) | select(0u, 1u, (input.flags & 8u) != 0u);
+    out.native_light_levels = terrain_light_levels(input.light);
+    out.native_ao_face = material_face_shade(input.normal, false, material.flags);
+    out.lighting = light_colour(input.light) * out.native_ao_face;
+    let callback = input.flags & JAVA_TINT_MASK;
+    let kind = material.flags & 0x30u;
+    out.tint_gamma = stem_colour(material.flags);
+    if (callback == JAVA_TINT_REDSTONE) {
+        out.tint_gamma = JAVA_REDSTONE[(input.flags >> JAVA_POWER_SHIFT) & 15u];
+    } else if (callback == JAVA_TINT_LILY) {
+        out.tint_gamma = JAVA_LILY;
+    } else if (kind != 0u) {
+        out.tint_gamma = tint_to_gamma(tint_domain_colour(input.biome, kind, material.flags, input.origin)).rgb;
+    }
+    return out;
 }

@@ -58,6 +58,7 @@ impl ChunkRenderPlugin {
 impl Plugin for ChunkRenderPlugin {
     fn build(&self, app: &mut App) {
         install_atmosphere(app);
+        app.init_resource::<render_scene::posed_block::PosedBlocks>();
         app.init_resource::<render_scene::ChunkOcclusionCulling>()
             .add_plugins(bevy::render::extract_resource::ExtractResourcePlugin::<
                 render_scene::ChunkOcclusionCulling,
@@ -211,6 +212,7 @@ impl Plugin for ChunkRenderPlugin {
                     submit_presented_frame_probe.in_set(crate::device_poll::FrameSubmissions),
                 ),
             );
+        super::posed::install(app);
     }
 
     fn finish(&self, app: &mut App) {

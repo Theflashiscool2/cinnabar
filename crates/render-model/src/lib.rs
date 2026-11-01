@@ -23,6 +23,7 @@ pub mod java_animation;
 pub mod legacy_combat;
 mod nametag;
 pub mod panorama;
+pub mod posed_block;
 mod presentation;
 pub mod primitive_shapes;
 pub mod terrain_units;

@@ -87,7 +87,14 @@ impl Growth {
             self.completed += 1;
             return Ok(());
         }
-        let states = stream.missing_graphics();
+        let mut states = stream.missing_graphics();
+        states.extend(
+            terrain
+                .pistons
+                .values()
+                .map(|m| m.state)
+                .filter(|id| !stream.graphics().contains(*id)),
+        );
         if states.is_empty() {
             return Ok(());
         }

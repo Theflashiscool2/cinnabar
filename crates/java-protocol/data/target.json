@@ -59,8 +59,8 @@
   },
   "entity_facts_report": {
     "path": "data/entity-facts.json",
-    "bytes": 81210,
-    "sha256": "03b763c8490296a3c15d0d4897dd439aeb437141c452e7d7d915c54d2188f103",
+    "bytes": 91958,
+    "sha256": "f8005d6c684b3bec969b912bed448a3fffb9d3b3889ef05f2d6778ddf9758b89",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "metadata_schema": {
@@ -157,8 +157,8 @@
   },
   "fluid_render_report": {
     "path": "fluids.json",
-    "sha256": "78cb436c106c184d1dad8d34ae41e848a5ac99fff9cfd6f1226dfc6c65f14e18",
-    "bytes": 7617736,
+    "sha256": "7613010cf19ab6f8078995153239d2762f3b49ba30c6ec6e7cc08027708bb4de",
+    "bytes": 10852616,
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportFluids.java"
   }
 }

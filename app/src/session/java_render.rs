@@ -39,6 +39,8 @@ pub(crate) struct Presentation {
     opened: bool,
     next_generation: u64,
     uploaded: BTreeSet<[i32; 3]>,
+    mesh_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
+    resident_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
 }
 impl Default for Presentation {
     fn default() -> Self {
@@ -60,6 +62,8 @@ impl Default for Presentation {
             opened: false,
             next_generation: 0,
             uploaded: BTreeSet::new(),
+            mesh_keys: BTreeMap::new(),
+            resident_keys: BTreeMap::new(),
         }
     }
 }
@@ -69,6 +73,11 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    pub(super) fn cell_resident(&self, terrain: &world::java::Terrain, p: [i32; 3]) -> bool {
+        self.resident_keys
+            .get(&p.map(|n| n.div_euclid(16)))
+            .is_some_and(|key| terrain.is_current(key))
+    }
     pub(super) fn special_inputs(
         &self,
     ) -> Option<(Dimension, Arc<::assets::registry::java::graphics::Graphics>)> {
@@ -189,6 +198,13 @@ pub(crate) fn update(
     else {
         return;
     };
+    {
+        let state = &mut controller.java_world;
+        if let Err(error) = state.lighting.update(&mut state.terrain, 4096) {
+            presentation.failure = Some(error.into());
+            return;
+        }
+    }
     if let Some(policy) = unbound.as_mut() {
         policy.0 = controller.java.is_none();
     }
@@ -243,7 +259,9 @@ pub(crate) fn update(
             .name("java-assets".into())
             .spawn(move || {
                 let _ =
-                    sender.send(root.and_then(|root| assets::load(root, columns, biomes, cancel)));
+                    sender.send(root.and_then(|root| {
+                        assets::load(root, columns, dimension.min_y, biomes, cancel)
+                    }));
             })
             .expect("Java asset worker");
     }
@@ -253,6 +271,18 @@ pub(crate) fn update(
         p.pending = None;
         match result {
             Ok(prepared) => {
+                if let Err(error) =
+                    state.install_block_registry(Arc::clone(&prepared.graphics.registry))
+                {
+                    p.failure = Some(error.into());
+                    return;
+                }
+                if let Some(facts) = prepared.graphics.fluid_facts.as_ref() {
+                    if let Err(error) = state.lighting.install(Arc::clone(facts)) {
+                        p.failure = Some(error.into());
+                        return;
+                    }
+                }
                 state
                     .terrain
                     .install_block_types(Arc::clone(&prepared.graphics.block_types));
@@ -336,6 +366,7 @@ pub(crate) fn update(
             ) {
                 Ok(()) => {
                     p.uploaded.remove(&ready.section);
+                    p.mesh_keys.insert(ready.section, ready.key.clone());
                     p.published.insert(
                         ready.section,
                         (token.generation, token.dirty_since, nonempty),
@@ -378,6 +409,8 @@ pub(crate) fn update(
         ) {
             Ok(()) => {
                 p.published.remove(&section);
+                p.mesh_keys.remove(&section);
+                p.resident_keys.remove(&section);
                 p.uploaded.remove(&section);
             }
             Err(_) => {
@@ -388,13 +421,16 @@ pub(crate) fn update(
     }
     for ack in acknowledgements.drain() {
         let section = [ack.key.x, ack.key.y, ack.key.z];
-        if p.published
-            .get(&section)
-            .is_some_and(|(generation, since, nonempty)| {
-                *generation == ack.token.generation && *since == ack.token.dirty_since && *nonempty
-            })
+        if let Some((generation, since, nonempty)) = p.published.get(&section)
+            && *generation == ack.token.generation
+            && *since == ack.token.dirty_since
         {
-            p.uploaded.insert(section);
+            if *nonempty {
+                p.uploaded.insert(section);
+            }
+            if let Some(key) = p.mesh_keys.get(&section).cloned() {
+                p.resident_keys.insert(section, key);
+            }
         }
     }
     let spawn_ready = state.teleport.as_ref().is_some_and(|t| {

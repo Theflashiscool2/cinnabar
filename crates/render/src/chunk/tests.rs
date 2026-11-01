@@ -134,6 +134,7 @@ fn committed_transparent_state(
 
 fn retirement_test_allocation() -> ArenaAllocation {
     ArenaAllocation {
+        models: Arc::from([]),
         generation: 7,
         tint_identity: ChunkBiomeTintIdentity::new(2, 2),
         cube_range: Some(0..2),
