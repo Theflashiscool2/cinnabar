@@ -297,6 +297,7 @@ mod tests {
         missing.columns.remove(&[-2, -1]);
         assert!(matches!(record(&missing, -1), Err(Error::MissingBiome(_))));
         assert!(record(&s, -1).is_ok());
+        t.take_dirty();
         let neighbour = (**t.column([-2, -1]).unwrap()).clone();
         t.unload([-2, -1]);
         assert!(!t.is_current(&s.key));

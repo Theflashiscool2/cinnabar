@@ -252,8 +252,8 @@ Behavior references are the pinned client's `Variant`, `MultiPartModel`,
 `TextureSlots`, `CuboidModelElement`, `FaceBakery`, `BlockColors`,
 `AnimationMetadataSection`, `BiomeSpecialEffects` and `ColorMapColorUtil` classes.
 The Rust implementation is original; game class/source files are not distributed.
-Smooth Java AO/light interpolation, fluids, partial-face occlusion, nonuniform
-biome blending, spatial tint callbacks, per-face UV-region transparency classification,
+Smooth Java AO/light interpolation, partial-face occlusion, spatial grass modifiers,
+per-face UV-region transparency classification,
 variable-duration texture animation and server clock/weather presentation remain
 incomplete. Initial graphics preparation collects resident states. Subsequently missing
 states are typed mesh dependencies, not fatal errors or air. A cancellable worker

@@ -27,8 +27,10 @@ and uses the reference's quantized gamma vertex color; lily pads use the in-worl
 constant, separately from their item/default color. Colors multiply sampled pixels
 in the shaders rather than baking another quantization into the atlas. The shared
 native, enhanced and shaderpack model paths use the same callback selection.
-Nonuniform Java biome fields and biome grass modifiers remain gated separately;
-these bindings do not establish complete sampling, blending or resource-pack parity.
+Mixed Java biome fields use `meshing::java::biomes`: received spawn seed, authoritative
+quart palettes, native Voronoi selection and the default 5x5 horizontal colour blend.
+Its GPU record is separate from the Bedrock lattice. Biome grass modifiers remain
+explicitly gated; this does not establish complete resource-pack or blend-setting parity.
 
 Known empty terrain models are air, structure void, non-waterlogged barrier/light,
 and upper pitcher crop ages zero through two. Reference: `BarrierBlock`, `LightBlock`
@@ -51,6 +53,8 @@ properties. It skips with a named missing-fixture message when unavailable. It i
 neither a whole-registry audit nor rendered/live evidence. `make java-audit` remains
 the complete registry check when both pinned runtime files are prepared.
 
-Visual acceptance is pending: inspect foliage in contrasting biomes, all stem ages,
+Controlled offline Java 26.3 software-Vulkan rendering covers mixed-biome grass,
+foliage and water, live biome edits, and reconnect. Remaining visual acceptance:
+inspect all stem ages,
 cauldrons, petals, litter with biome override and fallback, and invisible-host
 collision. Repeat authoritative replacements, resource reload and reconnect.
