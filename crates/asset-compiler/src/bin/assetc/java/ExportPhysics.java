@@ -15,6 +15,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EndGatewayBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
@@ -26,6 +27,9 @@ public final class ExportPhysics {
     private static boolean specialCallbacks(Block block) {
         for (Class<?> type = block.getClass(); type != Block.class; type = type.getSuperclass()) {
             for (var method : type.getDeclaredMethods()) {
+                // 26.3 EndGatewayBlock.entityInside exits on the client. The server owns
+                // eligibility, cooldown and teleport; local travel must enter its empty shape.
+                if (type == EndGatewayBlock.class && method.getName().equals("entityInside")) continue;
                 if (CALLBACKS.contains(method.getName())) return true;
             }
         }

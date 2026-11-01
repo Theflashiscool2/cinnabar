@@ -224,6 +224,15 @@ updates from unrelated column changes. Generation retirement prevents animation 
 across position reuse or sessions. Clock phase is currently local; full native fog/time
 parity remain pending. Linux software-Vulkan offline vanilla captures verify the cube,
 spawn and authoritative cooldown beams, full/partial neighbor occlusion, removal and
-replacement. Native walking remains blocked by the dry-land contact gate before entry;
-teleport, boundary recovery, unload/revisit and reconnect acceptance are unfinished.
-This is an incomplete implementation checkpoint, not iOS/Hypixel qualification.
+replacement. Native held-input entry now receives the server teleport, including at a negative
+chunk boundary. Unload/revisit and reconnect retire and rebuild gateway presentation.
+These Linux controlled offline results do not qualify iOS/Hypixel.
+
+Gateway contact is server-owned in 26.3: `EndGatewayBlock.entityInside` returns on
+the client. The physics exporter excludes only that callback from unsupported local
+travel flags; all native collision shapes and other callback gates are retained. The
+server still decides eligibility, cooldown, destination and corrections. The corrected
+report requires regeneration through `assetc java-physics`. The rebuilt client passed
+held-input entry, authoritative teleport, negative-boundary entry, unload/revisit and
+reconnect with inspected software-Vulkan captures. End portal contact remains gated
+separately; arbitrary resource-pack reload and exact server-clock phase are unqualified.

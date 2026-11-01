@@ -87,8 +87,8 @@ invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
 and spatial grass modifiers remain gated. The integrated audit records 52 failing
 states in 3 groups, with no omitted failures: player-profile heads and moving pistons.
-Gateway rendering is integrated, but native entry remains blocked by the movement
-contact gate; lifecycle acceptance is unfinished. These require actual special-renderer integration, not empty-model
+Gateway rendering and server-owned entry have controlled offline acceptance, including
+negative-boundary entry, unload/revisit and reconnect. End portal contact remains gated. These require actual special-renderer integration, not empty-model
 admission. Incremental block-entity data and block events are now admitted through native
 terrain authority. Native chest, shulker, banner, decorated-pot, copper-statue and six fixed mob-head geometries use the shared GPU pass. Chest/shulker lids
 follow server events; shulker picking uses tick-based dynamic bounds. Banner pattern layers

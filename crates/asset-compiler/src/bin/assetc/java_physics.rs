@@ -241,6 +241,12 @@ mod tests {
             state("minecraft:scaffolding").collision,
             Collision::Dynamic
         ));
+        let gateway = state("minecraft:end_gateway");
+        assert!(!gateway.special_callbacks);
+        assert!(gateway.fluid_empty);
+        assert!(matches!(&gateway.collision, Collision::Static(boxes) if boxes.is_empty()));
+        // Client-side contact behavior remains gated for unimplemented blocks.
+        assert!(state("minecraft:end_portal").special_callbacks);
         assert!(state("minecraft:slime_block").special_callbacks);
         let water = state("minecraft:water");
         assert!(!water.is_air && !water.fluid_empty);

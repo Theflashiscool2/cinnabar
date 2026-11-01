@@ -23,7 +23,7 @@
   "server_url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
   "server_bytes": 62294556,
   "physics_report": {
-    "sha256": "1c8dc5bb0a37da2b117c35059f7460f0eb90bd6f62751d14c5c0db0779f4ced3",
+    "sha256": "d8fc90c03bca71f55ac8bf35782ca07c953aa245dad617398f3aa00e343e6f85",
     "bytes": 4790976,
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportPhysics.java",
     "path": "physics.bin"
