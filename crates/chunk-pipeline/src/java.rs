@@ -34,6 +34,7 @@ pub struct Metrics {
     pub completed: u64,
     pub obsolete: u64,
     pub waiting_light: u64,
+    pub waiting_biome: u64,
 }
 /// Mesh jobs capture immutable graphics. Missing states wait for a checked append-only extension;
 /// existing results remain valid because their resource addresses cannot change.
@@ -205,6 +206,9 @@ impl Stream {
                         self.waiting_graphics.insert(done.section, ids);
                     }
                 }
+                Err(Error::MissingBiome(_)) => {
+                    self.metrics.waiting_biome += 1;
+                }
                 Err(Error::MissingLight(_)) => {
                     self.metrics.waiting_light += 1;
                 }
@@ -250,7 +254,7 @@ impl Stream {
                 if cancel.load(Ordering::Acquire) {
                     return;
                 }
-                let result = uniform_biome(&snapshot, section[1]).and_then(|biome| {
+                let result = section_biome(&snapshot, section[1]).and_then(|biome| {
                     meshing::java::mesh(&snapshot, section[1], &graphics).map(|mesh| (mesh, biome))
                 });
                 if cancel.load(Ordering::Acquire) {
@@ -285,8 +289,8 @@ impl Stream {
         self.pending.len() + self.active.len() + self.ready.len() + self.waiting_graphics.len()
     }
 }
-/// Only a proven uniform native biome field bypasses Java's unimplemented Voronoi/blend path.
-fn uniform_biome(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecord, Error> {
+/// Uniform fields use a compact descriptor; mixed fields use native seeded sampling.
+fn section_biome(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecord, Error> {
     let mut uniform = None;
     for column in snapshot.columns.values() {
         for dy in -1..=1 {
@@ -299,7 +303,7 @@ fn uniform_biome(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecor
                     .ok_or_else(|| Error::Invalid("missing Java biome value".into()))?
                     .0;
                 if uniform.is_some_and(|old| old != id) {
-                    return Err(Error::Invalid("Nonuniform Java biome tinting needs the native Voronoi/blend implementation".into()));
+                    return meshing::java::biomes::record(snapshot, section_y);
                 }
                 uniform = Some(id);
             }

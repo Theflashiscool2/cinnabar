@@ -275,6 +275,22 @@ impl PackedBiomeRecord {
         &self,
         coordinate: [i32; 3],
     ) -> Option<[BiomeBlendSample; BLEND_SAMPLE_COUNT]> {
+        if let Some(cell) = self.java_cell(coordinate) {
+            let mut samples = [BiomeBlendSample {
+                tint_index: 0,
+                weight: 0.0,
+            }; BLEND_SAMPLE_COUNT];
+            for (sample, pair) in samples.iter_mut().zip(cell[2..].chunks_exact(2)) {
+                *sample = BiomeBlendSample {
+                    tint_index: pair[0],
+                    weight: pair[1] as f32 / crate::java::biomes::SAMPLES as f32,
+                };
+            }
+            return Some(samples);
+        }
+        if self.java_tint_indices().is_some() {
+            return None;
+        }
         self.blend_samples_at(coordinate, 0)
     }
 
@@ -290,6 +306,22 @@ impl PackedBiomeRecord {
             return None;
         }
         coordinate[1] -= 1;
+        if let Some(cell) = self.java_cell(coordinate) {
+            let mut samples = [BiomeBlendSample {
+                tint_index: 0,
+                weight: 0.0,
+            }; BLEND_SAMPLE_COUNT];
+            for (sample, pair) in samples.iter_mut().zip(cell[2..].chunks_exact(2)) {
+                *sample = BiomeBlendSample {
+                    tint_index: pair[0],
+                    weight: pair[1] as f32 / crate::java::biomes::SAMPLES as f32,
+                };
+            }
+            return Some(samples);
+        }
+        if self.java_tint_indices().is_some() {
+            return None;
+        }
         self.blend_samples_at(coordinate, -1)
     }
 
@@ -347,6 +379,7 @@ pub fn shader_source(source: &str) -> String {
         LATTICE_QUERY_POINTS,
         BIOME_QUERY_SIDE,
     );
+    constants.push_str(&format!("const JAVA_BIOME_MAGIC: u32 = {}u;\nconst JAVA_BIOME_CELLS: u32 = {}u;\nconst JAVA_BIOME_SAMPLES: u32 = {}u;\n", crate::java::biomes::MAGIC, crate::java::biomes::CELLS, crate::java::biomes::SAMPLES));
     constants.push_str(&format!(
         "const BIOME_WIDE_DESCRIPTOR_MAGIC: u32 = {}u;\nconst BIOME_WIDE_POINT_WORDS: u32 = {}u;\nconst BIOME_FRACTION_VEC4S: u32 = {}u;\nconst BIOME_STENCIL_SAMPLES: u32 = {}u;\n",
         super::biome::WIDE_DESCRIPTOR_MAGIC, WIDE_LATTICE_POINT_WORDS, BIOME_FRACTION_VEC4S, LATTICE_STENCIL_SAMPLES,

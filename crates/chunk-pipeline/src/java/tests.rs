@@ -123,17 +123,30 @@ fn queued_output_is_invalid_after_dimension_replacement_and_drop_cancels_workers
     assert!(cancel.load(Ordering::Acquire));
 }
 #[test]
-fn nonuniform_biomes_are_an_explicit_incomplete_feature() {
+fn mixed_biomes_require_received_seed_and_use_the_native_record() {
     let (mut terrain, _) = fixture();
+    let dimension = terrain.dimension().unwrap().clone();
+    let columns = terrain
+        .columns()
+        .map(|(p, c)| (p, (**c).clone()))
+        .collect::<Vec<_>>();
+    terrain.begin_seeded(dimension, 1234);
+    for (p, c) in columns {
+        terrain.replace(p, c);
+    }
     let mut palette = Palette::uniform(BiomeId(41), 64);
-    palette.set(63, BiomeId(3));
-    terrain.update_biomes([1, 1], vec![palette]);
+    palette.set(0, BiomeId(3));
+    terrain.update_biomes([0, 0], vec![palette]);
     let snapshot = Snapshot::capture(&terrain, [0, 0]).unwrap();
+    let record = section_biome(&snapshot, -1).unwrap();
+    assert_eq!(record.java_tint_indices(), Some([3, 41].as_slice()));
+    assert!(record.uniform_tint_index().is_none());
     assert!(
-        uniform_biome(&snapshot, -1)
-            .unwrap_err()
-            .to_string()
-            .contains("Voronoi")
+        record
+            .blend_samples([0, 0, 0])
+            .unwrap()
+            .iter()
+            .any(|s| s.tint_index == 3 && s.weight > 0.)
     );
 }
 

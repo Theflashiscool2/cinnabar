@@ -40,14 +40,17 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         .dimension_epoch
         .checked_add(1)
         .ok_or("Java dimension epoch overflow")?;
-    state.terrain.begin(domain::Dimension {
-        session: state.generation,
-        epoch: state.dimension_epoch,
-        name: spawn.world.clone(),
-        min_y,
-        height,
-        has_skylight,
-    });
+    state.terrain.begin_seeded(
+        domain::Dimension {
+            session: state.generation,
+            epoch: state.dimension_epoch,
+            name: spawn.world.clone(),
+            min_y,
+            height,
+            has_skylight,
+        },
+        spawn.hashed_seed,
+    );
     state
         .inventory
         .begin(state.generation, state.dimension_epoch);

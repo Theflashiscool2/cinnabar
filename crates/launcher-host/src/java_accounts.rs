@@ -103,9 +103,7 @@ impl Manager {
             return;
         };
         // Match Bedrock's validated Microsoft handoff, including the public one-time code.
-        let url = launcher::menu::sign_in::device_code_url(&prompt.user_code)
-            .unwrap_or_else(|| prompt.verification_uri.clone());
-        self.open_url(url);
+        self.open_url(sign_in_url(prompt));
     }
     pub fn open_registration(&self) {
         self.open_url("https://entra.microsoft.com/".into());
@@ -138,6 +136,10 @@ impl Manager {
             }
         });
     }
+}
+fn sign_in_url(prompt: &auth::DevicePrompt) -> String {
+    launcher::menu::sign_in::device_code_url(&prompt.user_code)
+        .unwrap_or_else(|| prompt.verification_uri.clone())
 }
 fn snapshot(root: &std::path::Path) -> View {
     let mut view = View::default();
@@ -311,6 +313,20 @@ async fn run(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn java_handoff_prefills_the_code_and_retains_manual_fallback() {
+        let mut prompt = java_protocol::auth::DevicePrompt {
+            verification_uri: "https://microsoft.com/devicelogin".into(),
+            user_code: "ABCD-EFGH".into(),
+            expires_in: 900,
+        };
+        assert_eq!(
+            super::sign_in_url(&prompt),
+            launcher::menu::sign_in::device_code_url("ABCD-EFGH").unwrap()
+        );
+        prompt.user_code = "bad&query=value".into();
+        assert_eq!(super::sign_in_url(&prompt), prompt.verification_uri);
+    }
     use super::*;
     #[test]
     fn public_application_setup_persists_without_account_credentials() {

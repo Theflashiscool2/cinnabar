@@ -20,6 +20,7 @@ pub struct ChangedRegion {
 #[derive(Debug, Default)]
 pub struct Terrain {
     dimension: Option<Dimension>,
+    biome_seed: Option<i64>,
     columns: BTreeMap<[i32; 2], Arc<Column>>,
     dirty: BTreeSet<[i32; 2]>,
     changed_regions: BTreeMap<[i32; 3], ChangedRegion>,
@@ -42,6 +43,14 @@ impl Terrain {
             dimension: Some(dimension),
             ..Self::default()
         };
+    }
+    /// Starts a dimension using the obfuscated biome seed received in Java's spawn packet.
+    pub fn begin_seeded(&mut self, dimension: Dimension, biome_seed: i64) {
+        self.begin(dimension);
+        self.biome_seed = Some(biome_seed);
+    }
+    pub fn biome_seed(&self) -> Option<i64> {
+        self.biome_seed
     }
     pub fn dimension(&self) -> Option<&Dimension> {
         self.dimension.as_ref()

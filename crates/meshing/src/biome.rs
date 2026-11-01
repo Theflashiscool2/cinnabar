@@ -57,9 +57,13 @@ pub struct BiomeBlendSample {
 }
 
 /// Absolute encoded-word ceiling for one self-contained halo record.
-pub const MAX_PACKED_BIOME_RECORD_WORDS: usize = DESCRIPTOR_WORDS
-    + super::biome_lattice::WIDE_LATTICE_WORDS
-    + BIOME_NEIGHBOUR_SLOT_COUNT * (1 + 2_048 + BLOCKS_PER_SUB_CHUNK);
+pub const MAX_PACKED_BIOME_RECORD_WORDS: usize = {
+    let bedrock = DESCRIPTOR_WORDS
+        + super::biome_lattice::WIDE_LATTICE_WORDS
+        + BIOME_NEIGHBOUR_SLOT_COUNT * (1 + 2_048 + BLOCKS_PER_SUB_CHUNK);
+    let java = crate::java::biomes::MAX_WORDS;
+    if bedrock > java { bedrock } else { java }
+};
 
 /// Maps a horizontal subchunk offset in `-1..=1` to the stable descriptor slot.
 #[must_use]
@@ -239,11 +243,17 @@ impl PackedBiomeRecord {
 
     #[must_use]
     pub fn bits_per_index(&self) -> u8 {
+        if self.java_tint_indices().is_some() {
+            return u32::BITS as u8;
+        }
         (self.center_payload()[0] & BITS_MASK) as u8
     }
 
     #[must_use]
     pub fn palette_len(&self) -> usize {
+        if let Some(indices) = self.java_tint_indices() {
+            return indices.len();
+        }
         ((self.center_payload()[0] >> PALETTE_LEN_SHIFT) & PALETTE_LEN_MASK) as usize
     }
 
@@ -263,6 +273,12 @@ impl PackedBiomeRecord {
     /// Missing slots use the zero-initialized vanilla biome sample.
     #[must_use]
     pub fn tint_index_at(&self, coordinate: [i32; 3]) -> Option<u32> {
+        if let Some(cell) = self.java_cell(coordinate) {
+            return Some(cell[0]);
+        }
+        if self.java_tint_indices().is_some() {
+            return None;
+        }
         let dx = coordinate[0].div_euclid(16);
         let dy = coordinate[1].div_euclid(16);
         let dz = coordinate[2].div_euclid(16);

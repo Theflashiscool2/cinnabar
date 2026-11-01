@@ -335,6 +335,10 @@ pub(crate) fn update(
                 .biome
                 .uniform_tint_index()
                 .is_some_and(|id| p.unsupported_tints.contains(&id))
+                || ready
+                    .biome
+                    .java_tint_indices()
+                    .is_some_and(|ids| ids.iter().any(|id| p.unsupported_tints.contains(id)))
             {
                 p.failure=Some("Java grass color modifiers need native spatial tinting; this world is not fully rendered".into());
                 continue;

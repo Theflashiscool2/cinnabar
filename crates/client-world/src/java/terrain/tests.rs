@@ -51,3 +51,15 @@ fn set_flag(state: &mut WorldState, flag: Option<Value>) {
         fields.remove("has_skylight");
     }
 }
+
+#[test]
+fn spawn_seed_is_retained_and_replaced_without_rehashing() {
+    let mut state = super::super::tests_support::state();
+    let mut spawn = state.bootstrap.as_ref().unwrap().world.spawn.clone();
+    spawn.hashed_seed = i64::MIN + 37;
+    begin(&mut state, &spawn).unwrap();
+    assert_eq!(state.terrain.biome_seed(), Some(spawn.hashed_seed));
+    spawn.hashed_seed = 91234;
+    begin(&mut state, &spawn).unwrap();
+    assert_eq!(state.terrain.biome_seed(), Some(91234));
+}

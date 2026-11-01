@@ -266,12 +266,42 @@ fn blended_biome_tint_below(tint_kind: u32, material_flags: u32, record: u32, lo
     return blended_biome_tint_at(tint_kind, material_flags, record, local_position - vec3(0.0,1.0,0.0), world_origin, vec3(0,-1,0));
 }
 
+// Java's default block-colour resolver averages a 5x5 horizontal block square in sRGB.
+// The CPU encodes exact seeded Voronoi selections and integer multiplicities, never Bedrock's lattice.
+fn java_biome_tint(record: u32, coordinate: vec3<i32>, tint_kind: u32, flags: u32, world: vec3<i32>) -> vec4<f32> {
+    let length = biome_records[record + 2u];
+    let palette = biome_records[record + 3u];
+    if (length < 4u || !biome_record_span_valid(record, length)) { return vec4(0.0); }
+    if (palette > length - 4u || JAVA_BIOME_CELLS > length - 4u - palette) { return vec4(0.0); }
+    let cell = u32(((coordinate.y + 1) * 16 + coordinate.z) * 16 + coordinate.x);
+    if (cell >= JAVA_BIOME_CELLS) { return vec4(0.0); }
+    let offset = biome_records[record + 4u + palette + cell];
+    if (offset > length || 2u > length - offset) { return vec4(0.0); }
+    let count = biome_records[record + offset + 1u];
+    if (count > JAVA_BIOME_SAMPLES || count * 2u > length - offset - 2u) { return vec4(0.0); }
+    var sum = vec3(0u);
+    var total = 0u;
+    for (var i=0u; i<count; i+=1u) {
+        let index = biome_records[record + offset + 2u + i*2u];
+        let weight = biome_records[record + offset + 3u + i*2u];
+        if (weight > JAVA_BIOME_SAMPLES || total > JAVA_BIOME_SAMPLES - weight) { return vec4(0.0); }
+        let gamma = tint_to_gamma(tint_domain_colour(index, tint_kind, flags, world)).rgb;
+        sum += vec3<u32>(round(clamp(gamma, vec3(0.0), vec3(1.0))*255.0))*weight;
+        total += weight;
+    }
+    if (total != JAVA_BIOME_SAMPLES) { return vec4(0.0); }
+    return tint_to_linear(vec4(vec3<f32>(sum / JAVA_BIOME_SAMPLES)/255.0, 1.0));
+}
+
 fn blended_biome_tint_at(tint_kind: u32, material_flags: u32, record: u32, local_position: vec3<f32>, world_origin: vec3<f32>, minimum: vec3<i32>) -> vec4<f32> {
     // Blend the block that owns the fragment, the domain `blend_samples` answers. Interpolated
     // positions leave the sub-chunk at face edges and in derivative helper lanes extrapolated
     // past the horizon; unclamped, their lattice index reads unrelated words as sample counts.
     let coordinate = clamp(vec3<i32>(floor(local_position)), minimum, vec3(BIOME_QUERY_SIDE - 1));
     let block_position = coordinate + vec3<i32>(world_origin);
+    if (biome_record_span_valid(record, 4u) && biome_records[record] == JAVA_BIOME_MAGIC) {
+        return java_biome_tint(record, coordinate, tint_kind, material_flags, block_position);
+    }
     if (!biome_record_span_valid(record, BIOME_DESCRIPTOR_WORDS)) { return tint_domain_colour(0u, tint_kind, material_flags, block_position); }
     if (!biome_descriptor_valid(biome_records[record])) { return tint_domain_colour(0u, tint_kind, material_flags, block_position); }
     let uniform_tint = biome_records[record + 1u];

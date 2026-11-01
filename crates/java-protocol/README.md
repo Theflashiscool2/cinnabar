@@ -311,8 +311,16 @@ playable support and the project's performance budgets remain incomplete.
 mesh buffers, sampling the server's separate sky/block light nibbles.
 `chunk-pipeline::java` bounds concurrent jobs/results, carries neighbor revision
 keys and rejects obsolete work. Unreceived neighbor columns remain pending until
-new authority arrives. Its uniform-biome path preserves the actual native registry index and
-fails explicitly when Java Voronoi/blend processing is required.
+new authority arrives. Its biome path preserves native registry indices. Spawn's already-obfuscated biome seed
+selects quart cells using Java 26.3's eight-corner Voronoi zoom; mixed sections carry a
+separate GPU record with exact 5x5 horizontal sample multiplicities and integer sRGB
+averaging (the default Java blend radius). Upper plants retain a below-section sample.
+Missing selected neighbour data waits for authority; arrival/removal/replacement invalidates
+publication through the existing halo revisions. No Bedrock lattice substitutes for Java
+sampling. Spatial grass modifiers remain explicitly unsupported; other Java blend-radius
+settings and arbitrary pack/live-platform qualification remain separate work.
+`tools/java-reference/ProbeBiomeZoom.java` produces the checked scalar selection oracle
+from the verified pinned server; its output is `meshing/src/java/biome-zoom-26.3.csv`.
 
 For CPU mesh acceptance, add `--client-assets CLIENT_JAR --compile-terrain` to the
 command above. Linux offline vanilla acceptance compiled five real state identities

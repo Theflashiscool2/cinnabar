@@ -13,6 +13,7 @@ use std::{
 use world::java::{Column, Dimension, PublicationKey};
 
 const HALO: i32 = 1;
+pub mod biomes;
 mod fluids;
 /// Sections whose cell/light halo intersects an authoritative changed region.
 /// Coalesced regions remain section-local; this never walks an unbounded world-volume box.
@@ -27,6 +28,7 @@ pub fn affected_sections(region: world::java::ChangedRegion) -> impl Iterator<It
 /// Immutable halo captured with the publication key. The caller rejects outdated results.
 pub struct Snapshot {
     pub dimension: Dimension,
+    pub biome_seed: Option<i64>,
     pub key: PublicationKey,
     pub columns: BTreeMap<[i32; 2], Arc<Column>>,
 }
@@ -44,6 +46,7 @@ impl Snapshot {
             .collect();
         Some(Self {
             dimension,
+            biome_seed: terrain.biome_seed(),
             key,
             columns,
         })
@@ -216,6 +219,7 @@ fn opposite(face: Face) -> Face {
 pub enum Error {
     Assets(AssetError),
     MissingLight([i32; 3]),
+    MissingBiome([i32; 3]),
     MissingGraphics(BTreeSet<u32>),
     Invalid(String),
 }
@@ -228,6 +232,7 @@ impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Assets(e) => e.fmt(f),
+            Self::MissingBiome(p) => write!(f, "Java biome not yet known at {p:?}"),
             Self::MissingLight(p) => write!(f, "Java light not yet known at {p:?}"),
             Self::MissingGraphics(ids) => write!(f, "Java states awaiting graphics: {ids:?}"),
             Self::Invalid(s) => f.write_str(s),
