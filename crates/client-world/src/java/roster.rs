@@ -53,13 +53,9 @@ pub(super) fn admit(state: &mut WorldState, packet: wire::Packet) -> bool {
 
 /// Java UUID.hashCode and floorMod choose the runtime-exported default skin table.
 fn default_skin(uuid: [u8; 16]) -> domain::DefaultSkin {
-    let hash = uuid
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .fold(0u32, |hash, word| hash ^ u32::from_be_bytes(*word)) as i32;
     let skins = java_protocol::target::DEFAULT_PLAYER_SKINS;
-    let skin = &skins[hash.rem_euclid(skins.len() as i32) as usize];
+    let skin =
+        &skins[domain::default_skin_index(uuid, skins.len()).expect("verified native skin table")];
     domain::DefaultSkin {
         texture: skin.texture.into(),
         slim: skin.slim,

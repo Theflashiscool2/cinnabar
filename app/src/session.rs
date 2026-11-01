@@ -38,6 +38,7 @@ mod java;
 mod join;
 use join::{attempt_connect, prepare_join};
 pub(crate) mod java_entities;
+mod java_heads;
 pub(crate) mod java_hud;
 pub(crate) mod java_interaction;
 pub(crate) mod java_movement;

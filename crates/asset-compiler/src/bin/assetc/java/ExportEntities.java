@@ -134,6 +134,9 @@ public final class ExportEntities {
             skins.add(entry);
         }
         facts.add("default_player_skins", skins);
+        facts.addProperty("default_player_skin_index", java.util.Arrays.asList(
+            (net.minecraft.world.entity.player.PlayerSkin[])defaults.get(null)
+        ).indexOf(net.minecraft.client.resources.DefaultPlayerSkin.getDefaultSkin()));
         JsonObject clothing = new JsonObject();
         for (var part : net.minecraft.world.entity.player.PlayerModelPart.values()) {
             clothing.addProperty(part.getId(), part.getMask());

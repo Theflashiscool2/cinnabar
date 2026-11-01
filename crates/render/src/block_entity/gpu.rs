@@ -58,6 +58,10 @@ use render_model::{
     BLOCK_ENTITY_VERTEX_WORDS, BLOCK_SELECTION_VERTICES_PER_EDGE, BlockEntityVertex,
 };
 
+#[path = "gpu/blended.rs"]
+mod blended;
+use blended::{queue_additive, queue_crack, queue_outline, queue_overlay, queue_translucent};
+
 #[path = "gpu/pipeline.rs"]
 mod pipeline;
 use pipeline::{BlockEntityPipeline, BlockEntityPipelineKey, PipelineMode};
@@ -126,6 +130,7 @@ fn install(app: &mut App) {
         .add_render_command::<Opaque3d, DrawSolidCommands>()
         .add_render_command::<Opaque3d, DrawPortalCommands>()
         .add_render_command::<Transparent3d, DrawOverlayCommands>()
+        .add_render_command::<Transparent3d, DrawTranslucentCommands>()
         .add_render_command::<Transparent3d, DrawOutlineCommands>()
         .add_render_command::<Transparent3d, DrawCrackCommands>()
         .add_render_command::<Transparent3d, DrawHighlightCommands>()
@@ -139,6 +144,7 @@ fn install(app: &mut App) {
                 (
                     queue_solid,
                     queue_overlay,
+                    queue_translucent,
                     queue_outline,
                     queue_crack,
                     queue_additive,
@@ -161,6 +167,7 @@ pub(crate) use shaderpack_source::shaderpack_block_entities;
 struct UploadedLists {
     solid: Arc<[BlockEntityVertex]>,
     overlay: Arc<[BlockEntityVertex]>,
+    translucent: Arc<[BlockEntityVertex]>,
     portal: Arc<[BlockEntityVertex]>,
     additive: Arc<[BlockEntityVertex]>,
     outline: Arc<[BlockEntityVertex]>,
@@ -178,6 +185,7 @@ impl UploadedLists {
     ) -> bool {
         Arc::ptr_eq(&self.solid, &frame.solid)
             && Arc::ptr_eq(&self.overlay, &frame.overlay)
+            && Arc::ptr_eq(&self.translucent, &frame.translucent)
             && Arc::ptr_eq(&self.portal, &frame.portal)
             && Arc::ptr_eq(&self.additive, &frame.additive)
             && self.crack.get(..cracks as usize) == Some(frame.crack.as_ref())
@@ -188,6 +196,7 @@ impl UploadedLists {
 pub(crate) struct BlockEntityGpu {
     solid: VertexList,
     overlay: VertexList,
+    translucent: VertexList,
     outline: VertexList,
     crack: VertexList,
     /// Prefix of the shared crack buffer containing damage faces, before selection highlights.
@@ -219,6 +228,7 @@ fn init_gpu(mut commands: Commands, render_device: Res<RenderDevice>) {
     commands.insert_resource(BlockEntityGpu {
         solid: VertexList::new(),
         overlay: VertexList::new(),
+        translucent: VertexList::new(),
         outline: VertexList::new(),
         crack: VertexList::new(),
         frame_crack_count: 0,
@@ -305,6 +315,7 @@ pub(crate) fn prepare_resources(
         gpu.view = None;
         gpu.solid.bind_group = None;
         gpu.overlay.bind_group = None;
+        gpu.translucent.bind_group = None;
         gpu.outline.bind_group = None;
         gpu.crack.bind_group = None;
         gpu.portal.bind_group = None;
@@ -340,6 +351,7 @@ pub(crate) fn prepare_resources(
     let BlockEntityGpu {
         solid,
         overlay,
+        translucent,
         outline,
         crack,
         portal,
@@ -358,6 +370,12 @@ pub(crate) fn prepare_resources(
         *frame_revision != frame.revision || !uploaded.matches_frame(&frame, *frame_crack_count);
     if frame_changed {
         for (list, previous, vertices, label) in [
+            (
+                &mut *translucent,
+                &mut uploaded.translucent,
+                &frame.translucent,
+                "native translucent entity vertices",
+            ),
             (
                 &mut *solid,
                 &mut uploaded.solid,
@@ -512,6 +530,7 @@ fn prepare_bind_groups(
     let Some(view_binding) = view_uniforms.uniforms.binding() else {
         gpu.solid.bind_group = None;
         gpu.overlay.bind_group = None;
+        gpu.translucent.bind_group = None;
         gpu.outline.bind_group = None;
         gpu.crack.bind_group = None;
         gpu.portal.bind_group = None;
@@ -525,6 +544,7 @@ fn prepare_bind_groups(
     if gpu.view_buffer_id != Some(view_buffer.id()) {
         gpu.solid.bind_group = None;
         gpu.overlay.bind_group = None;
+        gpu.translucent.bind_group = None;
         gpu.outline.bind_group = None;
         gpu.crack.bind_group = None;
         gpu.portal.bind_group = None;
@@ -534,6 +554,7 @@ fn prepare_bind_groups(
     let BlockEntityGpu {
         solid,
         overlay,
+        translucent,
         outline,
         crack,
         portal,
@@ -546,6 +567,7 @@ fn prepare_bind_groups(
     let Some(view) = view.as_ref() else {
         solid.bind_group = None;
         overlay.bind_group = None;
+        translucent.bind_group = None;
         outline.bind_group = None;
         crack.bind_group = None;
         portal.bind_group = None;
@@ -556,6 +578,7 @@ fn prepare_bind_groups(
     for (list, label) in [
         (solid, "block-entity solid bind group"),
         (overlay, "block-entity overlay bind group"),
+        (translucent, "native translucent entity bind group"),
         (outline, "block selection line bind group"),
         (crack, "block-entity crack bind group"),
         (portal, "portal bind group"),
@@ -664,174 +687,17 @@ fn queue_solid(
     }
 }
 
-fn queue_overlay(
-    pipeline_cache: Res<PipelineCache>,
-    mut pipeline: ResMut<BlockEntityPipeline>,
-    gpu: Res<BlockEntityGpu>,
-    mut phases: ResMut<ViewSortedRenderPhases<Transparent3d>>,
-    draw_functions: Res<DrawFunctions<Transparent3d>>,
-    views: Query<BlockEntityView>,
-) {
-    let draw_function = draw_functions.read().id::<DrawOverlayCommands>();
-    queue_blended(
-        &gpu.overlay,
-        PipelineMode::Overlay,
-        draw_function,
-        &pipeline_cache,
-        &mut pipeline,
-        &mut phases,
-        &views,
-        |_, _| false,
-    );
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    reason = "a queue system's render-world inputs"
-)]
-fn queue_outline(
-    pipeline_cache: Res<PipelineCache>,
-    mut pipeline: ResMut<BlockEntityPipeline>,
-    gpu: Res<BlockEntityGpu>,
-    mut phases: ResMut<ViewSortedRenderPhases<Transparent3d>>,
-    draw_functions: Res<DrawFunctions<Transparent3d>>,
-    views: Query<BlockEntityView>,
-    pack: render_scene::shaderpack::ShaderPackDrawnEffects,
-) {
-    let draw_function = draw_functions.read().id::<DrawOutlineCommands>();
-    queue_blended(
-        &gpu.outline,
-        PipelineMode::Outline,
-        draw_function,
-        &pipeline_cache,
-        &mut pipeline,
-        &mut phases,
-        &views,
-        |view, _| pack.replaces(view, |drawn| drawn.selection),
-    );
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    reason = "a queue system's render-world inputs"
-)]
-fn queue_crack(
-    pipeline_cache: Res<PipelineCache>,
-    mut pipeline: ResMut<BlockEntityPipeline>,
-    gpu: Res<BlockEntityGpu>,
-    mut phases: ResMut<ViewSortedRenderPhases<Transparent3d>>,
-    draw_functions: Res<DrawFunctions<Transparent3d>>,
-    views: Query<BlockEntityView>,
-    pack: render_scene::shaderpack::ShaderPackDrawnEffects,
-) {
-    // Check partition ranges when drawing, after this frame's vertex upload.
-    for highlight in [false, true] {
-        let functions = draw_functions.read();
-        let draw_function = if highlight {
-            functions.id::<DrawHighlightCommands>()
-        } else {
-            functions.id::<DrawCrackCommands>()
-        };
-        queue_blended(
-            &gpu.crack,
-            PipelineMode::Crack,
-            draw_function,
-            &pipeline_cache,
-            &mut pipeline,
-            &mut phases,
-            &views,
-            |view, _| {
-                pack.replaces(view, |drawn| {
-                    if highlight {
-                        drawn.selection
-                    } else {
-                        drawn.cracks
-                    }
-                })
-            },
-        );
-    }
-}
-
-fn queue_additive(
-    pipeline_cache: Res<PipelineCache>,
-    mut pipeline: ResMut<BlockEntityPipeline>,
-    gpu: Res<BlockEntityGpu>,
-    mut phases: ResMut<ViewSortedRenderPhases<Transparent3d>>,
-    draw_functions: Res<DrawFunctions<Transparent3d>>,
-    views: Query<BlockEntityView>,
-) {
-    let draw_function = draw_functions.read().id::<DrawAdditiveCommands>();
-    queue_blended(
-        &gpu.additive,
-        PipelineMode::Additive,
-        draw_function,
-        &pipeline_cache,
-        &mut pipeline,
-        &mut phases,
-        &views,
-        |_, _| false,
-    );
-}
-
-/// Queues `list` on every camera `skip` does not reject, given the view and whether it runs
-/// a shader pack (views whose pack draws the list itself).
-#[allow(
-    clippy::too_many_arguments,
-    reason = "one blended list's queue inputs and its view filter"
-)]
-fn queue_blended(
-    list: &VertexList,
-    mode: PipelineMode,
-    draw_function: DrawFunctionId,
-    pipeline_cache: &PipelineCache,
-    pipeline: &mut BlockEntityPipeline,
-    phases: &mut ViewSortedRenderPhases<Transparent3d>,
-    views: &Query<BlockEntityView>,
-    skip: impl Fn(Entity, bool) -> bool,
-) {
-    if list.count == 0 || list.bind_group.is_none() {
-        return;
-    }
-    for (view_entity, main_entity, view, extracted_camera, msaa, pack_view) in views {
-        if skip(view_entity, pack_view) {
-            continue;
-        }
-        let Some(phase) = phases.get_mut(&view.retained_view_entity) else {
-            continue;
-        };
-        let Ok(pipeline_id) = pipeline.variants.specialize(
-            pipeline_cache,
-            BlockEntityPipelineKey {
-                mode,
-                msaa: *msaa,
-                hdr: extracted_camera.hdr,
-            },
-        ) else {
-            continue;
-        };
-        crate::transparent_phase::add(
-            phase,
-            Transparent3d {
-                sorting_info: bevy::core_pipeline::core_3d::TransparentSortingInfo3d::AlwaysOnTop,
-                entity: (view_entity, *main_entity),
-                pipeline: pipeline_id,
-                draw_function,
-                // Blended layers hug opaque geometry; drawing them last is enough.
-                distance: 0.0,
-                batch_range: 0..1,
-                extra_index: PhaseItemExtraIndex::None,
-                indexed: false,
-            },
-        );
-    }
-}
-
 type DrawSolidCommands = (
     SetItemPipeline,
     crate::lighting::SetWorldLightmap,
     DrawList<SOLID>,
 );
+type DrawTranslucentCommands = (
+    SetItemPipeline,
+    crate::lighting::SetWorldLightmap,
+    DrawList<TRANSLUCENT>,
+);
+
 type DrawOverlayCommands = (
     SetItemPipeline,
     crate::lighting::SetWorldLightmap,
@@ -870,6 +736,7 @@ const PORTAL: u8 = 3;
 const ADDITIVE: u8 = 4;
 const OUTLINE: u8 = 5;
 const HIGHLIGHT: u8 = 6;
+const TRANSLUCENT: u8 = 7;
 
 /// Selects damage faces or selection faces from their shared upload.
 fn crack_vertices(count: u32, damage: u32, highlight: bool) -> Range<u32> {
@@ -891,19 +758,22 @@ impl<P: PhaseItem, const LIST: u8> RenderCommand<P> for DrawList<LIST> {
     type ItemQuery = ();
 
     fn render<'w>(
-        _item: &P,
+        item: &P,
         view: ROQueryItem<'w, '_, Self::ViewQuery>,
         _item_query: Option<ROQueryItem<'w, '_, Self::ItemQuery>>,
         gpu: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         let (gpu, coverage) = gpu;
+        // Shader packs currently receive only the solid and overlay lists. New native
+        // translucent heads must not disappear merely because those lists were replaced.
         if matches!(LIST, SOLID | OVERLAY) && coverage.blocks(view.2) {
             return RenderCommandResult::Skip;
         }
         let gpu = gpu.into_inner();
         let list = match LIST {
             OVERLAY => &gpu.overlay,
+            TRANSLUCENT => &gpu.translucent,
             OUTLINE => &gpu.outline,
             CRACK | HIGHLIGHT => &gpu.crack,
             PORTAL => &gpu.portal,
@@ -923,7 +793,16 @@ impl<P: PhaseItem, const LIST: u8> RenderCommand<P> for DrawList<LIST> {
         } else {
             list.count
         };
-        if LIST == OUTLINE {
+        if LIST == TRANSLUCENT {
+            let PhaseItemExtraIndex::IndirectParametersIndex { range, .. } = item.extra_index()
+            else {
+                return RenderCommandResult::Skip;
+            };
+            let range = range.start.min(count)..range.end.min(count);
+            if !range.is_empty() {
+                pass.draw(range, 0..1);
+            }
+        } else if LIST == OUTLINE {
             pass.draw(0..count, 0..1);
         } else {
             let _zone = bevy::log::info_span!("block_entity.submit_cull").entered();

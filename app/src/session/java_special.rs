@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use render_model::block_entity::java_chest::Model;
 use render_model::{
     BlockEntityArtworkPreparer, BlockEntityFrame, BlockEntityKind, BlockEntityLight,
-    BlockEntityScene, BlockEntitySubmission, PreparedBlockEntityArtwork, SceneClock,
+    BlockEntityScene, BlockEntitySubmission, SceneClock,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -16,7 +16,8 @@ use std::{
 };
 use world::java::{Dimension, Terrain};
 
-type Pending = crossbeam_channel::Receiver<([u8; 32], Result<PreparedBlockEntityArtwork, String>)>;
+mod artwork;
+use artwork::Pending;
 #[derive(Default, Resource)]
 pub(crate) struct Presentation {
     scope: Option<Dimension>,
@@ -33,6 +34,9 @@ pub(crate) struct Presentation {
     lids: BTreeMap<[i32; 3], (u64, f32)>,
     boxes: BTreeMap<[i32; 3], BoxMotion>,
     skulls: BTreeMap<[i32; 3], (u64, sim::java::skull::Motion)>,
+    heads: BTreeMap<[i32; 3], super::java_heads::Head>,
+    bound_base: Option<[u8; 32]>,
+    bound_skins: BTreeSet<String>,
     elapsed: std::time::Duration,
 }
 
@@ -222,6 +226,10 @@ pub(crate) fn advance(
     }
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Bevy world, resource-publication and scoped-cache system inputs"
+)]
 pub(crate) fn update(
     controller: Option<Res<super::SessionController>>,
     mut terrain_presentation: ResMut<super::java_render::Presentation>,
@@ -229,6 +237,9 @@ pub(crate) fn update(
     frame: Option<ResMut<render_scene::BlockEntityFrameResource>>,
     time: Res<Time<Real>>,
     view: Option<Res<client_presentation::local_player::LocalViewPose>>,
+    camera: Option<Res<client_presentation::local_player::CameraPose>>,
+    mut skins: Local<client_shell::player_skin::java::cache::Cache>,
+    mut profiles: Local<client_shell::player_skin::java::profiles::Cache>,
 ) {
     let Some(mut frame) = frame else {
         return;
@@ -238,7 +249,13 @@ pub(crate) fn update(
         .and_then(|c| c.java.as_ref())
         .and_then(|_| terrain_presentation.special_inputs());
     let p = &mut *presentation;
-    let Some((dimension, graphics)) = active else {
+    let Some((dimension, graphics)) = active.filter(|(d, _)| {
+        controller
+            .as_ref()
+            .is_some_and(|c| c.java_world.terrain.dimension() == Some(d))
+    }) else {
+        skins.scope(None);
+        profiles.scope(None);
         if p.scope.is_some() {
             *p = Presentation::default();
             frame.0 = BlockEntityFrame::default();
@@ -255,55 +272,6 @@ pub(crate) fn update(
     let Some(atlas) = graphics.special_atlas.as_ref() else {
         return;
     };
-    let identity = atlas.identity();
-    if let Some(receiver) = p.pending.as_ref() {
-        match receiver.try_recv() {
-            Ok((requested, result)) => {
-                p.pending = None;
-                if requested == identity {
-                    match result {
-                        Ok(artwork) => {
-                            p.scene.install_prepared_assets(&artwork);
-                            p.identity = Some(identity);
-                        }
-                        Err(error) => {
-                            terrain_presentation.special_failure(error);
-                            return;
-                        }
-                    }
-                }
-            }
-            Err(crossbeam_channel::TryRecvError::Disconnected) => {
-                p.pending = None;
-                terrain_presentation
-                    .special_failure("Java block-entity artwork worker stopped".into());
-                return;
-            }
-            Err(crossbeam_channel::TryRecvError::Empty) => {}
-        }
-    }
-    if p.identity != Some(identity) {
-        if p.pending.is_none() {
-            let atlas = Arc::clone(atlas);
-            let (sender, receiver) = crossbeam_channel::bounded(1);
-            p.pending = Some(receiver);
-            if let Err(error) = std::thread::Builder::new()
-                .name("java-special-artwork".into())
-                .spawn(move || {
-                    let prepared = BlockEntityArtworkPreparer::default()
-                        .prepare(&atlas)
-                        .ok_or_else(|| "Java block-entity atlas rejected by renderer".into());
-                    let _ = sender.send((identity, prepared));
-                })
-            {
-                p.pending = None;
-                terrain_presentation.special_failure(error.to_string());
-            }
-        }
-        // Never publish geometry against an atlas from an obsolete resource generation.
-        frame.0 = BlockEntityFrame::default();
-        return;
-    }
     if p.graphics
         .as_ref()
         .is_none_or(|old| !Arc::ptr_eq(old, &graphics))
@@ -311,6 +279,7 @@ pub(crate) fn update(
         p.columns.clear();
         p.banners.clear();
         p.pots.clear();
+        p.heads.clear();
         p.graphics = Some(Arc::clone(&graphics));
     }
     let controller = controller.as_ref().expect("active session");
@@ -321,6 +290,7 @@ pub(crate) fn update(
         .retain(|pos, _| resident.contains(&[pos[0].div_euclid(16), pos[2].div_euclid(16)]));
     p.pots
         .retain(|pos, _| resident.contains(&[pos[0].div_euclid(16), pos[2].div_euclid(16)]));
+    p.heads.retain(|pos, head| head.current(terrain, *pos));
     let mut budget = 4;
     for (key, column) in terrain.columns() {
         if p.columns
@@ -389,6 +359,28 @@ pub(crate) fn update(
                         );
                     }
                     chests.push((position, id.0));
+                } else if graphics
+                    .skulls
+                    .get(&id.0)
+                    .is_some_and(|s| s.shape == assets::registry::java::skull::Shape::Player)
+                {
+                    if !p.heads.contains_key(&position) {
+                        let data = column
+                            .block_entities
+                            .iter()
+                            .find(|e| e.position == position)
+                            .and_then(|e| e.data.as_ref());
+                        match super::java_heads::Head::new(terrain, position, data) {
+                            Ok(head) => {
+                                p.heads.insert(position, head);
+                            }
+                            Err(error) => {
+                                terrain_presentation.special_failure(error);
+                                return;
+                            }
+                        }
+                    }
+                    chests.push((position, id.0));
                 } else if let Some(state) = graphics.pots.get(&id.0) {
                     let data = column
                         .block_entities
@@ -434,6 +426,123 @@ pub(crate) fn update(
             }
         }
         p.columns.insert(key, (column.revision(), chests));
+    }
+    let queries = p.heads.values().filter_map(|h| h.query.clone()).collect();
+    profiles.update(
+        (dimension.session, dimension.epoch),
+        time.elapsed(),
+        &queries,
+    );
+    for head in p.heads.values_mut() {
+        head.resolve(&profiles);
+    }
+    let desired = p
+        .columns
+        .values()
+        .flat_map(|(_, positions)| positions.iter())
+        .filter_map(|(pos, _)| p.heads.get(pos).and_then(|h| h.texture.clone()))
+        .collect();
+    skins.update(
+        (dimension.session, dimension.epoch),
+        time.elapsed(),
+        &desired,
+    );
+    for (pos, head) in &mut p.heads {
+        head.report_failure(*pos, &skins, &profiles);
+    }
+    let images = skins.images(&desired);
+    let patches: Vec<_> = p
+        .columns
+        .values()
+        .flat_map(|(_, positions)| positions.iter())
+        .filter_map(|(pos, _)| p.heads.get(pos).and_then(|h| h.patch.clone()))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let keys: BTreeSet<_> = images
+        .keys()
+        .cloned()
+        .chain(patches.iter().map(super::java_heads::patch_key))
+        .collect();
+    use sha2::{Digest, Sha256};
+    let mut hash = Sha256::new()
+        .chain_update(atlas.identity())
+        .chain_update(skins.identity(&desired));
+    for key in &keys {
+        hash.update((key.len() as u64).to_be_bytes());
+        hash.update(key.as_bytes());
+    }
+    let identity: [u8; 32] = hash.finalize().into();
+    if p.pending.as_ref().is_some_and(|r| r.identity != identity) {
+        p.pending = None;
+    }
+    if let Some(receiver) = p.pending.as_ref() {
+        match receiver.try_recv() {
+            Ok((requested, result)) => {
+                p.pending = None;
+                if requested == identity {
+                    match result {
+                        Ok(artwork) => {
+                            p.scene.install_prepared_assets(&artwork);
+                            p.identity = Some(identity);
+                            p.bound_base = Some(atlas.identity());
+                            p.bound_skins = keys;
+                        }
+                        Err(error) => {
+                            terrain_presentation.special_failure(error);
+                            return;
+                        }
+                    }
+                }
+            }
+            Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                p.pending = None;
+                terrain_presentation
+                    .special_failure("Java block-entity artwork worker stopped".into());
+                return;
+            }
+            Err(crossbeam_channel::TryRecvError::Empty) => {}
+        }
+    }
+    if p.identity != Some(identity) {
+        if p.pending.is_none()
+            && let Some(lease) = artwork::Lease::acquire()
+        {
+            let atlas = Arc::clone(atlas);
+            let mut images = images.clone();
+            let (sender, receiver) = crossbeam_channel::bounded(1);
+            let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
+            p.pending = Some(Pending::new(receiver, Arc::clone(&cancel), identity));
+            if let Err(error) = std::thread::Builder::new()
+                .name("java-special-artwork".into())
+                .spawn(move || {
+                    let _lease = lease;
+                    let prepared =
+                        super::java_heads::prepare_patches(&mut images, &patches, &cancel)
+                            .and_then(|()| {
+                                BlockEntityArtworkPreparer::default()
+                                    .with_java_skins(&images)
+                                    .map_err(str::to_owned)
+                                    .and_then(|preparer| {
+                                        preparer.prepare(&atlas).ok_or_else(|| {
+                                            "Java block-entity atlas rejected by renderer".into()
+                                        })
+                                    })
+                            });
+                    if !cancel.load(std::sync::atomic::Ordering::Acquire) {
+                        let _ = sender.send((identity, prepared));
+                    }
+                })
+            {
+                p.pending = None;
+                terrain_presentation.special_failure(error.to_string());
+            }
+        }
+        // Never publish geometry against an atlas from an obsolete resource generation.
+        if p.bound_base != Some(atlas.identity()) {
+            frame.0 = BlockEntityFrame::default();
+            return;
+        }
     }
     let mut submissions = Vec::new();
     let mut alive = BTreeSet::new();
@@ -552,6 +661,10 @@ pub(crate) fn update(
                         kind: BlockEntityKind::JavaSkull(
                             render_model::block_entity::java_skull::Model {
                                 state: state.clone(),
+                                texture: p
+                                    .heads
+                                    .get(&position)
+                                    .map(|h| h.atlas_texture(&p.bound_skins)),
                                 animation: p
                                     .skulls
                                     .get(&position)
@@ -648,6 +761,10 @@ pub(crate) fn update(
         .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
     p.skulls
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
+    if let Some(camera) = camera {
+        p.scene
+            .set_camera_position(camera.transform().translation.to_array());
+    }
     frame.0 = p
         .scene
         .update(
@@ -682,6 +799,6 @@ impl Presentation {
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),
             "gateways":self.gateways.iter().take(16).map(|(pos,(generation,m))|serde_json::json!({"position":pos,"generation":generation,"beam":m.sample(0.,self.scope.as_ref().map_or(0,|d|d.min_y+d.height-1)).map(|b|serde_json::json!({"spawning":b.spawning,"height":b.height,"scale":b.scale}))})).collect::<Vec<_>>(),
-            "conduits":self.conduits.iter().take(16).map(|(pos,(_,m))|serde_json::json!({"position":pos,"active":m.shape.active,"hunting":m.shape.hunting,"frame_blocks":m.shape.frame_blocks})).collect::<Vec<_>>(),"cached_columns":self.columns.len(),"pots":self.pots.len(),"pot_wobble":self.pot_motion.iter().filter_map(|(pos,(_,m))|m.sample(0.).map(|w|serde_json::json!({"position":pos,"style":w.0,"progress":w.1}))).take(16).collect::<Vec<_>>(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
+            "conduits":self.conduits.iter().take(16).map(|(pos,(_,m))|serde_json::json!({"position":pos,"active":m.shape.active,"hunting":m.shape.hunting,"frame_blocks":m.shape.frame_blocks})).collect::<Vec<_>>(),"cached_columns":self.columns.len(),"player_heads":self.heads.len(),"bound_head_textures":self.bound_skins.len(),"pots":self.pots.len(),"pot_wobble":self.pot_motion.iter().filter_map(|(pos,(_,m))|m.sample(0.).map(|w|serde_json::json!({"position":pos,"style":w.0,"progress":w.1}))).take(16).collect::<Vec<_>>(),"banners":self.banners.len(),"skulls":self.skulls.len(),"statues":self.columns.values().flat_map(|(_,p)|p).filter(|(_,id)|self.graphics.as_ref().is_some_and(|g|g.statues.contains_key(id))).count(),"skull_phases":self.skulls.iter().take(16).map(|(pos,(generation,motion))|serde_json::json!({"position":pos,"generation":generation,"phase":motion.sample(0.)})).collect::<Vec<_>>(),"lids":self.lids.iter().take(16).map(|(pos,(generation,lid))|serde_json::json!({"position":pos,"generation":generation,"lid":lid})).collect::<Vec<_>>()})
     }
 }

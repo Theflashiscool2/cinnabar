@@ -8,10 +8,12 @@ pub struct Profile {
     pub id: Option<[u8; 16]>,
     pub name: Option<Box<str>>,
     pub textures: Option<Box<str>>,
+    pub has_properties: bool,
+    pub texture_patch: Option<Box<str>>,
 }
 impl Profile {
     /// Reads ResolvableProfile.CODEC's list-shaped properties without interpreting their
-    /// contents as local paths. Unsupported resource patches remain explicit until resolved.
+    /// contents as local paths. Resource identifiers are validated by the asset owner.
     pub fn from_block_entity(data: Option<&NbtValue>) -> Result<Self, &'static str> {
         let Some(data) = data else {
             return Ok(Self::default());
@@ -32,11 +34,13 @@ impl Profile {
         let NbtValue::Compound(profile) = profile else {
             return Err("Java 26.3 head profile compound expected");
         };
+        // Cape, elytra and arm-model patches do not change a placed head's geometry.
         for key in ["texture", "cape", "elytra", "model"] {
-            if profile.get(key).is_some() {
-                return Err("Java head skin patch requires resource resolution");
+            if profile.get(key).is_some() && profile.string(key).is_none() {
+                return Err("Java head skin patch must be a string");
             }
         }
+        let texture_patch = profile.string("texture").map(Box::from);
         let id = match profile.get("id") {
             None => None,
             Some(NbtValue::IntArray(words)) if words.len() == 4 => {
@@ -54,10 +58,12 @@ impl Profile {
             _ => return Err("Java head profile name must be a string"),
         };
         let mut textures = None;
+        let mut has_properties = false;
         if let Some(properties) = profile.get("properties") {
             let NbtValue::List(properties) = properties else {
                 return Err("Java 26.3 profile properties must be a list");
             };
+            has_properties = !properties.is_empty();
             for property in properties {
                 let NbtValue::Compound(property) = property else {
                     return Err("Java profile property compound expected");
@@ -81,6 +87,8 @@ impl Profile {
             id,
             name,
             textures,
+            has_properties,
+            texture_patch,
         })
     }
 }
@@ -133,7 +141,7 @@ mod tests {
         for (key, value) in [
             ("id", NbtValue::IntArray(vec![1, 2, 3])),
             ("properties", NbtValue::Compound(Default::default())),
-            ("texture", NbtValue::String("../../file".into())),
+            ("texture", NbtValue::Int(12)),
         ] {
             let mut p = NbtCompound::default();
             p.insert(key, value);

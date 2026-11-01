@@ -40,6 +40,8 @@ pub struct BlockEntityVertex {
 pub enum Layer {
     /// Alpha-tested and depth-writing.
     Solid,
+    /// Alpha-blended entity surfaces with depth writes (native Java player skins).
+    Translucent,
     /// Blended over the scene without writing depth.
     Overlay,
     /// Multiplies the scene (twice source times destination) without writing depth.
@@ -67,6 +69,7 @@ pub struct MeshBuilder {
     atlas_size: [f32; 2],
     pub solid: Vec<BlockEntityVertex>,
     pub overlay: Vec<BlockEntityVertex>,
+    pub translucent: Vec<BlockEntityVertex>,
     pub crack: Vec<BlockEntityVertex>,
     pub portal: Vec<BlockEntityVertex>,
     pub additive: Vec<BlockEntityVertex>,
@@ -87,6 +90,7 @@ impl MeshBuilder {
             atlas_size: [atlas_size[0] as f32, atlas_size[1] as f32],
             solid: Vec::new(),
             overlay: Vec::new(),
+            translucent: Vec::new(),
             crack: Vec::new(),
             portal: Vec::new(),
             additive: Vec::new(),
@@ -107,11 +111,12 @@ impl MeshBuilder {
             std::mem::take(&mut self.crack),
             std::mem::take(&mut self.portal),
             std::mem::take(&mut self.additive),
+            std::mem::take(&mut self.translucent),
         ];
         for layer in &mut layers {
             layer.clear();
         }
-        let [solid, overlay, crack, portal, additive] = layers;
+        let [solid, overlay, crack, portal, additive, translucent] = layers;
         let texture_name = std::mem::take(&mut self.texture_name);
         *self = Self {
             solid,
@@ -119,9 +124,24 @@ impl MeshBuilder {
             crack,
             portal,
             additive,
+            translucent,
             texture_name,
             ..Self::new(atlas_size)
         };
+    }
+
+    /// Native translucent quads sort far to near, preserving equal-distance layer order.
+    pub(super) fn sort_translucent(&mut self, eye: [f32; 3]) {
+        let quads = bytemuck::cast_slice_mut::<BlockEntityVertex, [BlockEntityVertex; 6]>(
+            &mut self.translucent,
+        );
+        let distance = |quad: &[BlockEntityVertex; 6]| {
+            let center = [0, 1, 2, 5].into_iter().fold(glam::Vec3::ZERO, |sum, i| {
+                sum + glam::Vec3::from_array(quad[i].position)
+            }) * 0.25;
+            center.distance_squared(glam::Vec3::from_array(eye))
+        };
+        quads.sort_by(|a, b| distance(b).total_cmp(&distance(a)));
     }
 
     /// Resolves a required model texture and records missing artwork without stopping emission.
@@ -230,6 +250,7 @@ impl MeshBuilder {
         let target = match layer {
             Layer::Solid => &mut self.solid,
             Layer::Overlay => &mut self.overlay,
+            Layer::Translucent => &mut self.translucent,
             Layer::Crack => &mut self.crack,
             Layer::Portal => &mut self.portal,
         };
@@ -269,7 +290,11 @@ impl MeshBuilder {
             actor_light: if self.actor_light == 0 {
                 0
             } else {
-                self.actor_light | BLOCK_ENTITY_CULL_BACK_FACES
+                if layer == Layer::Translucent {
+                    self.actor_light
+                } else {
+                    self.actor_light | BLOCK_ENTITY_CULL_BACK_FACES
+                }
             },
         };
         let [first, second, third, fourth] = [vertex(0), vertex(1), vertex(2), vertex(3)];
@@ -544,5 +569,40 @@ mod tests {
         }
         assert_eq!(builder.solid.len(), MAX_BLOCK_ENTITY_VERTICES);
         assert_eq!(builder.rejected_quads, 1);
+    }
+}
+
+#[cfg(test)]
+mod translucent_tests {
+    use super::*;
+    #[test]
+    fn translucent_quads_sort_by_center_and_preserve_ties() {
+        let mut mesh = MeshBuilder::new([64; 2]);
+        for (x, marker) in [(1., 1.), (8., 2.), (-8., 3.)] {
+            let vertex = BlockEntityVertex {
+                position: [x, 0., 0.],
+                uv: [marker, 0.],
+                ..Default::default()
+            };
+            mesh.translucent.extend([vertex; 6]);
+        }
+        mesh.sort_translucent([0.; 3]);
+        assert_eq!(
+            mesh.translucent
+                .chunks_exact(6)
+                .map(|q| q[0].uv[0])
+                .collect::<Vec<_>>(),
+            [2., 3., 1.]
+        );
+        mesh.sort_translucent([10., 0., 0.]);
+        assert_eq!(
+            mesh.translucent
+                .chunks_exact(6)
+                .map(|q| q[0].uv[0])
+                .collect::<Vec<_>>(),
+            [3., 1., 2.]
+        );
+        mesh.reset([64; 2]);
+        assert!(mesh.translucent.is_empty());
     }
 }

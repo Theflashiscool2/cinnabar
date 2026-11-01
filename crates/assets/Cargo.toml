@@ -9,6 +9,7 @@ publish = false
 platform-specific = ["macos", "windows"]
 reads = [
     "crates/java-protocol/data/target.json",
+    "crates/java-protocol/data/entity-facts.json",
     "assets/bedrock-target.json",
     "assets/cinnangles-five-bold-source.json",
     "assets/cinnangles-five-source.json",

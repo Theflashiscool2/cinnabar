@@ -68,23 +68,25 @@ impl PreviousFragments {
 #[derive(Debug)]
 pub(super) struct CachedSubmission {
     submission: BlockEntitySubmission,
-    start: [usize; 5],
+    start: [usize; 6],
     solid: Vec<BlockEntityVertex>,
     overlay: Vec<BlockEntityVertex>,
     crack: Vec<BlockEntityVertex>,
     portal: Vec<BlockEntityVertex>,
     additive: Vec<BlockEntityVertex>,
+    translucent: Vec<BlockEntityVertex>,
     rejected_quads: u64,
 }
 
 /// Counts the vertices already accepted in each draw layer before a submission.
-pub(super) fn vertex_counts(builder: &MeshBuilder) -> [usize; 5] {
+pub(super) fn vertex_counts(builder: &MeshBuilder) -> [usize; 6] {
     [
         builder.solid.len(),
         builder.overlay.len(),
         builder.crack.len(),
         builder.portal.len(),
         builder.additive.len(),
+        builder.translucent.len(),
     ]
 }
 
@@ -92,7 +94,7 @@ impl CachedSubmission {
     /// Copies only the vertices and rejected quads produced by this submission.
     pub(super) fn capture(
         submission: &BlockEntitySubmission,
-        start: [usize; 5],
+        start: [usize; 6],
         rejected_before: u64,
         builder: &MeshBuilder,
     ) -> Self {
@@ -104,6 +106,7 @@ impl CachedSubmission {
             crack: builder.crack[start[2]..].to_vec(),
             portal: builder.portal[start[3]..].to_vec(),
             additive: builder.additive[start[4]..].to_vec(),
+            translucent: builder.translucent[start[5]..].to_vec(),
             rejected_quads: builder.rejected_quads.saturating_sub(rejected_before),
         }
     }
@@ -127,13 +130,14 @@ impl CachedSubmission {
                     .all(|(count, length)| count + length <= MAX_BLOCK_ENTITY_VERTICES))
     }
 
-    fn lengths(&self) -> [usize; 5] {
+    fn lengths(&self) -> [usize; 6] {
         [
             self.solid.len(),
             self.overlay.len(),
             self.crack.len(),
             self.portal.len(),
             self.additive.len(),
+            self.translucent.len(),
         ]
     }
 
@@ -144,6 +148,7 @@ impl CachedSubmission {
         builder.crack.extend_from_slice(&self.crack);
         builder.portal.extend_from_slice(&self.portal);
         builder.additive.extend_from_slice(&self.additive);
+        builder.translucent.extend_from_slice(&self.translucent);
         builder.rejected_quads = builder.rejected_quads.saturating_add(self.rejected_quads);
     }
 }

@@ -134,3 +134,31 @@ impl Roster {
 
 #[cfg(test)]
 mod tests;
+
+/// Native UUID.hashCode and floorMod selection over the version-owned default skin table.
+/// No skin names or protocol-specific registry values are duplicated in the world owner.
+pub fn default_skin_index(uuid: [u8; 16], count: usize) -> Option<usize> {
+    let count = i32::try_from(count).ok().filter(|n| *n > 0)?;
+    let hash = uuid
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .fold(0u32, |hash, word| hash ^ u32::from_be_bytes(*word)) as i32;
+    Some(hash.rem_euclid(count) as usize)
+}
+
+#[cfg(test)]
+mod skin_index_tests {
+    use super::*;
+    #[test]
+    fn signed_uuid_hashes_use_native_floor_mod() {
+        // Independently invoked DefaultPlayerSkin.get(UUID) in InspectHeadProfile.
+        for (word, expected) in [(0u32, 0usize), (0x80000000, 16), (u32::MAX, 17)] {
+            let mut uuid = [0; 16];
+            uuid[..4].copy_from_slice(&word.to_be_bytes());
+            assert_eq!(default_skin_index(uuid, 18), Some(expected));
+        }
+        assert_eq!(default_skin_index([0; 16], 0), None);
+        assert_eq!(default_skin_index([0; 16], usize::MAX), None);
+    }
+}

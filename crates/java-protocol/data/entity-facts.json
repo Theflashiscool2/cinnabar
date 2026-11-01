@@ -2020,6 +2020,7 @@
       "model": "wide"
     }
   ],
+  "default_player_skin_index": 6,
   "player_model_parts": {
     "cape": 1,
     "jacket": 2,

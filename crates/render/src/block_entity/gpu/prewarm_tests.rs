@@ -54,6 +54,7 @@ fn block_entity_coverage_is_prewarmed_only_for_solid_cutouts() {
         for mode in [
             PipelineMode::Solid,
             PipelineMode::Overlay,
+            PipelineMode::Translucent,
             PipelineMode::Outline,
             PipelineMode::Crack,
             PipelineMode::Portal,
@@ -72,6 +73,24 @@ fn block_entity_coverage_is_prewarmed_only_for_solid_cutouts() {
                 .unwrap();
             assert!(ids.contains(&id));
             let descriptor = crate::queue_review_support::queued_descriptor(&mut cache, id);
+            if mode == PipelineMode::Translucent {
+                assert!(
+                    descriptor
+                        .depth_stencil
+                        .as_ref()
+                        .unwrap()
+                        .depth_write_enabled
+                        .unwrap()
+                );
+                assert_eq!(descriptor.primitive.cull_mode, None);
+                assert_eq!(
+                    descriptor.fragment.as_ref().unwrap().targets[0]
+                        .as_ref()
+                        .unwrap()
+                        .blend,
+                    Some(BlendState::ALPHA_BLENDING)
+                );
+            }
             assert_eq!(
                 descriptor.multisample.alpha_to_coverage_enabled,
                 msaa.samples() > 1 && mode == PipelineMode::Solid

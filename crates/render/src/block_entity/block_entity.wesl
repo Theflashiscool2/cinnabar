@@ -188,6 +188,19 @@ fn block_entity_overlay(input: VertexOutput) -> @location(0) vec4<f32> {
     return vec4(texel.rgb * input.color.rgb, alpha);
 }
 
+// Native entity_translucent retains alpha and the normal depth-writing state.
+@fragment
+fn block_entity_translucent(input: VertexOutput) -> @location(0) vec4<f32> {
+    let texel = textureSampleGrad(atlas, atlas_sampler, input.uv, dpdx(input.uv), dpdy(input.uv));
+    let alpha = texel.a * input.color.a;
+    if (alpha < 0.1 || input.facing < 0.0) { discard; }
+    if (input.actor_light != 0u) {
+        let gamma = tint_to_gamma(texel).rgb * input.color.rgb * input.native_lighting;
+        return tint_to_linear(vec4(actor_distance_fog(gamma,input.world_position,view.world_position),alpha));
+    }
+    return vec4(texel.rgb * input.color.rgb,alpha);
+}
+
 @fragment
 fn block_entity_additive(input: VertexOutput) -> @location(0) vec4<f32> {
     let gamma = input.color.rgb * input.native_lighting;

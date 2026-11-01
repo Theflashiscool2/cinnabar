@@ -192,6 +192,7 @@ pub struct BlockEntityFrame {
     pub dynamic_rgba8: Arc<[u8]>,
     pub solid: Arc<[BlockEntityVertex]>,
     pub overlay: Arc<[BlockEntityVertex]>,
+    pub translucent: Arc<[BlockEntityVertex]>,
     pub crack: Arc<[BlockEntityVertex]>,
     pub portal: Arc<[BlockEntityVertex]>,
     pub additive: Arc<[BlockEntityVertex]>,
@@ -223,6 +224,7 @@ impl BlockEntityAtlasImage {
 
 #[derive(Debug, Default)]
 pub struct BlockEntityScene {
+    camera_position: [f32; 3],
     atlas: Option<Arc<BlockEntityAtlas>>,
     image: Option<Arc<BlockEntityAtlasImage>>,
     prepared: Option<PreparedBlockEntityArtwork>,
@@ -247,6 +249,16 @@ pub struct BlockEntityScene {
 }
 
 impl BlockEntityScene {
+    /// Uses the collision-resolved render camera for translucent quad sorting.
+    pub fn set_camera_position(&mut self, eye: [f32; 3]) {
+        if self.camera_position != eye {
+            self.camera_position = eye;
+            if !self.frame.translucent.is_empty() {
+                self.reusable = None;
+            }
+        }
+    }
+
     /// Returns the artwork preparer for a join or reload worker.
     pub fn artwork_preparer(&self) -> BlockEntityArtworkPreparer {
         BlockEntityArtworkPreparer::new(&[])
@@ -453,6 +465,7 @@ impl BlockEntityScene {
         for crack in cracks {
             emit_crack(builder, atlas, crack);
         }
+        builder.sort_translucent(self.camera_position);
         self.rejected_quads = builder.rejected_quads;
         let dynamic_changed = self.frame.dynamic_revision != text.revision();
         self.frame = BlockEntityFrame {
@@ -466,6 +479,11 @@ impl BlockEntityScene {
             },
             solid: shared_layer(&self.frame.solid, &builder.solid, &mut self.buffers),
             overlay: shared_layer(&self.frame.overlay, &builder.overlay, &mut self.buffers),
+            translucent: shared_layer(
+                &self.frame.translucent,
+                &builder.translucent,
+                &mut self.buffers,
+            ),
             crack: shared_layer(&self.frame.crack, &builder.crack, &mut self.buffers),
             portal: shared_layer(&self.frame.portal, &builder.portal, &mut self.buffers),
             additive: shared_layer(&self.frame.additive, &builder.additive, &mut self.buffers),

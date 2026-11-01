@@ -92,6 +92,7 @@ fn reference_frame(
     for crack in cracks {
         emit_crack(&mut builder, atlas, crack);
     }
+    builder.sort_translucent(scene.camera_position);
     let rejected = builder.rejected_quads;
     (
         BlockEntityFrame {
@@ -106,6 +107,7 @@ fn reference_frame(
                 Arc::clone(&scene.frame.dynamic_rgba8)
             },
             solid: builder.solid.into(),
+            translucent: builder.translucent.into(),
             overlay: builder.overlay.into(),
             crack: builder.crack.into(),
             portal: builder.portal.into(),
@@ -130,6 +132,7 @@ fn assert_matches_reference(
     let (expected, rejected) = reference_frame(scene, clock, cracks, submissions);
     let frame = scene.update(clock, cracks, submissions);
     assert_eq!(frame.solid, expected.solid);
+    assert_eq!(frame.translucent, expected.translucent);
     assert_eq!(frame.overlay, expected.overlay);
     assert_eq!(frame.crack, expected.crack);
     assert_eq!(frame.portal, expected.portal);
@@ -372,7 +375,7 @@ fn assert_cached_fragment_capacity(
     };
     let mut original = MeshBuilder::new(atlas.size());
     emit(&mut original);
-    let fragment = CachedSubmission::capture(&submission, [0; 5], 0, &original);
+    let fragment = CachedSubmission::capture(&submission, [0; 6], 0, &original);
     let emitted = layer(&mut original).len();
     assert_ne!(emitted, 0);
     let mut fitting_prefix = MeshBuilder::new(atlas.size());

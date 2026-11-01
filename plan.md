@@ -85,8 +85,11 @@ Version-checked tint admission now handles foliage, stems, cauldron water and dr
 foliage, and preserves unmodified textures when no callback is registered. Known
 invisible models have narrow admission rules. Redstone power, lily-pad color and
 upper tall-plant tint callbacks are implemented; mixed-biome Java neighborhoods
-and spatial grass modifiers remain gated. The integrated audit records 52 failing
-states in 3 groups, with no omitted failures: player-profile heads and moving pistons.
+and spatial grass modifiers remain gated. The integrated audit records 12 failing
+states in one group, with no omitted failures: moving pistons. Player-profile heads
+now connect native defaults, public-resource resolution and immutable GPU publication;
+local/UUID/resource-patch offline presentation and lifecycle pass, while live public
+skin downloads and full pack behavior remain unqualified.
 Gateway rendering and server-owned entry have controlled offline acceptance, including
 negative-boundary entry, unload/revisit and reconnect. End portal contact remains gated. These require actual special-renderer integration, not empty-model
 admission. Incremental block-entity data and block events are now admitted through native

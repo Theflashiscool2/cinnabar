@@ -4,6 +4,7 @@ use super::{BlockState, source::Error};
 pub enum Shape {
     Cube,
     Human,
+    Player,
     Dragon,
     Piglin,
 }
@@ -27,6 +28,7 @@ impl Skull {
             "wither_skeleton_skull" | "wither_skeleton_wall_skull" => {
                 ("textures/entity/skeleton/wither_skeleton", Shape::Cube)
             }
+            "player_head" | "player_wall_head" => (defaults::unprofiled(), Shape::Player),
             "zombie_head" | "zombie_wall_head" => ("textures/entity/zombie/zombie", Shape::Human),
             "creeper_head" | "creeper_wall_head" => {
                 ("textures/entity/creeper/creeper", Shape::Cube)
@@ -77,3 +79,5 @@ impl Skull {
 }
 
 pub mod skin;
+
+pub mod defaults;

@@ -72,6 +72,46 @@ impl BlockEntityArtworkPreparer {
         self
     }
 
+    /// Builds a worker-owned snapshot of normalized Java head textures. Names are atlas
+    /// keys only, never filesystem paths. Always extend the original preparer so retired
+    /// resources are replaced rather than accumulated across profile revisions.
+    pub fn with_java_skins(
+        &self,
+        images: &std::collections::BTreeMap<String, Arc<assets::registry::java::textures::Image>>,
+    ) -> Result<Self, &'static str> {
+        use assets::registry::java::skull::skin::{PIXEL_BYTES, SIDE};
+        if images
+            .len()
+            .checked_mul(SIDE * SIDE)
+            .is_none_or(|area| area > (MAX_ATLAS_SIDE * MAX_ATLAS_SIDE) as usize)
+        {
+            return Err("Java head textures exceed atlas capacity");
+        }
+        let mut textures = self.textures.to_vec();
+        for (name, image) in images {
+            if image.width != SIDE as u32
+                || image.height != SIDE as u32
+                || image.rgba.len() != PIXEL_BYTES
+            {
+                return Err("normalized Java head texture expected");
+            }
+            if textures.iter().any(|t| t.name == *name) {
+                return Err("duplicate Java head atlas key");
+            }
+            textures.push(StaticTexture {
+                name: name.clone(),
+                width: SIDE as u32,
+                height: SIDE as u32,
+                rgba8: Arc::from(image.rgba.clone()),
+            });
+        }
+        Ok(Self {
+            textures: textures.into(),
+            heads: self.heads.clone(),
+            chalkboards: self.chalkboards.clone(),
+        })
+    }
+
     /// Snapshots startup board geometry for complete pack replacement and removal.
     pub(super) fn with_chalkboards(
         mut self,
@@ -232,5 +272,68 @@ mod tests {
             (carrier_height + 2 * 65) as f32
         );
         assert_eq!(prepared.atlas().texel("mob/2", 0, 0), Some([7; 4]));
+    }
+}
+
+#[cfg(test)]
+mod java_skin_tests {
+    use super::*;
+    #[test]
+    fn profile_pixels_replace_immutable_atlas_snapshots_without_retaining_old_images() {
+        let width = super::super::atlas::MIN_DYNAMIC_ATLAS_WIDTH;
+        let bytes = assets::encode_block_entity_catalog(
+            b"{}",
+            width,
+            1,
+            &vec![255; width as usize * 4],
+            &[],
+        )
+        .unwrap();
+        let carrier = assets::RuntimeBlockEntityAssets::decode(&bytes).unwrap();
+        let base = BlockEntityArtworkPreparer::default();
+        let first_pixels = [7, 5, 3, 255];
+        let image = |color: [u8; 4]| {
+            Arc::new(assets::registry::java::textures::Image {
+                width: 64,
+                height: 64,
+                rgba: color.repeat(64 * 64),
+            })
+        };
+        let first = base
+            .with_java_skins(&std::collections::BTreeMap::from([(
+                "fixture/profile".into(),
+                image(first_pixels),
+            )]))
+            .unwrap()
+            .prepare(&carrier)
+            .unwrap();
+        let second = base
+            .with_java_skins(&std::collections::BTreeMap::from([(
+                "fixture/profile".into(),
+                image([11, 13, 17, 255]),
+            )]))
+            .unwrap()
+            .prepare(&carrier)
+            .unwrap();
+        assert_eq!(
+            first.atlas().texel("fixture/profile", 0, 0),
+            Some(first_pixels)
+        );
+        assert_eq!(
+            second.atlas().texel("fixture/profile", 0, 0),
+            Some([11, 13, 17, 255])
+        );
+        assert_ne!(first.atlas().identity(), second.atlas().identity());
+        let cleared = base.prepare(&carrier).unwrap();
+        assert!(
+            cleared
+                .atlas()
+                .texture("fixture/profile", [64.; 2])
+                .is_none()
+        );
+        assert_eq!(
+            first.atlas().texel("fixture/profile", 0, 0),
+            Some(first_pixels)
+        );
     }
 }

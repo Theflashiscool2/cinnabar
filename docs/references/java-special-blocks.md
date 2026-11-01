@@ -105,8 +105,8 @@ DragonHeadModel and ModelPart in the verified target archive. The independent pr
 `tools/java-reference` compares all positions and UVs for four models, three rotations and
 three animation phases (36 cases), including mirrored dragon horns. A verified-asset fixture
 covers all 240 fixed-head states and six textures. These CPU checks are not visual acceptance. Linux software-Vulkan offline vanilla frames additionally inspected standing/wall mounts, native creative breaking, authoritative replacement, powered motion and frozen unpowered phases, a negative chunk boundary, unload/revisit and reconnect. The old skull join gate was reproduced before repair.
-Player-profile heads remain explicit unsupported states; a fixed mob texture is never used
-as a substitute for a player skin. End-user resource-pack reload is not yet qualified.
+Player-profile heads use the separate profile/resource path below; fixed mob textures do not
+substitute for player skins. End-user resource-pack reload is not yet qualified.
 
 ## Copper golem statues
 
@@ -132,9 +132,9 @@ Arbitrary end-user pack reload, iOS and online-server acceptance remain unqualif
 
 ## Remaining special renderers
 
-Player-profile heads,
-End gateway/portal and moving pistons still require native production integration.
-Their audited states remain explicit failures. Storage alone is not presentation.
+Moving pistons remain explicit failures (12 states). Player profiles, portals and gateways
+now have production dispatch; their validation limits are described separately.
+Storage or structural admission alone does not establish presentation.
 
 ## Decorated pots
 
@@ -237,17 +237,45 @@ held-input entry, authoritative teleport, negative-boundary entry, unload/revisi
 reconnect with inspected software-Vulkan captures. End portal contact remains gated
 separately; arbitrary resource-pack reload and exact server-clock phase are unqualified.
 
-## Player-profile heads (preparation, not admitted)
+## Player-profile heads
 
-`java_profile` extracts 26.3 profile NBT, including list-shaped properties and compact
-names, checked with the original `InspectHeadProfile` codec probe. Absent profiles
-remain distinct from present profiles with nil UUIDs. Resource texture patches are
-still explicit gaps. `skull::skin` prepares head texels using the native size and alpha
-rules; legacy body limbs are not synthesized by this head-only helper.
+All 40 floor/wall states have native dispatch. `java_profile` reads 26.3 profile NBT,
+including list properties, compact names and resource patches. The original
+`InspectHeadProfile` probe checks the native codec, default factory index, resource
+path conversion and authlib discovery schema. The generated default table supplies
+18 textures; an absent profile uses the native factory default, while a present nil
+UUID selects a different skin through the shared Java UUID hash.
 
-The shell's Java skin resolver validates texture properties and official texture URLs,
-upgrades HTTP, rejects redirects, bounds reads and supports cancellation. Its operational
-property/download budgets are provisional limits, not full resource parity. A host-owned
-bounded cache, per-instance skull texture selection and immutable atlas publication
-are still required. All 40 player-head states remain gated; these helpers alone are
-not player-head presentation or live-download acceptance.
+The app retains descriptors by block generation and entity receipt. Public profile
+and image requests share two bounded host workers, session cancellation and five-minute
+access expiry. Name/UUID resolution uses the pinned authlib service-discovery contract;
+texture properties use the official texture host over HTTPS without redirects or account
+tokens. Downloads normalize head pixels according to the native skin rules, including
+legacy opaque-hat clearing. Body limbs are not synthesized by this head-only helper.
+Resource-patch images preserve their alpha and read through the pinned Java archive.
+
+Worker-built immutable atlases publish only for the current world/resource request.
+A changed profile cannot draw a retired skin while its replacement is pending. The GPU
+uses native-style translucent head/hat geometry with alpha cutoff, depth writes, no backface
+culling, camera sorting and bounded visible draw ranges. Existing cutout models retain
+their material behavior. CPU fixtures check native vertices/UVs, all floor rotations,
+wall mounts, layer sorting, removal, immutable pixels and obsolete-session cancellation.
+
+Controlled offline vanilla 26.3 on Linux Xvfb/lavapipe inspected default/UUID-selected
+skins, Steve/Alex/zombie resource patches, four wall directions, authoritative profile
+changes, removal/replacement, negative chunk-boundary updates, unload/revisit, reconnect
+and atlas extension by a newly admitted dragon head. Scene construction and camera
+teleports were server administrative actions. Disconnect used the normal native menu
+handler. Earlier initial captures lacked visible heads; subsequent ready frames and
+reconnect passed. Cold-start readiness timing is not qualified by these results.
+
+The full structural audit now reports 12 moving-piston failures in one group, with zero
+omitted failures. This is not complete terrain or gameplay qualification. Live public
+profile/skin downloads remain unvalidated because the discovery/texture services are
+outside this environment's network allowlist. HTTP parsing fixtures and local patch
+images do not establish successful downloads. The image working set is 64 MiB, request
+properties/JSON have a 64 KiB budget, and PNG downloads have a 4 MiB budget; these are
+explicit provisional limits. Local head patches currently require 64x64 pixels.
+Additional service-discovered texture hosts, arbitrary pack ordering/reload, unusual
+resource sizes and translucent-alpha visual parity remain unqualified. No iOS,
+physical-iPhone, online-mode or Hypixel acceptance follows from the Linux evidence.

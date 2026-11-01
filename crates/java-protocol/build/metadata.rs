@@ -89,6 +89,9 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
         *code += &format!("DefaultPlayerSkin {{ texture: {texture:?}, slim: {slim} }},\n");
     }
     *code += "];\n";
+    let default_skin = facts["default_player_skin_index"].as_u64().unwrap() as usize;
+    assert!(default_skin < skins.len());
+    *code += &format!("pub const DEFAULT_PLAYER_SKIN_INDEX: usize = {default_skin};\n");
     let mut clothing_masks = std::collections::BTreeSet::new();
     for (name, mask) in facts["player_model_parts"].as_object().unwrap() {
         assert!(name.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'));

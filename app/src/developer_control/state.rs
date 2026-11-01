@@ -483,6 +483,20 @@ pub(super) fn snapshot(world: &World) -> Value {
             .get_resource::<crate::session::java_special::Presentation>()
             .map(|p| p.diagnostic())
     );
+    snapshot["render_pipeline_warmup_ready"] = json!(
+        world
+            .get_resource::<render_scene::PipelineWarmupReadiness>()
+            .map(|r| r.is_ready())
+    );
+    snapshot["native_java_special_frame"] = json!(world.get_resource::<render_scene::BlockEntityFrameResource>().map(|f|json!({
+        "revision":f.0.revision,"solid_vertices":f.0.solid.len(),"translucent_vertices":f.0.translucent.len(),
+        "overlay_vertices":f.0.overlay.len(),"portal_vertices":f.0.portal.len(),"has_atlas":f.0.atlas.is_some(),
+        "translucent_bounds": (!f.0.translucent.is_empty()).then(||{
+            let mut lo=[f32::INFINITY;3];let mut hi=[f32::NEG_INFINITY;3];
+            for v in f.0.translucent.iter(){for a in 0..3{lo[a]=lo[a].min(v.position[a]);hi[a]=hi[a].max(v.position[a]);}}
+            [lo,hi]
+        }),
+    })));
     snapshot["native_java_render"] = json!(
         world
             .get_resource::<crate::session::java_render::Presentation>()

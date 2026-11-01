@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 /// Operational budgets return explicit errors; they do not establish complete resource parity.
+pub(crate) const TEXTURE_HOST: &str = "textures.minecraft.net";
 const PROPERTY_BUDGET: usize = 64 * 1024;
 const PNG_BUDGET: usize = 4 * 1024 * 1024;
 
@@ -40,33 +41,38 @@ impl Texture {
         Self::from_url(url).map(Some)
     }
     fn from_url(url: &str) -> Result<Self, String> {
-        let url = reqwest::Url::parse(url).map_err(|_| "invalid Java skin URL")?;
+        let mut url = reqwest::Url::parse(url).map_err(|_| "invalid Java skin URL")?;
         if !matches!(url.scheme(), "http" | "https")
-            || url.host_str() != Some("textures.minecraft.net")
+            || url.host_str() != Some(TEXTURE_HOST)
             || !url.username().is_empty()
             || url.password().is_some()
             || url.port().is_some()
-            || url.query().is_some()
-            || url.fragment().is_some()
         {
             return Err("unsupported Java skin URL; official texture host required".into());
         }
-        let hash = url
-            .path()
-            .strip_prefix("/texture/")
-            .ok_or("invalid Java skin texture path")?;
-        if hash.len() != 64 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
-            return Err("unsupported Java skin texture identity".into());
+        if !url.path().starts_with("/texture/") {
+            return Err("invalid Java skin texture path".into());
         }
-        Ok(Self(hash.to_ascii_lowercase()))
+        // The pinned authlib accepts texture URIs by the discovered service prefix;
+        // MinecraftProfileTexture.getHash does not require a 64-character digest.
+        url.set_scheme("https")
+            .map_err(|_| "invalid Java skin scheme")?;
+        url.set_fragment(None);
+        Ok(Self(url.to_string()))
     }
-    /// Content-service identity, safe as a cache key; this is not a claimed verified file digest.
+
+    /// Canonical public URI cache identity, never a filesystem path or verified file digest.
     pub fn key(&self) -> &str {
         &self.0
     }
+    /// Private render-resource key; server names never become paths or override pack textures.
+    pub fn head_atlas_name(&self) -> String {
+        use sha2::{Digest, Sha256};
+        format!("java_head_skin/{:x}", Sha256::digest(self.0.as_bytes()))
+    }
     /// Official legacy HTTP references are upgraded to HTTPS before requesting bytes.
     pub fn url(&self) -> String {
-        format!("https://textures.minecraft.net/texture/{}", self.0)
+        self.0.clone()
     }
 }
 
@@ -132,17 +138,38 @@ mod tests {
         let hash = "0123456789abcdef".repeat(4);
         let url = format!("http://textures.minecraft.net/texture/{hash}");
         let t = Texture::from_url(&url).unwrap();
-        assert_eq!(t.key(), hash);
+        assert_eq!(t.key(), url.replacen("http:", "https:", 1));
         assert_eq!(t.url(), url.replacen("http:", "https:", 1));
         for url in [
             "file:///tmp/skin.png".to_owned(),
             format!("https://textures.minecraft.net.attacker.invalid/texture/{hash}"),
             format!("https://user@textures.minecraft.net/texture/{hash}"),
-            format!("https://textures.minecraft.net/texture/{hash}?next=http://localhost"),
-            format!("https://textures.minecraft.net/texture/{hash}/extra"),
+            "https://textures.minecraft.net/not-a-texture/abc".into(),
         ] {
             assert!(Texture::from_url(&url).is_err());
         }
+    }
+    #[test]
+    fn native_uri_admission_has_no_digest_length_assumption_and_private_keys_are_hashed() {
+        let t =
+            Texture::from_url("http://textures.minecraft.net/texture/legacy.png?variant=1#ignored")
+                .unwrap();
+        assert_eq!(
+            t.url(),
+            "https://textures.minecraft.net/texture/legacy.png?variant=1"
+        );
+        let name = t.head_atlas_name();
+        assert!(name.starts_with("java_head_skin/"));
+        assert_eq!(name.len(), "java_head_skin/".len() + 64);
+        assert!(
+            name.trim_start_matches("java_head_skin/")
+                .bytes()
+                .all(|c| c.is_ascii_hexdigit())
+        );
+        let other =
+            Texture::from_url("https://textures.minecraft.net/texture/legacy.png?variant=2")
+                .unwrap();
+        assert_ne!(name, other.head_atlas_name());
     }
     #[test]
     fn texture_property_decodes_without_treating_text_as_paths() {
@@ -151,7 +178,7 @@ mod tests {
         let encoded = STANDARD.encode(serde_json::to_vec(&property).unwrap());
         assert_eq!(
             Texture::from_property(&encoded).unwrap().unwrap().key(),
-            hash
+            format!("https://textures.minecraft.net/texture/{hash}")
         );
         assert_eq!(
             Texture::from_property(&STANDARD.encode(b"{\"textures\":{}}")).unwrap(),
@@ -163,3 +190,9 @@ mod tests {
         assert!(Texture::from_property(&"x".repeat(PROPERTY_BUDGET + 1)).is_err());
     }
 }
+
+pub mod pool;
+
+pub mod cache;
+
+pub mod profiles;

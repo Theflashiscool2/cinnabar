@@ -14,6 +14,7 @@ use glam::{Mat4, Vec3};
 pub struct Model {
     pub state: Skull,
     pub animation: f32,
+    pub texture: Option<std::sync::Arc<str>>,
 }
 
 pub(super) fn emit(
@@ -25,10 +26,14 @@ pub(super) fn emit(
     let state = &model.state;
     let texture_size = match state.shape {
         Shape::Cube => [64., 32.],
-        Shape::Human | Shape::Piglin => [64., 64.],
+        Shape::Human | Shape::Player | Shape::Piglin => [64., 64.],
         Shape::Dragon => [256.; 2],
     };
-    let Some(texture) = builder.required_texture(atlas, state.texture, texture_size) else {
+    let Some(texture) = builder.required_texture(
+        atlas,
+        model.texture.as_deref().unwrap_or(state.texture),
+        texture_size,
+    ) else {
         return;
     };
     let (offset, rotation) = if state.wall {
@@ -64,7 +69,11 @@ pub(super) fn emit(
                 uv.reverse();
             }
             builder.quad_uv(
-                Layer::Solid,
+                if state.shape == Shape::Player {
+                    Layer::Translucent
+                } else {
+                    Layer::Solid
+                },
                 corners.map(|p| pose.transform_point3(Vec3::from_array(p)).to_array()),
                 uv,
                 WHITE,
@@ -72,14 +81,14 @@ pub(super) fn emit(
         }
     };
     match state.shape {
-        Shape::Cube | Shape::Human => {
+        Shape::Cube | Shape::Human | Shape::Player => {
             draw(
                 base,
                 BoxSpec::new([-4., -8., -4.], [8.; 3], [0., 0.]),
                 0.,
                 false,
             );
-            if state.shape == Shape::Human {
+            if matches!(state.shape, Shape::Human | Shape::Player) {
                 draw(
                     base,
                     BoxSpec::new([-4., -8., -4.], [8.; 3], [32., 0.]),
@@ -198,6 +207,7 @@ mod tests {
                         rotation: head[2].parse().unwrap(),
                     },
                     animation: head[1].parse().unwrap(),
+                    texture: None,
                 },
             );
             let expected: Vec<Vec<f32>> = lines
@@ -235,6 +245,27 @@ mod tests {
                     "unexpected vertex {head:?}: {v:?}"
                 );
             }
+            if head[0] == "human" {
+                let mut player = MeshBuilder::new(size);
+                emit(
+                    &mut player,
+                    &atlas,
+                    [0; 3],
+                    &Model {
+                        state: Skull {
+                            texture: "head",
+                            shape: Shape::Player,
+                            powered: false,
+                            wall: false,
+                            rotation: head[2].parse().unwrap(),
+                        },
+                        animation: 0.,
+                        texture: None,
+                    },
+                );
+                assert!(player.solid.is_empty());
+                assert_eq!(player.translucent, builder.solid);
+            }
             cases += 1;
         }
         assert_eq!(cases, 36);
@@ -270,6 +301,7 @@ mod tests {
                                 rotation,
                             },
                             animation: 0.,
+                            texture: None,
                         }),
                     };
                     let frame = scene.update(SceneClock::default(), &[], &[sub]);
@@ -302,6 +334,71 @@ mod tests {
             scene
                 .update(SceneClock::default(), &[], &[])
                 .solid
+                .is_empty()
+        );
+    }
+    #[test]
+    fn player_head_uses_translucent_hat_and_replaces_texture_without_stale_fragments() {
+        let images = BTreeMap::from([(
+            "custom".into(),
+            Arc::new(assets::registry::java::textures::Image {
+                width: 64,
+                height: 64,
+                rgba: vec![255; 64 * 64 * 4],
+            }),
+        )]);
+        let mut scene = BlockEntityScene::default();
+        scene.install_assets(
+            &assets::registry::java::special::atlas(&images)
+                .unwrap()
+                .unwrap(),
+        );
+        let mut submission = BlockEntitySubmission {
+            block: [-16, 32, -1],
+            light: BlockEntityLight::Actor { block: 7, sky: 15 },
+            kind: BlockEntityKind::JavaSkull(Model {
+                state: Skull {
+                    texture: "unused",
+                    shape: Shape::Player,
+                    powered: false,
+                    wall: false,
+                    rotation: 0,
+                },
+                animation: 0.,
+                texture: Some("custom".into()),
+            }),
+        };
+        for rotation in 0..16 {
+            let BlockEntityKind::JavaSkull(model) = &mut submission.kind else {
+                unreachable!()
+            };
+            model.state.rotation = rotation;
+            let frame = scene.update(SceneClock::default(), &[], &[submission.clone()]);
+            assert!(frame.solid.is_empty());
+            assert_eq!(frame.translucent.len(), 72);
+            assert!(frame.translucent.iter().all(
+                |v| v.actor_light != 0 && v.position.iter().chain(&v.uv).all(|x| x.is_finite())
+            ));
+        }
+        for rotation in [0, 4, 8, 12] {
+            let BlockEntityKind::JavaSkull(model) = &mut submission.kind else {
+                unreachable!()
+            };
+            model.state.wall = true;
+            model.state.rotation = rotation;
+            let frame = scene.update(SceneClock::default(), &[], &[submission.clone()]);
+            assert_eq!(frame.translucent.len(), 72);
+            let min = frame
+                .translucent
+                .iter()
+                .map(|v| v.position[1])
+                .fold(f32::INFINITY, f32::min);
+            assert!((min - 32.234375).abs() < 1e-5);
+        }
+        assert!(
+            scene
+                .update(SceneClock::default(), &[], &[])
+                .translucent
                 .is_empty()
         );
     }

@@ -2,6 +2,9 @@
 //! Legacy body limbs are intentionally not synthesized: skulls sample only the top 32 rows.
 use super::super::{source::Error, textures::Image};
 
+pub const SIDE: usize = 64;
+pub const PIXEL_BYTES: usize = SIDE * SIDE * 4;
+
 pub fn decode(bytes: &[u8]) -> Result<Image, Error> {
     // Check dimensions before PNG decoding can allocate pixel buffers.
     if bytes.len() < 24 || &bytes[..8] != b"\x89PNG\r\n\x1a\n" || &bytes[12..16] != b"IHDR" {
@@ -9,37 +12,39 @@ pub fn decode(bytes: &[u8]) -> Result<Image, Error> {
     }
     let width = u32::from_be_bytes(bytes[16..20].try_into().unwrap());
     let height = u32::from_be_bytes(bytes[20..24].try_into().unwrap());
-    if width != 64 || !matches!(height, 32 | 64) {
+    if width != SIDE as u32 || (height != (SIDE / 2) as u32 && height != SIDE as u32) {
         return Err(Error::Model("Java head skin must be 64x32 or 64x64".into()));
     }
     prepare(Image::decode(bytes)?)
 }
 fn prepare(mut image: Image) -> Result<Image, Error> {
-    if image.width != 64
-        || !matches!(image.height, 32 | 64)
+    if image.width != SIDE as u32
+        || (image.height != (SIDE / 2) as u32 && image.height != SIDE as u32)
         || image.rgba.len() != (image.width * image.height * 4) as usize
     {
         return Err(Error::Model("invalid Java head skin pixels".into()));
     }
-    let legacy = image.height == 32;
+    let legacy = image.height == (SIDE / 2) as u32;
     // SkullModel's base head must remain opaque even when downloaded pixels have alpha.
-    for y in 0..16 {
-        for x in 0..32 {
-            image.rgba[(y * 64 + x) * 4 + 3] = 255;
+    for y in 0..SIDE / 4 {
+        for x in 0..SIDE / 2 {
+            image.rgba[(y * SIDE + x) * 4 + 3] = 255;
         }
     }
     if legacy {
         // Original legacy skins used an opaque unused hat region. Preserve deliberate
         // transparent hats, but clear a uniformly nontransparent region as vanilla does.
-        if (0..32).all(|y| (32..64).all(|x| image.rgba[(y * 64 + x) * 4 + 3] >= 128)) {
-            for y in 0..32 {
-                for x in 32..64 {
-                    image.rgba[(y * 64 + x) * 4 + 3] = 0;
+        if (0..SIDE / 2)
+            .all(|y| (SIDE / 2..SIDE).all(|x| image.rgba[(y * SIDE + x) * 4 + 3] >= 128))
+        {
+            for y in 0..SIDE / 2 {
+                for x in SIDE / 2..SIDE {
+                    image.rgba[(y * SIDE + x) * 4 + 3] = 0;
                 }
             }
         }
-        image.rgba.resize(64 * 64 * 4, 0);
-        image.height = 64;
+        image.rgba.resize(PIXEL_BYTES, 0);
+        image.height = SIDE as u32;
     }
     Ok(image)
 }

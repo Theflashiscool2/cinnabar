@@ -427,13 +427,31 @@ fn append(
                 return Ok(());
             }
             if let Some(skull) = super::skull::Skull::from_state(&state)? {
-                if !builder.special_images.contains_key(skull.texture) {
-                    let bytes = models
-                        .source()
-                        .read(&format!("assets/minecraft/{}.png", skull.texture))?;
-                    builder
-                        .special_images
-                        .insert(skull.texture.into(), Arc::new(Image::decode(&bytes)?));
+                let textures: &[&str] = &[skull.texture];
+                let defaults: Vec<_>;
+                let textures = if skull.shape == super::skull::Shape::Player {
+                    defaults = super::skull::defaults::all()
+                        .iter()
+                        .map(String::as_str)
+                        .collect();
+                    defaults.as_slice()
+                } else {
+                    textures
+                };
+                for &texture in textures {
+                    if !builder.special_images.contains_key(texture) {
+                        let bytes = models
+                            .source()
+                            .read(&format!("assets/minecraft/{texture}.png"))?;
+                        let image = if skull.shape == super::skull::Shape::Player {
+                            super::skull::skin::decode(&bytes)?
+                        } else {
+                            Image::decode(&bytes)?
+                        };
+                        builder
+                            .special_images
+                            .insert(texture.into(), Arc::new(image));
+                    }
                 }
                 builder.skulls.insert(id, skull);
                 admitted.insert(

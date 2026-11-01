@@ -14,6 +14,7 @@ pub(super) struct BlockEntityPipeline {
 pub(super) enum PipelineMode {
     Solid,
     Overlay,
+    Translucent,
     Outline,
     Crack,
     Portal,
@@ -143,6 +144,7 @@ impl Specializer<RenderPipeline> for BlockEntitySpecializer {
             match key.mode {
                 PipelineMode::Solid => "block_entity_solid",
                 PipelineMode::Overlay => "block_entity_overlay",
+                PipelineMode::Translucent => "block_entity_translucent",
                 PipelineMode::Outline => "selection_line_fragment",
                 PipelineMode::Crack => "block_entity_crack",
                 PipelineMode::Portal => "portal_fragment",
@@ -170,7 +172,7 @@ impl Specializer<RenderPipeline> for BlockEntitySpecializer {
                     operation: BlendOperation::Add,
                 },
             }),
-            PipelineMode::Overlay => Some(BlendState::ALPHA_BLENDING),
+            PipelineMode::Overlay | PipelineMode::Translucent => Some(BlendState::ALPHA_BLENDING),
             PipelineMode::Additive => Some(super::super::DRAGON_DEATH_BLEND),
             // Twice source times destination, like the classic destroy overlay.
             PipelineMode::Crack => Some(BlendState {
@@ -192,7 +194,10 @@ impl Specializer<RenderPipeline> for BlockEntitySpecializer {
             .unwrap()
             .depth_write_enabled = Some(matches!(
             key.mode,
-            PipelineMode::Solid | PipelineMode::Outline | PipelineMode::Portal
+            PipelineMode::Solid
+                | PipelineMode::Outline
+                | PipelineMode::Portal
+                | PipelineMode::Translucent
         ));
         Ok(key)
     }
@@ -206,7 +211,15 @@ impl crate::pipeline_warmup::PrewarmPipelines for BlockEntityPipeline {
         ids: &mut crate::pipeline_warmup::WarmupIds,
     ) -> Result<(), BevyError> {
         use PipelineMode::*;
-        for mode in [Solid, Overlay, Outline, Crack, Portal, Additive] {
+        for mode in [
+            Solid,
+            Overlay,
+            Outline,
+            Crack,
+            Portal,
+            Additive,
+            Translucent,
+        ] {
             ids.push(self.variants.specialize(
                 cache,
                 BlockEntityPipelineKey {

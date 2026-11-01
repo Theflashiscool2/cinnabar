@@ -81,7 +81,10 @@ pub fn refresh(layout: &InstallLayout) {
                     return;
                 }
                 let Ok(response) = client
-                    .get(format!("https://textures.minecraft.net/texture/{hash}"))
+                    .get(format!(
+                        "https://{}/texture/{hash}",
+                        crate::player_skin::java::TEXTURE_HOST
+                    ))
                     .send()
                     .await
                 else {

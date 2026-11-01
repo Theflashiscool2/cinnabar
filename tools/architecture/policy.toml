@@ -1433,6 +1433,7 @@ owners = [
     "crates/assets/src/registry/java/banner.rs",
     # Version-pinned Java skull identity owner, verified against the native state report.
     "crates/assets/src/registry/java/skull.rs",
+    "crates/assets/src/registry/java/skull/defaults.rs",
     "crates/assets/src/registry/java/statue.rs",
     "crates/assets/src/registry/java/pot.rs",
     "crates/assets/src/registry/java/conduit.rs",
