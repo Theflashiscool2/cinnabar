@@ -7,6 +7,7 @@ mod hud;
 mod interaction_tests;
 mod inventory;
 mod nbt;
+pub mod piston;
 pub mod player;
 mod roster;
 #[cfg(test)]

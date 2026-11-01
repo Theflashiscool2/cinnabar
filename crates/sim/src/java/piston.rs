@@ -1,5 +1,6 @@
 //! Pinned Java piston presentation clock; authoritative blocks remain owned by the world.
 //! Reference: PistonMovingBlockEntity.tick/getProgress/getExtendedProgress in Java 26.3.
+pub mod structure;
 
 #[derive(Clone, Debug)]
 pub struct Motion {

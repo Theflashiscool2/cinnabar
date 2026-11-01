@@ -289,6 +289,16 @@ against the pinned original client. Extension and source-retraction use differen
 thresholds; retracting sources retain a separate stationary extended base. Model-plan tests
 use the pinned registry, including partial-block properties and explicit unknown-state errors.
 
+The verified exporter also records each native state's push reaction, block-entity and
+base/extension status, immovability and slime/honey adhesion. The 184 fact runs cover
+all 35,723 states and are compiled into the application; players need no extra generated
+runtime file. The predicate preserves native border/height, piston-base, popped-block
+and push-only ordering. Read-only push/pull planning handles native ordering, sticky branches, collision reordering,
+the exported push limit, missing-neighbor deferral and checked coordinates. CPU fixtures
+cover negative boundaries and translation invariance. Controlled vanilla server-only
+reference scenes confirm slime/stone/honey movement, support-floor rejection, the 12-block
+limit and ordinary sticky retraction; these are not Cinnabar piston gameplay acceptance.
+
 These components are not yet connected to production rendering or block-event reconstruction.
 The 12-state audit gate remains. Runtime push/pull resolution, moved-model graphics admission,
 fractional GPU placement with native materials/animation, dynamic collision, authoritative

@@ -31,6 +31,37 @@ public final class ExportEntities {
         }
         return a;
     }
+    static JsonObject pistonBlocks() {
+        JsonArray runs = new JsonArray();
+        JsonObject previous = null;
+        int count = 0;
+        for (var state : net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY) {
+            int id = net.minecraft.world.level.block.Block.getId(state);
+            if (id != count++) throw new IllegalStateException("noncontiguous block state registry");
+            boolean base = state.is(net.minecraft.world.level.block.Blocks.PISTON)
+                || state.is(net.minecraft.world.level.block.Blocks.STICKY_PISTON);
+            JsonObject fact = new JsonObject();
+            fact.addProperty("reaction", state.getPistonPushReaction().name());
+            fact.addProperty("air", state.isAir());
+            fact.addProperty("block_entity", state.hasBlockEntity());
+            fact.addProperty("piston_base", base);
+            fact.addProperty("extended", base && state.getValue(net.minecraft.world.level.block.piston.PistonBaseBlock.EXTENDED));
+            fact.addProperty("unbreakable", state.getDestroySpeed(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO) == -1);
+            fact.addProperty("sticky", state.is(net.minecraft.world.level.block.Blocks.SLIME_BLOCK) ? "slime"
+                : state.is(net.minecraft.world.level.block.Blocks.HONEY_BLOCK) ? "honey" : "none");
+            if (!fact.equals(previous)) {
+                var run = fact.deepCopy();
+                run.addProperty("first", id);
+                runs.add(run);
+                previous = fact;
+            }
+        }
+        JsonObject out = new JsonObject();
+        out.addProperty("states", count);
+        out.addProperty("max_push_depth", net.minecraft.world.level.block.piston.PistonStructureResolver.MAX_PUSH_DEPTH);
+        out.add("runs", runs);
+        return out;
+    }
     @SuppressWarnings("unchecked")
     static JsonObject part(ModelPart part, String name) throws Exception {
         JsonObject out = new JsonObject();
@@ -142,6 +173,7 @@ public final class ExportEntities {
             clothing.addProperty(part.getId(), part.getMask());
         }
         facts.add("player_model_parts", clothing);
+        facts.add("piston_blocks", pistonBlocks());
         Files.writeString(Path.of(args[1]), JSON.toJson(facts)+"\n");
     }
 }

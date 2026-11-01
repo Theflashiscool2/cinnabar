@@ -44,6 +44,24 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
     *code += &format!("pub const METADATA_SERIALIZERS: &[&str] = &{names:?};\n");
     let facts: serde_json::Value =
         serde_json::from_slice(&load(&target["entity_facts_report"])).unwrap();
+    let piston = &facts["piston_blocks"];
+    let count = piston["states"].as_u64().unwrap();
+    assert_eq!(
+        count,
+        target["block_registry_report"]["states"].as_u64().unwrap()
+    );
+    let runs = piston["runs"].as_array().unwrap();
+    assert_eq!(runs.first().unwrap()["first"].as_u64().unwrap(), 0);
+    let mut previous = None;
+    for run in runs {
+        let first = run["first"].as_u64().unwrap();
+        assert!(first < count && previous.is_none_or(|p| p < first));
+        previous = Some(first);
+    }
+    *code += &format!(
+        "pub const PISTON_BLOCK_FACTS_JSON: &str = {:?};\n",
+        serde_json::to_string(piston).unwrap()
+    );
     *code += "#[derive(Clone, Copy, Debug)]\npub struct MetadataSpec { pub index: u8, pub name: &'static str, pub serializer: usize }\n";
     for (kind, entries) in facts["metadata"].as_object().unwrap() {
         assert!(kind.bytes().all(|b| b.is_ascii_lowercase() || b == b'_'));
