@@ -161,6 +161,13 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   runtime iPhone DNS qualification remains pending. Mid-session reconfiguration, initial relative
   teleports without an admitted player anchor,
   required resource packs and interactive server consent/dialogs are unsupported.
+  Repeated play-login packets on one connection now retain configured registries and
+  player profiles, replace the world epoch, retire menus/teams/entities and old
+  correction receipts, and retain a private reset-pose anchor for relative teleports.
+  Native 26.3 `ClientPacketListener.handleLogin`/`LocalPlayer.resetPos` are the
+  behavior references. Admission regressions pass; proxy/Hypixel and iPhone
+  transition qualification remains pending. This does not implement reconfiguration
+  or a transfer to a new network address.
 - [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light
   masks, incremental block/biome/light updates and unloads into `world::java`.
   Preserve Java IDs and invalidate snapshots on session/dimension/column/neighbour

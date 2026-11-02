@@ -9,6 +9,16 @@ use world::java as domain;
 mod tests;
 
 pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'static str> {
+    begin_inner(state, spawn, false)
+}
+pub(super) fn login(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'static str> {
+    begin_inner(state, spawn, true)
+}
+fn begin_inner(
+    state: &mut WorldState,
+    spawn: &Spawn,
+    retained_player: bool,
+) -> Result<(), &'static str> {
     let bootstrap = state
         .bootstrap
         .as_ref()
@@ -51,9 +61,15 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
         },
         spawn.hashed_seed,
     );
-    state
-        .inventory
-        .begin(state.generation, state.dimension_epoch);
+    if retained_player {
+        state
+            .inventory
+            .rebind_player(state.generation, state.dimension_epoch);
+    } else {
+        state
+            .inventory
+            .begin(state.generation, state.dimension_epoch);
+    }
     state
         .entities
         .begin(state.generation, state.dimension_epoch);
@@ -64,6 +80,7 @@ pub(super) fn begin(state: &mut WorldState, spawn: &Spawn) -> Result<(), &'stati
     state.block_ack = None;
     state.teleport = None;
     state.player_motion = None;
+    state.login_motion = None;
     state.respawn_rotation_velocity = None;
     state.player_dynamics.unplaced_velocity = None;
     state.pending_correction = None;

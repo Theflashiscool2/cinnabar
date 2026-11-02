@@ -104,6 +104,7 @@ impl Report {
             Event::Roster(_) => "roster",
             Event::Hud(_) => "hud",
             Event::Bootstrap(_) => "bootstrap",
+            Event::WorldLogin(_) => "world_login",
             Event::Tags(_) => "tags",
             Event::Teleport { .. } => "teleport",
             Event::Respawn { .. } => "respawn",

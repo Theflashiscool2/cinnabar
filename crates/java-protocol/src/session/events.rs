@@ -22,6 +22,8 @@ pub enum Event {
     Hud(hud::Packet),
     Phase(Phase),
     Bootstrap(Box<Bootstrap>),
+    /// A further play login replaces the level while retaining this connection's registries.
+    WorldLogin(Box<facts::World>),
     /// Session-scoped registry tag replacements, ordered with other play authority.
     Tags(facts::Tags),
     Teleport {

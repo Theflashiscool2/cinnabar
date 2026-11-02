@@ -16,6 +16,7 @@ mod tags_tests;
 mod terrain;
 #[cfg(test)]
 mod tests_support;
+mod world_login;
 use java_protocol::session::{
     Envelope, Event, Phase,
     facts::{Bootstrap, Spawn},
@@ -46,6 +47,8 @@ pub struct WorldState {
     pub player_motion: Option<world::java::player::Motion>,
     /// Native respawn retains rotation/velocity separately from the new world's unplaced body.
     respawn_rotation_velocity: Option<([f64; 3], f32, f32)>,
+    /// Private correction anchor from a reused LocalPlayer; never published as a new-world pose.
+    login_motion: Option<world::java::player::Motion>,
     pub player_dynamics: world::java::dynamics::PlayerDynamics,
     pub player_pose_revision: u64,
     pub deferred_entity_dynamics: u64,
@@ -128,6 +131,7 @@ impl WorldState {
                     self.biomes.clear();
                     self.teleport = None;
                     self.player_motion = None;
+                    self.login_motion = None;
                     self.player_dynamics = Default::default();
                     self.pending_correction = None;
                     self.pending_rotation = None;
@@ -138,6 +142,7 @@ impl WorldState {
                     self.player_visual = Default::default();
                 }
             }
+            Event::WorldLogin(world) => return world_login::admit(self, *world),
             Event::Bootstrap(facts) => {
                 if facts.generation != self.generation {
                     return false;

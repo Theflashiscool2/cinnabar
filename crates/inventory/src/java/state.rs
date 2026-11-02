@@ -1,6 +1,18 @@
 //! Applies ordered server facts to scoped inventory and container ownership.
 use super::*;
 impl State {
+    /// A play login reuses the local player's storage, but retires foreign menus and receipts.
+    pub fn rebind_player(&mut self, session: u64, epoch: u64) {
+        if self.session != session || self.player.is_none() {
+            self.begin(session, epoch);
+            return;
+        }
+        let storage = std::mem::take(&mut self.storage);
+        let selected = self.selected;
+        self.begin(session, epoch);
+        self.storage = storage;
+        self.selected = selected;
+    }
     /// A replacement player has no admitted inventory, even when the server keeps metadata.
     pub fn begin(&mut self, session: u64, epoch: u64) {
         *self = Self {

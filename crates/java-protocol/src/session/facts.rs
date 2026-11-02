@@ -185,6 +185,16 @@ impl Spawn {
     }
 }
 impl World {
+    /// Checks the received level identity against the connection's configured dimension table.
+    pub(super) fn validate_identity(&self, dimension_count: usize) -> Result<(), Error> {
+        if self.spawn.dimension_type < 0
+            || self.spawn.dimension_type as usize >= dimension_count
+            || !self.worlds.contains(&self.spawn.world)
+        {
+            return Err(Error::Invalid("world/dimension identity"));
+        }
+        Ok(())
+    }
     pub fn read(r: &mut Reader<'_>) -> Result<Self, Error> {
         Ok(Self {
             entity_id: r.i32()?,
@@ -229,13 +239,7 @@ impl Bootstrap {
             .registries
             .get("minecraft:dimension_type")
             .ok_or(Error::Invalid("missing dimension registry"))?;
-        if self.world.spawn.dimension_type < 0
-            || self.world.spawn.dimension_type as usize >= dimensions.len()
-            || !self.world.worlds.contains(&self.world.spawn.world)
-        {
-            return Err(Error::Invalid("world/dimension identity"));
-        }
-        Ok(())
+        self.world.validate_identity(dimensions.len())
     }
 }
 

@@ -108,3 +108,5 @@ fn player_storage_slot(menu_slot: usize) -> Option<usize> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod world_tests;

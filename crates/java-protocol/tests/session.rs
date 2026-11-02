@@ -12,6 +12,8 @@ use tokio_util::sync::CancellationToken;
 mod batch;
 #[path = "session/tags.rs"]
 mod tags;
+#[path = "session/world_login.rs"]
+mod world_login;
 
 fn text(s: &str, out: &mut Vec<u8>) {
     codec::write_string(s, 32767, out).unwrap();

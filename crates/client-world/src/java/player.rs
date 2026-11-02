@@ -37,13 +37,14 @@ pub(super) fn admit(
         pitch: correction.is_relative(WireRelative::Pitch),
         rotate_velocity: correction.is_relative(WireRelative::RotateVelocity),
     };
-    if state.player_motion.is_none()
+    let placed = state.player_motion.or(state.login_motion);
+    if placed.is_none()
         && (relative.position.into_iter().any(|v| v)
             || ((relative.yaw || relative.pitch) && state.respawn_rotation_velocity.is_none()))
     {
         return Err("initial relative Java teleport has no admitted player anchor");
     }
-    let anchor = state.player_motion.unwrap_or_else(|| {
+    let anchor = placed.unwrap_or_else(|| {
         let (velocity, yaw, pitch) = state.respawn_rotation_velocity.unwrap_or_default();
         Motion {
             velocity: state.player_dynamics.unplaced_velocity.unwrap_or(velocity),
@@ -66,6 +67,7 @@ pub(super) fn admit(
         .checked_add(1)
         .ok_or("Java player pose revision overflow")?;
     state.player_dynamics.unplaced_velocity = None;
+    state.login_motion = None;
     state.respawn_rotation_velocity = None;
     state.correction_sequence = revision;
     state.player_motion = Some(motion);

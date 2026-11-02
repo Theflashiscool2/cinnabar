@@ -61,6 +61,10 @@ pub struct Roster {
     pub unknown_updates: u64,
 }
 impl Roster {
+    /// A new ClientLevel owns a new scoreboard; connection-owned player profiles remain valid.
+    pub fn clear_teams(&mut self) {
+        self.teams = teams::State::default();
+    }
     pub fn new(session: u64) -> Self {
         Self {
             session,

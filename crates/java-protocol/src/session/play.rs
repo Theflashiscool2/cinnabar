@@ -159,24 +159,39 @@ impl Connection {
             match *name {
                 "ClientboundDelimiterPacket" => {}
                 "ClientboundLoginPacket" => {
-                    if self.bootstrapped {
-                        return Err(ProtocolError::Invalid("duplicate play login").into());
-                    }
-                    let world = facts::World::read(&mut r)?;
+                    let world = facts::World::read(&mut r).map_err(packet_error)?;
                     r.finish().map_err(packet_error)?;
-                    self.prepare_terrain()?;
+                    if !self.bootstrapped {
+                        self.prepare_terrain()?;
+                    }
+                    world
+                        .validate_identity(self.dimensions.len())
+                        .map_err(packet_error)?;
                     self.terrain = Some(self.terrain_context(&world.spawn)?);
-                    self.dimension_epoch += 1;
-                    let bootstrap = Bootstrap {
-                        generation: self.generation,
-                        profile: self.profile.clone(),
-                        server_session: self.server_session,
-                        configuration: std::mem::take(&mut self.configuration),
-                        world,
-                    };
-                    bootstrap.validate()?;
-                    self.emit(Event::Bootstrap(Box::new(bootstrap))).await?;
-                    self.bootstrapped = true;
+                    self.dimension_epoch = self
+                        .dimension_epoch
+                        .checked_add(1)
+                        .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
+                    self.dead = false;
+                    self.loaded_epoch = None;
+                    self.pending_teleport = None;
+                    self.pending_rotation = None;
+                    if self.bootstrapped {
+                        // Proxies may send another game login without a configuration phase.
+                        // Reuse configured registries; do not clone their NBT for every handoff.
+                        self.emit(Event::WorldLogin(Box::new(world))).await?;
+                    } else {
+                        let bootstrap = Bootstrap {
+                            generation: self.generation,
+                            profile: self.profile.clone(),
+                            server_session: self.server_session,
+                            configuration: std::mem::take(&mut self.configuration),
+                            world,
+                        };
+                        bootstrap.validate()?;
+                        self.emit(Event::Bootstrap(Box::new(bootstrap))).await?;
+                        self.bootstrapped = true;
+                    }
                     continue;
                 }
                 "ClientboundPlayerPositionPacket" => {
