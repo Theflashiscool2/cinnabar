@@ -1,4 +1,5 @@
 //! Session-scoped Java profiles and player-list facts; entity IDs remain separate identities.
+pub mod teams;
 use super::hud::GameMode;
 use crate::NbtValue;
 use std::{collections::BTreeMap, sync::Arc};
@@ -56,6 +57,7 @@ pub struct Update {
 pub struct Roster {
     session: u64,
     entries: BTreeMap<[u8; 16], Entry>,
+    teams: teams::State,
     pub unknown_updates: u64,
 }
 impl Roster {
@@ -64,6 +66,30 @@ impl Roster {
             session,
             ..Default::default()
         }
+    }
+    pub fn update_team(&mut self, session: u64, update: teams::Update) -> bool {
+        if session != self.session {
+            return false;
+        }
+        self.teams.apply(update);
+        true
+    }
+    pub fn team_parameters(&self, owner: &str) -> Option<&teams::Parameters> {
+        self.teams.parameters(owner)
+    }
+    pub fn name_visible(&self, owner: &str, viewer: &str) -> bool {
+        self.teams.visible(owner, viewer)
+    }
+    /// Native player invisibility is viewer-relative; team visibility remains a separate gate.
+    pub fn player_name_visible(
+        &self,
+        owner: &str,
+        viewer: &str,
+        invisible: bool,
+        viewer_spectator: bool,
+    ) -> bool {
+        self.name_visible(owner, viewer)
+            && (!invisible || viewer_spectator || self.teams.sees_invisible(owner, viewer))
     }
     pub fn get(&self, uuid: &[u8; 16]) -> Option<&Entry> {
         self.entries.get(uuid)

@@ -1,4 +1,5 @@
 //! Native player-list wire schemas, separate from entity IDs and local authentication.
+pub mod teams;
 use super::hud::GameMode;
 use crate::{ProtocolError as Error, nbt, target, wire::Reader};
 use rsa::pkcs8::DecodePublicKey;
@@ -36,6 +37,7 @@ pub struct Update {
 }
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Packet {
+    Team(teams::Packet),
     Update(Vec<Update>),
     Remove(Vec<[u8; 16]>),
 }
@@ -43,6 +45,7 @@ pub enum Packet {
 /// Uses the pinned action order; optional values distinguish no update from explicit removal.
 pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
+        "ClientboundSetPlayerTeamPacket" => Packet::Team(teams::decode(r)?),
         "ClientboundPlayerInfoRemovePacket" => {
             let count = r.count(r.0.len() / 16)?;
             Packet::Remove(

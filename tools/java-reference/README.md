@@ -1,5 +1,12 @@
 # Native model reference probes
 
+`ProbeTeams.java` is an original wire-reference probe for the pinned server's
+`ClientboundSetPlayerTeamPacket.STREAM_CODEC`. Compile it with the verified server
+export classpath and run `ProbeTeams`. The small retained packet fixture covers
+create/update/remove/join/leave; it pins the current component/visibility/collision/
+optional-colour/options ordering, which differs from older protocol descriptions.
+These are codec observations, not graphical or public-server acceptance.
+
 These small original probes call the verified target client's public model API. They do
 not ship Minecraft code, textures, or generated model data. Use only the Java version
 and archive hashes pinned in `crates/java-protocol/data/target.json`.

@@ -2,6 +2,58 @@ use super::*;
 use java_protocol::session::{Envelope, Event, Phase};
 
 #[test]
+fn team_updates_are_session_fenced_and_retained_only_across_dimension_changes() {
+    let mut state = super::super::tests_support::state();
+    let event = || {
+        Event::Roster(wire::Packet::Team(wire::teams::Packet {
+            team: "red".into(),
+            method: 0,
+            members: vec!["Alice".into()],
+            parameters: Some(wire::teams::Parameters {
+                display: java_protocol::nbt::Value::String("Red".into()),
+                prefix: java_protocol::nbt::Value::String("[R]".into()),
+                suffix: java_protocol::nbt::Value::String("".into()),
+                visibility: wire::teams::Visibility::Never,
+                collision: 1,
+                color: Some('c'),
+                options: 2,
+            }),
+        }))
+    };
+    assert!(!state.admit(Envelope {
+        generation: 6,
+        event: event()
+    }));
+    assert!(state.players.team_parameters("Alice").is_none());
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: event()
+    }));
+    assert!(!state.players.name_visible("Alice", "Viewer"));
+    let p = state.players.team_parameters("Alice").unwrap();
+    assert_eq!(p.color, Some('c'));
+    assert_eq!(p.collision, domain::teams::Collision::Never);
+    assert_eq!(p.prefix, world::NbtValue::String("[R]".into()));
+    let spawn = state.bootstrap.as_ref().unwrap().world.spawn.clone();
+    super::super::terrain::begin(&mut state, &spawn).unwrap();
+    assert!(!state.players.name_visible("Alice", "Viewer"));
+    state.admit(Envelope {
+        generation: 7,
+        event: Event::Phase(Phase::Configuration),
+    });
+    assert!(state.players.team_parameters("Alice").is_none());
+    assert!(!state.admit(Envelope {
+        generation: 7,
+        event: event()
+    }));
+    state.begin(8);
+    assert!(!state.admit(Envelope {
+        generation: 7,
+        event: event()
+    }));
+}
+
+#[test]
 fn default_skin_matches_native_uuid_hash_and_negative_floor_mod_vectors() {
     // Independent DefaultPlayerSkin.get(UUID) output from the pinned client archive.
     for (uuid, texture, slim) in [
