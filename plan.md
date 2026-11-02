@@ -224,10 +224,13 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   were observed. Server-console edits do not establish client block interactions.
 - [x] Bound native mesh workers/results and reject stale session/dimension/column/halo
   results. Empty sections use zero-byte publication permits. Initial resource
-  preparation needs the received spawn column, not an arbitrary nine-column halo. Java world entry uses
-  current renderer receipt (including authoritative empty sections) and native
-  player-loaded command, independently of the
-  Bedrock loading gate; both loading paths have focused regression coverage.
+  preparation starts with the received spawn column; neighbours arrive incrementally.
+  Java world entry requires a current renderer receipt for the spawn section,
+  including authoritative empty sections, and uses its native player-loaded command
+  independently of the Bedrock loading gate. Six focused tests pass. Linux graphical
+  vanilla fixtures pass air-spawn handoff, one-column startup followed by actual
+  player-loaded/released neighbour frames, authoritative edits and direct reconnect.
+  The original Hypixel stall still needs owner retesting; iPhone acceptance is pending.
 - [x] Export hash-pinned native collision/surface data from the verified server with
   `assetc java-physics`. The authorized fixture test loads that output through Rust
   and checks grass/air/stairs/water/ice/dynamic states. `sim::java` has deterministic
