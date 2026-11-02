@@ -41,6 +41,8 @@ pub(crate) struct Presentation {
     glow_pending: usize,
     custom_skin_pending: usize,
     published_players: usize,
+    log_after_tick: u64,
+    logged_counts: Option<[usize; 5]>,
     elapsed: std::time::Duration,
     ticks: u64,
 }
@@ -60,6 +62,8 @@ impl Default for Presentation {
             glow_pending: 0,
             custom_skin_pending: 0,
             published_players: 0,
+            log_after_tick: 0,
+            logged_counts: None,
             elapsed: std::time::Duration::ZERO,
             ticks: 0,
         }
@@ -71,6 +75,10 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    /// Shared sampling fraction for this native actor frame, including its world-space labels.
+    pub(crate) fn partial_tick(&self) -> f32 {
+        (self.elapsed.as_secs_f64() / simulation_clock::TICK_DURATION.as_secs_f64()).min(1.) as f32
+    }
     fn reset(&mut self) {
         self.cancel.store(true, Ordering::Release);
         let serial = self.serial;

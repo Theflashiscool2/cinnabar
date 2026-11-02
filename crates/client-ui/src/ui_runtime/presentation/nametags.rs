@@ -21,6 +21,7 @@ use ui_screens::text::bounded_text;
 use super::nametag_atlas::{GlyphPage, NametagAtlas};
 mod annotation;
 pub(super) mod bounds;
+pub mod java;
 pub(super) mod style;
 
 #[cfg(test)]
@@ -73,6 +74,38 @@ pub struct NametagAnchor {
 }
 
 impl NametagAnchor {
+    /// Attaches already-admitted edition-owned world text to the shared atlas and GPU path.
+    pub(super) fn world_label(
+        runtime_id: u64,
+        position: Vec3,
+        lines: Arc<[Arc<str>]>,
+        view: NametagView,
+        depth_tested: bool,
+        text_alpha: f32,
+    ) -> Option<Self> {
+        let view_depth = view.camera_forward.dot(position - view.camera_position);
+        if lines.is_empty()
+            || !position.is_finite()
+            || !view_depth.is_finite()
+            || !text_alpha.is_finite()
+            || !(0.0..=1.0).contains(&text_alpha)
+        {
+            return None;
+        }
+        Some(Self {
+            runtime_id,
+            position,
+            lines,
+            depth_tested,
+            // The legacy camera-space sneak drop must not alter edition-owned pose attachments.
+            sneaking: false,
+            text_alpha,
+            view_depth,
+            camera_forward_y: view.camera_forward.y,
+            cinnabar_badge: false,
+            annotation: None,
+        })
+    }
     /// Attaches mod spans only after the actor passed ordinary nametag eligibility.
     pub fn set_annotation(&mut self, annotation: Option<Arc<ui::mod_presentation::Spans>>) {
         self.annotation = annotation;

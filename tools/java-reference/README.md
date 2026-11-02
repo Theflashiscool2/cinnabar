@@ -7,6 +7,12 @@ create/update/remove/join/leave; it pins the current component/visibility/collis
 optional-colour/options ordering, which differs from older protocol descriptions.
 These are codec observations, not graphical or public-server acceptance.
 
+`ProbePlayerLabels.java` queries the pinned Avatar pose dimensions and NAME_TAG
+attachments. The current standing/crouching attachment heights are native facts;
+the shared label constructor must not apply its older camera-space sneak drop
+again. Inspect `SubmitNodeCollection.submitNameTag` for the additional world-space
+clearance. The probe establishes CPU placement inputs, not visible output.
+
 These small original probes call the verified target client's public model API. They do
 not ship Minecraft code, textures, or generated model data. Use only the Java version
 and archive hashes pinned in `crates/java-protocol/data/target.json`.

@@ -61,8 +61,7 @@ pub(crate) fn update(
         state.entities.tick_presentation();
         p.ticks = p.ticks.saturating_add(1);
     }
-    let fraction =
-        (p.elapsed.as_secs_f64() / simulation_clock::TICK_DURATION.as_secs_f64()).min(1.) as f32;
+    let fraction = p.partial_tick();
     p.published = 0;
     p.unsupported = 0;
     p.unknown_light = 0;
@@ -329,6 +328,24 @@ pub(crate) fn update(
         }
     }
     p.published = batch.submissions.len();
+    let counts = [
+        state.entities.iter().count(),
+        p.published_players,
+        p.unsupported,
+        p.unknown_light,
+        p.custom_skin_pending,
+    ];
+    if p.ticks >= p.log_after_tick && p.logged_counts != Some(counts) {
+        bevy::log::debug!(target: "java_session", received_entities = counts[0],
+            rendered_players = counts[1], unsupported_entities = counts[2],
+            awaiting_light = counts[3], custom_skins_pending = counts[4],
+            assets_preparing = p.pending.is_some(), error = ?p.failure,
+            "Native Java entity presentation status");
+        p.logged_counts = Some(counts);
+        p.log_after_tick = p
+            .ticks
+            .saturating_add(u64::from(simulation_clock::TICKS_PER_SECOND));
+    }
     prepared.replace_scene(batch, scope.0, 0., p.unsupported + p.unknown_light);
 }
 

@@ -61,6 +61,8 @@ pub(crate) fn configure_actor_render_systems(app: &mut App) {
                 crate::runtime::network::publish_local_actor_damage
                     .run_if(uses_bedrock_actor_authority),
                 crate::session::java_hud::update,
+                // Native bodies and their world labels sample one completed interpolation step.
+                crate::session::java_entities::publish::update,
             )
                 .chain()
                 .in_set(ClientFrameSet::ActorPreparation),
@@ -78,7 +80,6 @@ pub(crate) fn configure_actor_render_systems(app: &mut App) {
             (
                 prepare_actor_render_frame.run_if(uses_bedrock_actor_authority),
                 crate::block_entities::prepare_spawner_actors.run_if(uses_bedrock_actor_authority),
-                crate::session::java_entities::publish::update,
             )
                 .chain()
                 .in_set(ClientFrameSet::ActorFinalization),

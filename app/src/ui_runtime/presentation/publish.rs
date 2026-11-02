@@ -44,6 +44,12 @@ pub(crate) fn platform_safe_area_insets() -> SafeArea {
 pub(crate) struct PublishExtras<'w, 's> {
     #[cfg(not(target_arch = "wasm32"))]
     java_presentation: Option<Res<'w, crate::session::java_render::Presentation>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    java_session: Option<Res<'w, crate::session::SessionController>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    java_entities: Option<Res<'w, crate::session::java_entities::Presentation>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    java_names: Local<'s, nametags::java::Cache>,
     frame_poll: Res<'w, WorldStreamFramePoll>,
     #[cfg(not(target_arch = "wasm32"))]
     menu_runtime: Res<'w, client_shell::menu::MenuRuntime>,
@@ -98,6 +104,12 @@ pub(crate) fn prepare_ui_runtime(
     let PublishExtras {
         #[cfg(not(target_arch = "wasm32"))]
         java_presentation,
+        #[cfg(not(target_arch = "wasm32"))]
+        java_session,
+        #[cfg(not(target_arch = "wasm32"))]
+        java_entities,
+        #[cfg(not(target_arch = "wasm32"))]
+        mut java_names,
         frame_poll,
         #[cfg(not(target_arch = "wasm32"))]
         menu_runtime,
@@ -592,6 +604,46 @@ pub(crate) fn prepare_ui_runtime(
             tags
         })
         .unwrap_or_default();
+    #[cfg(not(target_arch = "wasm32"))]
+    let nametags = {
+        let mut nametags = nametags;
+        if let Some(state) = java_session.as_ref().and_then(|s| s.java_world_if_active()) {
+            nametags.clear();
+            if show_names
+                && !tag_style.is_some_and(|style| style.hide_players)
+                && (overlays.nametags
+                    || (names_with_hidden_hud
+                        && settings.value(SettingId::HideHud) != 0
+                        && !menu_visible))
+                && java_presentation.as_ref().and_then(|p| p.world_ready()) == Some(true)
+                && let Ok((_, transform, projection)) = cameras.single()
+            {
+                let transform = GlobalTransform::from(*transform);
+                let previous = java_names.unsupported_text;
+                nametags = java_names.project(
+                    state,
+                    nametags::NametagView {
+                        camera_position: transform.translation(),
+                        camera_forward: *transform.forward(),
+                    },
+                    java_entities.as_ref().map_or(0., |p| p.partial_tick()),
+                );
+                let clip = projection.get_clip_from_view() * transform.to_matrix().inverse();
+                nametags.retain(|tag| {
+                    presentation.nametag_intersects_view(tag, clip, transform.rotation())
+                });
+                if java_names.unsupported_text != previous && java_names.unsupported_text != 0 {
+                    bevy::log::warn!(target: "java_session", count = java_names.unsupported_text,
+                    "Java player labels require unsupported text content or formatting");
+                }
+            } else {
+                java_names.clear();
+            }
+        } else {
+            java_names.clear();
+        }
+        nametags
+    };
     let hud_camera = cameras.single().ok().map(|(_, transform, projection)| {
         (projection.get_clip_from_view() * GlobalTransform::from(*transform).to_matrix().inverse())
             .to_cols_array()
@@ -612,7 +664,19 @@ pub(crate) fn prepare_ui_runtime(
             .as_ref()
             .map(|stream| stream.authority().local_player_runtime_id()),
     );
-    nametag_cache.recycle_anchors(presentation.set_nametag_anchors(nametags));
+    let retired_names = presentation.set_nametag_anchors(nametags);
+    #[cfg(not(target_arch = "wasm32"))]
+    if java_session
+        .as_ref()
+        .and_then(|s| s.java_world_if_active())
+        .is_some()
+    {
+        java_names.recycle_anchors(retired_names);
+    } else {
+        nametag_cache.recycle_anchors(retired_names);
+    }
+    #[cfg(target_arch = "wasm32")]
+    nametag_cache.recycle_anchors(retired_names);
     presentation.set_chat_settings_snapshot(settings_snapshot);
     #[cfg(not(target_arch = "wasm32"))]
     let menu_view = menu_visible.then(|| {

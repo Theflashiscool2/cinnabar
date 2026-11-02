@@ -93,6 +93,10 @@ impl Default for SessionController {
 }
 
 impl SessionController {
+    /// Read-only native authority for shared presentation; absent outside an active Java session.
+    pub(crate) fn java_world_if_active(&self) -> Option<&client_world::java::WorldState> {
+        self.java.as_ref().map(|_| &self.java_world)
+    }
     /// Adopts `core`, already started for a direct `--address` session.
     pub(crate) fn new(core: CoreProcessGuard) -> Self {
         Self {

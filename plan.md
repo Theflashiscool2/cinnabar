@@ -266,7 +266,11 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   the profile/body/pose, and reconnect creates one fresh incarnation. Observer
   reconnect clears terrain/poses and advances generation 2 to 4; eight keepalives
   were observed before reconnect and two afterward. Custom skin downloads,
-  equipment, other player poses, nametags and the tab-list UI remain unfinished.
+  equipment, other player poses and the tab-list UI remain unfinished. Default player
+  name labels now use native team authority and the shared atlas/GPU path. Inspected
+  Linux offline vanilla frames cover prefixes/colours, four visibility rules, actual
+  peer movement, removal/rejoin and observer reconnect. Complex text/font overrides,
+  NPC holograms, below-name scores and Mac/iOS/Hypixel label acceptance remain open.
 - [x] Exercise native numeric HUD publication on the Linux offline vanilla fixture:
   health, food, synchronized armor and XP match server queries and rendered frames.
   Equipment removal clears armor; mode changes control status/hand visibility. The

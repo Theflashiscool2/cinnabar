@@ -671,8 +671,19 @@ visibility, independent player body turning, and standing empty-hand gait/idle p
 It reuses the existing actor rig and generic ordered interpolation track, not pig body
 control or Bedrock movement. Unarmed body/model probes and lifecycle/visibility tests
 pass; full math equivalence, item-use, attack, crouching, mounted, swimming and spectator
-presentation remain unqualified. The tab-list UI, nametags, equipment and capes remain
-open. This is not a playable-client claim.
+presentation remain unqualified. Native team packets now retain membership, formatting
+components and viewer-relative label visibility across dimension changes, clearing at
+reconfiguration/session replacement. `ProbeTeams.java` supplies independent codec
+fixtures for the current composite packet order. Default-scale player labels publish
+through the shared atlas and GPU path. Linux software-Vulkan offline vanilla frames
+cover plain names, team prefixes/colours, all four visibility rules, peer movement,
+departure/rejoin, team removal and observer reconnect. Standing/crouching attachment
+inputs also have native API/CPU evidence; other body poses remain unqualified. Literal
+components, the sixteen named colours, bold/italic and inherited sibling styles are
+handled; translation, arbitrary RGB/font overrides, underlining/strikethrough and
+NPC/text-display/below-name scoreboard labels remain explicit gaps. Mac, iOS and
+Hypixel label acceptance have not been performed here. The tab-list UI, equipment and capes
+remain open. This is not a playable-client claim.
 
 Two native Cinnabar clients joined the pinned offline vanilla fixture from their
 saved Java launcher entries on Linux (hidden Vulkan/lavapipe, 1280×720, scale 1).
