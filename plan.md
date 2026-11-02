@@ -165,9 +165,12 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   player profiles, replace the world epoch, retire menus/teams/entities and old
   correction receipts, and retain a private reset-pose anchor for relative teleports.
   Native 26.3 `ClientPacketListener.handleLogin`/`LocalPlayer.resetPos` are the
-  behavior references. Admission regressions pass; proxy/Hypixel and iPhone
-  transition qualification remains pending. This does not implement reconfiguration
-  or a transfer to a new network address.
+  behavior references. Admission and encrypted wire regressions pass. Linux software
+  rendering passed three transformed vanilla respawn-to-login handoffs, authoritative
+  block updates and keyboard movement, scope cleanup and direct vanilla reconnect.
+  Actual Hypixel/iPhone qualification remains pending. Nether sky/cloud selection
+  is still wrong in both handoff and cold direct joins; atmosphere is not qualified.
+  This does not implement reconfiguration or transfer to a new network address.
 - [x] Decode native full chunks, palettes, biomes, heightmaps, block entities, light
   masks, incremental block/biome/light updates and unloads into `world::java`.
   Preserve Java IDs and invalidate snapshots on session/dimension/column/neighbour
