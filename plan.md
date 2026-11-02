@@ -223,8 +223,10 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   return. Seven keepalives, Save & Quit cleanup and a fresh generation on reconnect
   were observed. Server-console edits do not establish client block interactions.
 - [x] Bound native mesh workers/results and reject stale session/dimension/column/halo
-  results. Empty sections use zero-byte publication permits. Java world entry uses
-  its GPU upload readiness and native player-loaded command, independently of the
+  results. Empty sections use zero-byte publication permits. Initial resource
+  preparation needs the received spawn column, not an arbitrary nine-column halo. Java world entry uses
+  current renderer receipt (including authoritative empty sections) and native
+  player-loaded command, independently of the
   Bedrock loading gate; both loading paths have focused regression coverage.
 - [x] Export hash-pinned native collision/surface data from the verified server with
   `assetc java-physics`. The authorized fixture test loads that output through Rust

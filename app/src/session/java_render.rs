@@ -1,6 +1,7 @@
 //! Native Java world presentation through Cinnabar's existing chunk renderer.
 mod assets;
 mod growth;
+mod loading;
 use super::SessionController;
 use bevy::prelude::*;
 use client_presentation::local_player::LocalViewPose;
@@ -37,6 +38,7 @@ pub(crate) struct Presentation {
     frame: u64,
     teleport: Option<u64>,
     opened: bool,
+    waiting: Option<&'static str>,
     next_generation: u64,
     uploaded: BTreeSet<[i32; 3]>,
     mesh_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
@@ -60,6 +62,7 @@ impl Default for Presentation {
             frame: 0,
             teleport: None,
             opened: false,
+            waiting: None,
             next_generation: 0,
             uploaded: BTreeSet::new(),
             mesh_keys: BTreeMap::new(),
@@ -137,6 +140,8 @@ impl Presentation {
             "spawn_terrain_uploaded": self.opened,
             "submitted_sections": self.published.len(),
             "uploaded_nonempty_sections": self.uploaded.len(),
+            "acknowledged_sections": self.resident_keys.len(),
+            "loading_stage": self.waiting,
             "backlog": self.stream.as_ref().map(|s| s.backlog()),
             "graphics_extension_pending": self.growth.busy(),
             "graphics_extensions": self.growth.completed,
@@ -221,6 +226,10 @@ pub(crate) fn update(
             acknowledgements.clear();
         }
         p.reset();
+        if active.is_some() {
+            menu.show_connecting();
+            controller.connecting = true;
+        }
         p.dimension = active;
     }
     let Some(dimension) = p.dimension.clone() else {
@@ -242,8 +251,10 @@ pub(crate) fn update(
     if p.failure.is_none()
         && p.stream.is_none()
         && p.pending.is_none()
-        && initial_halo_ready(&state.terrain)
-        && state.teleport.is_some()
+        && state
+            .teleport
+            .as_ref()
+            .is_some_and(|t| loading::initial_terrain_ready(&state.terrain, t.motion.position))
     {
         let root = assets::root();
         let columns = state
@@ -437,10 +448,14 @@ pub(crate) fn update(
             }
         }
     }
-    let spawn_ready = state.teleport.as_ref().is_some_and(|t| {
-        let section = t.motion.position.map(|v| (v.floor() as i32).div_euclid(16));
-        p.uploaded.contains(&section)
-    });
+    let spawn_ready = p.spawn_ready(state);
+    let stage = p.waiting_stage(state);
+    if p.waiting != Some(stage) {
+        p.waiting = Some(stage);
+        bevy::log::info!(target: "java_session", session=dimension.session, epoch=dimension.epoch,
+            stage, columns=state.terrain.len(), acknowledged_sections=p.resident_keys.len(),
+            nonempty_sections=p.uploaded.len(), "Java world loading stage");
+    }
     if let Some(error) = &p.failure {
         if let Some(java) = controller.java.as_mut()
             && java.diagnostic_notice("terrain_presentation_failed")
@@ -454,7 +469,7 @@ pub(crate) fn update(
         }
         menu.set_java_diagnostic(format!("Java terrain incomplete: {error}"));
     } else if !p.opened && spawn_ready && !state.awaiting_correction_ack() {
-        // Actual nonempty spawn terrain reached GPU upload; this does not claim gameplay support.
+        // Current spawn section reached renderer acknowledgement; empty authority is valid too.
         if let Some(java) = &controller.java
             && java
                 .command(java_protocol::session::Command::PlayerLoaded {
@@ -470,16 +485,9 @@ pub(crate) fn update(
         bevy::log::info!(
             session = dimension.session,
             epoch = dimension.epoch,
-            "Java spawn terrain uploaded by Cinnabar renderer; experimental dry-land movement enabled, broader gameplay incomplete"
+            "Java spawn section acknowledged by Cinnabar renderer; experimental dry-land movement enabled, broader gameplay incomplete"
         );
     }
-}
-
-fn initial_halo_ready(terrain: &world::java::Terrain) -> bool {
-    let Some([x, z]) = terrain.center else {
-        return false;
-    };
-    (-1..=1).all(|dx| (-1..=1).all(|dz| terrain.column([x + dx, z + dz]).is_some()))
 }
 
 /// Empty geometry still publishes authority, using the renderer's zero-byte budget.
