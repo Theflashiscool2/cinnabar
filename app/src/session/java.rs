@@ -46,23 +46,14 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         return;
     };
     for _ in 0..64 {
-        if let Some((revision, command)) = controller.java_world.correction_command() {
-            match java.command(command) {
-                Ok(()) => controller.java_world.correction_queued(revision),
-                Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => break,
-                Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-                    controller.java_world.terrain_error = Some("Java correction transport closed");
-                    break;
-                }
-            }
-        }
-        let Some(event) = java.poll() else {
+        let Some(event) = poll_event(java, &mut controller.java_world) else {
             break;
         };
         let display = !matches!(
             event.event,
             java_protocol::session::Event::DeferredPlay { .. }
                 | java_protocol::session::Event::Terrain { .. }
+                | java_protocol::session::Event::Scoreboard(_)
         );
         let admitted = controller.java_world.admit(event);
         if !admitted {
@@ -122,3 +113,19 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         );
     }
 }
+
+/// Corrections retry until queued; backpressure or a closed input never hides pending events.
+fn poll_event(
+    java: &mut client_session::java::Session,
+    state: &mut client_world::java::WorldState,
+) -> Option<java_protocol::session::Envelope> {
+    if let Some((revision, command)) = state.correction_command()
+        && java.command(command).is_ok()
+    {
+        state.correction_queued(revision);
+    }
+    java.poll()
+}
+
+#[cfg(test)]
+mod tests;

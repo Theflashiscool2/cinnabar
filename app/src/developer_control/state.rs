@@ -357,7 +357,16 @@ pub(super) fn snapshot(world: &World) -> Value {
         "local_mods": local_mods,
         "primitive_shapes": crate::primitive_shapes::snapshot(world),
         "sidebar": world.get_resource::<UiRuntimeResource>()
-            .and_then(|ui| super::scoreboards::snapshot(ui.scoreboards())),
+            .and_then(|ui| {
+                if ui.java_hud().is_some() {
+                    ui.java_sidebar_snapshot().map(|(title, rows)| json!({
+                        "edition": "java", "title": title,
+                        "rows": rows.into_iter().map(|(text, score)| json!({"text": text, "score": score})).collect::<Vec<_>>()
+                    }))
+                } else {
+                    super::scoreboards::snapshot(ui.scoreboards())
+                }
+            }),
         "screens": screens(world),
         "menu": menu_snapshot,
         "dressing_room": menu.map(|menu| {

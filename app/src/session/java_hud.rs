@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use client_shell::ui_resources::UiRuntimeResource;
 
 pub(crate) fn update(
-    controller: Option<Res<SessionController>>,
+    mut controller: Option<ResMut<SessionController>>,
     ui: Option<ResMut<UiRuntimeResource>>,
 ) {
     let Some(mut ui) = ui else {
@@ -16,6 +16,14 @@ pub(crate) fn update(
     {
         Some(snapshot) => {
             ui.publish_java_hud(snapshot);
+            if let Some(controller) = controller.as_ref() {
+                ui.publish_java_sidebar(&controller.java_world);
+            }
+            if ui.java_sidebar_has_unsupported_text()
+                && let Some(java) = controller.as_mut().and_then(|c| c.java.as_mut())
+            {
+                java.diagnostic_notice("java_sidebar_component_not_implemented");
+            }
         }
         None => ui.clear_java_hud(),
     }

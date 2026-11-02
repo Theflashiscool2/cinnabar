@@ -11,6 +11,7 @@ mod nbt;
 pub mod piston;
 pub mod player;
 mod roster;
+pub mod scoreboard;
 #[cfg(test)]
 mod tags_tests;
 mod terrain;
@@ -32,6 +33,7 @@ pub struct WorldState {
     pub entities: world::java::entities::Entities,
     pub players: world::java::roster::Roster,
     pub player_visual: world::java::entities::visual::Visual,
+    pub scoreboard: scoreboard::State,
     pub status: world::java::hud::State,
     pub biomes: Vec<world::java::BiomeAppearance>,
     pub terrain_error: Option<&'static str>,
@@ -124,6 +126,7 @@ impl WorldState {
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
+                    self.scoreboard.clear();
                     self.inventory = Default::default();
                     self.block_ack = None;
                     self.status = Default::default();
@@ -193,7 +196,16 @@ impl WorldState {
             },
             Event::Vitals(vitals) => self.vitals = Some(vitals),
             Event::Hud(packet) => hud::admit(self, packet),
-            Event::Roster(packet) => return roster::admit(self, packet),
+            Event::Roster(packet) => {
+                self.scoreboard.touch();
+                return roster::admit(self, packet);
+            }
+            Event::Scoreboard(packet) => {
+                if self.bootstrap.is_none() {
+                    return false;
+                }
+                self.scoreboard.admit(packet);
+            }
             Event::Entities {
                 dimension_epoch,
                 packet,

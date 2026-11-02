@@ -14,6 +14,7 @@ mod motion;
 pub mod movement;
 mod play;
 pub mod roster;
+pub mod scoreboard;
 mod terrain;
 use crate::{
     ProtocolError,

@@ -77,6 +77,7 @@ impl UiRuntime {
     /// Clears only a native projection; an ordinary Bedrock frame remains untouched.
     pub fn clear_java_hud(&mut self) {
         if self.session.java_hud.take().is_some() {
+            self.session.java_sidebar = Default::default();
             self.session.hud.clear();
             self.session.gameplay_hud.clear();
             self.session.local_player_health_available = false;

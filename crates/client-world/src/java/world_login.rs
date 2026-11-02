@@ -24,6 +24,7 @@ pub(super) fn admit(state: &mut WorldState, world: java_protocol::session::facts
     }
     state.login_motion = anchor;
     state.players.clear_teams();
+    state.scoreboard.clear();
     state.player_visual.pose = "standing".into();
     state.death = None;
     state.vitals = None;

@@ -1,5 +1,5 @@
 //! Ordered native session messages exposed to admission consumers.
-use super::{Phase, dynamics, entities, facts, hud, inventory, roster};
+use super::{Phase, dynamics, entities, facts, hud, inventory, roster, scoreboard};
 use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -20,6 +20,7 @@ pub enum Event {
     },
     Roster(roster::Packet),
     Hud(hud::Packet),
+    Scoreboard(scoreboard::Packet),
     Phase(Phase),
     Bootstrap(Box<Bootstrap>),
     /// A further play login replaces the level while retaining this connection's registries.

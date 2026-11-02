@@ -105,6 +105,7 @@ impl Report {
             Event::Hud(_) => "hud",
             Event::Bootstrap(_) => "bootstrap",
             Event::WorldLogin(_) => "world_login",
+            Event::Scoreboard(_) => "scoreboard",
             Event::Tags(_) => "tags",
             Event::Teleport { .. } => "teleport",
             Event::Respawn { .. } => "respawn",

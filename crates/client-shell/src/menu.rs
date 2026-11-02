@@ -415,6 +415,9 @@ impl MenuRuntime {
             self.message = Some(message);
         } else {
             bevy::log::warn!(error = %message, "join failed");
+            if !self.visible {
+                self.show_session_origin(MenuScreen::Play);
+            }
             self.message = None;
             self.disconnect_message = Some(message);
             self.focused = 0;

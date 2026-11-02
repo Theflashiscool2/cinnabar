@@ -254,3 +254,19 @@ fn remote_failure_projects_an_oreui_reason_and_keeps_navigation_actions() {
         assert!(menu.view().disconnect_message.is_none());
     }
 }
+
+#[test]
+fn remote_join_failure_reveals_disconnect_after_a_rendered_world() {
+    let mut menu = MenuRuntime::new(true, 2, "Player".into());
+    menu.request_connect("127.0.0.1:19132".into());
+    menu.take_join_intent().unwrap();
+    menu.show_world();
+    assert!(!menu.is_visible());
+    let diagnostic = launcher::menu::disconnect::from_java("Controlled server disconnect");
+    menu.show_join_failure(diagnostic.clone());
+    assert!(menu.is_visible());
+    assert!(menu.uses_panorama());
+    assert!(!menu.view().connecting);
+    assert_eq!(menu.view().disconnect_message, Some(diagnostic));
+    assert!(menu.view().can_reconnect);
+}

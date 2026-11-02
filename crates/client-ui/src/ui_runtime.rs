@@ -26,6 +26,7 @@ pub mod inventory_actions;
 pub mod inventory_drag;
 pub mod inventory_ingress;
 pub mod java_hud;
+mod java_sidebar;
 
 mod food;
 mod furnace_options;

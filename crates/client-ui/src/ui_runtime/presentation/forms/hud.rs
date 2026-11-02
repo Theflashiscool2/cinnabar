@@ -124,13 +124,24 @@ impl UiPresentationRuntime {
             None
         } else {
             let sidebar_key = (
-                runtime.scoreboards().revision(),
-                self.scoreboard_owner_names.revision(),
+                if runtime.session.java_hud.is_some() {
+                    runtime.session.java_sidebar.revision
+                } else {
+                    runtime.scoreboards().revision()
+                },
+                if runtime.session.java_hud.is_some() {
+                    runtime.session.session_id
+                } else {
+                    self.scoreboard_owner_names.revision()
+                },
                 hidden.contains(VanillaElement::Sidebar),
             );
-            let sidebar = self
-                .scoreboard
-                .refresh(runtime.scoreboards(), &self.scoreboard_owner_names);
+            let sidebar = if runtime.session.java_hud.is_some() {
+                runtime.session.java_sidebar.projection.as_ref()
+            } else {
+                self.scoreboard
+                    .refresh(runtime.scoreboards(), &self.scoreboard_owner_names)
+            };
             sidebar_shown = sidebar.is_some();
             let sidebar = sidebar.filter(|_| !sidebar_key.2);
             let mut changes = self.hud_cache.refresh(

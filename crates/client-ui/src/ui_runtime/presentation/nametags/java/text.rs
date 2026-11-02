@@ -26,6 +26,24 @@ pub(super) fn player(name: &str, team: Option<&Parameters>) -> Result<Arc<str>, 
     }
     Ok(out.into())
 }
+/// Formats a literal component with optional team decoration using the shared atlas contract.
+pub(crate) fn component_text(value: &NbtValue, team: Option<&Parameters>) -> Result<Arc<str>, ()> {
+    let style = Style {
+        color: team.and_then(|t| t.color),
+        ..Default::default()
+    };
+    let mut out = String::new();
+    let mut remaining = ui::MAX_TEXT_SPANS;
+    if let Some(team) = team {
+        component(&team.prefix, style, &mut out, &mut remaining, 0)?;
+    }
+    component(value, style, &mut out, &mut remaining, 0)?;
+    if let Some(team) = team {
+        component(&team.suffix, style, &mut out, &mut remaining, 0)?;
+    }
+    Ok(out.into())
+}
+
 fn literal(s: &str, style: Style, out: &mut String) -> Result<(), ()> {
     // Reset sibling formatting before restoring inherited fields. Bedrock colour codes alone
     // do not reset bold/italic, so simply concatenating component strings is incorrect.

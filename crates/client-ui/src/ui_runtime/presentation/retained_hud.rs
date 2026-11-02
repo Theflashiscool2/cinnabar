@@ -16,7 +16,7 @@ fn bounded_observed_text(value: &str) -> String {
     value[..end].to_owned()
 }
 
-pub(super) const MAX_PRESENTED_SCOREBOARD_ROWS: usize = 15;
+pub(in crate::ui_runtime) const MAX_PRESENTED_SCOREBOARD_ROWS: usize = 15;
 pub(super) const MAX_PRESENTED_PLAYER_LIST_ROWS: usize = protocol::MAX_PLAYER_LIST_RECORDS;
 pub(super) const MAX_PRESENTED_BELOW_NAME_ROWS: usize = ui::MAX_SCORES;
 /// Provisional hearts-row placeholder cap: one ten-heart row, the Java
@@ -25,7 +25,7 @@ pub(super) const MAX_PRESENTED_BELOW_NAME_ROWS: usize = ui::MAX_SCORES;
 pub(super) const MAX_PRESENTED_SCOREBOARD_HEARTS: u8 = 10;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum ScoreboardPresentationScope {
+pub(in crate::ui_runtime) enum ScoreboardPresentationScope {
     HudSidebar,
     #[allow(
         dead_code,
@@ -54,22 +54,22 @@ impl ScoreboardPresentationScope {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum PresentedScoreValue {
+pub(in crate::ui_runtime) enum PresentedScoreValue {
     Text(Arc<str>),
     Hearts { full_hearts: u8, half_heart: bool },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct PresentedScoreboardRow {
-    pub(super) label: Arc<str>,
-    pub(super) value: PresentedScoreValue,
+pub(in crate::ui_runtime) struct PresentedScoreboardRow {
+    pub(in crate::ui_runtime) label: Arc<str>,
+    pub(in crate::ui_runtime) value: PresentedScoreValue,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct PresentedScoreboard {
-    pub(super) scope: ScoreboardPresentationScope,
-    pub(super) title: Arc<str>,
-    pub(super) rows: Vec<PresentedScoreboardRow>,
+pub(in crate::ui_runtime) struct PresentedScoreboard {
+    pub(in crate::ui_runtime) scope: ScoreboardPresentationScope,
+    pub(in crate::ui_runtime) title: Arc<str>,
+    pub(in crate::ui_runtime) rows: Vec<PresentedScoreboardRow>,
 }
 
 #[allow(
@@ -88,9 +88,9 @@ pub(super) struct PresentedBelowNameRow {
 )]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct PresentedBelowNameScores {
-    pub(super) scope: ScoreboardPresentationScope,
+    pub(in crate::ui_runtime) scope: ScoreboardPresentationScope,
     pub(super) objective_display_name: Arc<str>,
-    pub(super) rows: Vec<PresentedBelowNameRow>,
+    pub(in crate::ui_runtime) rows: Vec<PresentedBelowNameRow>,
 }
 
 #[derive(Debug, Default)]
@@ -112,6 +112,16 @@ impl UiPresentationRuntime {
         &mut self,
         runtime: &crate::ui_runtime::UiRuntime,
     ) -> Option<(String, Vec<(String, i32)>)> {
+        if runtime.session.java_hud.is_some() {
+            let sidebar = runtime.session.java_sidebar.projection.as_ref()?;
+            let rows = sidebar
+                .rows
+                .iter()
+                .zip(&runtime.session.java_sidebar.scores)
+                .map(|(row, score)| (bounded_observed_text(&row.label), *score))
+                .collect();
+            return Some((bounded_observed_text(&sidebar.title), rows));
+        }
         let projection = runtime.scoreboards().projection_bounded(
             DisplaySlot::Sidebar,
             MAX_PRESENTED_SCOREBOARD_ROWS,

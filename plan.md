@@ -356,6 +356,11 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
 - [ ] Complete survival/tool breaking, general item/offhand use, entity targeting, local effects
   and inventory-dependent restrictions. Creative fixture evidence is not general
   interaction parity or a complete playable client.
+- [ ] Qualify the [native Java sidebar](docs/references/java-scoreboards.md):
+  objective/score/display/reset packet decoding and session-owned projection feed
+  the existing JSON-UI HUD. Codec, state, shared UI and Linux software-rendered
+  offline vanilla checks pass; Mac/iPhone/Hypixel acceptance remains open. Advanced text components, player-list and below-name
+  score surfaces are not complete.
 - [ ] Implement and qualify Java entities, movement, signed chat, inventory,
   interactions, assets and rendering. Deferred notifications are not gameplay state.
 

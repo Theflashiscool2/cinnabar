@@ -8,7 +8,7 @@ use world::java::{
 };
 #[cfg(test)]
 mod tests;
-mod text;
+pub(crate) mod text;
 
 struct Cached {
     profile: Arc<Profile>,

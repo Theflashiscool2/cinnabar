@@ -60,6 +60,14 @@ impl Connection {
                 .await?;
                 continue;
             }
+            if let Some(packet) = super::scoreboard::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("scoreboard before world login").into());
+                }
+                self.emit(Event::Scoreboard(packet)).await?;
+                continue;
+            }
             if let Some(packet) = roster::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
@@ -326,7 +334,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundRecipeBookRemovePacket",
     "ClientboundRecipeBookSettingsPacket",
     "ClientboundRemoveMobEffectPacket",
-    "ClientboundResetScorePacket",
     "ClientboundSelectAdvancementsTabPacket",
     "ClientboundServerDataPacket",
     "ClientboundSetActionBarTextPacket",
@@ -337,12 +344,9 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSetBorderWarningDistancePacket",
     "ClientboundSetCameraPacket",
     "ClientboundSetDefaultSpawnPositionPacket",
-    "ClientboundSetDisplayObjectivePacket",
     "ClientboundSetEntityLinkPacket",
     "ClientboundSetEquipmentPacket",
-    "ClientboundSetObjectivePacket",
     "ClientboundSetPlayerTeamPacket",
-    "ClientboundSetScorePacket",
     "ClientboundSetSimulationDistancePacket",
     "ClientboundSetSubtitleTextPacket",
     "ClientboundSetTimePacket",
