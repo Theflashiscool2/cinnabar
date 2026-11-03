@@ -79,6 +79,9 @@ pub(crate) fn drive_world_inventory_keys(
         Option<Res<NetworkHandle<PackApplication>>>,
     ),
 ) {
+    if runtime.java_hud().is_some() {
+        return;
+    }
     if emote_input.is_some_and(|consumed| consumed.0) {
         return;
     }
@@ -319,10 +322,14 @@ pub(super) fn apply_inventory_pointer(
             secondary_pressed,
             secondary_released,
             shift,
-            holding: runtime
-                .inventory_ledger(player_runtime)
-                .cursor_stack()
-                .is_some(),
+            holding: if runtime.java_hud().is_some() {
+                runtime.java_inventory_holding()
+            } else {
+                runtime
+                    .inventory_ledger(player_runtime)
+                    .cursor_stack()
+                    .is_some()
+            },
             hit,
             now_millis,
         };

@@ -10,6 +10,9 @@ pub(crate) fn update(
     let Some(mut ui) = ui else {
         return;
     };
+    if let Some(controller) = controller.as_mut() {
+        super::java_inventory::flush(controller, &mut ui);
+    }
     match controller
         .as_ref()
         .and_then(|c| c.java.as_ref().and(c.java_world.hud_snapshot()))
@@ -18,6 +21,7 @@ pub(crate) fn update(
             ui.publish_java_hud(snapshot);
             if let Some(controller) = controller.as_ref() {
                 ui.publish_java_sidebar(&controller.java_world);
+                ui.publish_java_inventory(&controller.java_world);
             }
             if ui.java_sidebar_has_unsupported_text()
                 && let Some(java) = controller.as_mut().and_then(|c| c.java.as_mut())

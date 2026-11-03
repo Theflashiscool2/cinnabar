@@ -36,6 +36,7 @@ fn report_groups_multiple_gaps_and_never_serializes_payloads() {
     added.insert("minecraft:custom_name", json!("PRIVATE_USERNAME"));
     report.observe(&event(Event::Inventory {
         dimension_epoch: 1,
+        incarnation: 0,
         packet: inventory::Packet::Cursor(Some(inventory::Stack {
             item: 55,
             count: 1,

@@ -16,7 +16,24 @@ pub(super) fn held_stack(
     pointer: Option<[f32; 2]>,
     icons: &mut Vec<IconRef>,
 ) -> Vec<DrawNode> {
-    let (Some(stack), Some(point)) = (stack, pointer) else {
+    held_count(
+        stack.map_or(0, |stack| u32::from(stack.count)),
+        icon,
+        durability,
+        pointer,
+        icons,
+    )
+}
+
+/// Draws native or translated presentation values through the same cursor renderer.
+pub(super) fn held_count(
+    count: u32,
+    icon: Option<IconRef>,
+    durability: Option<f32>,
+    pointer: Option<[f32; 2]>,
+    icons: &mut Vec<IconRef>,
+) -> Vec<DrawNode> {
+    let Some(point) = pointer.filter(|_| count > 0) else {
         return Vec::new();
     };
     let clip = RectOut {
@@ -85,7 +102,7 @@ pub(super) fn held_stack(
             },
         ));
     }
-    if stack.count > 1 {
+    if count > 1 {
         nodes.push(node(
             RectOut {
                 x,
@@ -94,7 +111,7 @@ pub(super) fn held_stack(
                 h: 9.0,
             },
             Draw::Text {
-                text: stack.count.to_string(),
+                text: count.to_string(),
                 color: [255; 4],
                 shadow: true,
                 align: TextAlign::Right,

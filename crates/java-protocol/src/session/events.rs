@@ -10,8 +10,18 @@ pub enum Event {
         sequence: u64,
         slot: u8,
     },
+    /// Local serialization receipt, never a server acceptance acknowledgement.
+    InventorySent {
+        dimension_epoch: u64,
+        incarnation: u64,
+        sequence: u64,
+        container: i32,
+        closed: bool,
+        written: bool,
+    },
     Inventory {
         dimension_epoch: u64,
+        incarnation: u64,
         packet: inventory::Packet,
     },
     BlockAck {

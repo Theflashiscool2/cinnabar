@@ -19,6 +19,7 @@ fn item_components_survive_authoritative_inventory_admission_and_replacement() {
     let update = |generation, item| Envelope {
         generation,
         event: Event::Inventory {
+            incarnation: 0,
             dimension_epoch: epoch,
             packet: wire::Packet::PlayerSlot {
                 slot: 0,
@@ -61,6 +62,7 @@ fn inventory_requires_current_session_dimension_and_valid_identity() {
     let message = |generation, dimension_epoch| Envelope {
         generation,
         event: Event::Inventory {
+            incarnation: 0,
             dimension_epoch,
             packet: wire::Packet::Selected(2),
         },
@@ -78,6 +80,7 @@ fn inventory_requires_current_session_dimension_and_valid_identity() {
     assert!(!admit(
         &mut state,
         epoch,
+        0,
         wire::Packet::PlayerSlot {
             slot: 2,
             stack: Some(invalid)
@@ -86,4 +89,63 @@ fn inventory_requires_current_session_dimension_and_valid_identity() {
     assert!(state.inventory.held().is_none());
     state.begin(8);
     assert_eq!(state.inventory.selected, None);
+}
+
+#[test]
+fn native_opening_identity_and_local_close_receipts_do_not_invent_server_item_changes() {
+    let mut state = crate::java::tests_support::state();
+    let epoch = state.terrain.dimension().unwrap().epoch;
+    state.inventory.begin(7, epoch);
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: Event::Inventory {
+            dimension_epoch: epoch,
+            incarnation: 44,
+            packet: wire::Packet::Open {
+                container: 7,
+                kind: "GENERIC_9X3",
+                title: java_protocol::nbt::Value::String("Chest".into()),
+            },
+        }
+    }));
+    assert_eq!(state.inventory.opened.as_ref().unwrap().incarnation, 44);
+    let authority = state.inventory.authority_revision;
+    assert!(!state.admit(Envelope {
+        generation: 7,
+        event: Event::InventorySent {
+            dimension_epoch: epoch,
+            incarnation: 43,
+            sequence: 1,
+            container: 7,
+            closed: true,
+            written: true,
+        }
+    }));
+    assert!(state.inventory.opened.is_some());
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: Event::InventorySent {
+            dimension_epoch: epoch,
+            incarnation: 44,
+            sequence: 2,
+            container: 7,
+            closed: false,
+            written: true,
+        }
+    }));
+    assert_eq!(state.inventory.authority_revision, authority);
+    assert!(state.inventory.opened.is_some());
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: Event::InventorySent {
+            dimension_epoch: epoch,
+            incarnation: 44,
+            sequence: 3,
+            container: 7,
+            closed: true,
+            written: true,
+        }
+    }));
+    assert!(state.inventory.opened.is_none());
+    assert_eq!(state.inventory.authority_revision, authority);
 }

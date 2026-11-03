@@ -110,10 +110,33 @@ impl WorldState {
                     usize::from(slot),
                 );
             }
+            Event::InventorySent {
+                dimension_epoch,
+                incarnation,
+                sequence,
+                container,
+                closed,
+                written,
+            } => {
+                return self
+                    .inventory
+                    .record_receipt(::inventory::java::pickup::Receipt {
+                        identity: ::inventory::java::pickup::MenuIdentity {
+                            session: self.generation,
+                            epoch: dimension_epoch,
+                            container,
+                            incarnation,
+                        },
+                        sequence,
+                        closed,
+                        written,
+                    });
+            }
             Event::Inventory {
                 dimension_epoch,
+                incarnation,
                 packet,
-            } => return inventory::admit(self, dimension_epoch, packet),
+            } => return inventory::admit(self, dimension_epoch, incarnation, packet),
             Event::BlockAck {
                 dimension_epoch,
                 sequence,

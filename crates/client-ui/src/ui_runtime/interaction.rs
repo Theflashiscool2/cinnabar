@@ -134,6 +134,13 @@ pub fn dispatch_inventory_key(
     hotbar: Option<u8>,
     drop: bool,
 ) -> Option<Result<i32, InventoryGestureError>> {
+    if runtime.java_hud().is_some() {
+        if hotbar.is_some() || drop {
+            runtime.session.java_inventory_error =
+                Some("This native Java inventory keyboard gesture is not implemented".into());
+        }
+        return None;
+    }
     if let Some(slot) = hotbar {
         return dispatch_inventory_hotbar(player_runtime, runtime, hit, slot);
     }
@@ -194,6 +201,11 @@ pub fn dispatch_inventory_hotbar(
     hit: Option<InventoryCellHit>,
     slot: u8,
 ) -> Option<Result<i32, InventoryGestureError>> {
+    if runtime.java_hud().is_some() {
+        runtime.session.java_inventory_error =
+            Some("Native Java number-key inventory swaps are not implemented".into());
+        return None;
+    }
     if slot >= protocol::HOTBAR_SLOT_COUNT || runtime.screen_state().text_focused() {
         return None;
     }

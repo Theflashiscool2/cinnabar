@@ -184,6 +184,9 @@ impl SemanticHud {
         runtime: &UiRuntime,
         frame: &HudFrame,
     ) -> bool {
+        if let Some(native) = &frame.java_items {
+            return native.matches(&self.model, &self.icons, runtime.hud_selected_slot(player));
+        }
         let facts = player.inventory.ledger().item_facts();
         self.model.hotbar.len() == frame.hotbar_stacks.len()
             && self.model.hotbar.iter().enumerate().all(|(index, slot)| {
@@ -235,6 +238,11 @@ impl SemanticHud {
         frame: &HudFrame,
     ) {
         self.icons.clear();
+        if let Some(native) = &frame.java_items {
+            (self.model.hotbar, self.model.offhand) =
+                native.bind(&mut self.icons, runtime.hud_selected_slot(player));
+            return;
+        }
         let facts = player.inventory.ledger().item_facts();
         let mut slot = |stack: Option<&protocol::NetworkItemStack>,
                         icon: Option<IconRef>,

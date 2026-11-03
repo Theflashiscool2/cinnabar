@@ -73,6 +73,18 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    ContainerClick {
+        dimension_epoch: u64,
+        incarnation: u64,
+        sequence: u64,
+        click: inventory::outbound::PreparedClick,
+    },
+    ContainerClose {
+        dimension_epoch: u64,
+        incarnation: u64,
+        sequence: u64,
+        container: i32,
+    },
     /// Slot range is admitted by the inventory owner. Sequence identifies the write receipt.
     Select {
         dimension_epoch: u64,
@@ -152,6 +164,7 @@ struct Connection {
     commands: Option<mpsc::Receiver<Command>>,
     dead: bool,
     loaded_epoch: Option<u64>,
+    menu_lifetime: inventory::lifetime::Lifetime,
     pending_teleport: Option<(i32, u64)>,
     pending_rotation: Option<u64>,
     correction_sequence: u64,
@@ -221,6 +234,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         terrain: None,
         dimensions: Vec::new(),
         dimension_epoch: 0,
+        menu_lifetime: Default::default(),
         commands: options.commands.take(),
         dead: false,
         loaded_epoch: None,

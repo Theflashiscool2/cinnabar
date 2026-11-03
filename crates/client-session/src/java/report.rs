@@ -100,6 +100,8 @@ impl Report {
                 "inventory"
             }
             Event::SelectionSent { .. } => "selection_sent",
+            Event::InventorySent { written: true, .. } => "inventory_write_receipt",
+            Event::InventorySent { written: false, .. } => "inventory_input_retired",
             Event::BlockAck { .. } => "block_ack",
             Event::Roster(_) => "roster",
             Event::Hud(_) => "hud",

@@ -1,0 +1,1564 @@
+{
+  "scope": "Source match-arm and literal discovery index, NOT packet/render/gameplay support qualification. Match arms can defer/ignore. Named sites may be guards, helpers or inline tests; inspect each full production path. Unmapped reference names need manual mapping. Actual offline deferrals are recorded separately.",
+  "game_version": "26.3",
+  "protocol": 777,
+  "reference_commit": "844ef35f2b14e3fed99d5d2e05b274193fae4388",
+  "reference_file": "crates/horizon-client/src/game/remote.rs",
+  "native_base_commit": "334c4fd2e5579eee7a26f1053477ab315d573119",
+  "native_working_tree": "includes uncommitted inventory integration",
+  "codec_source_sha256": "8035e9b0433d19e8c35ff8eaffdf051dface02566e19bf5fbf8bae0d2f6aec3a",
+  "reference_handler_variants": 122,
+  "target_game_clientbound_packets": 143,
+  "packets": [
+    {
+      "packet": "ClientboundDelimiterPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:173"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundAddEntityPacket",
+      "reference_variant": "AddEntity",
+      "reference_handler_lines": [
+        3115
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:85"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundAnimatePacket",
+      "reference_variant": "Animate",
+      "reference_handler_lines": [
+        3894
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:308"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundAwardStatsPacket",
+      "reference_variant": "AwardStats",
+      "reference_handler_lines": [
+        4577
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:309"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBlockChangedAckPacket",
+      "reference_variant": "BlockChangedAck",
+      "reference_handler_lines": [
+        3036
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:47"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBlockDestructionPacket",
+      "reference_variant": "BlockDestruction",
+      "reference_handler_lines": [
+        3021
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:310"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBlockEntityDataPacket",
+      "reference_variant": "BlockEntityData",
+      "reference_handler_lines": [
+        4547
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:121"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBlockEventPacket",
+      "reference_variant": "BlockEvent",
+      "reference_handler_lines": [
+        3042
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:115"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBlockUpdatePacket",
+      "reference_variant": "BlockUpdate",
+      "reference_handler_lines": [
+        3018
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:139"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundBossEventPacket",
+      "reference_variant": "BossEvent",
+      "reference_handler_lines": [
+        4606
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:311"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundChangeDifficultyPacket",
+      "reference_variant": "ChangeDifficulty",
+      "reference_handler_lines": [
+        3927
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:312"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundChunkBatchFinishedPacket",
+      "reference_variant": "ChunkBatchFinished",
+      "reference_handler_lines": [
+        3012
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:240"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundChunkBatchStartPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:248"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundChunksBiomesPacket",
+      "reference_variant": "ChunksBiomes",
+      "reference_handler_lines": [
+        3001
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:149"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundClearTitlesPacket",
+      "reference_variant": "ClearTitles",
+      "reference_handler_lines": [
+        4616
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:313"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCommandSuggestionsPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:314"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCommandsPacket",
+      "reference_variant": "Commands",
+      "reference_handler_lines": [
+        4229
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:315"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundContainerClosePacket",
+      "reference_variant": "ContainerClose",
+      "reference_handler_lines": [
+        4204,
+        4205
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:103"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundContainerSetContentPacket",
+      "reference_variant": "ContainerSetContent",
+      "reference_handler_lines": [
+        4102
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:61"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundContainerSetDataPacket",
+      "reference_variant": "ContainerSetData",
+      "reference_handler_lines": [
+        4160,
+        4163,
+        4166,
+        4167
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:104"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundContainerSetSlotPacket",
+      "reference_variant": "ContainerSetSlot",
+      "reference_handler_lines": [
+        4111
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:78"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCookieRequestPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:137",
+        "crates/java-protocol/src/session/login.rs:80"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCooldownPacket",
+      "reference_variant": "Cooldown",
+      "reference_handler_lines": [
+        4243
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:316"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCustomChatCompletionsPacket",
+      "reference_variant": "CustomChatCompletions",
+      "reference_handler_lines": [
+        4218
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:317"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCustomPayloadPacket",
+      "reference_variant": "CustomPayload",
+      "reference_handler_lines": [
+        2885
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:183"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDamageEventPacket",
+      "reference_variant": "DamageEvent",
+      "reference_handler_lines": [
+        3695
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:318"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDebugBlockValuePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:319"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDebugChunkValuePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:320"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDebugEntityValuePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:321"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDebugEventPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:322"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDebugSamplePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:323"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDeleteChatPacket",
+      "reference_variant": "DeleteChat",
+      "reference_handler_lines": [
+        4379
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:324"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDisconnectPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:116"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundDisguisedChatPacket",
+      "reference_variant": "DisguisedChat",
+      "reference_handler_lines": [
+        4371
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:325"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundEntityEventPacket",
+      "reference_variant": "EntityEvent",
+      "reference_handler_lines": [
+        3736
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:326"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundEntityPositionSyncPacket",
+      "reference_variant": "EntityPositionSync",
+      "reference_handler_lines": [
+        3208
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:151"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundExplodePacket",
+      "reference_variant": "Explode",
+      "reference_handler_lines": [
+        3071
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:327"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundAddTransientBlockPacket",
+      "reference_variant": "AddTransientBlock",
+      "reference_handler_lines": [
+        3019
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:328"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundForgetLevelChunkPacket",
+      "reference_variant": "ForgetLevelChunk",
+      "reference_handler_lines": [
+        3002
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:108"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundGameEventPacket",
+      "reference_variant": "GameEvent",
+      "reference_handler_lines": [
+        4025
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/hud.rs:43",
+        "crates/java-protocol/src/session/hud.rs:82",
+        "crates/java-protocol/src/session/hud.rs:90"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundGameRuleValuesPacket",
+      "reference_variant": "GameRuleValues",
+      "reference_handler_lines": [
+        3932
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:329"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundGameTestHighlightPosPacket",
+      "reference_variant": "GameTestHighlightPos",
+      "reference_handler_lines": [
+        4254
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:330"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMountScreenOpenPacket",
+      "reference_variant": "MountScreenOpen",
+      "reference_handler_lines": [
+        4198
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundHurtAnimationPacket",
+      "reference_variant": "HurtAnimation",
+      "reference_handler_lines": [
+        3724
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:331"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundInitializeBorderPacket",
+      "reference_variant": "InitializeBorder",
+      "reference_handler_lines": [
+        4475
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:332"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundKeepAlivePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:126"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLevelChunkWithLightPacket",
+      "reference_variant": "LevelChunkWithLight",
+      "reference_handler_lines": [
+        2999
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:102"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLevelEventPacket",
+      "reference_variant": "LevelEvent",
+      "reference_handler_lines": [
+        3068,
+        3069
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:333"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLevelParticlesPacket",
+      "reference_variant": "LevelParticles",
+      "reference_handler_lines": [
+        3070
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:334"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLightUpdatePacket",
+      "reference_variant": "LightUpdate",
+      "reference_handler_lines": [
+        3000
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:103"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLoginPacket",
+      "reference_variant": "Login",
+      "reference_handler_lines": [
+        2893
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:174"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundLowDiskSpaceWarningPacket",
+      "reference_variant": "LowDiskSpaceWarning",
+      "reference_handler_lines": [
+        4615
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:335"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMapItemDataPacket",
+      "reference_variant": "MapItemData",
+      "reference_handler_lines": [
+        4557
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:336"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMerchantOffersPacket",
+      "reference_variant": "MerchantOffers",
+      "reference_handler_lines": [
+        4203
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMoveEntityPosPacket",
+      "reference_variant": "MoveEntityPos",
+      "reference_handler_lines": [
+        3175
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:105"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMoveEntityPosRotPacket",
+      "reference_variant": "MoveEntityPosRot",
+      "reference_handler_lines": [
+        3176
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:105",
+        "crates/java-protocol/src/session/entities.rs:130"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMoveMinecartPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:337"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMoveEntityRotPacket",
+      "reference_variant": "MoveEntityRot",
+      "reference_handler_lines": [
+        3177
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:138"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundMoveVehiclePacket",
+      "reference_variant": "MoveVehicle",
+      "reference_handler_lines": [
+        3280
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundOpenBookPacket",
+      "reference_variant": "OpenBook",
+      "reference_handler_lines": [
+        4549
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundOpenScreenPacket",
+      "reference_variant": "OpenScreen",
+      "reference_handler_lines": [
+        4197
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:90"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundOpenSignEditorPacket",
+      "reference_variant": "OpenSignEditor",
+      "reference_handler_lines": [
+        4548
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPingPacket",
+      "reference_variant": "Ping",
+      "reference_handler_lines": [
+        2883
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:132"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPongResponsePacket",
+      "reference_variant": "PongResponse",
+      "reference_handler_lines": [
+        2889
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlaceGhostRecipePacket",
+      "reference_variant": "PlaceGhostRecipe",
+      "reference_handler_lines": [
+        4202
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerAbilitiesPacket",
+      "reference_variant": "PlayerAbilities",
+      "reference_handler_lines": [
+        4088
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/dynamics.rs:49"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerChatPacket",
+      "reference_variant": "PlayerChat",
+      "reference_handler_lines": [
+        4271
+      ],
+      "native_named_sites": [],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerCombatEndPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:338"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerCombatEnterPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:339"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerCombatKillPacket",
+      "reference_variant": "PlayerCombatKill",
+      "reference_handler_lines": [
+        3955
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:254"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerInfoRemovePacket",
+      "reference_variant": "PlayerInfoRemove",
+      "reference_handler_lines": [
+        4450
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/roster.rs:49"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerInfoUpdatePacket",
+      "reference_variant": "PlayerInfoUpdate",
+      "reference_handler_lines": [
+        4380
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/roster.rs:57"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerLookAtPacket",
+      "reference_variant": "PlayerLookAt",
+      "reference_handler_lines": [
+        2995
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:340"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerPositionPacket",
+      "reference_variant": "PlayerPosition",
+      "reference_handler_lines": [
+        2980
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:211"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPlayerRotationPacket",
+      "reference_variant": "PlayerRotation",
+      "reference_handler_lines": [
+        2981
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/dynamics.rs:114"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundRecipeBookAddPacket",
+      "reference_variant": "RecipeBookAdd",
+      "reference_handler_lines": [
+        4199
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:341"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundRecipeBookRemovePacket",
+      "reference_variant": "RecipeBookRemove",
+      "reference_handler_lines": [
+        4200
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:342"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundRecipeBookSettingsPacket",
+      "reference_variant": "RecipeBookSettings",
+      "reference_handler_lines": [
+        4201
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:343"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundRemoveEntitiesPacket",
+      "reference_variant": "RemoveEntities",
+      "reference_handler_lines": [
+        3165
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:104"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundRemoveMobEffectPacket",
+      "reference_variant": "RemoveMobEffect",
+      "reference_handler_lines": [
+        3920
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:344"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundResetScorePacket",
+      "reference_variant": "ResetScore",
+      "reference_handler_lines": [
+        4523
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/scoreboard.rs:71",
+        "crates/java-protocol/src/session/scoreboard.rs:122",
+        "crates/java-protocol/src/session/scoreboard.rs:123"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundResourcePackPopPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:175"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundResourcePackPushPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:160"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundPostEffectsPacket",
+      "reference_variant": "PostEffects",
+      "reference_handler_lines": [
+        2997
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:180"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundRespawnPacket",
+      "reference_variant": "Respawn",
+      "reference_handler_lines": [
+        2937
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:261"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundRotateHeadPacket",
+      "reference_variant": "RotateHead",
+      "reference_handler_lines": [
+        3283
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:147"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSectionBlocksUpdatePacket",
+      "reference_variant": "SectionBlocksUpdate",
+      "reference_handler_lines": [
+        3024
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:143"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSelectAdvancementsTabPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:345"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundServerDataPacket",
+      "reference_variant": "ServerData",
+      "reference_handler_lines": [
+        4556
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:346"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundSetActionBarTextPacket",
+      "reference_variant": "SetActionBarText",
+      "reference_handler_lines": [
+        4607
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:347"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetBorderCenterPacket",
+      "reference_variant": "SetBorderCenter",
+      "reference_handler_lines": [
+        4487
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:348"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetBorderLerpSizePacket",
+      "reference_variant": "SetBorderLerpSize",
+      "reference_handler_lines": [
+        4488
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:349"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetBorderSizePacket",
+      "reference_variant": "SetBorderSize",
+      "reference_handler_lines": [
+        4492
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:350"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetBorderWarningDelayPacket",
+      "reference_variant": "SetBorderWarningDelay",
+      "reference_handler_lines": [
+        4493
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:351"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetBorderWarningDistancePacket",
+      "reference_variant": "SetBorderWarningDistance",
+      "reference_handler_lines": [
+        4494
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:352"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetCameraPacket",
+      "reference_variant": "SetCamera",
+      "reference_handler_lines": [
+        2998
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:353"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetChunkCacheCenterPacket",
+      "reference_variant": "SetChunkCacheCenter",
+      "reference_handler_lines": [
+        4541
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:144"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetChunkCacheRadiusPacket",
+      "reference_variant": "SetChunkCacheRadius",
+      "reference_handler_lines": [
+        4533
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/terrain/mod.rs:148"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetCursorItemPacket",
+      "reference_variant": "SetCursorItem",
+      "reference_handler_lines": [
+        4133
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:88"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetDefaultSpawnPositionPacket",
+      "reference_variant": "SetDefaultSpawnPosition",
+      "reference_handler_lines": [
+        4551
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:354"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundSetDisplayObjectivePacket",
+      "reference_variant": "SetDisplayObjective",
+      "reference_handler_lines": [
+        4496
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/scoreboard.rs:60",
+        "crates/java-protocol/src/session/scoreboard.rs:100",
+        "crates/java-protocol/src/session/scoreboard.rs:101"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetEntityDataPacket",
+      "reference_variant": "SetEntityData",
+      "reference_handler_lines": [
+        3289
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:84"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetEntityLinkPacket",
+      "reference_variant": "SetEntityLink",
+      "reference_handler_lines": [
+        3257
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:355"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundSetEntityMotionPacket",
+      "reference_variant": "SetEntityMotion",
+      "reference_handler_lines": [
+        3671,
+        3677
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/dynamics.rs:110"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetEquipmentPacket",
+      "reference_variant": "SetEquipment",
+      "reference_handler_lines": [
+        3535
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:356"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetExperiencePacket",
+      "reference_variant": "SetExperience",
+      "reference_handler_lines": [
+        3980
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/hud.rs:38",
+        "crates/java-protocol/src/session/hud.rs:68",
+        "crates/java-protocol/src/session/hud.rs:77"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetHealthPacket",
+      "reference_variant": "SetHealth",
+      "reference_handler_lines": [
+        3934
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:249"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetHeldSlotPacket",
+      "reference_variant": "SetHeldSlot",
+      "reference_handler_lines": [
+        4097
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:89"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetObjectivePacket",
+      "reference_variant": "SetObjective",
+      "reference_handler_lines": [
+        4495
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/scoreboard.rs:46",
+        "crates/java-protocol/src/session/scoreboard.rs:96",
+        "crates/java-protocol/src/session/scoreboard.rs:99",
+        "crates/java-protocol/src/session/scoreboard.rs:119"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetPassengersPacket",
+      "reference_variant": "SetPassengers",
+      "reference_handler_lines": [
+        3253
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:199"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetPlayerInventoryPacket",
+      "reference_variant": "SetPlayerInventory",
+      "reference_handler_lines": [
+        4138
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/inventory.rs:84"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetPlayerTeamPacket",
+      "reference_variant": "SetPlayerTeam",
+      "reference_handler_lines": [
+        4527
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:357",
+        "crates/java-protocol/src/session/roster.rs:48"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetScorePacket",
+      "reference_variant": "SetScore",
+      "reference_handler_lines": [
+        4511
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/scoreboard.rs:64",
+        "crates/java-protocol/src/session/scoreboard.rs:103",
+        "crates/java-protocol/src/session/scoreboard.rs:107",
+        "crates/java-protocol/src/session/scoreboard.rs:111",
+        "crates/java-protocol/src/session/scoreboard.rs:115",
+        "crates/java-protocol/src/session/scoreboard.rs:138"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetSimulationDistancePacket",
+      "reference_variant": "SetSimulationDistance",
+      "reference_handler_lines": [
+        4528
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:358"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetSubtitleTextPacket",
+      "reference_variant": "SetSubtitleText",
+      "reference_handler_lines": [
+        4609
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:359"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetTimePacket",
+      "reference_variant": "SetTime",
+      "reference_handler_lines": [
+        3993
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:360"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundSetTitleTextPacket",
+      "reference_variant": "SetTitleText",
+      "reference_handler_lines": [
+        4608
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:361"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSetTitlesAnimationPacket",
+      "reference_variant": "SetTitlesAnimation",
+      "reference_handler_lines": [
+        4610
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:362"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSoundEntityPacket",
+      "reference_variant": "SoundEntity",
+      "reference_handler_lines": [
+        3096
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:363"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSoundPacket",
+      "reference_variant": "Sound",
+      "reference_handler_lines": [
+        3072
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:364"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundStartConfigurationPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:278",
+        "crates/java-protocol/src/session/play.rs:392"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundStopSoundPacket",
+      "reference_variant": "StopSound",
+      "reference_handler_lines": [
+        3112
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:365"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundStoreCookiePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:141"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSwingAnimationPacket",
+      "reference_variant": "SwingAnimation",
+      "reference_handler_lines": [
+        3897
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:366"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundSystemChatPacket",
+      "reference_variant": "SystemChat",
+      "reference_handler_lines": [
+        4259
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:367"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTabListPacket",
+      "reference_variant": "TabList",
+      "reference_handler_lines": [
+        4462
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:368"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTagQueryPacket",
+      "reference_variant": "TagQuery",
+      "reference_handler_lines": [
+        4212
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:369"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTakeItemEntityPacket",
+      "reference_variant": "TakeItemEntity",
+      "reference_handler_lines": [
+        3607
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:370"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTeleportEntityPacket",
+      "reference_variant": "TeleportEntity",
+      "reference_handler_lines": [
+        3221
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/entities.rs:181"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTickingStatePacket",
+      "reference_variant": "TickingState",
+      "reference_handler_lines": [
+        4559
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:371"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundTickingStepPacket",
+      "reference_variant": "TickingStep",
+      "reference_handler_lines": [
+        4563
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:372"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundTransferPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:155"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundUpdateAdvancementsPacket",
+      "reference_variant": "UpdateAdvancements",
+      "reference_handler_lines": [
+        4564
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:373"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundUpdateAttributesPacket",
+      "reference_variant": "UpdateAttributes",
+      "reference_handler_lines": [
+        3912,
+        3918
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/dynamics.rs:68"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundUpdateMobEffectPacket",
+      "reference_variant": "UpdateMobEffect",
+      "reference_handler_lines": [
+        3919
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:374"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundUpdateRecipesPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:375"
+      ],
+      "observed_offline_deferred": true
+    },
+    {
+      "packet": "ClientboundUpdateTagsPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:103"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundProjectilePowerPacket",
+      "reference_variant": "ProjectilePower",
+      "reference_handler_lines": [
+        3680
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:376"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundCustomReportDetailsPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:188"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundServerLinksPacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:195"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundTrackedWaypointPacket",
+      "reference_variant": "TrackedWaypoint",
+      "reference_handler_lines": [
+        3979
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:377"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundClearDialogPacket",
+      "reference_variant": "ClearDialog",
+      "reference_handler_lines": [
+        4613
+      ],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/configuration.rs:84",
+        "crates/java-protocol/src/session/play.rs:378"
+      ],
+      "observed_offline_deferred": false
+    },
+    {
+      "packet": "ClientboundShowDialogGamePacket",
+      "reference_variant": null,
+      "reference_handler_lines": [],
+      "native_named_sites": [
+        "crates/java-protocol/src/session/play.rs:283"
+      ],
+      "observed_offline_deferred": false
+    }
+  ],
+  "unmapped_reference_variants": {
+    "MoveMinecartAlongTrack": [
+      3281
+    ],
+    "Unknown": [
+      4213
+    ],
+    "TestInstanceBlockStatus": [
+      4256
+    ],
+    "ShowDialog": [
+      4612
+    ]
+  },
+  "native_scan_root": "crates/java-protocol/src; external test files excluded; inline tests may still appear"
+}

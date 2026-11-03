@@ -155,6 +155,7 @@ impl ContainerSource for ContainerAuthority<'_> {
 /// The frame's icons, durabilities and names as the container screens borrow them.
 pub(crate) fn container_frame(frame: &HudFrame) -> ContainerFrame<'_> {
     ContainerFrame {
+        native: frame.native_inventory.as_deref(),
         item_names: &frame.item_names,
         inventory_icons: &frame.inventory_icons.0,
         player_durability: &frame.durability.player,
@@ -184,6 +185,12 @@ pub(super) fn screen_layout(
     runtime: &UiRuntime,
     block_entity: Option<&str>,
 ) -> Option<ScreenLayout> {
+    if runtime.java_hud().is_some() {
+        return runtime.java_container_slots().map(|slots| match slots {
+            Some(slots) => ScreenLayout::Station(storage_kind(slots, None)),
+            None => ScreenLayout::Personal { book: false },
+        });
+    }
     let book = super::recipe_book::recipe_book_shown(player_runtime, runtime);
     Some(match InventoryScreen::of_runtime(player_runtime, runtime) {
         InventoryScreen::Personal | InventoryScreen::Creative => ScreenLayout::Personal { book },
@@ -444,21 +451,29 @@ impl UiPresentationRuntime {
             .map(|name| format!("entity.{name}.name"));
         let title_key = mount_key.as_deref().unwrap_or(title_key);
         // A custom name shows as stated, else the block's own title.
-        let title = window_text.custom_title.clone().unwrap_or_else(|| {
-            runtime
-                .translation(title_key)
-                .map_or_else(|| title_key.to_owned(), |title| title.to_string())
-        });
+        let title = runtime
+            .java_container_title()
+            .or_else(|| window_text.custom_title.clone())
+            .unwrap_or_else(|| {
+                runtime
+                    .translation(title_key)
+                    .map_or_else(|| title_key.to_owned(), |title| title.to_string())
+            });
         let source = ContainerAuthority::new(player_runtime, runtime);
         let items = container_frame(&self.hud_frame);
         let id_aux = id_aux_icons(&source, &items, |id| self.item_icon(id, 0));
         // The hovered item's full tooltip (name, enchantments, lore) replaces its
         // bound name, so hovering changes no data.
         let tooltip = runtime
-            .screen_state()
-            .hover
-            .filter(|hit| hit.is_item_cell())
-            .and_then(|_| tooltip_text(&window_text.tooltip));
+            .java_inventory_error()
+            .map(str::to_owned)
+            .or_else(|| {
+                runtime
+                    .screen_state()
+                    .hover
+                    .filter(|hit| hit.is_item_cell())
+                    .and_then(|_| tooltip_text(&window_text.tooltip))
+            });
         let preview_view = std::cell::Cell::new(None);
         let mut preview = PreviewRenderer {
             preview: self.hud_frame.player_preview,

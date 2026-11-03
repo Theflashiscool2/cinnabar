@@ -269,6 +269,10 @@ impl UiRuntime {
         player_runtime: &mut player_state::PlayerState,
         action: PointerAction,
     ) {
+        if self.java_hud().is_some() {
+            self.java_pointer_action(action);
+            return;
+        }
         let _ = match action {
             PointerAction::Click(hit) => {
                 let before = place_snapshot(player_runtime, hit);

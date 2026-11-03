@@ -110,6 +110,8 @@ pub struct BookView<'a> {
 
 /// This frame's resolved icons, durabilities and names, borrowed from the client's frame.
 pub struct ContainerFrame<'a> {
+    /// Edition-owned cells; no synthetic Bedrock inventory packets or numeric IDs.
+    pub native: Option<&'a crate::containers::NativeInventory>,
     /// Tooltip names by `(network id, metadata)`.
     pub item_names: &'a HashMap<(i32, u32), Arc<str>>,
     pub inventory_icons: &'a [Option<IconRef>; 36],

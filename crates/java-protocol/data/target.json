@@ -153,6 +153,15 @@
       "count": 1658,
       "official_registry_report_sha256": "51f62d56f8bd0e9134ee88dd9226b64e9e56cf6a32377540d44291bf47ecdac6",
       "generator": "ordered minecraft:item entries from the pinned server reports/registries.json"
+    },
+    "native_rules": {
+      "path": "data/inventory-facts.json",
+      "sha256": "a23f25b16ffe857e81b46dae8daca9ef201fab8c807492c41efdfbf1dbfedde9",
+      "bytes": 95175,
+      "items": 1658,
+      "inputs": 7,
+      "generator": "tools/java-reference/ExportInventoryFacts.java",
+      "source_client_sha256": "4508d006323f24fa02876310c192d739af56516eb259000ac50f0909a68c9a2d"
     }
   },
   "fluid_render_report": {

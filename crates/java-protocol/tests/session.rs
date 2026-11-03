@@ -10,6 +10,8 @@ use tokio::{net::TcpListener, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 #[path = "session/batch.rs"]
 mod batch;
+#[path = "session/containers.rs"]
+mod containers;
 #[path = "session/tags.rs"]
 mod tags;
 #[path = "session/world_login.rs"]
@@ -280,8 +282,10 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                 }
                 Event::Inventory {
                     dimension_epoch,
+                    incarnation,
                     packet,
                 } => {
+                    assert_eq!(incarnation, 0);
                     assert_eq!(dimension_epoch, 1);
                     match packet {
                         session::inventory::Packet::Content {

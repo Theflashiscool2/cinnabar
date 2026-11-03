@@ -663,3 +663,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+## Native Java inventory hash primitives
+
+`crates/java-protocol/src/session/inventory/hash_ops.rs` adapts CRC32C/HashOps
+primitives from [MIT reference source](https://github.com/Vasysik/horizon-android/blob/844ef35f2b14e3fed99d5d2e05b274193fae4388/crates/horizon-protocol/src/hash_ops.rs).
+Copyright and the full MIT license are retained in
+`assets/licenses/Native-Java-Reference-MIT.txt`. Cinnabar owns the native
+protocol adapter, inventory authority, shared UI and application integration.

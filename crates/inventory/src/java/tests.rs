@@ -19,6 +19,7 @@ fn open(s: &mut State, id: i32) {
     apply(
         s,
         Update::Open {
+            incarnation: s.incarnation + 1,
             container: id,
             kind: "GENERIC_9X3".into(),
             title: Value::Null,

@@ -26,6 +26,7 @@ pub mod inventory_actions;
 pub mod inventory_drag;
 pub mod inventory_ingress;
 pub mod java_hud;
+pub mod java_inventory;
 mod java_sidebar;
 
 mod food;
@@ -583,6 +584,17 @@ impl UiRuntime {
         player_runtime: &mut player_state::PlayerState,
         authority: Option<client_world::ui_read::InventoryUi<'_>>,
     ) -> UiAuthorityTransition {
+        if self.java_hud().is_some() {
+            if self.inventory_open() {
+                return self.close_inventory(player_runtime);
+            }
+            self.session.inventory_open = true;
+            self.session.chat_focused = false;
+            return UiAuthorityTransition {
+                consumes_text: false,
+                requested_context: InputContext::UiFocused,
+            };
+        }
         self.session.screen.container_close_armed = false;
         self.session.chat_focused = false;
         if player_runtime
@@ -640,6 +652,16 @@ impl UiRuntime {
         &mut self,
         player_runtime: &mut player_state::PlayerState,
     ) -> UiAuthorityTransition {
+        if self.java_hud().is_some() {
+            self.queue_java_container_close();
+            self.session.inventory_open = false;
+            self.session.screen.pointer.reset();
+            self.session.screen.hover = None;
+            return UiAuthorityTransition {
+                consumes_text: false,
+                requested_context: InputContext::Gameplay,
+            };
+        }
         self.session.screen.container_close_armed = false;
         self.session.screen.inventory = None;
         self.session.screen.search_focused = false;

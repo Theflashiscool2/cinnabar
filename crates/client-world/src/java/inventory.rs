@@ -22,11 +22,16 @@ fn stack(value: Option<wire::Stack>) -> Result<Option<Stack>, &'static str> {
         })
         .transpose()
 }
-pub(super) fn admit(state: &mut WorldState, epoch: u64, packet: wire::Packet) -> bool {
+pub(super) fn admit(
+    state: &mut WorldState,
+    epoch: u64,
+    incarnation: u64,
+    packet: wire::Packet,
+) -> bool {
     if !state.inventory.accepts(state.generation(), epoch) {
         return false;
     }
-    let update = match convert(packet) {
+    let update = match convert(packet, incarnation) {
         Ok(update) => update,
         Err(error) => {
             state.inventory.error = Some(error.into());
@@ -38,7 +43,7 @@ pub(super) fn admit(state: &mut WorldState, epoch: u64, packet: wire::Packet) ->
         .admit(state.generation(), epoch, update)
         .unwrap_or(false)
 }
-fn convert(packet: wire::Packet) -> Result<Update, &'static str> {
+fn convert(packet: wire::Packet, incarnation: u64) -> Result<Update, &'static str> {
     Ok(match packet {
         wire::Packet::Content {
             container,
@@ -82,6 +87,7 @@ fn convert(packet: wire::Packet) -> Result<Update, &'static str> {
             kind,
             title,
         } => Update::Open {
+            incarnation,
             container,
             kind: kind.into(),
             title: serde_json::to_value(title).map_err(|_| "invalid native menu title")?,

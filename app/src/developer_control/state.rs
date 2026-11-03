@@ -500,6 +500,7 @@ pub(super) fn snapshot(world: &World) -> Value {
         json!({
             "ui_session":ui.session_id(), "scope":ui.java_hud().map(|s| [s.session,s.epoch]),
             "selected_slot":ui.java_hud().and_then(|s| s.selected_slot),
+            "inventory_ui_error":ui.java_inventory_error(),
             "mode":ui.java_hud().and_then(|s|s.mode).map(|m|format!("{m:?}")),
             "health":stat(ui.hud().health()),"food":stat(ui.hud().hunger()),"armor":stat(ui.hud().armor()),
             "experience":ui.hud().experience().map(|xp|json!({"level":xp.level,"progress":xp.progress})),

@@ -5,6 +5,9 @@
 //! vanilla collections; item icons reach `inventory_item_renderer` through an
 //! index into this frame's icon table, and `#hover_text` feeds the tooltips.
 
+mod native;
+pub use native::{NativeCell, NativeInventory};
+
 use std::{collections::BTreeMap, sync::Arc};
 
 use json_ui::{CollectionItem, DataSource, Scalar, ViewState, hit_test};
@@ -259,13 +262,23 @@ impl ContainerScreen {
             self.start_preparing(engine, context, data, view, frame, resources);
             return None;
         }
-        let overlay = held_stack(
-            source.player().inventory.ledger().cursor_stack(),
-            items.cursor_icon,
-            items.cursor_durability,
-            pointer,
-            &mut icons,
-        );
+        let overlay = if let Some(native) = items.native {
+            held_stack::held_count(
+                native.cursor.count,
+                native.cursor.icon,
+                native.cursor.durability,
+                pointer,
+                &mut icons,
+            )
+        } else {
+            held_stack(
+                source.player().inventory.ledger().cursor_stack(),
+                items.cursor_icon,
+                items.cursor_durability,
+                pointer,
+                &mut icons,
+            )
+        };
         let art = ScreenArt {
             view: Some(&view),
             tooltip,
@@ -698,6 +711,9 @@ pub fn screen_data(
         &mut Option<furnace_book::FurnaceBookCache>,
     ),
 ) -> DataSource {
+    if let Some(native) = frame.native {
+        return native.data(layout, title, icons);
+    }
     let (book_cache, furnace_cache) = caches;
     let player_runtime = source.player();
     let ledger = player_runtime.inventory.ledger();

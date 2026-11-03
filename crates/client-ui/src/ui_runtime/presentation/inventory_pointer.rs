@@ -39,6 +39,12 @@ impl InventoryScreen {
         player_runtime: &player_state::PlayerState,
         runtime: &crate::ui_runtime::UiRuntime,
     ) -> Self {
+        if runtime.java_hud().is_some() {
+            return runtime
+                .java_container_slots()
+                .flatten()
+                .map_or(Self::Personal, Self::Storage);
+        }
         if runtime.screen_state().book.is_some() {
             return Self::Book;
         }

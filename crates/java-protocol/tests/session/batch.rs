@@ -44,6 +44,7 @@ async fn all_component_types_survive_ordered_inventory_delivery_and_keepalive() 
             match event.event {
                 Event::Inventory {
                     dimension_epoch,
+                    incarnation,
                     packet:
                         session::inventory::Packet::Content {
                             container,
@@ -52,7 +53,10 @@ async fn all_component_types_survive_ordered_inventory_delivery_and_keepalive() 
                             carried,
                         },
                 } => {
-                    assert_eq!((event.generation, dimension_epoch, container), (7, 1, 0));
+                    assert_eq!(
+                        (event.generation, dimension_epoch, incarnation, container),
+                        (7, 1, 0, 0)
+                    );
                     assert_eq!(slots.len(), 46);
                     assert!(carried.is_none());
                     revisions.push(state);

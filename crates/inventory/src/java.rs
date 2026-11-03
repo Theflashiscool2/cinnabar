@@ -40,6 +40,7 @@ pub enum Update {
     Cursor(Slot),
     Selected(usize),
     Open {
+        incarnation: u64,
         container: i32,
         kind: String,
         title: Value,
@@ -86,6 +87,8 @@ pub struct State {
     epoch: u64,
     incarnation: u64,
     pub revision: u64,
+    pub authority_revision: u64,
+    pub input_receipt: Option<pickup::Receipt>,
     pub selected: Option<usize>,
     /// Last local selection serialized by the socket; server selections remain ordered facts.
     pub selection_receipt: Option<u64>,
@@ -94,6 +97,7 @@ pub struct State {
     pub opened: Option<Menu>,
     pub error: Option<String>,
 }
+pub mod pickup;
 mod state;
 
 fn player_storage_slot(menu_slot: usize) -> Option<usize> {

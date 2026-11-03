@@ -23,6 +23,11 @@ impl UiRuntime {
             .is_some_and(|old| old.epoch != snapshot.epoch)
         {
             self.session.gameplay_hud.clear();
+            self.session.java_inventory = Default::default();
+            self.session.java_inventory_inputs.clear();
+            self.session.inventory_open = false;
+            self.session.screen.pointer.reset();
+            self.session.java_inventory_error = None;
         }
         let health = snapshot.health.and_then(|current| {
             let maximum = snapshot.maximum_health?;
@@ -78,6 +83,13 @@ impl UiRuntime {
     pub fn clear_java_hud(&mut self) {
         if self.session.java_hud.take().is_some() {
             self.session.java_sidebar = Default::default();
+            self.session.java_inventory = Default::default();
+            self.session.java_inventory_inputs.clear();
+            self.session.inventory_open = false;
+            self.session.screen.pointer.reset();
+            self.session.screen.hover = None;
+            self.session.inventory_pointer_gui = None;
+            self.session.java_inventory_error = None;
             self.session.hud.clear();
             self.session.gameplay_hud.clear();
             self.session.local_player_health_available = false;

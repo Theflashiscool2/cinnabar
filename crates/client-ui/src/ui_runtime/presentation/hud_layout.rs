@@ -55,6 +55,9 @@ pub struct HudFrame {
     pub offhand_durability: Option<f32>,
     /// Exact stack state published for each occupied hotbar cell this frame.
     pub hotbar_stacks: [Option<protocol::NetworkItemStack>; 9],
+    /// Native Java count/artwork values; never encoded as Bedrock item IDs.
+    pub java_items: Option<super::super::java_inventory::HudItems>,
+    pub native_inventory: Option<Arc<ui_screens::containers::NativeInventory>>,
     /// Item icons resolved from the authoritative registry this frame.
     pub hotbar_icons: [Option<IconRef>; 9],
     pub inventory_icons: InventoryIcons,

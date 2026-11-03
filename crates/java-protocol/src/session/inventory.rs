@@ -1,5 +1,9 @@
 //! Native container authority packets. Partial item/container snapshots are never emitted.
 mod components;
+pub mod hash_ops;
+pub mod lifetime;
+pub mod outbound;
+mod prediction;
 use crate::{ProtocolError as Error, nbt, target, wire::Reader};
 use serde::Serialize;
 use serde_json::Value;

@@ -37,7 +37,7 @@ pub(super) fn hud_model(
             durability: stack.and(durability).map(f64::from),
         }
     };
-    let hotbar = (0..9)
+    let mut hotbar = (0..9)
         .map(|index| {
             slot(
                 frame.hotbar_stacks[index].as_ref(),
@@ -47,7 +47,7 @@ pub(super) fn hud_model(
             )
         })
         .collect();
-    let offhand = runtime.local_offhand_stack(player_runtime).map(|stack| {
+    let mut offhand = runtime.local_offhand_stack(player_runtime).map(|stack| {
         slot(
             Some(stack),
             frame.offhand_icon,
@@ -55,6 +55,10 @@ pub(super) fn hud_model(
             false,
         )
     });
+    if let Some(native) = &frame.java_items {
+        icons.clear();
+        (hotbar, offhand) = native.bind(icons, selected);
+    }
     let experience = runtime.hud().experience();
     let title = visible(runtime.hud().title(), now).map(|title| {
         let fade_in = title.fade_in_millis;

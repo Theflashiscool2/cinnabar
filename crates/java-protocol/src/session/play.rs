@@ -83,8 +83,13 @@ impl Connection {
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("inventory before Java world login").into());
                 }
+                let incarnation = self
+                    .menu_lifetime
+                    .observe(&packet)
+                    .map_err(ProtocolError::Invalid)?;
                 self.emit(Event::Inventory {
                     dimension_epoch: self.dimension_epoch,
+                    incarnation,
                     packet,
                 })
                 .await?;
@@ -184,6 +189,7 @@ impl Connection {
                     self.loaded_epoch = None;
                     self.pending_teleport = None;
                     self.pending_rotation = None;
+                    self.menu_lifetime.retire();
                     if self.bootstrapped {
                         // Proxies may send another game login without a configuration phase.
                         // Reuse configured registries; do not clone their NBT for every handoff.
@@ -249,6 +255,7 @@ impl Connection {
                     let player_id = r.var()?;
                     let message = crate::nbt::read(&mut r)?;
                     self.dead = true;
+                    self.menu_lifetime.retire();
                     self.emit(Event::Death { player_id, message }).await?;
                 }
                 "ClientboundRespawnPacket" => {
@@ -260,6 +267,7 @@ impl Connection {
                     }
                     self.terrain = Some(self.terrain_context(&spawn)?);
                     self.dimension_epoch += 1;
+                    self.menu_lifetime.retire();
                     self.emit(Event::Respawn {
                         spawn,
                         keep_attribute_modifiers: keep & 1 != 0,

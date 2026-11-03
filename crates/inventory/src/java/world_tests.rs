@@ -42,3 +42,44 @@ fn world_rebind_preserves_only_same_player_storage_and_retires_menu_state() {
     assert!(s.held().is_none());
     assert_eq!(s.selected, Some(0));
 }
+
+#[test]
+fn personal_storage_pickup_uses_native_menu_indices_and_never_mutates_authority() {
+    let mut s = State::default();
+    s.begin(7, 1);
+    let mut slots = vec![None; PLAYER_MENU_SIZE];
+    slots[36] = Some(Stack {
+        item: "minecraft:stone".into(),
+        count: 7,
+        added: Default::default(),
+        removed: Default::default(),
+    });
+    s.admit(
+        7,
+        1,
+        Update::Content {
+            container: 0,
+            state: 3,
+            slots,
+            carried: None,
+        },
+    )
+    .unwrap();
+    let id = s.active_identity().unwrap();
+    let p = s
+        .plan_pickup(id, 36, pickup::Button::Right, |_| Ok(64))
+        .unwrap();
+    assert_eq!(p.carried.as_ref().unwrap().count, 4);
+    assert_eq!(p.changed[&36].as_ref().unwrap().count, 3);
+    assert_eq!(s.slot(0, 36).unwrap().as_ref().unwrap().count, 7);
+    assert!(
+        s.plan_pickup(id, 5, pickup::Button::Left, |_| Ok(64))
+            .is_err(),
+        "armor needs specialized slot rules"
+    );
+    s.begin(7, 2);
+    assert!(
+        s.plan_pickup(id, 36, pickup::Button::Left, |_| Ok(64))
+            .is_err()
+    );
+}

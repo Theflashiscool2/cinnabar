@@ -5,6 +5,58 @@ impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         match command {
+            Command::ContainerClick {
+                dimension_epoch,
+                incarnation,
+                sequence,
+                click,
+            } => {
+                let container = click.container();
+                let written = dimension_epoch == self.dimension_epoch
+                    && !self.dead
+                    && self.loaded_epoch == Some(dimension_epoch)
+                    && self.menu_lifetime.accepts(container, incarnation);
+                if written {
+                    self.send("ServerboundContainerClickPacket", click.payload())
+                        .await?;
+                }
+                self.emit(Event::InventorySent {
+                    dimension_epoch,
+                    incarnation,
+                    sequence,
+                    container,
+                    closed: false,
+                    written,
+                })
+                .await?;
+            }
+            Command::ContainerClose {
+                dimension_epoch,
+                incarnation,
+                sequence,
+                container,
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && !self.dead
+                    && self.menu_lifetime.accepts(container, incarnation);
+                if written {
+                    self.send(
+                        "ServerboundContainerClosePacket",
+                        &inventory::outbound::close(container)?,
+                    )
+                    .await?;
+                    self.menu_lifetime.retire();
+                }
+                self.emit(Event::InventorySent {
+                    dimension_epoch,
+                    incarnation,
+                    sequence,
+                    container,
+                    closed: true,
+                    written,
+                })
+                .await?;
+            }
             Command::Select {
                 dimension_epoch,
                 sequence,

@@ -54,7 +54,10 @@ impl State {
         }
         let result = self.apply(update);
         match &result {
-            Ok(true) => self.revision = self.revision.saturating_add(1),
+            Ok(true) => {
+                self.revision = self.revision.saturating_add(1);
+                self.authority_revision = self.authority_revision.saturating_add(1);
+            }
             Err(error) => self.error = Some(error.clone()),
             Ok(false) => {}
         }
@@ -167,6 +170,7 @@ impl State {
                 menu.carried = Some(stack);
             }
             Update::Open {
+                incarnation,
                 container,
                 kind,
                 title,
@@ -174,6 +178,10 @@ impl State {
                 if container <= 0 {
                     return Err("Java external menu needs a positive container ID".into());
                 }
+                if incarnation <= self.incarnation {
+                    return Ok(false);
+                }
+                self.incarnation = incarnation;
                 self.opened = None;
                 let rows = kind
                     .strip_prefix("GENERIC_9X")
@@ -182,10 +190,6 @@ impl State {
                 let Some(rows) = rows else {
                     return Err(format!("Native Java menu {kind} is not implemented"));
                 };
-                self.incarnation = self
-                    .incarnation
-                    .checked_add(1)
-                    .ok_or("Java menu incarnation exhausted")?;
                 let start = rows * HOTBAR_SIZE;
                 self.opened = Some(Menu {
                     container,
@@ -227,5 +231,15 @@ impl State {
             }
         }
         Ok(true)
+    }
+}
+
+impl Menu {
+    /// Number of protocol slots, including aliases of the player's shared storage.
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.slots.is_empty()
     }
 }

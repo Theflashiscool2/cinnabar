@@ -146,6 +146,10 @@ pub fn capture_hud_frame(
     frame.holding_filled_map = equipment.holding_filled_map;
     frame.mount_jump = mount_jump;
     frame.attack_indicator_charge = runtime.java_hud().is_none().then_some(1.0);
+    let native_container = runtime.java_container_frame(presentation);
+    presentation.hud_frame_mut().native_inventory = native_container.map(std::sync::Arc::new);
+    let native_items = runtime.java_inventory_items(presentation);
+    presentation.hud_frame_mut().java_items = native_items;
     observations::note_diagnostics(runtime, presentation);
     (equipment.held_item_icon, equipment.offhand_icon)
 }

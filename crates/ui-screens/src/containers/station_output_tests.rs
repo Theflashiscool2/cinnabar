@@ -42,6 +42,7 @@ fn with_output_frame(check: impl FnOnce(ContainerFrame<'_>)) {
         },
     };
     let frame = ContainerFrame {
+        native: None,
         item_names: &names,
         inventory_icons: &icons36,
         player_durability: &durability36,
