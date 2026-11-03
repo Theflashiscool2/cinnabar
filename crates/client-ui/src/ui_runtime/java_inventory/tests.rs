@@ -388,3 +388,49 @@ fn native_language_names_follow_components_and_retire_at_world_boundaries() {
     ui.clear_java_hud();
     assert!(ui.session.java_item_names.is_none());
 }
+
+#[test]
+fn native_collect_and_offhand_inputs_keep_native_slot_identity() {
+    use inventory::java::Update;
+    use ui_screens::container_actions::InventoryCellHit as Hit;
+    let mut world = client_world::java::WorldState::default();
+    world.begin(7);
+    world.inventory.begin(7, 1);
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 0,
+                state: 3,
+                slots: vec![None; inventory::java::PLAYER_MENU_SIZE],
+                carried: stack(2),
+            },
+        )
+        .unwrap();
+    let mut ui = UiRuntime::new(7);
+    ui.publish_java_hud(hud(7, 1));
+    ui.publish_java_inventory(&world);
+    ui.session.screen.hover = Some(Hit::Player(10));
+    ui.java_pointer_action(super::super::inventory_drag::PointerAction::Gather);
+    assert!(matches!(
+        ui.next_java_inventory_input().unwrap().intent,
+        Intent::Collect { slot: 10 }
+    ));
+    ui.finish_java_inventory_input(None);
+    ui.java_pointer_action(super::super::inventory_drag::PointerAction::Click(
+        Hit::Offhand,
+    ));
+    assert!(matches!(
+        ui.next_java_inventory_input().unwrap().intent,
+        Intent::Pickup {
+            slot: inventory::java::OFFHAND_MENU_SLOT,
+            ..
+        }
+    ));
+    assert_eq!(
+        ui.next_java_inventory_input().unwrap().identity.container,
+        0
+    );
+}

@@ -348,6 +348,7 @@ mod observed_tests {
 #[derive(Clone, Copy, Debug)]
 pub enum ObservedAction {
     QuickMove,
+    Collect,
     HotbarSwap(u8),
     Throw { whole_stack: bool },
 }
@@ -361,6 +362,10 @@ pub fn observed_action(
 ) -> Result<PreparedClick, Error> {
     let (mode, button) = match action {
         ObservedAction::QuickMove => (target::CONTAINER_INPUT_QUICK_MOVE, 0),
+        ObservedAction::Collect if carried.is_some() => (target::CONTAINER_INPUT_PICKUP_ALL, 0),
+        ObservedAction::Collect => {
+            return Err(Error::Invalid("native collect requires a carried stack"));
+        }
         ObservedAction::HotbarSwap(button) if button < 9 => (target::CONTAINER_INPUT_SWAP, button),
         ObservedAction::Throw { whole_stack } => {
             (target::CONTAINER_INPUT_THROW, u8::from(whole_stack))
@@ -383,6 +388,22 @@ pub fn observed_action(
 #[cfg(test)]
 mod storage_action_tests {
     use super::*;
+    #[test]
+    fn collect_matching_uses_native_mode_and_the_actual_pre_action_carried_stack() {
+        let carried = HashedStack {
+            item: 1,
+            count: 2,
+            added: BTreeMap::new(),
+            removed: Vec::new(),
+        };
+        assert_eq!(
+            observed_action(3, 129, 53, ObservedAction::Collect, Some(carried))
+                .unwrap()
+                .payload(),
+            &[3, 129, 1, 0, 53, 0, 6, 0, 1, 1, 2, 0, 0]
+        );
+        assert!(observed_action(3, 129, 53, ObservedAction::Collect, None).is_err());
+    }
     #[test]
     fn server_storage_actions_have_distinct_wire_modes_and_no_claimed_predictions() {
         for (action, button, mode) in [

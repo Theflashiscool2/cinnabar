@@ -78,7 +78,7 @@ impl State {
             return Err("Java container lifetime is no longer current".into());
         }
         let menu = self.menu(identity.container).unwrap();
-        if (menu.container == 0 && !(9..=44).contains(&slot))
+        if (menu.container == 0 && !(9..=OFFHAND_MENU_SLOT).contains(&slot))
             || (menu.container != 0 && !menu.kind.starts_with("GENERIC_9X"))
         {
             return Err("Java specialized slot rules not implemented".into());
@@ -233,6 +233,42 @@ mod tests {
         let id = s.active_identity().unwrap();
         assert!(s.observe_storage_slot(id, 36).is_err());
         assert!(s.observe_storage_slot(id, 5).is_err());
+    }
+    #[test]
+    fn personal_offhand_pickup_uses_its_native_slot_and_preserves_authority() {
+        let mut state = State::default();
+        state.begin(7, 1);
+        let mut slots = vec![None; PLAYER_MENU_SIZE];
+        slots[OFFHAND_MENU_SLOT] = item(12);
+        state
+            .admit(
+                7,
+                1,
+                Update::Content {
+                    container: 0,
+                    state: 4,
+                    slots,
+                    carried: None,
+                },
+            )
+            .unwrap();
+        let plan = state
+            .plan_pickup(
+                state.active_identity().unwrap(),
+                OFFHAND_MENU_SLOT,
+                Button::Left,
+                |_| Ok(64),
+            )
+            .unwrap();
+        assert_eq!(plan.carried, item(12));
+        assert_eq!(plan.changed[&OFFHAND_MENU_SLOT], None);
+        assert_eq!(state.slot(0, OFFHAND_MENU_SLOT), Some(&item(12)));
+        assert_eq!(state.player.as_ref().unwrap().carried, Some(None));
+        assert!(
+            state
+                .observe_storage_slot(state.active_identity().unwrap(), 5)
+                .is_err()
+        );
     }
     fn item(count: u32) -> Slot {
         Some(Stack {

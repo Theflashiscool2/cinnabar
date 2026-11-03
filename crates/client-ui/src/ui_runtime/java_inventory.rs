@@ -404,6 +404,9 @@ pub enum Intent {
     QuickMove {
         slot: usize,
     },
+    Collect {
+        slot: usize,
+    },
     Swap {
         slot: usize,
         hotbar: u8,
@@ -459,6 +462,16 @@ impl UiRuntime {
             PointerAction::Click(hit) => (hit, Some(Button::Left)),
             PointerAction::SecondaryClick(hit) => (hit, Some(Button::Right)),
             PointerAction::QuickMove(hit) => (hit, None),
+            PointerAction::Gather => {
+                if let Some(slot) = self
+                    .screen_state()
+                    .hover
+                    .and_then(|hit| self.java_menu_slot(hit))
+                {
+                    self.queue_java_inventory(Intent::Collect { slot });
+                }
+                return;
+            }
             PointerAction::EndDistribute => return,
             _ => {
                 self.session.java_inventory_error =
@@ -504,6 +517,7 @@ impl UiRuntime {
         use ui_screens::container_actions::InventoryCellHit;
         let slots = self.java_container_slots()?;
         let slot = match (hit, slots) {
+            (InventoryCellHit::Offhand, None) => OFFHAND_MENU_SLOT,
             (InventoryCellHit::Player(slot), None) if slot < 9 => 36 + usize::from(slot),
             (InventoryCellHit::Player(slot), None) if slot < 36 => usize::from(slot),
             (InventoryCellHit::Player(slot), Some(start)) if slot < 9 => {

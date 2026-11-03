@@ -33,7 +33,12 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
             }
         };
         match java.command(command) {
-            Ok(()) => ui.finish_java_inventory_input(None),
+            Ok(()) => {
+                bevy::log::debug!(target: "java_session", sequence=input.sequence,
+                    container=input.identity.container, intent=?input.intent,
+                    "Native Java inventory input queued");
+                ui.finish_java_inventory_input(None);
+            }
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => break,
             Err(_) => {
                 ui.finish_java_inventory_input(Some("Java session input closed".into()));
@@ -61,6 +66,7 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
     let slot = match input.intent {
         Intent::Pickup { slot, .. }
         | Intent::QuickMove { slot }
+        | Intent::Collect { slot }
         | Intent::Swap { slot, .. }
         | Intent::Throw { slot, .. } => slot,
         Intent::Close => unreachable!(),
@@ -105,6 +111,13 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
             revision,
             slot,
             outbound::ObservedAction::QuickMove,
+            carried,
+        ),
+        Intent::Collect { .. } => outbound::observed_action(
+            id.container,
+            revision,
+            slot,
+            outbound::ObservedAction::Collect,
             carried,
         ),
         Intent::Swap { hotbar, .. } => outbound::observed_action(
