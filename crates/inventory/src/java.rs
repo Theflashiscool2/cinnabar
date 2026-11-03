@@ -5,10 +5,19 @@ use std::collections::{BTreeMap, BTreeSet};
 
 // Pinned InventoryMenu/Inventory slot ownership, verified by the native fixture vectors.
 pub const HOTBAR_SIZE: usize = 9;
+pub const GENERIC_MENU_MAX_ROWS: usize = 6;
 pub const PLAYER_MENU_SIZE: usize = 46;
 pub const PLAYER_STORAGE_SIZE: usize = 43;
 pub const HOTBAR_START: usize = 36;
 pub const OFFHAND_MENU_SLOT: usize = 45;
+
+/// Pinned ChestMenu variants use one through six rows; specialized menus are distinct.
+pub fn generic_storage_slots(kind: &str) -> Option<usize> {
+    let rows = kind.strip_prefix("GENERIC_9X")?.parse::<usize>().ok()?;
+    (1..=GENERIC_MENU_MAX_ROWS)
+        .contains(&rows)
+        .then_some(rows * HOTBAR_SIZE)
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Stack {

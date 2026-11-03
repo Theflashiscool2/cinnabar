@@ -116,11 +116,14 @@ impl UiRuntime {
         self.java_hud()?;
         match &self.session.java_inventory.opened {
             None => Some(None),
-            Some(menu) => match menu.kind.as_str() {
-                "GENERIC_9X3" => Some(Some(27)),
-                "GENERIC_9X6" => Some(Some(54)),
-                _ => None,
-            },
+            Some(menu) => {
+                let slots = inventory::java::generic_storage_slots(&menu.kind)?;
+                if menu.slots.len() != slots + 36 {
+                    return None;
+                }
+                ui_screens::containers::native_layout::kind(slots)?;
+                Some(Some(slots))
+            }
         }
     }
     pub(super) fn java_container_title(&self) -> Option<String> {

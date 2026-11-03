@@ -553,3 +553,67 @@ fn native_close_widget_does_not_enter_a_bedrock_ledger() {
     ));
     assert_eq!(player.inventory.ledger().pending_request_count(), 0);
 }
+
+#[test]
+fn native_server_menu_row_count_preserves_last_slot_and_player_aliases() {
+    use inventory::java::Update;
+    use ui_screens::container_actions::InventoryCellHit as Hit;
+    for rows in 1..=6 {
+        let slots = rows * 9;
+        let mut world = client_world::java::WorldState::default();
+        world.begin(7);
+        world.inventory.begin(7, 1);
+        world
+            .inventory
+            .admit(
+                7,
+                1,
+                Update::Open {
+                    incarnation: 1,
+                    container: 2,
+                    kind: format!("GENERIC_9X{rows}"),
+                    title: serde_json::json!({"text":"Server menu"}),
+                },
+            )
+            .unwrap();
+        let mut contents = vec![None; slots + 36];
+        contents[slots - 1] = stack(9);
+        contents[slots + 27] = stack(11);
+        world
+            .inventory
+            .admit(
+                7,
+                1,
+                Update::Content {
+                    container: 2,
+                    state: 3,
+                    slots: contents,
+                    carried: None,
+                },
+            )
+            .unwrap();
+        let mut ui = UiRuntime::new(7);
+        ui.publish_java_hud(hud(7, 1));
+        assert!(ui.publish_java_inventory(&world));
+        assert_eq!(ui.java_container_slots(), Some(Some(slots)));
+        ui.java_pointer_action(super::super::inventory_drag::PointerAction::Click(
+            Hit::Storage((slots - 1) as u8),
+        ));
+        assert!(matches!(ui.next_java_inventory_input().unwrap().intent,
+            Intent::Pickup { slot, .. } if slot == slots-1));
+        ui.finish_java_inventory_input(None);
+        ui.java_keyboard_action(Some(Hit::Player(0)), Some(1), false, false);
+        assert!(matches!(ui.next_java_inventory_input().unwrap().intent,
+            Intent::Swap { slot, hotbar: 1 } if slot == slots+27));
+        ui.finish_java_inventory_input(None);
+        ui.java_pointer_action(super::super::inventory_drag::PointerAction::Click(
+            Hit::Storage(slots as u8),
+        ));
+        assert!(
+            ui.next_java_inventory_input().is_none(),
+            "no phantom next row"
+        );
+        assert_eq!(world.inventory.slot(2, slots - 1), Some(&stack(9)));
+        assert_eq!(world.inventory.slot(0, 36), Some(&stack(11)));
+    }
+}

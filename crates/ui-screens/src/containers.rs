@@ -6,6 +6,7 @@
 //! index into this frame's icon table, and `#hover_text` feeds the tooltips.
 
 mod native;
+pub mod native_layout;
 pub use native::{NativeCell, NativeInventory};
 
 use std::{collections::BTreeMap, sync::Arc};
@@ -212,6 +213,18 @@ impl ContainerScreen {
             .clone()
             .with_var("container_title", Value::String(title.to_owned()))
             .with_flag("localize_title", false);
+        if let Some(native) = items.native
+            && matches!(layout, ScreenLayout::Station(kind) if kind.screen == json_ui::NATIVE_STORAGE_SCREEN)
+        {
+            context = native_layout::context(context, native.container.len())?.with_var(
+                "inventory_title",
+                Value::String(
+                    (frame.translate)("container.inventory")
+                        .unwrap_or_else(|| "Inventory".into())
+                        .to_string(),
+                ),
+            );
+        }
         match layout {
             ScreenLayout::Station(kind) => {
                 for flag in kind.flags {

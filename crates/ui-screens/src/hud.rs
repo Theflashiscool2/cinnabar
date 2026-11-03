@@ -38,7 +38,17 @@ mod visibility_tests;
 
 /// The built-in Java-styled HUD pack: `(pack path, namespace, bytes)`, layered
 /// under every server pack.
-pub const JAVA_HUD_PACK: [(&str, &str, &[u8]); 4] = [
+pub const JAVA_HUD_PACK: [(&str, &str, &[u8]); 7] = [
+    (
+        "ui/_ui_defs.json",
+        "",
+        include_bytes!("../../../assets/java-hud/ui/_ui_defs.json"),
+    ),
+    (
+        "ui/player_list.json",
+        "cinnabar_tab",
+        include_bytes!("../../../assets/java-hud/ui/player_list.json"),
+    ),
     (
         "ui/_global_variables.json",
         "",
@@ -53,6 +63,11 @@ pub const JAVA_HUD_PACK: [(&str, &str, &[u8]); 4] = [
         "ui/hud_screen.json",
         "hud",
         include_bytes!("../../../assets/java-hud/ui/hud_screen.json"),
+    ),
+    (
+        "ui/native_storage.json",
+        "cinnabar_storage",
+        include_bytes!("../../../assets/java-hud/ui/native_storage.json"),
     ),
     (
         "ui/scoreboards.json",
@@ -79,6 +94,7 @@ pub const JAVA_HUD_IMAGES: [(&str, &[u8]); 3] = [
 
 /// Layers the built-in Java HUD pack and the rules server HUD layers follow over it.
 pub fn register(registry: &mut ScreenRegistry) {
+    registry.screen(json_ui::NATIVE_STORAGE_SCREEN);
     for (path, bytes) in JAVA_HUD_IMAGES {
         registry.builtin_image(path, bytes);
     }

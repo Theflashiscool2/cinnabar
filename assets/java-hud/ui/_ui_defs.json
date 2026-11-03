@@ -3,6 +3,7 @@
     "ui/chat_screen.json",
     "ui/hud_screen.json",
     "ui/player_list.json",
-    "ui/scoreboards.json"
+    "ui/scoreboards.json",
+    "ui/native_storage.json"
   ]
 }

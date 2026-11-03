@@ -183,14 +183,9 @@ impl State {
                 }
                 self.incarnation = incarnation;
                 self.opened = None;
-                let rows = kind
-                    .strip_prefix("GENERIC_9X")
-                    .and_then(|s| s.parse::<usize>().ok())
-                    .filter(|r| (1..=6).contains(r));
-                let Some(rows) = rows else {
+                let Some(start) = generic_storage_slots(&kind) else {
                     return Err(format!("Native Java menu {kind} is not implemented"));
                 };
-                let start = rows * HOTBAR_SIZE;
                 self.opened = Some(Menu {
                     container,
                     incarnation: self.incarnation,

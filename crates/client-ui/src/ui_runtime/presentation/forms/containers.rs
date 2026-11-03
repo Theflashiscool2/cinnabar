@@ -186,10 +186,12 @@ pub(super) fn screen_layout(
     block_entity: Option<&str>,
 ) -> Option<ScreenLayout> {
     if runtime.java_hud().is_some() {
-        return runtime.java_container_slots().map(|slots| match slots {
-            Some(slots) => ScreenLayout::Station(storage_kind(slots, None)),
-            None => ScreenLayout::Personal { book: false },
-        });
+        return match runtime.java_container_slots()? {
+            Some(slots) => Some(ScreenLayout::Station(
+                ui_screens::containers::native_layout::kind(slots)?,
+            )),
+            None => Some(ScreenLayout::Personal { book: false }),
+        };
     }
     let book = super::recipe_book::recipe_book_shown(player_runtime, runtime);
     Some(match InventoryScreen::of_runtime(player_runtime, runtime) {

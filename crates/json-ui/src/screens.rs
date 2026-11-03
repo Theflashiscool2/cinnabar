@@ -12,8 +12,12 @@ use crate::{Context, ResolvedControl, resolve};
 /// A rendered engine screen: bound tree, draw nodes, hit regions, scroll report.
 pub type ScreenRender = FormRender;
 
+/// Client-authored native storage layout, layered through the normal resource catalog.
+pub const NATIVE_STORAGE_SCREEN: &str = "cinnabar_storage.screen";
+
 /// Every `namespace.name` screen the engine renders.
 pub const ENGINE_SCREENS: &[&str] = &[
+    NATIVE_STORAGE_SCREEN,
     Reference::TradeTradeScreen.as_str(),
     Reference::Trade2TradeScreen.as_str(),
     crate::vanilla::Reference::HudHudScreen.as_str(),

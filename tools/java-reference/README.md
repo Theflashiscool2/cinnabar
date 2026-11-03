@@ -73,3 +73,27 @@ Compile with the verified reference classpath and run `InspectMovingPiston > mot
 set `CINNABAR_JAVA_PISTON_MOTION` to that file for the simulation regression. Model-plan
 tests take `CINNABAR_JAVA_PISTON_BLOCKS` pointing to the verified pinned `blocks.json`.
 These are CPU behavior fixtures; they do not establish moving-piston rendering or gameplay.
+
+`NativeMenuFixture.java` opens the pinned vanilla `ChestMenu` for each of its six
+row counts, using `ServerPlayer.openMenu`. It is an opt-in admin fixture on an
+isolated offline server, **not unmodified-vanilla qualification or Hypixel evidence**.
+Vanilla still owns slot rules, revisions, accepted/rejected clicks and carried
+items; the fixture sends no replacement protocol responses. It instruments one
+server tick to poll a local file once per 20 ticks, accepting only `open 1` through
+`open 6` or `dump`. Never install it on a public server or normal user world.
+
+```sh
+mkdir -p .local/java-menu-fixture/classes
+"$JAVA_HOME/bin/javac" --release 25 -d .local/java-menu-fixture/classes tools/java-reference/NativeMenuFixture*.java
+printf 'Manifest-Version: 1.0\nPremain-Class: NativeMenuFixture\nAgent-Class: NativeMenuFixture\nCan-Retransform-Classes: true\n' > .local/java-menu-fixture/MANIFEST.MF
+"$JAVA_HOME/bin/jar" cf .local/java-menu-fixture/fixture-bridge.jar -C .local/java-menu-fixture/classes NativeMenuFixtureBridge.class
+"$JAVA_HOME/bin/jar" cfm .local/java-menu-fixture/fixture.jar .local/java-menu-fixture/MANIFEST.MF -C .local/java-menu-fixture/classes NativeMenuFixture.class -C .local/java-menu-fixture/classes 'NativeMenuFixture$1.class'
+```
+
+Start the existing controlled server from its disposable world directory with
+`-javaagent:/absolute/path/fixture.jar=/absolute/path/request,FixturePlayer` before
+its normal `-jar .../server.jar nogui` arguments. Connect the actual native client,
+write `open 4` to that request file, then use normal UI input. `dump` logs the
+server's actual nonempty slots and carried stack. The bridge JAR must be beside
+the agent JAR. Remove the JVM agent argument on restart to restore the unmodified
+server. No proprietary binaries or generated worlds belong in Git.
