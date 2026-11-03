@@ -25,6 +25,7 @@ use world::java::Dimension;
 pub(crate) struct Presentation {
     interaction: Option<Arc<::assets::registry::java::interaction::Table>>,
     physics: Option<Arc<::assets::registry::java::physics::Table>>,
+    item_names: Option<Arc<::assets::registry::java::language::Language>>,
     dimension: Option<Dimension>,
     pending: Option<crossbeam_channel::Receiver<Result<assets::Prepared, String>>>,
     cancel: Arc<AtomicBool>,
@@ -49,6 +50,7 @@ impl Default for Presentation {
         Self {
             interaction: None,
             physics: None,
+            item_names: None,
             dimension: None,
             pending: None,
             cancel: Arc::new(AtomicBool::new(false)),
@@ -158,6 +160,17 @@ impl Presentation {
         })
     }
 
+    pub(crate) fn item_names(
+        &self,
+        session: u64,
+        epoch: u64,
+    ) -> Option<Arc<::assets::registry::java::language::Language>> {
+        let dimension = self.dimension.as_ref()?;
+        if (dimension.session, dimension.epoch) != (session, epoch) {
+            return None;
+        }
+        self.item_names.clone()
+    }
     fn reset(&mut self) {
         self.cancel.store(true, Ordering::Release);
         let generation = self.next_generation;
@@ -299,6 +312,7 @@ pub(crate) fn update(
                     .install_block_types(Arc::clone(&prepared.graphics.block_types));
                 p.interaction = Some(prepared.interaction);
                 p.physics = Some(prepared.physics);
+                p.item_names = Some(prepared.item_names);
                 let revision = textures.revision.saturating_add(1);
                 *textures = ChunkTextureAssets::with_revision(
                     Arc::clone(&prepared.graphics.runtime),

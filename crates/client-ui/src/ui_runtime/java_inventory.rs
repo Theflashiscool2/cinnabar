@@ -36,6 +36,22 @@ struct MenuView {
     carried: Option<Slot>,
 }
 impl UiRuntime {
+    /// Asset-worker output may publish only into the matching active native world.
+    pub fn publish_java_item_names(
+        &mut self,
+        session: u64,
+        epoch: u64,
+        names: std::sync::Arc<assets::registry::java::language::Language>,
+    ) -> bool {
+        if !self
+            .java_hud()
+            .is_some_and(|hud| (hud.session, hud.epoch) == (session, epoch))
+        {
+            return false;
+        }
+        self.session.java_item_names = Some(names);
+        true
+    }
     /// Copies only changed authoritative native slots, rejecting retired world/player scopes.
     pub fn publish_java_inventory(&mut self, world: &client_world::java::WorldState) -> bool {
         let Some(hud) = self.java_hud() else {
@@ -111,7 +127,12 @@ impl UiRuntime {
         self.java_hud()?;
         self.session.java_inventory.opened.as_ref().map(|m| {
             component_title_with(&m.title, &|key| {
-                self.translation(key).map(|s| s.to_string())
+                self.session
+                    .java_item_names
+                    .as_deref()
+                    .and_then(|lang| lang.get(key))
+                    .map(str::to_owned)
+                    .or_else(|| self.translation(key).map(|s| s.to_string()))
             })
         })
     }
@@ -121,7 +142,12 @@ impl UiRuntime {
     ) -> Option<ui_screens::containers::NativeInventory> {
         self.java_hud()?;
         let projection = &self.session.java_inventory;
-        let cells = |slots: &[Option<Slot>]| slots.iter().map(|s| cell(s, artwork)).collect();
+        let cells = |slots: &[Option<Slot>]| {
+            slots
+                .iter()
+                .map(|s| cell(s, artwork, self.session.java_item_names.as_deref()))
+                .collect()
+        };
         Some(ui_screens::containers::NativeInventory {
             player: cells(&projection.player),
             container: projection.opened.as_ref().map_or_else(Vec::new, |m| {
@@ -133,6 +159,7 @@ impl UiRuntime {
                     .as_ref()
                     .map_or_else(|| projection.player_carried.clone(), |m| m.carried.clone()),
                 artwork,
+                self.session.java_item_names.as_deref(),
             ),
         })
     }
@@ -265,17 +292,13 @@ mod tests;
 fn cell(
     slot: &Option<Slot>,
     artwork: &UiPresentationRuntime,
+    names: Option<&assets::registry::java::language::Language>,
 ) -> ui_screens::containers::NativeCell {
     let visual = item(slot, artwork);
     let name = slot
         .as_ref()
         .and_then(|s| s.as_ref())
-        .map_or_else(String::new, |s| {
-            s.added
-                .get("minecraft:custom_name")
-                .map(component_title)
-                .unwrap_or_else(|| s.item.clone())
-        });
+        .map_or_else(String::new, |stack| stack_name(stack, names));
     ui_screens::containers::NativeCell {
         known: visual.known,
         count: visual.count,
@@ -284,6 +307,27 @@ fn cell(
         name,
     }
 }
+fn stack_name(
+    stack: &inventory::java::Stack,
+    names: Option<&assets::registry::java::language::Language>,
+) -> String {
+    let component = stack
+        .added
+        .get("minecraft:custom_name")
+        .or_else(|| stack.added.get("minecraft:item_name"));
+    if component.is_none() && stack.removed.contains("minecraft:item_name") {
+        return String::new(); // Item.getName uses CommonComponents.EMPTY when ITEM_NAME is absent.
+    }
+    component
+        .or_else(|| names.and_then(|lang| lang.item(&stack.item)))
+        .map(|component| {
+            component_title_with(component, &|key| {
+                names.and_then(|lang| lang.get(key)).map(str::to_owned)
+            })
+        })
+        .unwrap_or_else(|| stack.item.clone())
+}
+#[cfg(test)]
 fn component_title(value: &serde_json::Value) -> String {
     component_title_with(value, &|_| None)
 }

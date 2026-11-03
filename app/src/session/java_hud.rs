@@ -6,6 +6,7 @@ use client_shell::ui_resources::UiRuntimeResource;
 pub(crate) fn update(
     mut controller: Option<ResMut<SessionController>>,
     ui: Option<ResMut<UiRuntimeResource>>,
+    presentation: Option<Res<super::java_render::Presentation>>,
 ) {
     let Some(mut ui) = ui else {
         return;
@@ -19,6 +20,12 @@ pub(crate) fn update(
     {
         Some(snapshot) => {
             ui.publish_java_hud(snapshot);
+            if let Some(names) = presentation
+                .as_ref()
+                .and_then(|p| p.item_names(snapshot.session, snapshot.epoch))
+            {
+                ui.publish_java_item_names(snapshot.session, snapshot.epoch, names);
+            }
             if let Some(controller) = controller.as_ref() {
                 ui.publish_java_sidebar(&controller.java_world);
                 ui.publish_java_inventory(&controller.java_world);

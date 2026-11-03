@@ -355,3 +355,36 @@ fn native_storage_gestures_keep_scope_slot_mapping_and_never_fall_through_to_bed
     assert!(ui.next_java_inventory_input().is_none());
     assert!(ui.java_inventory_error().unwrap().contains("carried stack"));
 }
+
+#[test]
+fn native_language_names_follow_components_and_retire_at_world_boundaries() {
+    use assets::registry::java::language::Language;
+    let lang = std::sync::Arc::new(Language::load(br#"{"item.minecraft.diamond":"Diamond","block.minecraft.stone":"Stone","custom.menu":"Server menu"}"#).unwrap().with_items([("minecraft:stone", r#"{"translate":"block.minecraft.stone"}"#)]).unwrap());
+    let mut stone = stack(1).unwrap();
+    assert_eq!(stack_name(&stone, Some(&lang)), "Stone");
+    assert_eq!(stack_name(&stone, None), "minecraft:stone");
+    stone.added.insert(
+        "minecraft:item_name".into(),
+        serde_json::json!({"Compound":{"translate":{"String":"custom.menu"}}}),
+    );
+    assert_eq!(stack_name(&stone, Some(&lang)), "Server menu");
+    stone.added.insert(
+        "minecraft:custom_name".into(),
+        serde_json::json!({"String":"Named wand"}),
+    );
+    assert_eq!(stack_name(&stone, Some(&lang)), "Named wand");
+    stone.added.clear();
+    stone.removed.insert("minecraft:item_name".into());
+    assert_eq!(stack_name(&stone, Some(&lang)), "");
+    let mut ui = UiRuntime::new(7);
+    assert!(!ui.publish_java_item_names(7, 1, lang.clone()));
+    ui.publish_java_hud(hud(7, 1));
+    assert!(!ui.publish_java_item_names(8, 1, lang.clone()));
+    assert!(ui.publish_java_item_names(7, 1, lang.clone()));
+    ui.publish_java_hud(hud(7, 2));
+    assert!(ui.session.java_item_names.is_none());
+    assert!(!ui.publish_java_item_names(7, 1, lang.clone()));
+    assert!(ui.publish_java_item_names(7, 2, lang));
+    ui.clear_java_hud();
+    assert!(ui.session.java_item_names.is_none());
+}

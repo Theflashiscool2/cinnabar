@@ -5,6 +5,7 @@ pub mod fluids;
 pub mod geometry;
 pub mod graphics;
 pub mod interaction;
+pub mod language;
 pub mod models;
 pub mod physics;
 pub mod piston;

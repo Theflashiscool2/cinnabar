@@ -1,4 +1,4 @@
-// Original offline export of scalar native inventory rules; no game process or network.
+// Original offline export of native inventory rules/default name components; no network.
 import com.google.gson.*;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +20,7 @@ public final class ExportInventoryFacts {
             ExportInventoryFacts.class.getResourceAsStream("/version.json"),
             StandardCharsets.UTF_8)).getAsJsonObject();
         var out = new JsonObject();
-        out.addProperty("schema", 1);
+        out.addProperty("schema", 2);
         out.add("game_version", version.get("id"));
         out.add("protocol", version.get("protocol_version"));
         out.addProperty("empty_item", BuiltInRegistries.ITEM.getId(net.minecraft.world.item.Items.AIR));
@@ -40,6 +40,10 @@ public final class ExportInventoryFacts {
             var entry = new JsonArray();
             entry.add(BuiltInRegistries.ITEM.getKey(item).toString());
             entry.add(item.getDefaultMaxStackSize());
+            var name = item.getDefaultInstance().get(net.minecraft.core.component.DataComponents.ITEM_NAME);
+            entry.add(name == null ? JsonNull.INSTANCE : net.minecraft.network.chat.ComponentSerialization.CODEC
+                .encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), name)
+                .getOrThrow());
             items.add(entry);
         }
         out.add("items", items);

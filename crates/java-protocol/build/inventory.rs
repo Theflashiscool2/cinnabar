@@ -63,6 +63,7 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
     validate(&items, &schema["items"]);
     *code += &format!("pub const ITEM_TYPES: &[&str] = &{items:?};\n");
     let native: serde_json::Value = serde_json::from_str(&source(&schema["native_rules"])).unwrap();
+    assert_eq!(native["schema"], schema["native_rules"]["schema"]);
     assert_eq!(native["game_version"], target["game_version"]);
     assert_eq!(native["protocol"], target["protocol"]);
     assert_eq!(
@@ -86,6 +87,15 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
         })
         .collect::<Vec<_>>();
     *code += &format!("pub const ITEM_STACK_LIMITS: &[u32] = &{limits:?};\n");
+    let names = entries
+        .iter()
+        .map(|entry| {
+            assert_eq!(entry.as_array().unwrap().len(), 3);
+            assert!(entry[2].is_object() || entry[2].is_null() || entry[2].is_string());
+            entry[2].to_string()
+        })
+        .collect::<Vec<_>>();
+    *code += &format!("pub const ITEM_DEFAULT_NAMES: &[&str] = &{names:?};\n");
     let empty = u32::try_from(native["empty_item"].as_u64().unwrap()).unwrap();
     assert!((empty as usize) < items.len());
     *code += &format!("pub const ITEM_EMPTY_ID: u32 = {empty};\n");

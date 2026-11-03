@@ -18,6 +18,7 @@ use world::java::{BiomeAppearance, Column};
 pub(super) struct Prepared {
     pub interaction: Arc<assets::registry::java::interaction::Table>,
     pub physics: Arc<assets::registry::java::physics::Table>,
+    pub item_names: Arc<assets::registry::java::language::Language>,
     pub graphics: Arc<Graphics>,
     pub tints: Vec<render_scene::chunk::biome_tints::BiomeTint>,
     pub unsupported_tints: BTreeSet<u32>,
@@ -162,6 +163,18 @@ fn load_inner(
         jar,
         cancel: Arc::clone(&cancel),
     };
+    // English is the target default fallback. Other locale/pack layering stays a separate gate.
+    let item_names = Arc::new(
+        assets::registry::java::language::Language::load(
+            &source.read("assets/minecraft/lang/en_us.json")?,
+        )?
+        .with_items(
+            target::ITEM_TYPES
+                .iter()
+                .copied()
+                .zip(target::ITEM_DEFAULT_NAMES.iter().copied()),
+        )?,
+    );
     let mut colormap = |name: &str| -> Result<Image, Error> {
         Image::decode(&source.read(&Identifier::parse(name)?.asset_path("textures", "png"))?)
     };
@@ -247,6 +260,7 @@ fn load_inner(
         .map_err(|error| model_error(error, &cancel))?,
     );
     Ok(Prepared {
+        item_names,
         interaction,
         physics,
         graphics,
