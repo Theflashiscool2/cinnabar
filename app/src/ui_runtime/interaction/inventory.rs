@@ -333,7 +333,11 @@ pub(super) fn apply_inventory_pointer(
             hit,
             now_millis,
         };
-        let actions = runtime.screen_state_mut().pointer.step(frame);
+        let actions = if runtime.java_hud().is_some() {
+            runtime.step_java_inventory_pointer(frame, crate::session::java_inventory::max_stack)
+        } else {
+            runtime.screen_state_mut().pointer.step(frame)
+        };
         // A Shift-click on a creative-layout hotbar slot deletes its stack.
         let auto_destroy =
             shift && gui.is_some_and(|gui| presentation.inventory_auto_place_destroys(gui));
@@ -355,7 +359,7 @@ pub(super) fn apply_inventory_pointer(
             }
         }
     }
-    if !scrollbar_owned && hit.is_none() && !mod_owned {
+    if runtime.java_hud().is_none() && !scrollbar_owned && hit.is_none() && !mod_owned {
         use ui_screens::containers::presses::HeldStackPress;
         // A held stack clicked off the screen's panels is dropped: all of it
         // on a primary click, one item on a secondary click. A primary click on

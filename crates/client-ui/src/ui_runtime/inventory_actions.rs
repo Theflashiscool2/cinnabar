@@ -270,6 +270,13 @@ impl UiRuntime {
         action: PointerAction,
     ) {
         if self.java_hud().is_some() {
+            if matches!(
+                action,
+                PointerAction::Click(InventoryCellHit::Widget(Widget::Close))
+            ) {
+                self.close_inventory(player_runtime);
+                return;
+            }
             self.java_pointer_action(action);
             return;
         }

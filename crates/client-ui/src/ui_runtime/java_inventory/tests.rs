@@ -434,3 +434,122 @@ fn native_collect_and_offhand_inputs_keep_native_slot_identity() {
         0
     );
 }
+
+#[test]
+fn native_drag_filters_component_mismatch_and_queues_one_scoped_release() {
+    use super::super::inventory_drag::PointerFrame;
+    use inventory::java::Update;
+    use ui_screens::container_actions::InventoryCellHit as Hit;
+    let mut world = client_world::java::WorldState::default();
+    world.begin(7);
+    world.inventory.begin(7, 1);
+    let mut slots = vec![None; inventory::java::PLAYER_MENU_SIZE];
+    slots[11] = stack(4);
+    slots[11].as_mut().unwrap().added.insert(
+        "minecraft:custom_name".into(),
+        serde_json::json!("Different"),
+    );
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 0,
+                state: 3,
+                slots,
+                carried: stack(11),
+            },
+        )
+        .unwrap();
+    let mut ui = UiRuntime::new(7);
+    ui.publish_java_hud(hud(7, 1));
+    ui.publish_java_inventory(&world);
+    let frame = |hit, at| PointerFrame {
+        primary_pressed: false,
+        primary_released: false,
+        secondary_pressed: false,
+        secondary_released: false,
+        shift: false,
+        holding: true,
+        hit: Some(Hit::Player(hit)),
+        now_millis: at,
+    };
+    assert!(
+        ui.step_java_inventory_pointer(
+            PointerFrame {
+                primary_pressed: true,
+                ..frame(9, 0)
+            },
+            |_| Ok(64)
+        )
+        .is_empty()
+    );
+    assert!(
+        ui.step_java_inventory_pointer(frame(11, 10), |_| Ok(64))
+            .is_empty()
+    );
+    assert!(
+        ui.step_java_inventory_pointer(frame(10, 20), |_| Ok(64))
+            .is_empty()
+    );
+    assert!(ui.next_java_inventory_input().is_none());
+    for action in ui.step_java_inventory_pointer(
+        PointerFrame {
+            primary_released: true,
+            ..frame(10, 30)
+        },
+        |_| Ok(64),
+    ) {
+        ui.java_pointer_action(action);
+    }
+    let input = ui.next_java_inventory_input().unwrap();
+    assert_eq!(input.identity, world.inventory.active_identity().unwrap());
+    assert!(matches!(&input.intent,Intent::QuickCraft {slots,one_each:false} if slots==&[9,10]));
+    assert_eq!(
+        world.inventory.player.as_ref().unwrap().carried,
+        Some(stack(11))
+    );
+    ui.finish_java_inventory_input(None);
+    ui.step_java_inventory_pointer(
+        PointerFrame {
+            primary_pressed: true,
+            ..frame(9, 400)
+        },
+        |_| Ok(64),
+    );
+    ui.clear_java_hud();
+    assert!(
+        ui.step_java_inventory_pointer(
+            PointerFrame {
+                primary_released: true,
+                ..frame(10, 450)
+            },
+            |_| Ok(64)
+        )
+        .is_empty()
+    );
+    assert!(ui.next_java_inventory_input().is_none());
+}
+#[test]
+fn native_close_widget_does_not_enter_a_bedrock_ledger() {
+    use ui_screens::container_actions::{InventoryCellHit, Widget};
+    let mut world = client_world::java::WorldState::default();
+    world.begin(7);
+    world.inventory.begin(7, 1);
+    let mut ui = UiRuntime::new(7);
+    ui.publish_java_hud(hud(7, 1));
+    ui.publish_java_inventory(&world);
+    ui.session.inventory_open = true;
+    let mut player = player_state::PlayerState::new(7);
+    ui.perform_pointer_action(
+        &mut player,
+        super::super::inventory_drag::PointerAction::Click(InventoryCellHit::Widget(Widget::Close)),
+    );
+    assert!(!ui.inventory_open());
+    assert!(matches!(
+        ui.next_java_inventory_input().unwrap().intent,
+        Intent::Close
+    ));
+    assert_eq!(player.inventory.ledger().pending_request_count(), 0);
+}

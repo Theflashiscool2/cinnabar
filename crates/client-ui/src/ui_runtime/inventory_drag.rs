@@ -1,6 +1,8 @@
 //! Pointer gesture state for the inventory screens: drag-distribute and
 //! double-click gather. Pure so the click timing is testable.
 
+mod java;
+
 use inventory::inventory_ledger::{DragDistribution, MAX_DISTRIBUTION_CELLS};
 use ui_screens::container_actions::InventoryCellHit;
 
@@ -50,6 +52,7 @@ struct Drag {
 
 #[derive(Debug, Clone, Default)]
 pub struct InventoryPointer {
+    java: java::Pointer,
     drag: Option<Drag>,
     last_primary: Option<(InventoryCellHit, u64)>,
     pub(crate) distribution: Option<DragDistribution>,
@@ -68,6 +71,16 @@ impl InventoryPointer {
         *self = Self::default();
     }
 
+    /// Java keeps a pending carried-stack press until release. Bedrock's step is unchanged.
+    pub fn step_java(
+        &mut self,
+        frame: PointerFrame,
+        eligible: bool,
+        count: usize,
+        capacity: usize,
+    ) -> Vec<PointerAction> {
+        self.java.step(frame, eligible, count, capacity)
+    }
     /// Advances the gesture state by one frame and returns what to dispatch.
     pub fn step(&mut self, frame: PointerFrame) -> Vec<PointerAction> {
         let mut actions = Vec::new();

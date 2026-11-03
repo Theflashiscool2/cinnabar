@@ -17,8 +17,10 @@ impl Connection {
                     && self.loaded_epoch == Some(dimension_epoch)
                     && self.menu_lifetime.accepts(container, incarnation);
                 if written {
-                    self.send("ServerboundContainerClickPacket", click.payload())
-                        .await?;
+                    for payload in click.payloads() {
+                        self.send("ServerboundContainerClickPacket", payload)
+                            .await?;
+                    }
                 }
                 self.emit(Event::InventorySent {
                     dimension_epoch,

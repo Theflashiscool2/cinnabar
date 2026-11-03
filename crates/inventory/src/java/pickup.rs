@@ -133,7 +133,7 @@ impl State {
                 if limit == 0 {
                     return Err("Java stack limit is unknown".into());
                 }
-                if same_components(item, held) {
+                if item.same_components(held) {
                     let available = limit.saturating_sub(item.count);
                     let take = available.min(if button == Button::Right {
                         1
@@ -163,9 +163,6 @@ impl State {
             carried: cursor,
         })
     }
-}
-fn same_components(a: &Stack, b: &Stack) -> bool {
-    a.item == b.item && a.added == b.added && a.removed == b.removed
 }
 fn counted(item: &Stack, count: u32) -> Slot {
     (count > 0).then(|| Stack {

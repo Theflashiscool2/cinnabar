@@ -63,33 +63,48 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
             0,
         ));
     }
+    if let Intent::QuickCraft {
+        ref slots,
+        one_each,
+    } = input.intent
+    {
+        let first = *slots.first().ok_or("Java drag has no slots")?;
+        let (revision, carried) = state.observe_storage_slot(id, first)?;
+        for slot in slots {
+            state.observe_storage_slot(id, *slot)?;
+        }
+        if let Some(stack) = carried {
+            max_stack(stack)?;
+        }
+        let (carried, missing) = hash(carried)?;
+        let carried = carried.ok_or("Java drag carried stack is not ready")?;
+        let slots = slots
+            .iter()
+            .map(|slot| i16::try_from(*slot).map_err(|_| "Java drag slot exceeds wire range"))
+            .collect::<Result<Vec<_>, _>>()?;
+        let click = outbound::quick_craft(id.container, revision, &slots, one_each, carried)
+            .map_err(|e| e.to_string())?;
+        return Ok((
+            Command::ContainerClick {
+                dimension_epoch: id.epoch,
+                incarnation: id.incarnation,
+                sequence: input.sequence,
+                click,
+            },
+            missing,
+        ));
+    }
     let slot = match input.intent {
         Intent::Pickup { slot, .. }
         | Intent::QuickMove { slot }
         | Intent::Collect { slot }
         | Intent::Swap { slot, .. }
         | Intent::Throw { slot, .. } => slot,
-        Intent::Close => unreachable!(),
+        Intent::Close | Intent::QuickCraft { .. } => unreachable!(),
     };
     let (revision, carried) = state.observe_storage_slot(id, slot)?;
     if let Intent::Pickup { button, .. } = input.intent {
-        state.plan_pickup(id, slot, button, |stack| {
-            if let Some(limit) = stack.added.get("minecraft:max_stack_size") {
-                return limit
-                    .as_u64()
-                    .and_then(|v| u32::try_from(v).ok())
-                    .filter(|v| *v > 0 && *v <= 99)
-                    .ok_or("invalid Java stack limit".into());
-            }
-            if stack.removed.contains("minecraft:max_stack_size") {
-                return Err("missing Java stack limit".into());
-            }
-            let id = target::ITEM_TYPES
-                .iter()
-                .position(|name| *name == stack.item)
-                .ok_or("unknown Java item")?;
-            Ok(target::ITEM_STACK_LIMITS[id])
-        })?;
+        state.plan_pickup(id, slot, button, max_stack)?;
     }
     // Throw applies only to a hovered slot with an empty cursor. Never misreport a cursor drop.
     if matches!(input.intent, Intent::Throw { .. }) && carried.is_some() {
@@ -134,7 +149,7 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
             outbound::ObservedAction::Throw { whole_stack },
             carried,
         ),
-        Intent::Close => unreachable!(),
+        Intent::Close | Intent::QuickCraft { .. } => unreachable!(),
     }
     .map_err(|e| e.to_string())?;
     Ok((
@@ -159,4 +174,23 @@ fn hash(slot: &Slot) -> Result<(Option<outbound::HashedStack>, usize), String> {
         outbound::HashedStack::predicted(item, stack.count, &stack.added, &stack.removed)
             .map_err(|e| e.to_string())?;
     Ok((Some(hash), missing))
+}
+
+/// Resolves native default and patched stack limits for both pointer eligibility and packets.
+pub(crate) fn max_stack(stack: &inventory::java::Stack) -> Result<u32, String> {
+    if let Some(limit) = stack.added.get("minecraft:max_stack_size") {
+        return limit
+            .as_u64()
+            .and_then(|v| u32::try_from(v).ok())
+            .filter(|v| *v > 0 && *v <= 99)
+            .ok_or("invalid Java stack limit".into());
+    }
+    if stack.removed.contains("minecraft:max_stack_size") {
+        return Err("missing Java stack limit".into());
+    }
+    let id = target::ITEM_TYPES
+        .iter()
+        .position(|name| *name == stack.item)
+        .ok_or("unknown Java item")?;
+    Ok(target::ITEM_STACK_LIMITS[id])
 }

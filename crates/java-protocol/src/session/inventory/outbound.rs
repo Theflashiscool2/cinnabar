@@ -108,6 +108,7 @@ pub struct Pickup {
 pub struct PreparedClick {
     container: i32,
     bytes: Vec<u8>,
+    continuation: Vec<Vec<u8>>,
 }
 impl PreparedClick {
     pub fn container(&self) -> i32 {
@@ -115,6 +116,10 @@ impl PreparedClick {
     }
     pub fn payload(&self) -> &[u8] {
         &self.bytes
+    }
+    /// One admitted queue entry can contain an ordered quick-craft sequence.
+    pub fn payloads(&self) -> impl Iterator<Item = &[u8]> {
+        std::iter::once(self.bytes.as_slice()).chain(self.continuation.iter().map(Vec::as_slice))
     }
 }
 
@@ -128,7 +133,10 @@ pub fn pickup(click: &Pickup) -> Result<PreparedClick, Error> {
 fn encode(click: &Pickup, action: u8) -> Result<PreparedClick, Error> {
     if click.container < 0
         || click.state < 0
-        || click.slot < 0
+        || (click.slot < 0
+            && !(action == target::CONTAINER_INPUT_QUICK_CRAFT
+                && click.slot == -999
+                && matches!(click.button, 0 | 2 | 4 | 6)))
         || click.changed.len() > target::CONTAINER_MAX_CHANGED_SLOTS
         || click.changed.keys().any(|slot| *slot < 0)
     {
@@ -157,6 +165,7 @@ fn encode(click: &Pickup, action: u8) -> Result<PreparedClick, Error> {
     Ok(PreparedClick {
         container: click.container,
         bytes,
+        continuation: Vec::new(),
     })
 }
 
@@ -420,5 +429,97 @@ mod storage_action_tests {
         assert!(observed_action(1, 0, 0, ObservedAction::HotbarSwap(9), None).is_err());
         assert!(observed_action(1, 0, -1, ObservedAction::QuickMove, None).is_err());
         assert!(observed_action(1, -1, 0, ObservedAction::QuickMove, None).is_err());
+    }
+}
+
+/// Prepares every quick-craft phase before queue admission; no local item changes are claimed.
+pub fn quick_craft(
+    container: i32,
+    state: i32,
+    slots: &[i16],
+    one_each: bool,
+    carried: HashedStack,
+) -> Result<PreparedClick, Error> {
+    if slots.len() < 2
+        || slots.len() > target::CONTAINER_MAX_CHANGED_SLOTS
+        || slots.iter().any(|s| *s < 0)
+        || slots
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != slots.len()
+    {
+        return Err(Error::Invalid("native quick-craft slots"));
+    }
+    let kind: u8 = if one_each { 4 } else { 0 };
+    let phase = |slot: i16, header: u8| {
+        encode(
+            &Pickup {
+                container,
+                state,
+                slot,
+                button: kind | header,
+                changed: BTreeMap::new(),
+                carried: Some(carried.clone()),
+            },
+            target::CONTAINER_INPUT_QUICK_CRAFT,
+        )
+    };
+    let mut first = phase(-999, 0)?;
+    for slot in slots {
+        first.continuation.push(phase(*slot, 1)?.bytes);
+    }
+    first.continuation.push(phase(-999, 2)?.bytes);
+    Ok(first)
+}
+
+#[cfg(test)]
+mod quick_craft_tests {
+    use super::*;
+    #[test]
+    fn drag_encodes_exact_phase_order_buttons_and_observed_cursor() {
+        for (one_each, buttons) in [(false, [0, 1, 1, 2]), (true, [4, 5, 5, 6])] {
+            let carried = HashedStack {
+                item: 1,
+                count: 11,
+                added: BTreeMap::new(),
+                removed: Vec::new(),
+            };
+            let click = quick_craft(3, 7, &[2, 4], one_each, carried).unwrap();
+            let payloads: Vec<_> = click.payloads().collect();
+            assert_eq!(payloads.len(), 4);
+            for (i, prefix) in [[0xfc, 0x19], [0, 2], [0, 4], [0xfc, 0x19]]
+                .into_iter()
+                .enumerate()
+            {
+                assert_eq!(
+                    payloads[i],
+                    &[3, 7, prefix[0], prefix[1], buttons[i], 5, 0, 1, 1, 11, 0, 0]
+                );
+            }
+        }
+    }
+    #[test]
+    fn malformed_drag_never_yields_a_partial_start() {
+        let carried = || HashedStack {
+            item: 1,
+            count: 3,
+            added: BTreeMap::new(),
+            removed: Vec::new(),
+        };
+        for slots in [&[][..], &[1][..], &[1, 1][..], &[-999, 2][..]] {
+            assert!(quick_craft(1, 0, slots, false, carried()).is_err());
+        }
+        assert!(
+            quick_craft(
+                1,
+                0,
+                &vec![0; target::CONTAINER_MAX_CHANGED_SLOTS + 1],
+                false,
+                carried()
+            )
+            .is_err()
+        );
+        assert!(observed_pickup(1, 0, -999, 0, None).is_err());
     }
 }

@@ -125,7 +125,19 @@ async fn reused_menu_id_retires_queued_clicks_and_close_receipts_are_not_server_
                                 dimension_epoch: 1,
                                 incarnation: openings[0],
                                 sequence: 2,
-                                click: click.clone(),
+                                click: outbound::quick_craft(
+                                    7,
+                                    129,
+                                    &[1, 2],
+                                    false,
+                                    HashedStack {
+                                        item: 1,
+                                        count: 11,
+                                        added: BTreeMap::new(),
+                                        removed: Vec::new(),
+                                    },
+                                )
+                                .unwrap(),
                             })
                             .await
                             .unwrap();
@@ -170,6 +182,121 @@ async fn reused_menu_id_retires_queued_clicks_and_close_receipts_are_not_server_
             receipts,
             [(1, true, false), (2, false, false), (3, true, true)]
         );
+        cancel.cancel();
+        assert!(matches!(
+            client.await.unwrap(),
+            Err(session::Error::Cancelled)
+        ));
+        server.await.unwrap();
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn quick_craft_phases_are_contiguous_before_the_next_queued_close() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let cancel = CancellationToken::new();
+        let stop = cancel.clone();
+        let server = tokio::spawn(async move {
+            let mut wire = through_configuration(listener, true).await;
+            wire.write(&[3]).await.unwrap();
+            assert_eq!(wire.read().await.unwrap(), [3]);
+            wire.write(&world_login()).await.unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundPlayerLoadedPacket", &[])
+            );
+            wire.write(&open()).await.unwrap();
+            wire.write(&contents()).await.unwrap();
+            for (slot, button) in [
+                ([0xfc, 0x19], 0),
+                ([0, 1], 1),
+                ([0, 2], 1),
+                ([0xfc, 0x19], 2),
+            ] {
+                assert_eq!(
+                    wire.read().await.unwrap(),
+                    outgoing(
+                        "ServerboundContainerClickPacket",
+                        &[7, 129, 1, slot[0], slot[1], button, 5, 0, 1, 1, 11, 0, 0]
+                    )
+                );
+            }
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundContainerClosePacket", &[7])
+            );
+            wire.write(&incoming(
+                "ClientboundKeepAlivePacket",
+                &456i64.to_be_bytes(),
+            ))
+            .await
+            .unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundKeepAlivePacket", &456i64.to_be_bytes())
+            );
+            stop.cancelled().await;
+        });
+        let (tx, mut rx) = mpsc::channel(16);
+        let (commands, input) = mpsc::channel(1);
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        let mut receipts = Vec::new();
+        while let Some(envelope) = rx.recv().await {
+            match envelope.event {
+                Event::Bootstrap(_) => commands
+                    .send(Command::PlayerLoaded { dimension_epoch: 1 })
+                    .await
+                    .unwrap(),
+                Event::Inventory {
+                    incarnation,
+                    packet: Packet::Content { .. },
+                    ..
+                } => {
+                    commands
+                        .send(Command::ContainerClick {
+                            dimension_epoch: 1,
+                            incarnation,
+                            sequence: 1,
+                            click: outbound::quick_craft(
+                                7,
+                                129,
+                                &[1, 2],
+                                false,
+                                HashedStack {
+                                    item: 1,
+                                    count: 11,
+                                    added: BTreeMap::new(),
+                                    removed: Vec::new(),
+                                },
+                            )
+                            .unwrap(),
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::ContainerClose {
+                            dimension_epoch: 1,
+                            incarnation,
+                            sequence: 2,
+                            container: 7,
+                        })
+                        .await
+                        .unwrap();
+                }
+                Event::InventorySent {
+                    sequence, written, ..
+                } => receipts.push((sequence, written)),
+                Event::KeepAlive(456) => break,
+                _ => {}
+            }
+        }
+        assert_eq!(receipts, [(1, true), (2, true)]);
         cancel.cancel();
         assert!(matches!(
             client.await.unwrap(),

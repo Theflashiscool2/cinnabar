@@ -41,7 +41,7 @@ pub(crate) mod java_entities;
 mod java_heads;
 pub(crate) mod java_hud;
 pub(crate) mod java_interaction;
-mod java_inventory;
+pub(crate) mod java_inventory;
 pub(crate) mod java_movement;
 pub(crate) mod java_piston;
 pub(crate) mod java_render;

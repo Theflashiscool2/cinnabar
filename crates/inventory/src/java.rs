@@ -18,6 +18,12 @@ pub struct Stack {
     pub added: BTreeMap<String, Value>,
     pub removed: BTreeSet<String>,
 }
+impl Stack {
+    /// Native stacking compares component patches as well as the registered item identity.
+    pub fn same_components(&self, other: &Self) -> bool {
+        self.item == other.item && self.added == other.added && self.removed == other.removed
+    }
+}
 pub type Slot = Option<Stack>;
 #[derive(Clone, Debug)]
 pub enum Update {

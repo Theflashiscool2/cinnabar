@@ -397,6 +397,10 @@ fn component_title_with(
 /// Bounded, scope-stamped user intents. The application sends them through native transport.
 #[derive(Clone, Debug)]
 pub enum Intent {
+    QuickCraft {
+        slots: Vec<usize>,
+        one_each: bool,
+    },
     Pickup {
         slot: usize,
         button: inventory::java::pickup::Button,
@@ -455,6 +459,43 @@ impl UiRuntime {
     pub(super) fn queue_java_container_close(&mut self) {
         self.queue_java_inventory(Intent::Close);
     }
+    /// Resolves pointer eligibility from native authority, not a speculative inventory ledger.
+    pub fn step_java_inventory_pointer(
+        &mut self,
+        frame: super::inventory_drag::PointerFrame,
+        max_stack: impl Fn(&inventory::java::Stack) -> Result<u32, String>,
+    ) -> Vec<super::inventory_drag::PointerAction> {
+        if self.java_hud().is_none() {
+            return Vec::new();
+        }
+        let p = &self.session.java_inventory;
+        let carried = p
+            .opened
+            .as_ref()
+            .map_or(p.player_carried.as_ref(), |m| m.carried.as_ref())
+            .and_then(|s| s.as_ref());
+        let count = carried.map_or(0, |s| s.count as usize);
+        let capacity = p.opened.as_ref().map_or(p.player.len(), |m| m.slots.len());
+        let current = frame
+            .hit
+            .and_then(|hit| slot_index(hit, self.java_container_slots()?))
+            .and_then(|slot| {
+                p.opened
+                    .as_ref()
+                    .map_or_else(|| p.player.get(slot), |m| m.slots.get(slot))
+            })
+            .and_then(|s| s.as_ref());
+        let eligible = carried.zip(current).is_some_and(|(held, slot)| match slot {
+            None => true,
+            Some(have) => {
+                have.same_components(held) && max_stack(held).is_ok_and(|limit| have.count <= limit)
+            }
+        });
+        self.session
+            .screen
+            .pointer
+            .step_java(frame, eligible, count, capacity)
+    }
     pub(super) fn java_pointer_action(&mut self, action: super::inventory_drag::PointerAction) {
         use super::inventory_drag::PointerAction;
         use inventory::java::pickup::Button;
@@ -472,12 +513,18 @@ impl UiRuntime {
                 }
                 return;
             }
-            PointerAction::EndDistribute => return,
-            _ => {
-                self.session.java_inventory_error =
-                    Some("This native Java inventory gesture is not implemented".into());
+            PointerAction::Distribute { cells, one_each } => {
+                let Some(slots) = cells
+                    .into_iter()
+                    .map(|hit| self.java_menu_slot(hit))
+                    .collect::<Option<Vec<_>>>()
+                else {
+                    return;
+                };
+                self.queue_java_inventory(Intent::QuickCraft { slots, one_each });
                 return;
             }
+            PointerAction::EndDistribute => return,
         };
         if let Some(slot) = self.java_menu_slot(hit) {
             self.queue_java_inventory(match button {
@@ -514,27 +561,29 @@ impl UiRuntime {
         &mut self,
         hit: ui_screens::container_actions::InventoryCellHit,
     ) -> Option<usize> {
-        use ui_screens::container_actions::InventoryCellHit;
         let slots = self.java_container_slots()?;
-        let slot = match (hit, slots) {
-            (InventoryCellHit::Offhand, None) => OFFHAND_MENU_SLOT,
-            (InventoryCellHit::Player(slot), None) if slot < 9 => 36 + usize::from(slot),
-            (InventoryCellHit::Player(slot), None) if slot < 36 => usize::from(slot),
-            (InventoryCellHit::Player(slot), Some(start)) if slot < 9 => {
-                start + 27 + usize::from(slot)
-            }
-            (InventoryCellHit::Player(slot), Some(start)) if slot < 36 => {
-                start + usize::from(slot) - 9
-            }
-            (InventoryCellHit::Storage(slot), Some(start)) if usize::from(slot) < start => {
-                usize::from(slot)
-            }
-            _ => {
-                self.session.java_inventory_error =
-                    Some("This native Java slot requires specialized rules".into());
-                return None;
-            }
-        };
-        Some(slot)
+        let result = slot_index(hit, slots);
+        if result.is_none() {
+            self.session.java_inventory_error =
+                Some("This native Java slot requires specialized rules".into());
+        }
+        result
     }
+}
+fn slot_index(
+    hit: ui_screens::container_actions::InventoryCellHit,
+    slots: Option<usize>,
+) -> Option<usize> {
+    use ui_screens::container_actions::InventoryCellHit;
+    Some(match (hit, slots) {
+        (InventoryCellHit::Offhand, None) => OFFHAND_MENU_SLOT,
+        (InventoryCellHit::Player(slot), None) if slot < 9 => 36 + usize::from(slot),
+        (InventoryCellHit::Player(slot), None) if slot < 36 => usize::from(slot),
+        (InventoryCellHit::Player(slot), Some(start)) if slot < 9 => start + 27 + usize::from(slot),
+        (InventoryCellHit::Player(slot), Some(start)) if slot < 36 => start + usize::from(slot) - 9,
+        (InventoryCellHit::Storage(slot), Some(start)) if usize::from(slot) < start => {
+            usize::from(slot)
+        }
+        _ => return None,
+    })
 }
