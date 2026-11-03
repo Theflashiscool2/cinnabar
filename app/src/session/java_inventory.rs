@@ -47,8 +47,8 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
     if state.active_identity() != Some(id) {
         return Err("Java inventory scope retired".into());
     }
-    Ok(match input.intent {
-        Intent::Close => (
+    if matches!(input.intent, Intent::Close) {
+        return Ok((
             Command::ContainerClose {
                 dimension_epoch: id.epoch,
                 incarnation: id.incarnation,
@@ -56,69 +56,94 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
                 container: id.container,
             },
             0,
+        ));
+    }
+    let slot = match input.intent {
+        Intent::Pickup { slot, .. }
+        | Intent::QuickMove { slot }
+        | Intent::Swap { slot, .. }
+        | Intent::Throw { slot, .. } => slot,
+        Intent::Close => unreachable!(),
+    };
+    let (revision, carried) = state.observe_storage_slot(id, slot)?;
+    if let Intent::Pickup { button, .. } = input.intent {
+        state.plan_pickup(id, slot, button, |stack| {
+            if let Some(limit) = stack.added.get("minecraft:max_stack_size") {
+                return limit
+                    .as_u64()
+                    .and_then(|v| u32::try_from(v).ok())
+                    .filter(|v| *v > 0 && *v <= 99)
+                    .ok_or("invalid Java stack limit".into());
+            }
+            if stack.removed.contains("minecraft:max_stack_size") {
+                return Err("missing Java stack limit".into());
+            }
+            let id = target::ITEM_TYPES
+                .iter()
+                .position(|name| *name == stack.item)
+                .ok_or("unknown Java item")?;
+            Ok(target::ITEM_STACK_LIMITS[id])
+        })?;
+    }
+    // Throw applies only to a hovered slot with an empty cursor. Never misreport a cursor drop.
+    if matches!(input.intent, Intent::Throw { .. }) && carried.is_some() {
+        return Err("Place the carried stack before dropping a hovered item".into());
+    }
+    let (carried, missing) = hash(carried)?;
+    let slot = i16::try_from(slot).map_err(|_| "Java slot exceeds wire range")?;
+    // We install no local prediction. Report the unchanged client view so vanilla sends deltas.
+    let click = match input.intent {
+        Intent::Pickup { button, .. } => outbound::observed_pickup(
+            id.container,
+            revision,
+            slot,
+            u8::from(button == Button::Right),
+            carried,
         ),
-        Intent::Pickup { slot, button } => {
-            let plan = state.plan_pickup(id, slot, button, |stack| {
-                if let Some(limit) = stack.added.get("minecraft:max_stack_size") {
-                    return limit
-                        .as_u64()
-                        .and_then(|v| u32::try_from(v).ok())
-                        .filter(|v| *v > 0 && *v <= 99)
-                        .ok_or("invalid Java stack limit".into());
-                }
-                if stack.removed.contains("minecraft:max_stack_size") {
-                    return Err("missing Java stack limit".into());
-                }
-                let id = target::ITEM_TYPES
-                    .iter()
-                    .position(|name| *name == stack.item)
-                    .ok_or("unknown Java item")?;
-                Ok(target::ITEM_STACK_LIMITS[id])
-            })?;
-            let mut missing = 0;
-            let mut hash = |slot: &Slot| -> Result<_, String> {
-                slot.as_ref()
-                    .map(|stack| {
-                        let item = target::ITEM_TYPES
-                            .iter()
-                            .position(|name| *name == stack.item)
-                            .ok_or("unknown Java item")? as u32;
-                        let (hash, absent) = outbound::HashedStack::predicted(
-                            item,
-                            stack.count,
-                            &stack.added,
-                            &stack.removed,
-                        )
-                        .map_err(|e| e.to_string())?;
-                        missing += absent;
-                        Ok(hash)
-                    })
-                    .transpose()
-            };
-            // No local prediction is installed. Report the actual unchanged client view:
-            // vanilla's remote-slot cache will then send the authoritative slot/cursor deltas.
-            // Claiming plan.changed/plan.carried suppresses those updates and leaves stale UI.
-            let carried = state
-                .menu(id.container)
-                .and_then(|m| m.carried.as_ref())
-                .ok_or("Java carried stack is not ready")?;
-            let click = outbound::observed_pickup(
-                id.container,
-                plan.state,
-                slot as i16,
-                u8::from(button == Button::Right),
-                hash(carried)?,
-            )
+        Intent::QuickMove { .. } => outbound::observed_action(
+            id.container,
+            revision,
+            slot,
+            outbound::ObservedAction::QuickMove,
+            carried,
+        ),
+        Intent::Swap { hotbar, .. } => outbound::observed_action(
+            id.container,
+            revision,
+            slot,
+            outbound::ObservedAction::HotbarSwap(hotbar),
+            carried,
+        ),
+        Intent::Throw { whole_stack, .. } => outbound::observed_action(
+            id.container,
+            revision,
+            slot,
+            outbound::ObservedAction::Throw { whole_stack },
+            carried,
+        ),
+        Intent::Close => unreachable!(),
+    }
+    .map_err(|e| e.to_string())?;
+    Ok((
+        Command::ContainerClick {
+            dimension_epoch: id.epoch,
+            incarnation: id.incarnation,
+            sequence: input.sequence,
+            click,
+        },
+        missing,
+    ))
+}
+fn hash(slot: &Slot) -> Result<(Option<outbound::HashedStack>, usize), String> {
+    let Some(stack) = slot else {
+        return Ok((None, 0));
+    };
+    let item = target::ITEM_TYPES
+        .iter()
+        .position(|name| *name == stack.item)
+        .ok_or("unknown Java item")? as u32;
+    let (hash, missing) =
+        outbound::HashedStack::predicted(item, stack.count, &stack.added, &stack.removed)
             .map_err(|e| e.to_string())?;
-            (
-                Command::ContainerClick {
-                    dimension_epoch: id.epoch,
-                    incarnation: id.incarnation,
-                    sequence: input.sequence,
-                    click,
-                },
-                missing,
-            )
-        }
-    })
+    Ok((Some(hash), missing))
 }

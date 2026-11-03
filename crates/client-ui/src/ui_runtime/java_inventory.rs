@@ -357,6 +357,17 @@ pub enum Intent {
         slot: usize,
         button: inventory::java::pickup::Button,
     },
+    QuickMove {
+        slot: usize,
+    },
+    Swap {
+        slot: usize,
+        hotbar: u8,
+    },
+    Throw {
+        slot: usize,
+        whole_stack: bool,
+    },
     Close,
 }
 #[derive(Clone, Debug)]
@@ -368,6 +379,8 @@ pub struct Input {
 impl UiRuntime {
     fn queue_java_inventory(&mut self, intent: Intent) {
         let Some(identity) = self.session.java_inventory.identity else {
+            self.session.java_inventory_error =
+                Some("Java inventory contents are not ready".into());
             return;
         };
         if self.session.java_inventory_inputs.len() >= 32 {
@@ -398,10 +411,10 @@ impl UiRuntime {
     pub(super) fn java_pointer_action(&mut self, action: super::inventory_drag::PointerAction) {
         use super::inventory_drag::PointerAction;
         use inventory::java::pickup::Button;
-        use ui_screens::container_actions::InventoryCellHit;
         let (hit, button) = match action {
-            PointerAction::Click(hit) => (hit, Button::Left),
-            PointerAction::SecondaryClick(hit) => (hit, Button::Right),
+            PointerAction::Click(hit) => (hit, Some(Button::Left)),
+            PointerAction::SecondaryClick(hit) => (hit, Some(Button::Right)),
+            PointerAction::QuickMove(hit) => (hit, None),
             PointerAction::EndDistribute => return,
             _ => {
                 self.session.java_inventory_error =
@@ -409,9 +422,43 @@ impl UiRuntime {
                 return;
             }
         };
-        let Some(slots) = self.java_container_slots() else {
+        if let Some(slot) = self.java_menu_slot(hit) {
+            self.queue_java_inventory(match button {
+                Some(button) => Intent::Pickup { slot, button },
+                None => Intent::QuickMove { slot },
+            });
+        }
+    }
+    pub(super) fn java_keyboard_action(
+        &mut self,
+        hit: Option<ui_screens::container_actions::InventoryCellHit>,
+        hotbar: Option<u8>,
+        drop: bool,
+        whole_stack: bool,
+    ) {
+        if self.screen_state().text_focused() {
+            return;
+        }
+        let Some(slot) = hit.and_then(|hit| self.java_menu_slot(hit)) else {
             return;
         };
+        if let Some(hotbar) = hotbar.filter(|n| *n < 9) {
+            self.queue_java_inventory(Intent::Swap { slot, hotbar });
+        } else if drop {
+            if self.java_inventory_holding() {
+                self.session.java_inventory_error =
+                    Some("Place the carried stack before dropping a hovered item".into());
+            } else {
+                self.queue_java_inventory(Intent::Throw { slot, whole_stack });
+            }
+        }
+    }
+    fn java_menu_slot(
+        &mut self,
+        hit: ui_screens::container_actions::InventoryCellHit,
+    ) -> Option<usize> {
+        use ui_screens::container_actions::InventoryCellHit;
+        let slots = self.java_container_slots()?;
         let slot = match (hit, slots) {
             (InventoryCellHit::Player(slot), None) if slot < 9 => 36 + usize::from(slot),
             (InventoryCellHit::Player(slot), None) if slot < 36 => usize::from(slot),
@@ -427,9 +474,9 @@ impl UiRuntime {
             _ => {
                 self.session.java_inventory_error =
                     Some("This native Java slot requires specialized rules".into());
-                return;
+                return None;
             }
         };
-        self.queue_java_inventory(Intent::Pickup { slot, button });
+        Some(slot)
     }
 }

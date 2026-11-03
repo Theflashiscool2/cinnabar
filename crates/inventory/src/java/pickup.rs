@@ -67,15 +67,13 @@ impl State {
             })
         })
     }
-    /// Computes vanilla pickup metadata without mutating slots/cursor or declaring acceptance.
-    /// Specialized slots (crafting, armor, outputs) require their own native placement rules.
-    pub fn plan_pickup(
+    /// Validates a current ordinary storage slot without predicting any item movement.
+    /// Server quick-move/swap/throw rules remain authoritative; unknown/specialized slots refuse.
+    pub fn observe_storage_slot(
         &self,
         identity: MenuIdentity,
         slot: usize,
-        button: Button,
-        mut max_stack: impl FnMut(&Stack) -> Result<u32, String>,
-    ) -> Result<Plan, String> {
+    ) -> Result<(i32, &Slot), String> {
         if self.active_identity() != Some(identity) || self.error.is_some() {
             return Err("Java container lifetime is no longer current".into());
         }
@@ -86,13 +84,25 @@ impl State {
             return Err("Java specialized slot rules not implemented".into());
         }
         let state = menu.state.ok_or("Java container contents are not ready")?;
-        let current = self
-            .slot(menu.container, slot)
+        self.slot(menu.container, slot)
             .ok_or("Java slot is unknown")?;
         let carried = menu
             .carried
             .as_ref()
             .ok_or("Java carried stack is unknown")?;
+        Ok((state, carried))
+    }
+    /// Computes vanilla pickup metadata without mutating slots/cursor or declaring acceptance.
+    /// Specialized slots (crafting, armor, outputs) require their own native placement rules.
+    pub fn plan_pickup(
+        &self,
+        identity: MenuIdentity,
+        slot: usize,
+        button: Button,
+        mut max_stack: impl FnMut(&Stack) -> Result<u32, String>,
+    ) -> Result<Plan, String> {
+        let (state, carried) = self.observe_storage_slot(identity, slot)?;
+        let current = self.slot(identity.container, slot).unwrap();
         let mut next = current.clone();
         let mut cursor = carried.clone();
         match (current, carried) {
@@ -197,6 +207,32 @@ mod tests {
         }));
         assert!(s.opened.is_none());
         assert_eq!(s.authority_revision, authority);
+    }
+    #[test]
+    fn observed_storage_gestures_require_known_current_contents_and_never_predict_transfers() {
+        let mut s = menu(item(9), None);
+        let id = s.active_identity().unwrap();
+        let before = serde_json::to_value(&s).unwrap();
+        assert_eq!(s.observe_storage_slot(id, 0).unwrap(), (19, &None));
+        assert_eq!(s.observe_storage_slot(id, 62).unwrap(), (19, &None));
+        assert!(s.observe_storage_slot(id, 63).is_err());
+        assert!(
+            s.observe_storage_slot(
+                MenuIdentity {
+                    incarnation: id.incarnation + 1,
+                    ..id
+                },
+                0
+            )
+            .is_err()
+        );
+        assert_eq!(serde_json::to_value(&s).unwrap(), before);
+        s.opened.as_mut().unwrap().carried = None;
+        assert!(s.observe_storage_slot(id, 0).is_err());
+        s.begin(7, 3);
+        let id = s.active_identity().unwrap();
+        assert!(s.observe_storage_slot(id, 36).is_err());
+        assert!(s.observe_storage_slot(id, 5).is_err());
     }
     fn item(count: u32) -> Slot {
         Some(Stack {

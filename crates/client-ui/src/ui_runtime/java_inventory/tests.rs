@@ -282,3 +282,76 @@ fn server_menu_replacement_retires_old_pointer_chat_and_queued_actions() {
         );
     }
 }
+
+#[test]
+fn native_storage_gestures_keep_scope_slot_mapping_and_never_fall_through_to_bedrock() {
+    use inventory::java::Update;
+    use ui_screens::container_actions::InventoryCellHit as Hit;
+    let mut world = client_world::java::WorldState::default();
+    world.begin(7);
+    world.inventory.begin(7, 1);
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Open {
+                incarnation: 1,
+                container: 2,
+                kind: "GENERIC_9X6".into(),
+                title: serde_json::Value::Null,
+            },
+        )
+        .unwrap();
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 2,
+                state: 9,
+                slots: vec![None; 90],
+                carried: None,
+            },
+        )
+        .unwrap();
+    let mut ui = UiRuntime::new(7);
+    ui.publish_java_hud(hud(7, 1));
+    ui.publish_java_inventory(&world);
+    let before = serde_json::to_value(&world.inventory).unwrap();
+    ui.java_pointer_action(super::super::inventory_drag::PointerAction::QuickMove(
+        Hit::Storage(53),
+    ));
+    let input = ui.next_java_inventory_input().unwrap();
+    assert_eq!(input.identity, world.inventory.active_identity().unwrap());
+    assert!(matches!(input.intent, Intent::QuickMove { slot: 53 }));
+    ui.finish_java_inventory_input(None);
+    ui.java_keyboard_action(Some(Hit::Player(8)), Some(4), false, false);
+    assert!(matches!(
+        ui.next_java_inventory_input().unwrap().intent,
+        Intent::Swap {
+            slot: 89,
+            hotbar: 4
+        }
+    ));
+    ui.finish_java_inventory_input(None);
+    ui.java_keyboard_action(Some(Hit::Storage(2)), None, true, true);
+    assert!(matches!(
+        ui.next_java_inventory_input().unwrap().intent,
+        Intent::Throw {
+            slot: 2,
+            whole_stack: true
+        }
+    ));
+    ui.finish_java_inventory_input(None);
+    ui.java_keyboard_action(Some(Hit::Storage(2)), Some(9), false, false);
+    assert!(ui.next_java_inventory_input().is_none());
+    ui.java_keyboard_action(Some(Hit::Armor(0)), Some(1), false, false);
+    assert!(ui.next_java_inventory_input().is_none());
+    assert_eq!(serde_json::to_value(&world.inventory).unwrap(), before);
+    ui.session.java_inventory.opened.as_mut().unwrap().carried = Some(stack(3));
+    ui.java_keyboard_action(Some(Hit::Storage(2)), None, true, false);
+    assert!(ui.next_java_inventory_input().is_none());
+    assert!(ui.java_inventory_error().unwrap().contains("carried stack"));
+}

@@ -119,10 +119,16 @@ impl PreparedClick {
 }
 
 pub fn pickup(click: &Pickup) -> Result<PreparedClick, Error> {
+    if click.button > 1 {
+        return Err(Error::Invalid("native pickup button"));
+    }
+    encode(click, target::CONTAINER_INPUT_PICKUP)
+}
+
+fn encode(click: &Pickup, action: u8) -> Result<PreparedClick, Error> {
     if click.container < 0
         || click.state < 0
         || click.slot < 0
-        || click.button > 1
         || click.changed.len() > target::CONTAINER_MAX_CHANGED_SLOTS
         || click.changed.keys().any(|slot| *slot < 0)
     {
@@ -141,7 +147,7 @@ pub fn pickup(click: &Pickup) -> Result<PreparedClick, Error> {
     write_varint(click.state, &mut bytes);
     bytes.extend(click.slot.to_be_bytes());
     bytes.push(click.button);
-    write_varint(i32::from(target::CONTAINER_INPUT_PICKUP), &mut bytes);
+    write_varint(i32::from(action), &mut bytes);
     write_varint(click.changed.len() as i32, &mut bytes);
     for (slot, stack) in &click.changed {
         bytes.extend(slot.to_be_bytes());
@@ -335,5 +341,63 @@ mod observed_tests {
         };
         let click = observed_pickup(1, 8, 4, 1, Some(carried)).unwrap();
         assert_eq!(click.payload(), &[1, 8, 0, 4, 1, 0, 0, 1, 1, 4, 0, 0]);
+    }
+}
+
+/// Server-executed storage gestures. No slot or cursor prediction is installed locally.
+#[derive(Clone, Copy, Debug)]
+pub enum ObservedAction {
+    QuickMove,
+    HotbarSwap(u8),
+    Throw { whole_stack: bool },
+}
+
+pub fn observed_action(
+    container: i32,
+    state: i32,
+    slot: i16,
+    action: ObservedAction,
+    carried: Option<HashedStack>,
+) -> Result<PreparedClick, Error> {
+    let (mode, button) = match action {
+        ObservedAction::QuickMove => (target::CONTAINER_INPUT_QUICK_MOVE, 0),
+        ObservedAction::HotbarSwap(button) if button < 9 => (target::CONTAINER_INPUT_SWAP, button),
+        ObservedAction::Throw { whole_stack } => {
+            (target::CONTAINER_INPUT_THROW, u8::from(whole_stack))
+        }
+        ObservedAction::HotbarSwap(_) => return Err(Error::Invalid("native hotbar swap button")),
+    };
+    encode(
+        &Pickup {
+            container,
+            state,
+            slot,
+            button,
+            changed: BTreeMap::new(),
+            carried,
+        },
+        mode,
+    )
+}
+
+#[cfg(test)]
+mod storage_action_tests {
+    use super::*;
+    #[test]
+    fn server_storage_actions_have_distinct_wire_modes_and_no_claimed_predictions() {
+        for (action, button, mode) in [
+            (ObservedAction::QuickMove, 0, 1),
+            (ObservedAction::HotbarSwap(8), 8, 2),
+            (ObservedAction::Throw { whole_stack: false }, 0, 4),
+            (ObservedAction::Throw { whole_stack: true }, 1, 4),
+        ] {
+            assert_eq!(
+                observed_action(3, 129, 53, action, None).unwrap().payload(),
+                &[3, 129, 1, 0, 53, button, mode, 0, 0]
+            );
+        }
+        assert!(observed_action(1, 0, 0, ObservedAction::HotbarSwap(9), None).is_err());
+        assert!(observed_action(1, 0, -1, ObservedAction::QuickMove, None).is_err());
+        assert!(observed_action(1, -1, 0, ObservedAction::QuickMove, None).is_err());
     }
 }
