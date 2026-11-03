@@ -16,6 +16,23 @@ pub struct Sample {
     pub walk_speed: f32,
     pub age_in_ticks: f32,
 }
+/// Native model-space posture: head, body, right/left arm, right/left leg.
+/// Offsets use Java pixels, rotations radians; rendering never changes world authority.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlayerPosture {
+    pub rotations: [[f32; 3]; 6],
+    pub offsets: [[f32; 3]; 6],
+    pub render_offset_y: f32,
+}
+/// Paths in the verified wide/slim player hierarchy, in posture-array order.
+pub const PLAYER_PARTS: [&str; 6] = [
+    "root/head",
+    "root/body",
+    "root/right_arm",
+    "root/left_arm",
+    "root/right_leg",
+    "root/left_leg",
+];
 impl Sample {
     /// Quadruped model rotations, in radians: head, right/left hind, right/left front.
     pub fn rotations(self) -> [[f32; 3]; 5] {

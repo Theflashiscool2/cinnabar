@@ -21,7 +21,7 @@ use world::java::entities::{Identity, visual::PigModel};
 
 struct Pose {
     model: Arc<render_model::actor::java_geometry::Model>,
-    angles: [[f32; 3]; 5],
+    angles: [[f32; 3]; 6],
     layers: Option<world::java::entities::visual::PlayerLayers>,
     bones: Arc<[RenderBoneTransform]>,
     bounds: ::assets::SkinGeometryBounds,

@@ -133,8 +133,10 @@ pub(crate) fn update(
             if e.visual.invisible() {
                 continue;
             }
+            let is_player = e.visual.player.is_some();
+            let crouching = is_player && e.visual.pose.as_ref() == "crouching";
             if e.visual.incomplete.is_some()
-                || e.visual.pose.as_ref() != "standing"
+                || (e.visual.pose.as_ref() != "standing" && !crouching)
                 || e.visual.health.is_some_and(|h| h <= 0.)
             {
                 p.unsupported += 1;
@@ -148,7 +150,6 @@ pub(crate) fn update(
                 continue;
             };
             let sampled = motion.sample(fraction);
-            let is_player = e.visual.player.is_some();
             let (model_name, texture, textures) = if let Some(profile) = &e.visual.player {
                 if profile
                     .properties
@@ -200,25 +201,21 @@ pub(crate) fn update(
                 p.unknown_light += 1;
                 continue;
             };
-            let angles = if is_player {
-                sampled.player_rotations()
+            let posture = is_player.then(|| sampled.player_posture(crouching));
+            let angles = if let Some(posture) = posture {
+                posture.rotations
             } else {
-                sampled.rotations()
+                let r = sampled.rotations();
+                [r[0], r[1], r[2], r[3], r[4], [0.; 3]]
             };
             let layers = is_player.then_some(e.visual.player_layers);
             if p.poses.get(&e.identity).is_none_or(|old| {
                 !Arc::ptr_eq(&old.model, model) || old.angles != angles || old.layers != layers
             }) {
-                let names = if is_player {
-                    [
-                        "root/head",
-                        "root/right_arm",
-                        "root/left_arm",
-                        "root/right_leg",
-                        "root/left_leg",
-                    ]
+                let names: &[&str] = if is_player {
+                    &world::java::entities::animation::PLAYER_PARTS
                 } else {
-                    [
+                    &[
                         "root/head",
                         "root/right_hind_leg",
                         "root/left_hind_leg",
@@ -227,13 +224,20 @@ pub(crate) fn update(
                     ]
                 };
                 let Some(bones) = names
+                    .iter()
                     .map(|name| model.bone(name))
-                    .into_iter()
                     .collect::<Option<Vec<_>>>()
                 else {
                     p.failure = Some("native entity animation bone missing".into());
                     break;
                 };
+                let offsets = posture.map_or_else(Vec::new, |posture| {
+                    bones
+                        .iter()
+                        .copied()
+                        .zip(posture.offsets)
+                        .collect::<Vec<_>>()
+                });
                 let rotations = bones.into_iter().zip(angles).collect::<Vec<_>>();
                 let hidden = match hidden_parts(model, layers) {
                     Ok(parts) => parts,
@@ -242,7 +246,7 @@ pub(crate) fn update(
                         break;
                     }
                 };
-                match model.pose_with_visibility(&rotations, &hidden) {
+                match model.pose_with_offsets_and_visibility(&rotations, &offsets, &hidden) {
                     Ok(bones) => {
                         let bounds = match model.posed_bounds(&bones) {
                             Ok(bounds) => bounds,
@@ -290,7 +294,8 @@ pub(crate) fn update(
             let matrix = Mat4::from_scale_rotation_translation(
                 Vec3::splat(if is_player { 0.9375 } else { 1. }),
                 Quat::from_rotation_y(-sampled.body_yaw.to_radians()),
-                Vec3::from_array(sampled.pose.position.map(|v| v as f32)),
+                Vec3::from_array(sampled.pose.position.map(|v| v as f32))
+                    + Vec3::Y * posture.map_or(0., |p| p.render_offset_y),
             )
             .to_cols_array_2d();
             batch.submissions.push(ActorRigSubmission {

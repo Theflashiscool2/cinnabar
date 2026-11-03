@@ -85,6 +85,16 @@ public final class NativeMenuFixture {
                     .getConstructor(constructor, component).newInstance(factory, title);
                 player.getClass().getMethod("openMenu", loader.loadClass("net.minecraft.world.MenuProvider")).invoke(player, provider);
                 System.out.println("NATIVE_MENU_FIXTURE opened rows=" + rows);
+            } else if (command.equals("players")) {
+                List<?> players = (List<?>)list.getClass().getMethod("getPlayers").invoke(list);
+                if (players.size() > 32) throw new IllegalStateException("Use an isolated fixture server");
+                for (Object tracked : players) {
+                    Class<?> type = tracked.getClass();
+                    System.out.println("NATIVE_PLAYER_FIXTURE name=" + type.getMethod("getScoreboardName").invoke(tracked)
+                        + " pose=" + type.getMethod("getPose").invoke(tracked)
+                        + " bounds=" + type.getMethod("getBoundingBox").invoke(tracked)
+                        + " health=" + type.getMethod("getHealth").invoke(tracked));
+                }
             } else if (command.equals("dump") && current != null) {
                 Object contents = chest.getMethod("getContainer").invoke(current);
                 int size = (Integer)container.getMethod("getContainerSize").invoke(contents);
@@ -96,7 +106,7 @@ public final class NativeMenuFixture {
                 Object carried = current.getClass().getMethod("getCarried").invoke(current);
                 System.out.println("NATIVE_MENU_FIXTURE authority slots=" + slots + " carried=" + carried
                     + " all_menu_slots=" + current.getClass().getMethod("getItems").invoke(current));
-            } else throw new IllegalArgumentException("Use open 1..6 or dump");
+            } else throw new IllegalArgumentException("Use open 1..6, dump, or players");
         } catch (Throwable error) {
             System.err.println("NATIVE_MENU_FIXTURE failed: " + error);
             error.printStackTrace();

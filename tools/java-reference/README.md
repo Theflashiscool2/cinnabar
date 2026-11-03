@@ -80,7 +80,7 @@ isolated offline server, **not unmodified-vanilla qualification or Hypixel evide
 Vanilla still owns slot rules, revisions, accepted/rejected clicks and carried
 items; the fixture sends no replacement protocol responses. It instruments one
 server tick to poll a local file once per 20 ticks, accepting only `open 1` through
-`open 6` or `dump`. Never install it on a public server or normal user world.
+`open 6`, `dump`, or the read-only `players` pose/bounds/health query. Never install it on a public server or normal user world.
 
 ```sh
 mkdir -p .local/java-menu-fixture/classes
@@ -97,3 +97,11 @@ write `open 4` to that request file, then use normal UI input. `dump` logs the
 server's actual nonempty slots and carried stack. The bridge JAR must be beside
 the agent JAR. Remove the JVM agent argument on restart to restore the unmodified
 server. No proprietary binaries or generated worlds belong in Git.
+
+`ProbePlayerPosture.java` calls the pinned wide/slim `PlayerModel.setupAnim` for
+standing/crouching and three gait samples. It also records root transforms. Compile
+with the same verified client/server-library classpath as the entity exporter; run
+`ProbePlayerPosture /absolute/path/postures.json` to write clean JSON without native
+log prefixes. Set `CINNABAR_JAVA_PLAYER_POSTURES` to that file for the owning world
+posture test. These are CPU reference vectors, not rendered acceptance. The unit-scale
+crouch world offset (-2/16) comes separately from the verified `AvatarRenderer.getRenderOffset`.

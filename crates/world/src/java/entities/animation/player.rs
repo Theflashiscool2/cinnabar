@@ -1,4 +1,4 @@
-//! Standing, unarmed player body turning and humanoid gait from the pinned native classes.
+//! Standing/crouching, unarmed player body turning and humanoid gait from the pinned native classes.
 use super::{Presentation, Sample, wrap};
 use crate::java::player::trig;
 
@@ -27,6 +27,43 @@ fn turn(presentation: &mut Presentation, target: f32) {
 }
 
 impl Sample {
+    /// Pinned HumanoidModel/AvatarRenderer posture, verified by ProbePlayerPosture.java.
+    /// Crouching preserves gait/head rotation and changes local offsets, torso and arm pitch.
+    pub fn player_posture(self, crouching: bool) -> super::PlayerPosture {
+        let [head, mut right_arm, mut left_arm, right_leg, left_leg] = self.player_rotations();
+        let mut offsets = [
+            [0., 0., 0.],
+            [0., 0., 0.],
+            [-5., 2., 0.],
+            [5., 2., 0.],
+            [-1.9, 12., 0.],
+            [1.9, 12., 0.],
+        ];
+        if crouching {
+            offsets[0][1] = 4.2;
+            offsets[1][1] = 3.2;
+            offsets[2][1] = 5.2;
+            offsets[3][1] = 5.2;
+            offsets[4][2] = 4.;
+            offsets[5][2] = 4.;
+            right_arm[0] += 0.4;
+            left_arm[0] += 0.4;
+        }
+        super::PlayerPosture {
+            rotations: [
+                head,
+                [if crouching { 0.5 } else { 0. }, 0., 0.],
+                right_arm,
+                left_arm,
+                right_leg,
+                left_leg,
+            ],
+            offsets,
+            // AvatarRenderer.getRenderOffset: scale * -2 / 16 (unit-scale player).
+            render_offset_y: if crouching { -0.125 } else { 0. },
+        }
+    }
+
     /// Native empty-hand standing pose: head, right/left arm, right/left leg.
     /// Crouching, item-use, attack, swimming and passenger poses require separate authority.
     pub fn player_rotations(self) -> [[f32; 3]; 5] {
@@ -116,6 +153,110 @@ mod tests {
                     (f64::from(actual) - expected).abs() < 0.000001,
                     "{actual} != {expected}"
                 );
+            }
+        }
+    }
+    #[test]
+    fn crouching_keeps_native_gait_and_resets_without_stale_offsets() {
+        let sample = Sample {
+            pose: Pose {
+                pitch: 15.,
+                ..Default::default()
+            },
+            body_yaw: 0.,
+            head_yaw: -25.,
+            walk_position: 2.2,
+            walk_speed: 0.4,
+            age_in_ticks: 20.5,
+        };
+        let before = sample.player_posture(false);
+        let crouch = sample.player_posture(true);
+        // Independent Java 26.3 PlayerModel.setupAnim probe, wide AND slim.
+        assert_eq!(
+            crouch.offsets,
+            [
+                [0., 4.2, 0.],
+                [0., 3.2, 0.],
+                [-5., 5.2, 0.],
+                [5., 5.2, 0.],
+                [-1.9, 12., 4.],
+                [1.9, 12., 4.],
+            ]
+        );
+        for (actual, expected) in crouch.rotations.iter().flatten().zip([
+            0.2617994,
+            -0.43633232,
+            0.,
+            0.5,
+            0.,
+            0.,
+            0.40703797,
+            0.,
+            0.0364612,
+            0.39296204,
+            0.,
+            -0.0364612,
+            0.05878867,
+            0.005,
+            0.005,
+            -0.05878867,
+            -0.005,
+            -0.005,
+        ]) {
+            assert!((*actual - expected).abs() < 1e-6);
+        }
+        assert_eq!(crouch.render_offset_y, -2. / 16.);
+        assert_eq!(sample.player_posture(false), before);
+        assert_eq!(before.offsets[4], [-1.9, 12., 0.]);
+        assert_eq!(before.render_offset_y, 0.);
+    }
+
+    #[test]
+    fn native_player_postures_match_external_verified_runtime_probe() {
+        let Some(path) = std::env::var_os("CINNABAR_JAVA_PLAYER_POSTURES") else {
+            eprintln!(
+                "SKIP native posture vectors: missing CINNABAR_JAVA_PLAYER_POSTURES from ProbePlayerPosture.java"
+            );
+            return;
+        };
+        let rows: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        let rows = rows.as_array().unwrap();
+        assert_eq!(
+            rows.len(),
+            12,
+            "wide/slim, standing/crouching, three gait samples"
+        );
+        for row in rows {
+            let samples = row["sample"].as_array().unwrap();
+            let sample = Sample {
+                pose: Pose {
+                    pitch: 15.,
+                    ..Default::default()
+                },
+                body_yaw: 0.,
+                head_yaw: -25.,
+                walk_position: samples[0].as_f64().unwrap() as f32,
+                walk_speed: samples[1].as_f64().unwrap() as f32,
+                age_in_ticks: samples[2].as_f64().unwrap() as f32,
+            };
+            let actual = sample.player_posture(row["crouching"].as_bool().unwrap());
+            for (i, name) in super::super::PLAYER_PARTS.iter().enumerate() {
+                let name = name.strip_prefix("root/").unwrap();
+                for (field, values) in [
+                    ("rotation", actual.rotations[i]),
+                    ("position", actual.offsets[i]),
+                ] {
+                    for (got, want) in values
+                        .into_iter()
+                        .zip(row["parts"][name][field].as_array().unwrap())
+                    {
+                        assert!(
+                            (f64::from(got) - want.as_f64().unwrap()).abs() < 1e-6,
+                            "{name}/{field}: {row}"
+                        );
+                    }
+                }
             }
         }
     }

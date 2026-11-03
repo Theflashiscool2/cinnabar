@@ -51,7 +51,7 @@ impl Model {
             return Err(Error::MissingGeometry);
         }
         let geometry = ActorRigGeometry::new(id, vertices, vec![[0.; 3]; bones.len()])?;
-        let rest_pose = pose(&bones, &[])?;
+        let rest_pose = pose(&bones, &[], &[])?;
         let matrices = rest_pose.iter().map(affine).collect::<Vec<_>>();
         let mut low = Vec3::splat(f32::INFINITY);
         let mut high = Vec3::splat(f32::NEG_INFINITY);
@@ -122,7 +122,7 @@ impl Model {
         &self,
         rotations: &[(usize, [f32; 3])],
     ) -> Result<Arc<[RenderBoneTransform]>, Error> {
-        pose(&self.bones, rotations)
+        pose(&self.bones, rotations, &[])
     }
 
     /// Hides native parts and their descendants without rebuilding geometry or introducing
@@ -132,10 +132,21 @@ impl Model {
         rotations: &[(usize, [f32; 3])],
         hidden: &[usize],
     ) -> Result<Arc<[RenderBoneTransform]>, Error> {
+        self.pose_with_offsets_and_visibility(rotations, &[], hidden)
+    }
+
+    /// Replaces local native offsets in Java pixels after reset-to-model-pose. Descendants
+    /// inherit parent changes; neither the immutable bind pose nor geometry is modified.
+    pub fn pose_with_offsets_and_visibility(
+        &self,
+        rotations: &[(usize, [f32; 3])],
+        offsets: &[(usize, [f32; 3])],
+        hidden: &[usize],
+    ) -> Result<Arc<[RenderBoneTransform]>, Error> {
         if hidden.iter().any(|index| *index >= self.bones.len()) {
             return Err(Error::BoneCount);
         }
-        let mut transforms = self.pose(rotations)?;
+        let mut transforms = pose(&self.bones, rotations, offsets)?;
         let output = Arc::make_mut(&mut transforms);
         let mut invisible = vec![false; self.bones.len()];
         for (i, bone) in self.bones.iter().enumerate() {
@@ -198,9 +209,11 @@ fn collect(
 fn pose(
     bones: &[Bone],
     rotations: &[(usize, [f32; 3])],
+    offsets: &[(usize, [f32; 3])],
 ) -> Result<Arc<[RenderBoneTransform]>, Error> {
     if rotations
         .iter()
+        .chain(offsets.iter())
         .any(|(i, r)| *i >= bones.len() || !r.iter().all(|v| v.is_finite()))
     {
         return Err(Error::Transform);
@@ -219,10 +232,15 @@ fn pose(
             .rev()
             .find(|(index, _)| *index == i)
             .map_or(bone.rotation, |(_, r)| *r);
+        let offset = offsets
+            .iter()
+            .rev()
+            .find(|(index, _)| *index == i)
+            .map_or(bone.offset, |(_, offset)| Vec3::from_array(*offset) / 16.);
         let local = Affine3A::from_scale_rotation_translation(
             bone.scale,
             Quat::from_euler(EulerRot::ZYX, z, y, x),
-            bone.offset,
+            offset,
         );
         let global = bone.parent.map_or(base, |p| matrices[p]) * local;
         let (scale, rotation, translation) = global.to_scale_rotation_translation();
@@ -294,6 +312,45 @@ mod tests {
             ],
         }
     }
+    #[test]
+    fn native_local_offsets_move_children_and_reset_without_mutating_geometry() {
+        let root = part(
+            "root",
+            [0.; 3],
+            vec![face()],
+            vec![part(
+                "body",
+                [0.; 3],
+                vec![face()],
+                vec![part("jacket", [0., 16., 0.], vec![face()], vec![])],
+            )],
+        );
+        let model = Model::compile(&root, EntityRigId(123)).unwrap();
+        let parent = model.bone("root/body").unwrap();
+        let child = model.bone("root/body/jacket").unwrap();
+        let moved = model
+            .pose_with_offsets_and_visibility(&[], &[(parent, [16., 0., 0.])], &[])
+            .unwrap();
+        let actual = affine(&moved[child]).transform_point3(Vec3::ZERO);
+        assert!((actual - Vec3::new(1., 0.501, 0.)).length() < 1e-6);
+        assert!(model.posed_bounds(&moved).is_ok());
+        let hidden = model
+            .pose_with_offsets_and_visibility(&[], &[(parent, [16., 0., 0.])], &[parent])
+            .unwrap();
+        assert_eq!(hidden[child].translation_scale[3], 0.);
+        let reset = model
+            .pose_with_offsets_and_visibility(&[], &[], &[])
+            .unwrap();
+        assert_eq!(reset.as_ref(), model.rest_pose.as_ref());
+        for bad in [(usize::MAX, [0.; 3]), (parent, [f32::NAN, 0., 0.])] {
+            assert!(
+                model
+                    .pose_with_offsets_and_visibility(&[], &[bad], &[])
+                    .is_err()
+            );
+        }
+    }
+
     #[test]
     fn native_part_visibility_hides_descendants_and_restores_without_mutating_rest_pose() {
         let root = part(
