@@ -101,6 +101,25 @@ Only ordinary supported instant item fallback is integrated. Active use, complet
 offhand/result prediction, unsupported entity presentation and specialized menus
 remain separate gaps; a successful pig interaction is not NPC-shop acceptance.
 
+### Player-list removal and world entities
+
+The pinned client's `AbstractClientPlayer.getPlayerInfo()` caches its first resolved
+PlayerInfo. Removing a tab entry does not despawn that entity or change its cached
+game mode. Native admission retains the removed mode for that live entity identity;
+a new profile with the same UUID cannot change an older entity's cached information.
+Entity removal/replacement, world replacement, configuration and disconnect retire
+the retained facts. Picking excludes known spectators, rather than treating every
+missing tab entry as a spectator. No per-frame roster scan is added.
+
+The acceptance-only `VanillaDebugServer` fixture optionally registers console-only
+`acceptance_unlist <target> <viewer>` and `acceptance_relist <target> <viewer>`.
+Start the same verified server with `--add-opens java.base/java.lang=ALL-UNNAMED`
+and `-Dcinnabar.acceptance.entityCommands=true`. Both names must identify real
+connected players. The command sends the official native player-list packet to
+the viewer; entity position, health and interactions remain owned by the server.
+This instrumented offline fixture tests tab-list/entity independence, not a
+production NPC-shop plugin, online authentication or Hypixel compatibility.
+
 Pig fallback eligibility comes from the version-pinned offline item-facts exporter,
 including actual spawn-egg entity defaults; the host does not classify native items
 by name suffix. The extended schema is integrity checked during protocol generation.
@@ -110,3 +129,11 @@ and a server-authoritative damage change. The final facts-integrated executable 
 also inspected live: a normal right-click changed the server carrot count9→8 and
 baby age, with the updated count visible in the real HUD. This is not NPC-menu,
 online-mode, iOS or Hypixel acceptance.
+
+Actual two-native-client Linux/lavapipe offline execution confirmed roster2→1 while
+one player stayed visible and selected, server damage19→18, landing, and observer
+reconnect followed by another unlisted-player hit18→17. The initial simultaneous
+cold joins also produced a30s capture timeout and one floating kick after damage;
+that unresolved cold-load observation is retained, not counted as passed. Warm
+repeats passed without changing server flight policy. Physical-iPhone, online-mode
+and Hypixel NPC-menu acceptance remain untested.

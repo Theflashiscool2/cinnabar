@@ -2,6 +2,110 @@ use super::*;
 use java_protocol::session::{Envelope, Event, Phase};
 
 #[test]
+fn live_entities_keep_their_removed_player_info_without_adopting_a_reused_profile() {
+    use java_protocol::session::{entities, hud::GameMode as WireMode};
+    use world::java::hud::GameMode;
+    let mut state = super::super::tests_support::state();
+    let update = |profile: bool, mode| {
+        Event::Roster(wire::Packet::Update(vec![wire::Update {
+            uuid: [1; 16],
+            profile: profile.then(|| wire::Profile {
+                name: "Peer".into(),
+                properties: vec![],
+            }),
+            mode: Some(mode),
+            ..Default::default()
+        }]))
+    };
+    let spawn = || Event::Entities {
+        dimension_epoch: 1,
+        packet: entities::Packet::Spawn(entities::Spawn {
+            lifetime: 9,
+            id: 99,
+            uuid: [1; 16],
+            kind: java_protocol::target::ENTITY_PLAYER,
+            position: [0., -60., 3.],
+            velocity: [0.; 3],
+            pitch: 0.,
+            yaw: 0.,
+            head_yaw: 0.,
+            data: 0,
+        }),
+    };
+    let remove = || Event::Roster(wire::Packet::Remove(vec![[1; 16]]));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: update(true, WireMode::Survival)
+    }));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: spawn()
+    }));
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Survival));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: remove()
+    }));
+    assert!(state.players.get(&[1; 16]).is_none());
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Survival));
+    // Re-adding the UUID creates another PlayerInfo; the live entity still holds the old one.
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: update(true, WireMode::Spectator)
+    }));
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Survival));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: spawn()
+    }));
+    assert!(state.removed_player_modes.is_empty());
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Spectator));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: remove()
+    }));
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Spectator));
+    assert!(!state.admit(Envelope {
+        generation: 6,
+        event: remove()
+    }));
+    assert_eq!(state.removed_player_modes.len(), 1);
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: Event::Entities {
+            dimension_epoch: 1,
+            packet: entities::Packet::Remove(vec![99]),
+        }
+    }));
+    assert!(state.removed_player_modes.is_empty());
+    assert_eq!(state.player_entity_mode(99), None);
+    // The current roster object updates normally; only a removed object's mode is frozen.
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: update(true, WireMode::Survival)
+    }));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: spawn()
+    }));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: update(false, WireMode::Spectator)
+    }));
+    assert_eq!(state.player_entity_mode(99), Some(GameMode::Spectator));
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: remove()
+    }));
+    let dimension = state.bootstrap.as_ref().unwrap().world.spawn.clone();
+    super::super::terrain::begin(&mut state, &dimension).unwrap();
+    assert!(state.removed_player_modes.is_empty());
+    assert_eq!(state.player_entity_mode(99), None);
+    state.begin(8);
+    assert!(state.removed_player_modes.is_empty());
+}
+
+#[test]
 fn team_updates_are_session_fenced_and_retained_only_across_dimension_changes() {
     let mut state = super::super::tests_support::state();
     let event = || {

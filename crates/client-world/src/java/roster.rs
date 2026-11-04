@@ -48,7 +48,18 @@ pub(super) fn admit(state: &mut WorldState, packet: wire::Packet) -> bool {
                 },
             )
         }
-        wire::Packet::Remove(ids) => state.players.remove(state.generation, &ids),
+        wire::Packet::Remove(ids) => {
+            let removed = ids
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>();
+            for entity in state.entities.iter().filter(|e| removed.contains(&e.uuid)) {
+                if let Some(mode) = state.player_entity_mode(entity.network_id) {
+                    state.removed_player_modes.insert(entity.identity, mode);
+                }
+            }
+            state.players.remove(state.generation, &ids)
+        }
         wire::Packet::Update(updates) => state.players.update(
             state.generation,
             updates

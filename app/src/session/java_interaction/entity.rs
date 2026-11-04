@@ -51,9 +51,8 @@ pub(super) fn pick(
             || e.visual.scale != 1.
             || (player
                 && state
-                    .players
-                    .get(&e.uuid)
-                    .is_none_or(|p| p.mode == world::java::hud::GameMode::Spectator))
+                    .player_entity_mode(e.network_id)
+                    .is_some_and(|mode| mode == world::java::hud::GameMode::Spectator))
             || state.entities.passengers(e.network_id).is_some()
         {
             continue;
@@ -238,6 +237,16 @@ mod tests {
             block,
             ([0., 0.], false),
         )
+    }
+    #[test]
+    fn removing_a_tab_entry_does_not_make_a_visible_player_untargetable() {
+        let mut s = state();
+        assert!(s.players.remove(7, &[[1; 16]]));
+        assert!(s.entities.get(99).unwrap().visual.player.is_some());
+        assert!(matches!(
+            query(&s, 3., None),
+            Some(Target::Entity { network_id: 99, .. })
+        ));
     }
     #[test]
     fn current_native_boxes_not_future_packets_or_cosmetic_offsets_define_reach() {

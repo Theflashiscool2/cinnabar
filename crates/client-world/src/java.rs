@@ -35,6 +35,9 @@ pub struct WorldState {
     piston_registry: Option<std::sync::Arc<assets::registry::java::BlockRegistry>>,
     pub entities: world::java::entities::Entities,
     pub players: world::java::roster::Roster,
+    /// A live player entity retains its PlayerInfo after tab-list removal.
+    removed_player_modes:
+        std::collections::BTreeMap<world::java::entities::Identity, world::java::hud::GameMode>,
     pub player_visual: world::java::entities::visual::Visual,
     pub scoreboard: scoreboard::State,
     pub status: world::java::hud::State,
@@ -96,6 +99,16 @@ impl WorldState {
     }
     pub fn generation(&self) -> u64 {
         self.generation
+    }
+    /// Matches AbstractClientPlayer's cached PlayerInfo, including removed tab entries.
+    pub fn player_entity_mode(&self, id: i32) -> Option<world::java::hud::GameMode> {
+        let entity = self.entities.get(id)?;
+        let profile = entity.visual.player.as_ref()?;
+        self.players
+            .get(&entity.uuid)
+            .filter(|entry| std::sync::Arc::ptr_eq(&entry.profile, profile))
+            .map(|entry| entry.mode)
+            .or_else(|| self.removed_player_modes.get(&entity.identity).copied())
     }
     /// Returns false for retired sessions before touching any admitted state.
     pub fn admit(&mut self, envelope: Envelope) -> bool {
@@ -174,6 +187,7 @@ impl WorldState {
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                     self.entities = Default::default();
+                    self.removed_player_modes.clear();
                     self.players = world::java::roster::Roster::new(self.generation);
                     self.player_visual = Default::default();
                 }

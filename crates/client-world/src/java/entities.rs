@@ -40,7 +40,8 @@ pub(super) fn admit(
                 None
             };
             let interpolated = pig.is_some() || player.is_some();
-            state.entities.spawn(
+            let previous = state.entities.get(s.id).map(|e| e.identity);
+            let admitted = state.entities.spawn(
                 scope,
                 domain::Spawn {
                     transport_lifetime: s.lifetime,
@@ -68,9 +69,25 @@ pub(super) fn admit(
                         java_protocol::target::ENTITY_SPECS[id].update_interval
                     }),
                 },
-            )
+            )?;
+            if admitted && let Some(previous) = previous {
+                state.removed_player_modes.remove(&previous);
+            }
+            Ok(admitted)
         }
-        wire::Packet::Remove(ids) => state.entities.remove(scope, &ids),
+        wire::Packet::Remove(ids) => {
+            let removed = ids
+                .iter()
+                .filter_map(|id| state.entities.get(*id).map(|e| e.identity))
+                .collect::<Vec<_>>();
+            let admitted = state.entities.remove(scope, &ids)?;
+            if admitted {
+                for identity in removed {
+                    state.removed_player_modes.remove(&identity);
+                }
+            }
+            Ok(admitted)
+        }
         wire::Packet::Move {
             id,
             delta,
