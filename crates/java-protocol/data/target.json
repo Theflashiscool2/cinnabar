@@ -156,13 +156,13 @@
     },
     "native_rules": {
       "path": "data/inventory-facts.json",
-      "sha256": "cd1325e1583db4a1c4fbcb733d470a0070a2943d158ade1b29b6073e05c5d5f0",
-      "bytes": 214585,
+      "sha256": "f974b7da8b612903b17025978c8ec577fe7903048b21dcc192a814aa4e6f262c",
+      "bytes": 377055,
       "items": 1658,
       "inputs": 7,
       "generator": "tools/java-reference/ExportInventoryFacts.java",
       "source_client_sha256": "4508d006323f24fa02876310c192d739af56516eb259000ac50f0909a68c9a2d",
-      "schema": 2
+      "schema": 3
     }
   },
   "fluid_render_report": {

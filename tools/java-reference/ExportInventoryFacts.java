@@ -20,7 +20,7 @@ public final class ExportInventoryFacts {
             ExportInventoryFacts.class.getResourceAsStream("/version.json"),
             StandardCharsets.UTF_8)).getAsJsonObject();
         var out = new JsonObject();
-        out.addProperty("schema", 2);
+        out.addProperty("schema", 3);
         out.add("game_version", version.get("id"));
         out.add("protocol", version.get("protocol_version"));
         out.addProperty("empty_item", BuiltInRegistries.ITEM.getId(net.minecraft.world.item.Items.AIR));
@@ -44,6 +44,12 @@ public final class ExportInventoryFacts {
             entry.add(name == null ? JsonNull.INSTANCE : net.minecraft.network.chat.ComponentSerialization.CODEC
                 .encodeStart(registries.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), name)
                 .getOrThrow());
+            var stack = item.getDefaultInstance();
+            var attack = new JsonObject();
+            attack.addProperty("range", stack.has(net.minecraft.core.component.DataComponents.ATTACK_RANGE));
+            attack.addProperty("piercing", stack.has(net.minecraft.core.component.DataComponents.PIERCING_WEAPON));
+            attack.addProperty("minimum_charge", stack.getOrDefault(net.minecraft.core.component.DataComponents.MINIMUM_ATTACK_CHARGE, 0f));
+            entry.add(attack);
             items.add(entry);
         }
         out.add("items", items);

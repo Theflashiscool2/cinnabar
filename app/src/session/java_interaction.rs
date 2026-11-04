@@ -18,7 +18,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_use_and_unarmed_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_use_and_ordinary_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -83,9 +83,8 @@ pub(crate) fn update(
                         .get(network_id)
                         .is_some_and(|e| e.identity == identity && e.transport_lifetime == lifetime)
                     {
-                        if !matches!(state.inventory.held(), Some(None)) {
-                            interaction.0.blocked =
-                                Some("Native armed entity attacks are not implemented".into());
+                        if let Err(error) = entity::ordinary_attack(state.inventory.held()) {
+                            interaction.0.blocked = Some(error.into());
                         } else {
                             match java.command(Command::Attack {
                                 dimension_epoch: identity.epoch,

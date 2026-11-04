@@ -2,6 +2,22 @@
 use gameplay::java::actions::Target;
 use sim::java::{entity_selection, selection, travel};
 
+/// Resolves pinned native defaults at the host boundary; the gameplay policy owns patches.
+pub(super) fn ordinary_attack(held: Option<&inventory::java::Slot>) -> Result<(), &'static str> {
+    let defaults = held.and_then(|h| h.as_ref()).and_then(|stack| {
+        let id = java_protocol::target::ITEM_TYPES
+            .iter()
+            .position(|name| *name == stack.item)?;
+        let d = java_protocol::target::ITEM_ATTACK_DEFAULTS[id];
+        Some(gameplay::java::attack::Defaults {
+            range: d.range,
+            piercing: d.piercing,
+            minimum_charge: d.minimum_charge,
+        })
+    });
+    gameplay::java::attack::ordinary(held, defaults)
+}
+
 pub(super) fn pick(
     state: &client_world::java::WorldState,
     from: [f64; 3],
@@ -70,6 +86,30 @@ pub(super) fn pick(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn pinned_defaults_dispatch_ordinary_items_and_reject_native_special_attacks() {
+        let item = |name: &str| {
+            Some(inventory::java::Stack {
+                item: name.into(),
+                count: 1,
+                added: Default::default(),
+                removed: Default::default(),
+            })
+        };
+        assert_eq!(
+            java_protocol::target::ITEM_TYPES.len(),
+            java_protocol::target::ITEM_ATTACK_DEFAULTS.len()
+        );
+        for name in [
+            "minecraft:iron_sword",
+            "minecraft:diamond_axe",
+            "minecraft:gold_ingot",
+        ] {
+            assert!(ordinary_attack(Some(&item(name))).is_ok(), "{name}");
+        }
+        assert!(ordinary_attack(Some(&item("minecraft:iron_spear"))).is_err());
+        assert!(ordinary_attack(Some(&item("fixture:unknown"))).is_err());
+    }
     use std::sync::Arc;
     use world::java::{entities, hud::GameMode, player::Motion, roster};
     fn state() -> client_world::java::WorldState {

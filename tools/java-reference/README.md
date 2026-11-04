@@ -132,3 +132,13 @@ Without attach access, place its `-javaagent:...=.../motion-request` after the e
 menu-fixture agent argument on the controlled server's next clean startup. Counter
 observations establish packet cadence only; they do not prove complete movement,
 knockback, public-server or graphical parity. Do not use a normal user's file as a request.
+
+`ExportInventoryFacts.java` exports schema3 of the pinned inventory facts: registry
+identity, stack limits, default name components and default attack range/piercing/charge
+presence. Initialize the native component registry before reading item defaults. Compile
+with the verified target classpath, then run `ExportInventoryFacts /absolute/path/facts.json`.
+Verify the client and server exports agree before updating `data/inventory-facts.json` and
+its hash/schema in `data/target.json` under `crates/java-protocol`. The generator checks
+registry ordering and derives the runtime defaults table; component overrides/removals
+still come from the authoritative server stack. Ordinary attacks may share Attack/Punch;
+range, piercing and minimum-charge behaviors require their own implementation.

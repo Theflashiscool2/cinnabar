@@ -90,12 +90,24 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
     let names = entries
         .iter()
         .map(|entry| {
-            assert_eq!(entry.as_array().unwrap().len(), 3);
+            assert_eq!(entry.as_array().unwrap().len(), 4);
             assert!(entry[2].is_object() || entry[2].is_null() || entry[2].is_string());
             entry[2].to_string()
         })
         .collect::<Vec<_>>();
     *code += &format!("pub const ITEM_DEFAULT_NAMES: &[&str] = &{names:?};\n");
+    *code += "#[derive(Clone, Copy, Debug)]\npub struct ItemAttackDefaults { pub range: bool, pub piercing: bool, pub minimum_charge: f64 }\npub const ITEM_ATTACK_DEFAULTS: &[ItemAttackDefaults] = &[\n";
+    for entry in entries {
+        let attack = &entry[3];
+        let range = attack["range"].as_bool().unwrap();
+        let piercing = attack["piercing"].as_bool().unwrap();
+        let charge = attack["minimum_charge"].as_f64().unwrap();
+        assert!(charge.is_finite() && charge >= 0.);
+        *code += &format!(
+            "ItemAttackDefaults {{ range: {range}, piercing: {piercing}, minimum_charge: {charge:?} }},\n"
+        );
+    }
+    *code += "];\n";
     let empty = u32::try_from(native["empty_item"].as_u64().unwrap()).unwrap();
     assert!((empty as usize) < items.len());
     *code += &format!("pub const ITEM_EMPTY_ID: u32 = {empty};\n");
