@@ -74,6 +74,7 @@ pub(super) fn parameters() -> Parameters {
         movement_efficiency: 0.,
         water_movement_efficiency: 0.,
         fast_lava: false,
+        may_fly: false,
     }
 }
 

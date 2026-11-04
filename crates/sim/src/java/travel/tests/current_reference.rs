@@ -99,4 +99,67 @@ fn native_fluid_currents_match_official_runtime_and_negative_translation() {
             assert_eq!(actual, expected, "{} at {shift:?}", case["name"]);
         }
     }
+    let facts: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/java-swimming.json"
+    ))
+    .unwrap();
+    for case in facts["camera_cases"].as_array().unwrap() {
+        for [x, y, z] in [[8_i32, 0, 8], [-16, 15, -16]] {
+            let mut t = Terrain::default();
+            t.begin(world::java::Dimension {
+                session: 7,
+                epoch: 1,
+                name: "fixture:camera".into(),
+                min_y: 0,
+                height: 32,
+                has_skylight: true,
+            });
+            t.replace(
+                [x.div_euclid(16), z.div_euclid(16)],
+                Column::new(
+                    (0..2)
+                        .map(|_| {
+                            Arc::new(Section {
+                                blocks: Palette::uniform(BlockStateId(0), 4096),
+                                biomes: Palette::uniform(world::java::BiomeId(0), 64),
+                            })
+                        })
+                        .collect(),
+                    Light {
+                        sky: vec![None; 4],
+                        block: vec![None; 4],
+                    },
+                    vec![],
+                    vec![],
+                ),
+            );
+            t.set_block(
+                [x, y, z],
+                BlockStateId(case["water"].as_u64().unwrap() as u32),
+            );
+            t.set_block(
+                [x, y + 1, z],
+                BlockStateId(case["above"].as_u64().unwrap() as u32),
+            );
+            let cells = super::super::liquid::Cells {
+                terrain: &t,
+                physics: &physics,
+            };
+            let height = f64::from(case["height"].as_f64().unwrap() as f32);
+            for delta in [-1.0e-6, 1.0e-6] {
+                assert_eq!(
+                    cells
+                        .water_at_eye(
+                            [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5],
+                            height + delta
+                        )
+                        .unwrap(),
+                    delta < 0.,
+                    "{} at {:?}",
+                    case["name"],
+                    [x, y, z]
+                );
+            }
+        }
+    }
 }

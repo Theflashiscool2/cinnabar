@@ -257,6 +257,10 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   run observed 18 keepalives; the corrected build observed six, then four after a
   same-process reconnect with fresh terrain and movement state. This qualifies only
   these fixture cases, not general movement parity or a playable multiplayer client.
+  Upright water/lava and local sprint-swimming now also have controlled Linux vanilla
+  evidence, including low-tunnel entry, drain/crawl, ceiling recovery, negative boundaries,
+  pose-preserving corrections and reconnect. Climbing/scaffolding, flight/mounts,
+  broader movement/entity/effect behavior and iPhone/online acceptance remain open.
 - [x] Publish native pig hierarchies and registry-selected textures through the existing
   actor renderer, with off-frame asset preparation and scoped pose ownership. Linux
   offline rendered frames show adult/baby variants, server rotation, growth and removal.

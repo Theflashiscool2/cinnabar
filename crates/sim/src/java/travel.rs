@@ -3,6 +3,7 @@
 //! Entity.getInputVector, LivingEntity.aiStep/travelInAir and Player edge protection supply
 //! the observable rules. Context-dependent block callbacks remain explicit gaps.
 mod liquid;
+mod swimming;
 use super::collision::{self, QueryError};
 use assets::registry::java::physics::{Bounds, State, Table};
 use world::java::{
@@ -30,6 +31,10 @@ pub struct Body {
     pub horizontal_collision: bool,
     pub crouched: bool,
     pub sprinting: bool,
+    /// Native swimming flag, separate from the collision pose retained under low ceilings.
+    pub swimming: bool,
+    pub low_profile: bool,
+    eyes_in_water: bool,
     pub fall_distance: f64,
     pub water_height: f64,
     pub lava_height: f64,
@@ -37,7 +42,22 @@ pub struct Body {
 }
 impl Body {
     pub fn eye_height(self, scale: f32) -> f64 {
-        f64::from(if self.crouched { 1.27_f32 } else { 1.62_f32 } * scale)
+        f64::from(
+            if self.low_profile {
+                0.4_f32
+            } else if self.crouched {
+                1.27_f32
+            } else {
+                1.62_f32
+            } * scale,
+        )
+    }
+    pub fn bounds(self, position: [f64; 3], scale: f32) -> Bounds {
+        let mut shape = bounds(position, self.crouched, scale);
+        if self.low_profile {
+            shape.max[1] = position[1] + f64::from(0.6_f32 * scale);
+        }
+        shape
     }
 }
 #[derive(Clone, Copy)]
@@ -54,6 +74,7 @@ pub struct Parameters {
     pub movement_efficiency: f32,
     pub water_movement_efficiency: f32,
     pub fast_lava: bool,
+    pub may_fly: bool,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -118,18 +139,36 @@ pub fn step(
     }
     let mut next = *motion;
     let mut next_body = *body;
+    let cells = liquid::Cells { terrain, physics };
+    // Entity.baseTick samples the previous pose and sprint state before LocalPlayer.aiStep.
+    let previous_shape = body.bounds(next.position, p.scale);
+    ensure_contacts(terrain, physics, previous_shape)?;
+    let contact = cells.contact(previous_shape)?;
+    next_body.swimming = body.sprinting
+        && contact.water > 0.
+        && (body.swimming || (body.eyes_in_water && cells.water_at(next.position)?));
+    next_body.eyes_in_water = cells.water_at_eye(next.position, body.eye_height(p.scale))?;
     let standing = bounds(next.position, false, p.scale);
     let nearby = collision::collect(terrain, physics, scope.0, scope.1, standing)?;
-    next_body.crouched = input.crouch
-        || nearby
-            .boxes
-            .iter()
-            .any(|b| collision::intersects(standing, *b));
-    next_body.sprinting = input.sprint && !next_body.crouched && input.forward > 0.;
-    let shape = bounds(next.position, next_body.crouched, p.scale);
-    ensure_contacts(terrain, physics, shape)?;
-    let cells = liquid::Cells { terrain, physics };
-    let contact = cells.contact(shape)?;
+    let blocked = nearby
+        .boxes
+        .iter()
+        .any(|b| collision::intersects(standing, *b));
+    next_body.crouched = !next_body.swimming
+        && (input.crouch || blocked)
+        && swimming::fits(next.position, false, true, p.scale, terrain, physics, scope)?;
+    next_body.sprinting = input.sprint
+        && input.forward > 0.
+        && (!next_body.crouched || body.eyes_in_water)
+        && (!next_body.low_profile || contact.water > 0. || body.eyes_in_water)
+        && (!body.horizontal_collision || next_body.swimming)
+        && (p.may_fly || contact.water <= 0. || body.eyes_in_water || next_body.swimming);
+    let travel_pose = if next_body.swimming || body.low_profile {
+        *body
+    } else {
+        next_body
+    };
+    let shape = travel_pose.bounds(next.position, p.scale);
     next_body.water_height = contact.water;
     next_body.lava_height = contact.lava;
     let wet = contact.water > 0. || contact.lava > 0.;
@@ -147,14 +186,6 @@ pub fn step(
                 0.0023333333333333335
             },
         );
-    }
-    // Sprint-swimming requires its own pose, dimensions and camera path. Do not silently
-    // simulate a standing sprint with a swimmer's packet-visible motion.
-    if next_body.sprinting && contact.water >= next_body.eye_height(p.scale) {
-        return Err(Error::Unsupported {
-            behavior: "sprint-swimming pose",
-            position: next.position.map(|n| n.floor() as i32),
-        });
     }
     let feet = surface(terrain, physics, next.position, -0.5)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
@@ -202,6 +233,9 @@ pub fn step(
     } else if !input.jump {
         next_body.jump_delay = 0;
     }
+    if next_body.swimming {
+        swimming::steer(&mut next, input.jump, &cells)?;
+    }
     let ground_speed = if next_body.sprinting {
         p.sprint_speed
     } else {
@@ -234,7 +268,7 @@ pub fn step(
     };
     let axes = modified_input(
         [input.sideways, input.forward],
-        if next_body.crouched {
+        if next_body.crouched || (next_body.low_profile && contact.water <= 0.) {
             p.sneaking_speed
         } else {
             1.
@@ -296,11 +330,7 @@ pub fn step(
     }
     let feet = surface(terrain, physics, next.position, -0.5)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
-    ensure_contacts(
-        terrain,
-        physics,
-        bounds(next.position, next_body.crouched, p.scale),
-    )?;
+    ensure_contacts(terrain, physics, travel_pose.bounds(next.position, p.scale))?;
     let cell = next.position.map(|n| n.floor() as i32);
     let water_block = physics
         .registry()
@@ -340,7 +370,7 @@ pub fn step(
         }
         if next_body.horizontal_collision {
             let probe = collision::translated(
-                bounds(next.position, next_body.crouched, p.scale),
+                travel_pose.bounds(next.position, p.scale),
                 [
                     next.velocity[0],
                     next.velocity[1] + f64::from(0.6_f32) - next.position[1] + old_y,
@@ -359,6 +389,15 @@ pub fn step(
     if !next.is_finite() {
         return Err(Error::Invalid);
     }
+    swimming::finish_pose(
+        &mut next_body,
+        next.position,
+        input.crouch,
+        p.scale,
+        terrain,
+        physics,
+        scope,
+    )?;
     *motion = next;
     *body = next_body;
     Ok(())

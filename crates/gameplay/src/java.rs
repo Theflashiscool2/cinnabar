@@ -38,7 +38,6 @@ pub struct Frame {
 pub struct Controller {
     scope: Option<(u64, u64)>,
     sequence: u64,
-    teleport: Option<u64>,
     pub body: Body,
     elapsed: Duration,
     pending: Option<Frame>,
@@ -75,11 +74,8 @@ impl Controller {
             self.last_flags = None;
             self.last_rotation = state.player_motion.map(|m| [m.yaw, m.pitch]);
             self.reminder = 0;
-            let teleport = state.teleport.map(|t| t.revision);
-            if self.teleport != teleport {
-                self.body = Body::default();
-                self.teleport = teleport;
-            }
+            // The pinned position handler updates kinematics, not entity pose/fluid history.
+            // A new session/dimension retires Body above; same-world corrections retain it.
         }
         if state.awaiting_correction_ack() {
             self.elapsed = Duration::ZERO;
@@ -103,7 +99,8 @@ impl Controller {
             .get("minecraft:scale")
             .and_then(|a| a.value().ok())
             .unwrap_or(1.) as f32;
-        let body = if self.teleport == state.teleport.map(|t| t.revision) {
+        let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
+        let body = if scope.is_some() && self.scope == scope {
             self.body
         } else {
             Body::default()
@@ -215,9 +212,7 @@ impl Controller {
             return Err("Native Java mounted movement is not implemented".into());
         }
         let mut input = controls.travel;
-        input.sprint &= !input.crouch
-            && input.forward > 0.8
-            && !self.body.horizontal_collision
+        input.sprint &= input.forward > 0.8
             && (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6));
         let parameters = parameters(state)?;
         motion.yaw = controls.yaw;
@@ -284,6 +279,11 @@ fn parameters(state: &WorldState) -> Result<Parameters, String> {
         sneaking_speed: value("minecraft:sneaking_speed")? as f32,
         movement_efficiency: value("minecraft:movement_efficiency")? as f32,
         water_movement_efficiency: value("minecraft:water_movement_efficiency")? as f32,
+        may_fly: state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|a| a.may_fly),
         fast_lava: state
             .fast_lava()?
             .unwrap_or_else(assets::registry::java::fluids::contacts::fast_lava_default),

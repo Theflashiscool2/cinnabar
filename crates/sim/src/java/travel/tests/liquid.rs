@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use world::java::BlockStateId;
 
-fn scene(height: f32, lava: bool) -> (Terrain, Table) {
+pub(super) fn scene(height: f32, lava: bool) -> (Terrain, Table) {
     let (terrain, physics) = terrain::scene();
     let states: Vec<_> = (0..4).map(|id| serde_json::json!({
         "id":id,"kind":if id==2 { if lava { "lava" } else { "water" } } else { "empty" },

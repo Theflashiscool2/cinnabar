@@ -1,6 +1,7 @@
 use super::*;
 mod current_reference;
 mod liquid;
+mod swimming;
 mod terrain;
 
 #[test]

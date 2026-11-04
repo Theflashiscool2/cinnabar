@@ -33,6 +33,57 @@ impl Cells<'_> {
             }),
         }
     }
+    pub fn has_fluid_at(&self, p: [f64; 3]) -> Result<bool, Error> {
+        Ok(self
+            .get(p.map(|v| v.floor() as i32))?
+            .is_some_and(|s| s.kind != Kind::Empty))
+    }
+    pub fn water_at(&self, p: [f64; 3]) -> Result<bool, Error> {
+        Ok(self
+            .get(p.map(|v| v.floor() as i32))?
+            .is_some_and(|s| s.kind == Kind::Water))
+    }
+    /// Native FluidState.getHeightForCamera also fills a source under a sturdy ceiling.
+    pub fn water_at_eye(&self, position: [f64; 3], eye_height: f64) -> Result<bool, Error> {
+        let eye = position[1] + eye_height;
+        let p = [
+            position[0].floor() as i32,
+            eye.floor() as i32,
+            position[2].floor() as i32,
+        ];
+        let Some(state) = self.get(p)?.filter(|s| s.kind == Kind::Water) else {
+            return Ok(false);
+        };
+        let above_p = offset(p, [0, 1, 0]);
+        let above = self.get(above_p)?;
+        let same = above.is_some_and(|s| s.kind == Kind::Water);
+        let source = !state.falling && state.height == 8_f32 / 9.;
+        let ceiling = if source && !same && above.is_some() {
+            let id = self
+                .terrain
+                .block(above_p)
+                .ok_or(QueryError::Missing(above_p))?
+                .0;
+            let mask = match self.physics.registry() {
+                Some(r) => fluids::contacts::mask(r, id).ok_or(Error::Unsupported {
+                    behavior: "missing fluid camera face facts",
+                    position: above_p,
+                })?,
+                None if above.is_some_and(|s| !s.solid) => 0,
+                None => {
+                    return Err(Error::Unsupported {
+                        behavior: "missing fluid camera face facts",
+                        position: above_p,
+                    });
+                }
+            };
+            mask & (1 << 2) != 0
+        } else {
+            false
+        };
+        let height = if same || ceiling { 1. } else { state.height };
+        Ok(eye <= f64::from(p[1]) + f64::from(height))
+    }
     fn sturdy(&self, p: [i32; 3], kind: Kind, face: usize) -> Result<bool, Error> {
         if self.get(p)?.is_none_or(|s| s.kind == kind) {
             return Ok(false);

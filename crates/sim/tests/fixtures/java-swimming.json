@@ -1,0 +1,72 @@
+{
+  "game_version": "26.3",
+  "protocol": 777,
+  "poses": {
+    "STANDING": [
+      0.6,
+      1.8,
+      1.62
+    ],
+    "CROUCHING": [
+      0.6,
+      1.5,
+      1.27
+    ],
+    "SWIMMING": [
+      0.6,
+      0.6,
+      0.4
+    ]
+  },
+  "source_classification_states": 13389,
+  "camera_cases": [
+    {
+      "name": "open",
+      "water": 89,
+      "above": 0,
+      "height": 0.8888889
+    },
+    {
+      "name": "stone",
+      "water": 89,
+      "above": 1,
+      "height": 1.0
+    },
+    {
+      "name": "top_slab",
+      "water": 89,
+      "above": 15178,
+      "height": 0.8888889
+    },
+    {
+      "name": "bottom_slab",
+      "water": 89,
+      "above": 15180,
+      "height": 1.0
+    },
+    {
+      "name": "glass",
+      "water": 89,
+      "above": 661,
+      "height": 1.0
+    },
+    {
+      "name": "leaves",
+      "water": 89,
+      "above": 294,
+      "height": 0.8888889
+    },
+    {
+      "name": "flowing_stone",
+      "water": 90,
+      "above": 1,
+      "height": 0.7777778
+    },
+    {
+      "name": "falling_stone",
+      "water": 97,
+      "above": 1,
+      "height": 0.8888889
+    }
+  ]
+}

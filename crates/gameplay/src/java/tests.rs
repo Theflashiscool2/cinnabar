@@ -61,6 +61,8 @@ fn session_replacement_invalidates_unsent_prediction_without_replacing_motion() 
     let mut state = world(1);
     controller.begin_frame(&state, TICK);
     controller.pending = Some(frame());
+    controller.body.low_profile = true;
+    controller.body.swimming = true;
     // Session replacement retires the pending command without mutating new motion authority.
     state.begin(8);
     state.player_motion = Some(world::java::player::Motion {
@@ -71,6 +73,8 @@ fn session_replacement_invalidates_unsent_prediction_without_replacing_motion() 
     assert!(controller.pending().is_none());
     assert_eq!(state.player_motion.unwrap().position, [9., 65., 8.]);
     assert_eq!(controller.ticks, 0);
+    assert!(!controller.body.low_profile && !controller.body.swimming);
+    assert_eq!(controller.eye_height(&state), f64::from(1.62_f32));
 }
 
 #[test]
@@ -82,6 +86,8 @@ fn admitted_correction_replaces_stale_view_even_after_ack_has_already_queued() {
     controller.pending = Some(frame());
     controller.queued();
     controller.pending = Some(frame());
+    controller.body.swimming = true;
+    controller.body.low_profile = true;
     assert!(state.admit(Envelope {
         generation: 7,
         event: Event::Teleport {
@@ -99,6 +105,8 @@ fn admitted_correction_replaces_stale_view_even_after_ack_has_already_queued() {
     }));
     state.correction_queued(1);
     assert!(!state.awaiting_correction_ack());
+    // The native position handler retains the current pose, even before the next tick.
+    assert_eq!(controller.eye_height(&state), f64::from(0.4_f32));
     // Camera publication has not run yet: its previous 90/25 angles are stale even
     // though the network acknowledgement has completed. The caller must replace them.
     assert!(controller.begin_frame(&state, TICK));
@@ -108,6 +116,8 @@ fn admitted_correction_replaces_stale_view_even_after_ack_has_already_queued() {
     assert!(controller.last_input.is_none());
     assert!(controller.last_sprint.is_none());
     assert!(controller.last_flags.is_none());
+    assert!(controller.body.swimming && controller.body.low_profile);
+    assert_eq!(controller.eye_height(&state), f64::from(0.4_f32));
     assert!(!controller.begin_frame(&state, TICK));
 }
 
