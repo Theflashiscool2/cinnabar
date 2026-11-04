@@ -114,6 +114,7 @@ impl Report {
             Event::Rotation { .. } => "rotation",
             Event::Dynamics { .. } => "dynamics",
             Event::Entities { .. } => "entities",
+            Event::Ping { .. } => "ping",
             Event::KeepAlive(_) => "keepalive",
             Event::Vitals(_) => "vitals",
             Event::Death { .. } => "death",

@@ -4,7 +4,18 @@ use super::*;
 impl Connection {
     /// Returns true only when the currently outstanding correction is acknowledged on the wire.
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
+        // Queued input from a retired level cannot be serialized before its replacement login.
+        if !self.bootstrapped {
+            return Ok(false);
+        }
         match command {
+            Command::Pong { sequence, id } if self.pending_ping == Some((sequence, id)) => {
+                self.send("ServerboundPongPacket", &id.to_be_bytes())
+                    .await?;
+                self.pending_ping = None;
+                return Ok(true);
+            }
+            Command::Pong { .. } => {}
             Command::ContainerClick {
                 dimension_epoch,
                 incarnation,
@@ -86,6 +97,7 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
+                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead
                 && self.entity_lifetimes.accepts(entity, lifetime) =>
@@ -107,6 +119,7 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
+                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -127,6 +140,7 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
+                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -145,6 +159,7 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
+                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -164,6 +179,7 @@ impl Connection {
                 && sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
+                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -219,6 +235,7 @@ impl Connection {
                     && self.bootstrapped
                     && self.pending_teleport.is_none()
                     && self.pending_rotation.is_none()
+                    && self.pending_ping.is_none()
                     && self.loaded_epoch != Some(dimension_epoch) =>
             {
                 self.send("ServerboundPlayerLoadedPacket", &[]).await?;

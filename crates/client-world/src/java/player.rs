@@ -82,6 +82,19 @@ pub(super) fn admit(
 }
 
 impl WorldState {
+    /// Issued only after all earlier game events reached this session's world owner.
+    pub fn ping_command(&self) -> Option<(u64, Command)> {
+        self.pending_ping
+            .map(|(sequence, id)| (sequence, Command::Pong { sequence, id }))
+    }
+    pub fn ping_queued(&mut self, sequence: u64) {
+        if self
+            .pending_ping
+            .is_some_and(|(pending, _)| pending == sequence)
+        {
+            self.pending_ping = None;
+        }
+    }
     /// Prediction commands are valid only while this server correction receipt remains current.
     pub fn motion_sequence(&self) -> u64 {
         self.correction_sequence
@@ -289,5 +302,45 @@ mod tests {
         )));
         assert_eq!(s.player_motion.unwrap().velocity, [0., 5., 0.]);
         assert_eq!(s.player_motion.unwrap().pitch, 10.);
+    }
+}
+
+#[cfg(test)]
+mod ping_tests {
+    use super::*;
+    use java_protocol::session::{Envelope, Event};
+    fn ping(generation: u64, sequence: u64, id: i32) -> Envelope {
+        Envelope {
+            generation,
+            event: Event::Ping { sequence, id },
+        }
+    }
+    #[test]
+    fn game_thread_ping_receipts_are_scoped_and_do_not_change_player_correction_authority() {
+        let mut s = WorldState::default();
+        s.begin(7);
+        assert!(!s.admit(ping(6, 1, 3)));
+        assert!(s.ping_command().is_none());
+        assert!(s.admit(ping(7, 1, 3)));
+        assert!(matches!(
+            s.ping_command(),
+            Some((1, Command::Pong { sequence: 1, id: 3 }))
+        ));
+        assert_eq!(s.motion_sequence(), 0);
+        assert!(s.player_motion.is_none());
+        assert!(!s.admit(ping(7, 1, 4)));
+        assert!(!s.admit(ping(7, 0, 4)));
+        assert!(s.admit(ping(7, 2, 3)));
+        s.ping_queued(1);
+        assert!(matches!(
+            s.ping_command(),
+            Some((2, Command::Pong { sequence: 2, id: 3 }))
+        ));
+        s.ping_queued(2);
+        assert!(s.ping_command().is_none());
+        assert!(s.admit(ping(7, 3, 3)));
+        s.begin(8);
+        assert!(s.ping_command().is_none());
+        assert!(!s.admit(ping(7, 4, 3)));
     }
 }

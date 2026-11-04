@@ -635,47 +635,41 @@ async fn wrong_state_packet_fails_without_play() {
 }
 
 #[tokio::test]
-async fn unapplied_correction_times_out_and_cancellation_closes_waiting_transport() {
-    for cancelled in [false, true] {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
-        let server = tokio::spawn(async move {
-            let mut wire = through_initial_position(listener, false).await;
-            assert!(
-                wire.read().await.is_err(),
-                "no acknowledgement before domain admission"
-            );
-        });
-        let (tx, mut rx) = mpsc::channel(32);
-        let (_commands, input) = mpsc::channel(2);
-        let cancel = CancellationToken::new();
-        let mut options = Options::fixture(address, "Fixture".into(), 7);
-        options.commands = Some(input);
-        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
-        tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                if matches!(rx.recv().await.unwrap().event, Event::Teleport { .. }) {
-                    break;
-                }
+async fn cancellation_closes_an_unadmitted_correction_without_guessing_an_ack() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+    let server = tokio::spawn(async move {
+        let mut wire = through_initial_position(listener, false).await;
+        assert!(
+            wire.read().await.is_err(),
+            "no acknowledgement before domain admission"
+        );
+    });
+    let (tx, mut rx) = mpsc::channel(32);
+    let (_commands, input) = mpsc::channel(2);
+    let cancel = CancellationToken::new();
+    let mut options = Options::fixture(address, "Fixture".into(), 7);
+    options.commands = Some(input);
+    let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if matches!(rx.recv().await.unwrap().event, Event::Teleport { .. }) {
+                break;
             }
-        })
-        .await
-        .unwrap();
-        if cancelled {
-            cancel.cancel();
-            assert!(matches!(
-                client.await.unwrap(),
-                Err(session::Error::Cancelled)
-            ));
-        } else {
-            tokio::time::pause();
-            tokio::time::advance(Duration::from_secs(11)).await;
-            assert!(matches!(
-                client.await.unwrap(),
-                Err(session::Error::TeleportAdmissionTimeout)
-            ));
-            tokio::time::resume();
         }
-        server.await.unwrap();
-    }
+    })
+    .await
+    .unwrap();
+    cancel.cancel();
+    assert!(matches!(
+        client.await.unwrap(),
+        Err(session::Error::Cancelled)
+    ));
+    server.await.unwrap();
 }
+
+#[path = "session/admission.rs"]
+mod admission;
+
+#[path = "session/reconfiguration.rs"]
+mod reconfiguration;

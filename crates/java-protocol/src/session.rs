@@ -9,6 +9,7 @@ pub mod hud;
 pub mod interaction;
 pub mod inventory;
 pub use events::{Envelope, Event};
+mod ingress;
 mod login;
 mod motion;
 pub mod movement;
@@ -62,8 +63,6 @@ pub enum Error {
     Unsupported(&'static str),
     #[error("Java session consumer closed")]
     ConsumerClosed,
-    #[error("Java play: player authority did not acknowledge a teleport before its deadline")]
-    TeleportAdmissionTimeout,
 }
 /// Offline identities are allowed only when the caller explicitly requests a loopback fixture.
 pub enum Identity {
@@ -73,6 +72,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    /// Ordered game-thread receipt; unlike keep-alive, a pong cannot overtake world admission.
+    Pong {
+        sequence: u64,
+        id: i32,
+    },
     Attack {
         dimension_epoch: u64,
         correction_sequence: u64,
@@ -168,6 +172,7 @@ struct Connection {
     server_session: uuid::Uuid,
     cookies: BTreeMap<String, Vec<u8>>,
     configuration_bytes: usize,
+    configuration_timeout: Duration,
     bootstrapped: bool,
     terrain: Option<crate::terrain::Context>,
     dimensions: Vec<crate::terrain::Context>,
@@ -179,6 +184,8 @@ struct Connection {
     entity_lifetimes: entities::lifetime::Lifetimes,
     pending_teleport: Option<(i32, u64)>,
     pending_rotation: Option<u64>,
+    pending_ping: Option<(u64, i32)>,
+    ping_sequence: u64,
     correction_sequence: u64,
 }
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
@@ -242,6 +249,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         server_session: uuid::Uuid::nil(),
         cookies: BTreeMap::new(),
         configuration_bytes: 0,
+        configuration_timeout: options.login_timeout,
         bootstrapped: false,
         terrain: None,
         dimensions: Vec::new(),
@@ -253,6 +261,8 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         loaded_epoch: None,
         pending_teleport: None,
         pending_rotation: None,
+        pending_ping: None,
+        ping_sequence: 0,
         correction_sequence: 0,
     };
     tokio::time::timeout(options.login_timeout, c.login(&options))

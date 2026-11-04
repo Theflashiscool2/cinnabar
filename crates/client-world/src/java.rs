@@ -11,6 +11,8 @@ pub mod lighting;
 mod nbt;
 pub mod piston;
 pub mod player;
+#[cfg(test)]
+mod reconfiguration_tests;
 mod roster;
 pub mod scoreboard;
 #[cfg(test)]
@@ -60,6 +62,8 @@ pub struct WorldState {
     correction_sequence: u64,
     pub respawn: Option<Spawn>,
     pub keepalives: u64,
+    pending_ping: Option<(u64, i32)>,
+    ping_sequence: u64,
     pub deferred_packets: u64,
     pub deferred_types: std::collections::BTreeMap<String, u64>,
 }
@@ -162,6 +166,11 @@ impl WorldState {
                     self.player_dynamics = Default::default();
                     self.pending_correction = None;
                     self.pending_rotation = None;
+                    self.pending_ping = None;
+                    self.respawn_rotation_velocity = None;
+                    self.death = None;
+                    self.vitals = None;
+                    self.terrain_error = None;
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                     self.entities = Default::default();
@@ -325,6 +334,13 @@ impl WorldState {
                     return false;
                 }
             },
+            Event::Ping { sequence, id } => {
+                if sequence <= self.ping_sequence {
+                    return false;
+                }
+                self.ping_sequence = sequence;
+                self.pending_ping = Some((sequence, id));
+            }
             Event::KeepAlive(_) => {
                 if self.phase == Some(Phase::Play) {
                     self.keepalives = self.keepalives.saturating_add(1);

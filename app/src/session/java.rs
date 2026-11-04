@@ -119,6 +119,11 @@ fn poll_event(
     java: &mut client_session::java::Session,
     state: &mut client_world::java::WorldState,
 ) -> Option<java_protocol::session::Envelope> {
+    if let Some((sequence, command)) = state.ping_command()
+        && java.command(command).is_ok()
+    {
+        state.ping_queued(sequence);
+    }
     if let Some((revision, command)) = state.correction_command()
         && java.command(command).is_ok()
     {

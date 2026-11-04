@@ -6,6 +6,10 @@ Reference baseline: `Vasysik/horizon-android` commit
 `844ef35f2b14e3fed99d5d2e05b274193fae4388` (MIT). Local reference-only desktop helpers
 at `5b8e6d0b6453e57fb23eb7bbb365bbc7edd5b9b2` do not become Cinnabar product code.
 
+Current upstream comparison, pinned licenses and single-owner adapter contract:
+[java-session-integration.md](java-session-integration.md). This supplements the original
+reference inventory; it does not relabel unimplemented rows as supported.
+
 `L` = reference `crates/horizon-client/src`, `G` = `L/game`,
 `R` = `crates/horizon-client-render/src`, `W` = `crates/horizon-world/src`.
 Inventory/menu input, item-model and hash rows are backed by targeted source inspection.
@@ -16,7 +20,7 @@ is not end-to-end acceptance.
 
 | Capability / reference owners | Cinnabar owner | Integration state and next required evidence |
 |---|---|---|
-| Native login/configuration/reconfiguration/transfers (`G/remote.rs`, `L/net.rs`, protocol packets) | `java-protocol/session`, `client-world/java`, `launcher-host/java` | Existing native path. Owner has authenticated Hypixel lobby evidence; repeated backend transition/registry compatibility still requires controlled regression. |
+| Native login/configuration/reconfiguration/transfers (`G/remote.rs`, `L/net.rs`, protocol packets) | `java-protocol/session`, `client-world/java`, `launcher-host/java` | **Native control/game admission and configuration handoff integrated.** KeepAlive remains live during an owner-admitted correction; Pong stays ordered behind earlier game state. Cold join+early correction, movement and item use passed inspected Linux software-rendered official vanilla offline checks. Three same-connection vanilla debugconfig round trips passed world/input/menu retirement, registry-free restoration, inventory retention and reconnect. Encrypted fixtures also cover replacement registries/cookies/stale input. Direct destination Transfer, consent dialogs and full server pack/chat behavior remain explicit gaps. No new iOS/online/Hypixel acceptance. |
 | Microsoft accounts, refresh/persistence, server selection (`launcher/src`, `L/title`) | `launcher/java_accounts`, platform Keychain, `client-shell` | Existing accepted owner login/discovery. Preserve; no re-registration required. Agent has no reusable online account. |
 | Player inventory, hotbar, cursor, pickups (`L/menu.rs`, `L/container_screen.rs`, `G/remote.rs`) | `inventory/java`, `client-world/java/inventory`, `client-ui/ui_runtime/java_inventory`, app binding | **Implemented and Linux offline-live tested**: native contents/slot aliases/revisions now feed shared JSON-UI. Player storage/hotbar/equipment/cursor counts, ordinary pickup/place/split/merge and authoritative updates passed. iOS and online acceptance pending. |
 | Split, shift-click, drag, swap, clone, throw, double-click (`L/container_screen.rs`, `L/menu.rs`) | Native pickup planner + outbound | Ordinary pickup/split/merge, Shift quick-move, number-key hotbar swaps, hovered Q/Control-Q drops, double-click collect-matching and ordinary personal offhand pickup/place implemented and inspected against vanilla authoritative counts. Chest↔player and personal inventory transfers, spawned dropped counts, actual movement pickup and reconnect passed. Collect10+20+25→55, a64-stack cap with31left, component-distinct exclusion, offhand12↔storage and reconnect passed real GUI/vanilla checks. Left/right native drag is now integrated: delayed placement and one scoped QUICK_CRAFT start/add/end batch, with authoritative GUI/vanilla11→3/3/3+2 and one-each11→1/1/1+8 evidence. Full64 targets and component-distinct exclusions, close-X cursor return, interrupted drag and reconnect passed. Clone, cursor/outside drop and offhand-key swap remain unsupported. No Bedrock inventory mutation or local native prediction. |

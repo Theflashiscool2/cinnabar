@@ -4,6 +4,23 @@ The recoverable branch includes native Java networking and earlier Linux fixture
 Missing unpublished work from the previous execution environment is not assumed to
 exist. The official iOS host/Metal renderer/touch controls and packaging are reused.
 
+## Required playable flow (current evidence, 2026-11-04)
+
+| Step | Current implementation / evidence | Remaining implementation or acceptance | External dependency |
+| --- | --- | --- | --- |
+| 1 Open app | Owner verified physical-iPhone menu; scene lifecycle retained | New changes not iOS tested | Mac/Xcode and device execution |
+| 2 Select separate Java account | Existing native multi-account manager and selected-account routing | Device switching/cancellation/restart acceptance | Owner account/device |
+| 3 Authenticate/persist securely | Existing approved public-client flow and iOS Keychain; owner login passed | Refresh/expiry/multi-account device acceptance | Legitimate interactive account |
+| 4 Controlled online server | Native encryption/session auth retained | Agent online-live acceptance pending | Account and authorized online infrastructure |
+| 5 Hypixel lobby | Owner Mac lobby reached; protocol777 preserved | Repeated backend handoff and iPhone lobby qualification | Legitimate account/user-directed test |
+| 6 World/players/items/server UI | Native rendering/roster/inventory/sidebar; Linux offline evidence | Full item artwork, entity/equipment presentation and server UI remain incomplete | Independent implementation available |
+| 7 Touch gameplay/menus/chat | Existing touch and semantic actions retained | Full touch action/menu/text acceptance, chat integration | Device for acceptance; implementation independent |
+| 8 Play complete Bed Wars | Some movement, inventory, block interaction and melee exist | Mining/use/combat/death/shop/session loop incomplete | Public matchmaking stays user-directed |
+| 9 Reconnect/restart | Controlled offline reconnect evidence; secure persistence implemented | Authenticated/iPhone restart and backend cleanup acceptance | Account/device for acceptance |
+
+This is the finite primary target. No row is qualified by ping, a decoder, upstream
+footage or a unit test alone. Terrain/weather cosmetics are deferred unless blocking it.
+
 | Milestone | Implementation and next action | Verified evidence | Open acceptance / blocker |
 | --- | --- | --- | --- |
 | iOS host and shared resources | Single-scene manifest and pinned Winit scene-attachment backport; build 31.1 | Owner reports successful patched build, iPhone menu access and existing Bedrock sign-in/join paths; no agent-inspected device captures | Orientation, background/resume and disconnected-scene recovery remain unverified; no connected Apple runner/device |
@@ -11,7 +28,7 @@ exist. The official iOS host/Metal renderer/touch controls and packaging are reu
 | Java runtime assets | Shared layout discovery; `make java-assets JAVA_ACCEPT_EULA=1` prepares all six pinned inputs; iOS injection automatically includes a prepared local set | Runtime preparation and synthetic IPA regression coverage; owner generated interaction, registry and physics reports on Mac | Complete new setup still needs Mac/device acceptance; in-app first-run Java provisioning is not implemented |
 | Microsoft account | Native account UI, device-flow/refresh, iOS Keychain and desktop private cache; approved fork application ID configured | Owner reports successful Mac authentication probe and iPhone sign-in; supplied Mac join log records Minecraft session authentication HTTP 204 | Refresh/account-switch acceptance remains separate; no further registration request is currently indicated |
 | Controlled authenticated Java server | Native session path retained separately from Bedrock | Linux compilation; historical offline fixtures are not online qualification | Controlled online-mode server acceptance still pending |
-| Hypixel lobby | Preserve pinned Java 26.3/protocol 777 implementation and show specific connection failures | Owner's Mac join authenticates; after the tag fix it reaches an unsupported item attribute-modifiers component; no successful lobby entry established | The complete pinned item-component reader batch needs an updated-build join retry; remaining session/UI gates are catalogued below |
+| Hypixel lobby | Pinned Java26.3/protocol777 retained; native backend configuration handoff repaired | Owner reported authenticated Mac lobby access; new Linux official vanilla debugconfig/reconnect acceptance is separate | Updated-build physical-iPhone/Hypixel handoff still pending; no Bed Wars completion or additional protocol support claimed |
 | Item attribute modifiers | Decode and retain target-version modifier amounts, operations, equipment slots and display text through existing inventory authority | Wire vectors, compressed/encrypted session fixture and native inventory admission tests | Live join retry pending; full attribute tooltips and gameplay effects are separate acceptance items |
 | Item-component batch and packet census | Every pinned component type has a reader; preserve profiles, books, model data, equipment/use data and nested items in existing inventory patches | Complete registry corpus with following-field alignment, truncation, branching/depth/memory bounds; ordered encrypted inventory delivery and continued keepalives; empty-body dispatch census | No agent live join or iPhone test; metadata decoding does not implement all item behavior. [Known packet gates](../references/java-item-components.md#remaining-packet-gates) remain explicit |
 | Logging | Bounded join JSON groups observed packet gaps. Model compilation batches independent state failures into `java-models-latest.json`; `make java-audit` checks the full pinned model registry offline. Slow-frame output stays opt-in | Grouping, sample limits, cancellation and failed-publication tests; reporter/privacy tests retained | First compiler failure per state only; later network traffic and rendering remain outside audit coverage |

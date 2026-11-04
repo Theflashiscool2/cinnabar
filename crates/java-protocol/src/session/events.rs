@@ -63,6 +63,11 @@ pub enum Event {
         dimension_epoch: u64,
         packet: entities::Packet,
     },
+    /// Game-thread ordering barrier, distinct from a network-thread keep-alive.
+    Ping {
+        sequence: u64,
+        id: i32,
+    },
     KeepAlive(i64),
     Vitals(facts::Vitals),
     Death {

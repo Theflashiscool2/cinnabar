@@ -1,6 +1,31 @@
 //! Configuration has an explicit dispatch table; unknown required behavior fails closed.
 use super::*;
 impl Connection {
+    /// Reuse the authenticated encrypted stream and cookie store; retire play authority.
+    /// Native reference net.rs at 59d8cc38a2627f5b7aa0c96fc91b013df70c45fc (MIT).
+    pub(super) async fn reconfigure(&mut self) -> Result<(), Error> {
+        tracing::info!(target: "java_session", generation=self.generation, dimension_epoch=self.dimension_epoch, "Java server requested configuration handoff; retiring play authority");
+        let started = std::time::Instant::now();
+        self.bootstrapped = false;
+        self.terrain = None;
+        self.dimensions.clear();
+        self.loaded_epoch = None;
+        self.pending_teleport = None;
+        self.pending_rotation = None;
+        self.pending_ping = None;
+        self.menu_lifetime.retire();
+        self.entity_lifetimes.retire();
+        self.send("ServerboundConfigurationAcknowledgedPacket", &[])
+            .await?;
+        self.phase = Phase::Configuration;
+        self.emit(Event::Phase(self.phase)).await?;
+        tokio::time::timeout(self.configuration_timeout, self.configure())
+            .await
+            .map_err(|_| Error::Timeout(Phase::Configuration))??;
+        tracing::info!(target: "java_session", generation=self.generation, dimension_epoch=self.dimension_epoch, registries=self.configuration.registries.len(), elapsed_ms=started.elapsed().as_millis(), "Java configuration handoff completed; awaiting authoritative world login");
+        Ok(())
+    }
+
     pub(super) async fn configure(&mut self) -> Result<(), Error> {
         let mut info = Vec::new();
         wire::string("en_us", &mut info)?;
@@ -8,7 +33,10 @@ impl Connection {
         info.extend([2, 0, 1, 127, 1, 0, 0, 0]);
         self.send("ServerboundClientInformationPacket", &info)
             .await?;
-        self.configuration = Configuration::default();
+        // Native RegistryDataCollector reuses receivedRegistries when no new contents arrive.
+        // A full contents collection replaces the registry set; tag-only updates retain it.
+        let previous = std::mem::take(&mut self.configuration);
+        let mut received_features = false;
         self.configuration_bytes = 0;
         self.bootstrapped = false;
         loop {
@@ -43,6 +71,7 @@ impl Connection {
                     }
                 }
                 "ClientboundUpdateEnabledFeaturesPacket" => {
+                    received_features = true;
                     self.configuration.features = facts::strings(&mut r)?;
                     if self
                         .configuration
@@ -65,6 +94,17 @@ impl Connection {
                 }
                 "ClientboundFinishConfigurationPacket" => {
                     r.finish()?;
+                    if self.configuration.registries.is_empty() {
+                        self.configuration.registries = previous.registries;
+                        let updates = std::mem::take(&mut self.configuration.tags);
+                        self.configuration.tags = previous.tags;
+                        self.configuration
+                            .update_tags(updates)
+                            .map_err(ProtocolError::Invalid)?;
+                    }
+                    if !received_features {
+                        self.configuration.features = previous.features;
+                    }
                     if !self
                         .configuration
                         .registries
@@ -105,6 +145,9 @@ impl Connection {
                 // Do not publish or mutate authority from a packet with trailing junk.
                 Reader(r.0).finish()?;
                 if self.bootstrapped {
+                    self.configuration
+                        .update_tags(tags.clone())
+                        .map_err(ProtocolError::Invalid)?;
                     self.emit(Event::Tags(tags)).await?;
                 } else {
                     // Also covers play tags sent before the initial world login packet.
@@ -125,14 +168,29 @@ impl Connection {
             }
             "ClientboundKeepAlivePacket" => {
                 let id = r.i64()?;
+                Reader(r.0).finish()?;
                 self.send("ServerboundKeepAlivePacket", &id.to_be_bytes())
                     .await?;
                 self.emit(Event::KeepAlive(id)).await?;
             }
             "ClientboundPingPacket" => {
                 let id = r.i32()?;
-                self.send("ServerboundPongPacket", &id.to_be_bytes())
+                Reader(r.0).finish()?;
+                if self.phase == Phase::Play {
+                    self.ping_sequence = self
+                        .ping_sequence
+                        .checked_add(1)
+                        .ok_or(ProtocolError::Invalid("Java ping sequence overflow"))?;
+                    self.pending_ping = Some((self.ping_sequence, id));
+                    self.emit(Event::Ping {
+                        sequence: self.ping_sequence,
+                        id,
+                    })
                     .await?;
+                } else {
+                    self.send("ServerboundPongPacket", &id.to_be_bytes())
+                        .await?;
+                }
             }
             "ClientboundCookieRequestPacket" => {
                 let key = r.string(32767)?;

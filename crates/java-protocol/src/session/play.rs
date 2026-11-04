@@ -3,14 +3,22 @@ use super::*;
 impl Connection {
     pub(super) async fn play(&mut self) -> Result<(), Error> {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+        let mut ingress = super::ingress::Ingress::new(self.events.max_capacity());
         loop {
+            let awaiting_authority = self.pending_teleport.is_some()
+                || self.pending_rotation.is_some()
+                || self.pending_ping.is_some();
             let packet = tokio::select! {
-                result = tokio::time::timeout_at(deadline, self.stream.read()), if self.pending_teleport.is_none() && self.pending_rotation.is_none() => {
+                result = async {
+                    if !awaiting_authority && let Some(frame) = ingress.pop() {
+                        return Ok(frame);
+                    }
+                    tokio::time::timeout_at(deadline, self.stream.read()).await
+                        .map_err(|_| Error::Timeout(Phase::Play))?
+                        .map_err(Error::from)
+                }, if !awaiting_authority || ingress.can_read() => {
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
-                    result.map_err(|_| Error::Timeout(Phase::Play))??
-                },
-                _ = tokio::time::sleep_until(deadline), if self.pending_teleport.is_some() || self.pending_rotation.is_some() => {
-                    return Err(Error::TeleportAdmissionTimeout);
+                    result?
                 },
                 command = async {
                     match &mut self.commands {
@@ -24,7 +32,7 @@ impl Connection {
                                 deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                             }
                         }
-                        None if self.pending_teleport.is_some() || self.pending_rotation.is_some() => return Err(Error::ConsumerClosed),
+                        None if self.pending_teleport.is_some() || self.pending_rotation.is_some() || self.pending_ping.is_some() => return Err(Error::ConsumerClosed),
                         None => self.commands = None,
                     }
                     continue;
@@ -36,6 +44,12 @@ impl Connection {
                 .ok()
                 .and_then(|n| target::game::clientbound::NAMES.get(n))
                 .ok_or(ProtocolError::Invalid("unknown play packet"))?;
+            // Keep-alives are network-thread work in the native client. Game-thread pings
+            // and all world packets stay behind the correction until its owner replies.
+            if awaiting_authority && *name != "ClientboundKeepAlivePacket" {
+                ingress.push(packet);
+                continue;
+            }
             let packet_error = |source| Error::PlayPacket {
                 packet: *name,
                 source,
@@ -138,20 +152,15 @@ impl Connection {
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java correction sequence overflow"))?;
                     self.pending_rotation = Some(self.correction_sequence);
-                    deadline = tokio::time::Instant::now() + Duration::from_secs(10);
-                    tokio::time::timeout_at(
-                        deadline,
-                        self.emit(Event::Rotation {
-                            dimension_epoch: self.dimension_epoch,
-                            sequence: self.correction_sequence,
-                            yaw,
-                            relative_yaw,
-                            pitch,
-                            relative_pitch,
-                        }),
-                    )
-                    .await
-                    .map_err(|_| Error::TeleportAdmissionTimeout)??;
+                    self.emit(Event::Rotation {
+                        dimension_epoch: self.dimension_epoch,
+                        sequence: self.correction_sequence,
+                        yaw,
+                        relative_yaw,
+                        pitch,
+                        relative_pitch,
+                    })
+                    .await?;
                 } else {
                     self.emit(Event::Dynamics {
                         dimension_epoch: self.dimension_epoch,
@@ -203,7 +212,8 @@ impl Connection {
                             generation: self.generation,
                             profile: self.profile.clone(),
                             server_session: self.server_session,
-                            configuration: std::mem::take(&mut self.configuration),
+                            // Retained immutable protocol snapshot also supports registry-free reconfiguration.
+                            configuration: self.configuration.clone(),
                             world,
                         };
                         bootstrap.validate()?;
@@ -226,19 +236,13 @@ impl Connection {
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java correction sequence overflow"))?;
                     self.pending_teleport = Some((position.id, self.correction_sequence));
-                    // Backpressure preserves correction order: no subsequent play packet is
-                    // admitted until this correction reaches the player owner and its reply.
-                    deadline = tokio::time::Instant::now() + Duration::from_secs(10);
-                    tokio::time::timeout_at(
-                        deadline,
-                        self.emit(Event::Teleport {
-                            dimension_epoch: self.dimension_epoch,
-                            sequence: self.correction_sequence,
-                            correction: position,
-                        }),
-                    )
-                    .await
-                    .map_err(|_| Error::TeleportAdmissionTimeout)??;
+                    // Admission remains ordered; ingress still services transport keep-alives.
+                    self.emit(Event::Teleport {
+                        dimension_epoch: self.dimension_epoch,
+                        sequence: self.correction_sequence,
+                        correction: position,
+                    })
+                    .await?;
                     continue;
                 }
                 "ClientboundChunkBatchFinishedPacket" => {
@@ -282,9 +286,10 @@ impl Connection {
                     .await?;
                 }
                 "ClientboundStartConfigurationPacket" => {
-                    return Err(Error::Unsupported(
-                        "mid-session reconfiguration; reconnect to obtain a fresh world handoff",
-                    ));
+                    r.finish().map_err(packet_error)?;
+                    self.reconfigure().await?;
+                    deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                    continue;
                 }
                 "ClientboundShowDialogGamePacket" => {
                     return Err(Error::Unsupported(
