@@ -56,6 +56,10 @@ schemas document every argument. Agents drive the client only through this endpo
 Keep default features enabled for client MCP builds so acceptance evidence remains available.
 `make package-binaries` excludes the acceptance harness and developer control.
 
+Generated logs and capture paths include the MCP process ID and a sequence number.
+Separate MCP processes may share one checkout without overwriting same-millisecond
+artifacts. Use the exact path returned by each tool when collecting evidence.
+
 ## Join timing logs
 
 Default developer builds include the `bridge/join-profile` feature through

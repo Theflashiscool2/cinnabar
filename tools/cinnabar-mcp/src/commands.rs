@@ -3,6 +3,7 @@
 use std::{
     net::IpAddr,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -36,14 +37,21 @@ pub fn resolve(repo: &Path, name: &str) -> PathBuf {
     }
 }
 
-/// A fresh file under the control directory, e.g. `screenshots/1700000000123.png`.
+/// A fresh path, isolated across MCP processes and calls within one clock tick.
 pub fn generated(control_dir: &Path, folder: &str, extension: &str) -> PathBuf {
-    let millis = SystemTime::now()
+    generated_at(control_dir, folder, extension, SystemTime::now())
+}
+
+fn generated_at(control_dir: &Path, folder: &str, extension: &str, now: SystemTime) -> PathBuf {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
+    let millis = now
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis());
-    control_dir
-        .join(folder)
-        .join(format!("{millis}.{extension}"))
+    control_dir.join(folder).join(format!(
+        "{millis}-{}-{sequence}.{extension}",
+        std::process::id()
+    ))
 }
 
 /// The command and reply timeout for a pass-through tool.
@@ -222,6 +230,33 @@ pub fn is_loopback(address: &str) -> bool {
     let host = host.trim_start_matches('[').trim_end_matches(']');
     host.eq_ignore_ascii_case("localhost")
         || host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback())
+}
+
+#[cfg(test)]
+mod artifact_tests {
+    use super::*;
+
+    #[test]
+    fn simultaneous_captures_with_a_fixed_clock_get_distinct_destinations() {
+        let workers = (0..16)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    generated_at(Path::new("control"), "logs", "client.log", UNIX_EPOCH)
+                })
+            })
+            .collect::<Vec<_>>();
+        let paths = workers
+            .into_iter()
+            .map(|worker| worker.join().unwrap())
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(paths.len(), 16);
+        assert!(
+            paths
+                .iter()
+                .all(|path| path.parent() == Some(Path::new("control/logs"))
+                    && path.extension().unwrap() == "log")
+        );
+    }
 }
 
 #[cfg(test)]
