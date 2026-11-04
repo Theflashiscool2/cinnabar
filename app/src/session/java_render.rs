@@ -110,6 +110,11 @@ impl Presentation {
             .then_some(self.physics.as_deref())
             .flatten()
     }
+    pub(super) fn service_physics(&self) -> Option<Arc<::assets::registry::java::physics::Table>> {
+        (self.opened && self.failure.is_none())
+            .then(|| self.physics.clone())
+            .flatten()
+    }
     /// Native readiness owns Java world entry; absence leaves the Bedrock gate in charge.
     pub(crate) fn world_ready(&self) -> Option<bool> {
         self.dimension.as_ref().map(|_| self.opened)

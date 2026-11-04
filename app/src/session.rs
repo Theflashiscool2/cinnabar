@@ -47,6 +47,7 @@ pub(crate) mod java_look;
 pub(crate) mod java_movement;
 pub(crate) mod java_piston;
 pub(crate) mod java_render;
+pub(crate) mod java_service;
 pub(crate) mod java_special;
 mod startup;
 

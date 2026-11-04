@@ -230,6 +230,7 @@ pub(crate) fn configure_client_runtime_frame_systems(app: &mut App) {
     app.init_resource::<PublicationController>()
         .add_plugins(client_runtime::ClientRuntimePlugin::<PackApplication>::default());
     crate::runtime::world::configure_world_service(app);
+    crate::session::java_service::configure(app);
     app.add_observer(apply_added_chunk_visibility)
         .add_observer(remove_chunk_visibility)
         .configure_sets(

@@ -1,18 +1,30 @@
 //! Binds native Java input/physics to the existing session and camera owners.
 use super::{SessionController, java_render::Presentation};
-use bevy::{prelude::*, time::Real};
+use bevy::prelude::*;
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
 use java_protocol::session::{Command, movement::Frame};
 use semantic_input::Action;
 
 #[derive(Resource, Default)]
-pub(crate) struct Movement(pub gameplay::java::Controller);
+pub(crate) struct Movement(pub gameplay::java::Controller, pub(super) ServiceState);
+mod clock;
+use clock::ServiceState;
+impl Movement {
+    pub(super) fn elapsed(
+        &mut self,
+        state: &client_world::java::WorldState,
+        now: web_time::Instant,
+    ) -> std::time::Duration {
+        self.1
+            .elapsed(state.terrain.dimension().map(|d| (d.session, d.epoch)), now)
+    }
+}
 
 impl Movement {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"ticks":self.0.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
+        serde_json::json!({"ticks":self.0.ticks,"between_frame_ticks":self.1.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
             "pending_frame":self.0.pending().is_some(),"on_ground":self.0.body.on_ground,
             "last_climbable_position":self.0.body.last_climbable_position,
             "swimming":self.0.body.swimming,"low_profile":self.0.body.low_profile,
@@ -23,7 +35,6 @@ impl Movement {
 }
 
 pub(crate) fn update(
-    time: Res<Time<Real>>,
     input: Res<SemanticInputSnapshot>,
     mut view: ResMut<LocalViewPose>,
     controller: Option<ResMut<SessionController>>,
@@ -37,18 +48,20 @@ pub(crate) fn update(
         java, java_world, ..
     } = &mut *controller;
     let Some(java) = java.as_ref() else {
-        movement.0 = Default::default();
+        *movement = Default::default();
         return;
     };
     let physics = presentation.movement_physics();
+    let elapsed = movement.elapsed(java_world, web_time::Instant::now());
     let corrected = movement.0.begin_frame(
         java_world,
         if physics.is_some() {
-            time.delta()
+            elapsed
         } else {
             std::time::Duration::ZERO
         },
     );
+    let corrected = corrected | std::mem::take(&mut movement.1.corrected);
     // World publication follows network send. Without this replacement a simulation tick
     // could overwrite an admitted correction with the previous frame's camera rotation.
     if corrected && let Some(motion) = java_world.player_motion {
@@ -93,9 +106,22 @@ pub(crate) fn update(
         yaw,
         pitch,
     };
-    // Four ticks bound per-frame work; unconsumed elapsed time remains visible in diagnostics.
+    movement.1.controls = controls;
+    advance(java, java_world, physics, &mut movement);
+}
+
+/// The frame and between-frame service share one simulation and outbound baseline owner.
+pub(super) fn advance(
+    java: &client_session::java::Session,
+    java_world: &mut client_world::java::WorldState,
+    physics: &assets::registry::java::physics::Table,
+    movement: &mut Movement,
+) {
+    // Four ticks bound each service slice; elapsed backlog remains explicit.
     for _ in 0..4 {
-        if movement.0.pending().is_none() && !movement.0.tick(java_world, physics, controls) {
+        if movement.0.pending().is_none()
+            && !movement.0.tick(java_world, physics, movement.1.controls)
+        {
             break;
         }
         let Some(frame) = movement.0.pending() else {

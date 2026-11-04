@@ -115,7 +115,7 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
 }
 
 /// Corrections retry until queued; backpressure or a closed input never hides pending events.
-fn poll_event(
+pub(super) fn poll_event(
     java: &mut client_session::java::Session,
     state: &mut client_world::java::WorldState,
 ) -> Option<java_protocol::session::Envelope> {

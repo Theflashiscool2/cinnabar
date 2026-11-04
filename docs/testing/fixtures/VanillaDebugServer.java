@@ -11,6 +11,8 @@ public final class VanillaDebugServer {
             server.execute(() -> {
                 register(server, "acceptance_unlist", false);
                 register(server, "acceptance_relist", true);
+                var traceRoot = System.getProperty("cinnabar.acceptance.trace");
+                if (traceRoot != null) VanillaMovementTrace.register(server, java.nio.file.Path.of(traceRoot));
                 System.out.println("CINNABAR acceptance entity commands ready");
             });
         }
