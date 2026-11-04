@@ -3,20 +3,19 @@ use super::*;
 impl Connection {
     pub(super) async fn play(&mut self) -> Result<(), Error> {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
-        let mut ingress = super::ingress::Ingress::new(self.events.max_capacity());
         loop {
             let awaiting_authority = self.pending_teleport.is_some()
                 || self.pending_rotation.is_some()
                 || self.pending_ping.is_some();
             let packet = tokio::select! {
                 result = async {
-                    if !awaiting_authority && let Some(frame) = ingress.pop() {
+                    if !awaiting_authority && let Some(frame) = self.ingress.pop() {
                         return Ok(frame);
                     }
                     tokio::time::timeout_at(deadline, self.stream.read()).await
                         .map_err(|_| Error::Timeout(Phase::Play))?
-                        .map_err(Error::from)
-                }, if !awaiting_authority || ingress.can_read() => {
+                        .map(|bytes| ingress::Frame::new(bytes)).map_err(Error::from)
+                }, if !awaiting_authority || self.ingress.can_read() => {
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                     result?
                 },
@@ -38,7 +37,7 @@ impl Connection {
                     continue;
                 }
             };
-            let mut r = Reader(&packet);
+            let mut r = Reader(&packet.bytes);
             let id = r.var()?;
             let name = usize::try_from(id)
                 .ok()
@@ -46,15 +45,22 @@ impl Connection {
                 .ok_or(ProtocolError::Invalid("unknown play packet"))?;
             // Keep-alives are network-thread work in the native client. Game-thread pings
             // and all world packets stay behind the correction until its owner replies.
-            if awaiting_authority && *name != "ClientboundKeepAlivePacket" {
-                ingress.push(packet);
+            if awaiting_authority
+                && !matches!(
+                    *name,
+                    "ClientboundKeepAlivePacket" | "ClientboundDisconnectPacket"
+                )
+            {
+                let mut packet = packet;
+                packet.boundary = *name == "ClientboundStartConfigurationPacket";
+                self.ingress.push(packet);
                 continue;
             }
             let packet_error = |source| Error::PlayPacket {
                 packet: *name,
                 source,
             };
-            if self.common(name, &mut r).await? {
+            if self.common(name, &mut r, packet.keepalive_replied).await? {
                 r.finish().map_err(packet_error)?;
                 continue;
             }

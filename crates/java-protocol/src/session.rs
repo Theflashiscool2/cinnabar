@@ -173,6 +173,7 @@ struct Connection {
     phase: Phase,
     generation: u64,
     events: mpsc::Sender<Envelope>,
+    ingress: ingress::Ingress,
     configuration: Configuration,
     profile: auth::Profile,
     server_session: uuid::Uuid,
@@ -250,6 +251,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         phase: Phase::Login,
         generation: options.generation,
         events,
+        ingress: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
         configuration: Configuration::default(),
         profile,
         server_session: uuid::Uuid::nil(),
@@ -277,14 +279,62 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
     c.play().await
 }
 impl Connection {
-    async fn emit(&self, event: Event) -> Result<(), Error> {
-        self.events
-            .send(Envelope {
-                generation: self.generation,
-                event,
-            })
-            .await
-            .map_err(|_| Error::ConsumerClosed)
+    async fn emit(&mut self, event: Event) -> Result<(), Error> {
+        let envelope = Envelope {
+            generation: self.generation,
+            event,
+        };
+        let envelope = match self.events.try_send(envelope) {
+            Ok(()) => return Ok(()),
+            Err(mpsc::error::TrySendError::Closed(_)) => return Err(Error::ConsumerClosed),
+            Err(mpsc::error::TrySendError::Full(envelope)) => envelope,
+        };
+        let events = self.events.clone();
+        loop {
+            tokio::select! {
+                permit = events.reserve() => {
+                    permit.map_err(|_| Error::ConsumerClosed)?.send(envelope);
+                    return Ok(());
+                },
+                packet = self.stream.read(), if matches!(self.phase, Phase::Configuration | Phase::Play) && self.ingress.can_read() => {
+                    let mut frame = ingress::Frame::new(packet?);
+                    let mut reader = Reader(&frame.bytes);
+                    let id = reader.var()?;
+                    let names = if self.phase == Phase::Play { target::game::clientbound::NAMES } else { target::configuration::clientbound::NAMES };
+                    let name = usize::try_from(id).ok().and_then(|id| names.get(id)).copied();
+                    if name == Some("ClientboundDisconnectPacket") {
+                        return Err(Self::disconnect_reason(&mut reader)?);
+                    }
+                    if name == Some("ClientboundKeepAlivePacket") {
+                        let id = reader.i64()?;
+                        reader.finish()?;
+                        self.send("ServerboundKeepAlivePacket", &id.to_be_bytes()).await?;
+                        frame.keepalive_replied = true;
+                    }
+                    // Never decode ahead across a protocol-state/codec boundary. The queued
+                    // frame must first be consumed by its actual state owner.
+                    frame.boundary = matches!(name, Some("ClientboundFinishConfigurationPacket" | "ClientboundStartConfigurationPacket"));
+                    self.ingress.push(frame);
+                }
+            }
+        }
+    }
+    async fn read_frame(&mut self) -> Result<ingress::Frame, Error> {
+        if let Some(frame) = self.ingress.pop() {
+            return Ok(frame);
+        }
+        Ok(ingress::Frame::new(self.stream.read().await?))
+    }
+    fn disconnect_reason(reader: &mut Reader<'_>) -> Result<Error, Error> {
+        let reason = crate::nbt::read(reader)?;
+        Reader(reader.0).finish()?;
+        Ok(Error::Disconnect(
+            format!("{reason:?}")
+                .chars()
+                .take(2048)
+                .filter(|c| !c.is_control())
+                .collect(),
+        ))
     }
     async fn send(&mut self, name: &str, payload: &[u8]) -> Result<(), Error> {
         let names = match self.phase {

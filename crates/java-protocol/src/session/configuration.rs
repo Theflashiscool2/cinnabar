@@ -40,21 +40,21 @@ impl Connection {
         self.configuration_bytes = 0;
         self.bootstrapped = false;
         loop {
-            let packet = self.stream.read().await?;
+            let packet = self.read_frame().await?;
             self.configuration_bytes = self
                 .configuration_bytes
-                .checked_add(packet.len())
+                .checked_add(packet.bytes.len())
                 .ok_or(ProtocolError::Invalid("configuration size"))?;
             if self.configuration_bytes > 64 * 1024 * 1024 {
                 return Err(ProtocolError::Invalid("configuration memory budget exceeded").into());
             }
-            let mut r = Reader(&packet);
+            let mut r = Reader(&packet.bytes);
             let id = r.var()?;
             let name = usize::try_from(id)
                 .ok()
                 .and_then(|n| target::configuration::clientbound::NAMES.get(n))
                 .ok_or(ProtocolError::Invalid("unknown configuration packet"))?;
-            if self.common(name, &mut r).await? {
+            if self.common(name, &mut r, packet.keepalive_replied).await? {
                 r.finish()?;
                 continue;
             }
@@ -138,7 +138,12 @@ impl Connection {
         }
     }
     /// Handles state-shared packets without crossing their state-specific wire identities.
-    pub(super) async fn common(&mut self, name: &str, r: &mut Reader<'_>) -> Result<bool, Error> {
+    pub(super) async fn common(
+        &mut self,
+        name: &str,
+        r: &mut Reader<'_>,
+        keepalive_replied: bool,
+    ) -> Result<bool, Error> {
         match name {
             "ClientboundUpdateTagsPacket" => {
                 let tags = facts::tags(r)?;
@@ -157,20 +162,15 @@ impl Connection {
                 }
             }
             "ClientboundDisconnectPacket" => {
-                let reason = crate::nbt::read(r)?;
-                return Err(Error::Disconnect(
-                    format!("{reason:?}")
-                        .chars()
-                        .take(2048)
-                        .filter(|c| !c.is_control())
-                        .collect(),
-                ));
+                return Err(Self::disconnect_reason(r)?);
             }
             "ClientboundKeepAlivePacket" => {
                 let id = r.i64()?;
                 Reader(r.0).finish()?;
-                self.send("ServerboundKeepAlivePacket", &id.to_be_bytes())
-                    .await?;
+                if !keepalive_replied {
+                    self.send("ServerboundKeepAlivePacket", &id.to_be_bytes())
+                        .await?;
+                }
                 self.emit(Event::KeepAlive(id)).await?;
             }
             "ClientboundPingPacket" => {
