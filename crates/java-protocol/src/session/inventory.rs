@@ -26,6 +26,10 @@ pub fn decode_stack(bytes: &[u8]) -> Result<Option<Stack>, Error> {
 }
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
+    Cooldown {
+        group: String,
+        ticks: i32,
+    },
     Content {
         container: i32,
         state: i32,
@@ -58,6 +62,10 @@ pub enum Packet {
 }
 pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
+        "ClientboundCooldownPacket" => Packet::Cooldown {
+            group: super::dynamics::identifier(r.string(32767)?)?,
+            ticks: r.var()?,
+        },
         "ClientboundContainerSetContentPacket" => {
             let container = nonnegative(r)?;
             let state = nonnegative(r)?;

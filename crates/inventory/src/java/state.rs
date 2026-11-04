@@ -9,9 +9,11 @@ impl State {
         }
         let storage = std::mem::take(&mut self.storage);
         let selected = self.selected;
+        let cooldowns = std::mem::take(&mut self.cooldowns);
         self.begin(session, epoch);
         self.storage = storage;
         self.selected = selected;
+        self.cooldowns = cooldowns;
     }
     /// A replacement player has no admitted inventory, even when the server keeps metadata.
     pub fn begin(&mut self, session: u64, epoch: u64) {
@@ -52,14 +54,15 @@ impl State {
         if !self.accepts(session, epoch) {
             return Ok(false);
         }
+        let cooldown = matches!(update, Update::Cooldown { .. });
         let result = self.apply(update);
         match &result {
-            Ok(true) => {
+            Ok(true) if !cooldown => {
                 self.revision = self.revision.saturating_add(1);
                 self.authority_revision = self.authority_revision.saturating_add(1);
             }
             Err(error) => self.error = Some(error.clone()),
-            Ok(false) => {}
+            Ok(_) => {}
         }
         result
     }
@@ -110,6 +113,7 @@ impl State {
     }
     fn apply(&mut self, update: Update) -> Result<bool, String> {
         match update {
+            Update::Cooldown { group, ticks } => self.cooldowns.set(group, ticks)?,
             Update::Selected(slot) => {
                 if slot >= HOTBAR_SIZE {
                     return Err("Java selected hotbar slot is out of range".into());

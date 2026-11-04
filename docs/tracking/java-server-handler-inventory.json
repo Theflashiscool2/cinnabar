@@ -256,7 +256,7 @@
         4243
       ],
       "native_named_sites": [
-        "crates/java-protocol/src/session/play.rs:316"
+        "crates/java-protocol/src/session/inventory.rs:65"
       ],
       "observed_offline_deferred": false
     },

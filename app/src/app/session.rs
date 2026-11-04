@@ -16,6 +16,14 @@ pub(crate) fn configure_finish_system(app: &mut App) {
             crate::session::java_piston::update.after(crate::session::java_render::update),
         );
     app.init_resource::<crate::session::java_special::Presentation>()
+        .init_resource::<crate::session::java_cooldowns::Clock>()
+        .add_systems(
+            Update,
+            crate::session::java_cooldowns::advance
+                .after(drive_session)
+                .before(crate::session::java_interaction::update)
+                .in_set(ClientFrameSet::NetworkSend),
+        )
         .add_systems(
             Update,
             crate::session::java_special::update

@@ -319,7 +319,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundClearTitlesPacket",
     "ClientboundCommandSuggestionsPacket",
     "ClientboundCommandsPacket",
-    "ClientboundCooldownPacket",
     "ClientboundCustomChatCompletionsPacket",
     "ClientboundDamageEventPacket",
     "ClientboundDebugBlockValuePacket",

@@ -45,6 +45,7 @@ pub(super) fn admit(
 }
 fn convert(packet: wire::Packet, incarnation: u64) -> Result<Update, &'static str> {
     Ok(match packet {
+        wire::Packet::Cooldown { group, ticks } => Update::Cooldown { group, ticks },
         wire::Packet::Content {
             container,
             state,

@@ -1,6 +1,33 @@
 use super::*;
 use java_protocol::session::{Envelope, Event};
 #[test]
+fn cooldown_facts_are_scoped_without_invalidating_inventory_clicks() {
+    let mut s = crate::java::tests_support::state();
+    let epoch = s.terrain.dimension().unwrap().epoch;
+    let before = (s.inventory.revision, s.inventory.authority_revision);
+    let event = |generation, dimension_epoch, ticks| Envelope {
+        generation,
+        event: Event::Inventory {
+            dimension_epoch,
+            incarnation: 0,
+            packet: wire::Packet::Cooldown {
+                group: "fixture:shared".into(),
+                ticks,
+            },
+        },
+    };
+    assert!(s.admit(event(7, epoch, 40)));
+    assert_eq!(
+        (s.inventory.revision, s.inventory.authority_revision),
+        before
+    );
+    assert!(!s.admit(event(6, epoch, 0)));
+    assert!(!s.admit(event(7, epoch + 1, 0)));
+    assert_eq!(s.inventory.cooldowns.remaining("fixture:shared"), 40);
+    assert!(s.admit(event(7, epoch, 0)));
+    assert!(!s.inventory.cooldowns.active("fixture:shared"));
+}
+#[test]
 fn item_components_survive_authoritative_inventory_admission_and_replacement() {
     let mut state = crate::java::tests_support::state();
     let epoch = state.terrain.dimension().unwrap().epoch;

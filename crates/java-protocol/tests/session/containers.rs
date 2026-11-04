@@ -497,3 +497,74 @@ async fn stationary_native_tick_sends_tick_end_without_an_extra_status_only_pack
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn native_grouped_cooldowns_decode_signed_removal_and_preserve_following_packets() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let cancel = CancellationToken::new();
+        let stop = cancel.clone();
+        let server = tokio::spawn(async move {
+            let mut wire = through_configuration(listener, true).await;
+            wire.write(&[3]).await.unwrap();
+            assert_eq!(wire.read().await.unwrap(), [3]);
+            wire.write(&world_login()).await.unwrap();
+            for ticks in [40, 5, 0, -1] {
+                // Native protocol777 cooldown index0x16, Identifier followed by signed VarInt.
+                assert_eq!(
+                    java_protocol::target::id(
+                        java_protocol::target::game::clientbound::NAMES,
+                        "ClientboundCooldownPacket"
+                    ),
+                    0x16
+                );
+                let mut packet = vec![0x16];
+                text("fixture:shared", &mut packet);
+                codec::write_varint(ticks, &mut packet);
+                wire.write(&packet).await.unwrap();
+            }
+            let keep = 123i64.to_be_bytes();
+            wire.write(&incoming("ClientboundKeepAlivePacket", &keep))
+                .await
+                .unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundKeepAlivePacket", &keep)
+            );
+            stop.cancelled().await;
+        });
+        let (tx, mut rx) = mpsc::channel(16);
+        let client = tokio::spawn(session::run(
+            Options::fixture(address, "Fixture".into(), 7),
+            tx,
+            cancel.clone(),
+        ));
+        let mut durations = Vec::new();
+        let mut kept_alive = false;
+        while let Some(e) = rx.recv().await {
+            match e.event {
+                Event::Inventory {
+                    dimension_epoch: 1,
+                    packet: Packet::Cooldown { group, ticks },
+                    ..
+                } => {
+                    assert_eq!(group, "fixture:shared");
+                    durations.push(ticks);
+                }
+                Event::KeepAlive(123) => {
+                    kept_alive = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        cancel.cancel();
+        server.await.unwrap();
+        let _ = client.await.unwrap();
+        assert!(kept_alive);
+        assert_eq!(durations, [40, 5, 0, -1]);
+    })
+    .await
+    .unwrap();
+}

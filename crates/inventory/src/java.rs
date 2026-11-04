@@ -36,6 +36,10 @@ impl Stack {
 pub type Slot = Option<Stack>;
 #[derive(Clone, Debug)]
 pub enum Update {
+    Cooldown {
+        group: String,
+        ticks: i32,
+    },
     Content {
         container: i32,
         state: i32,
@@ -98,6 +102,7 @@ pub struct Menu {
 }
 #[derive(Debug, Default, Serialize)]
 pub struct State {
+    pub cooldowns: cooldown::Cooldowns,
     session: u64,
     epoch: u64,
     incarnation: u64,
@@ -112,6 +117,7 @@ pub struct State {
     pub opened: Option<Menu>,
     pub error: Option<String>,
 }
+pub mod cooldown;
 pub mod pickup;
 mod state;
 

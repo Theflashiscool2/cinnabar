@@ -142,3 +142,12 @@ its hash/schema in `data/target.json` under `crates/java-protocol`. The generato
 registry ordering and derives the runtime defaults table; component overrides/removals
 still come from the authoritative server stack. Ordinary attacks may share Attack/Punch;
 range, piercing and minimum-charge behaviors require their own implementation.
+
+`NativeCooldownFixture.java` attaches to the same explicitly enabled isolated-server
+bridge and invokes the real player's `ServerItemCooldowns` API. Build its JAR with
+`Agent-Class: NativeCooldownFixture`, then run its main with `SERVER_PID agent.jar
+/absolute/dedicated-request,FixturePlayer`. Commands `add 1..2400`, `remove`, `status`
+and `detach` operate on the native cooldown group of that player's actual main hand.
+This is server administration: the vanilla server emits the normal cooldown packets;
+it does not fake a client use or successful interaction. Check timer expiry, menu/cursor
+reconciliation and reconnect separately. A parsed timer is not a rendered cooldown overlay.

@@ -1,5 +1,51 @@
 use super::*;
 #[test]
+fn cooldowns_do_not_change_slot_revisions_and_follow_player_lifetime() {
+    let mut s = State::default();
+    s.begin(7, 1);
+    let revisions = (s.revision, s.authority_revision);
+    assert_eq!(
+        s.admit(
+            7,
+            1,
+            Update::Cooldown {
+                group: "fixture:shared".into(),
+                ticks: 20
+            }
+        ),
+        Ok(true)
+    );
+    assert_eq!((s.revision, s.authority_revision), revisions);
+    s.cooldowns.advance(5);
+    s.rebind_player(7, 2);
+    assert_eq!(s.cooldowns.remaining("fixture:shared"), 15);
+    assert_eq!(
+        s.admit(
+            7,
+            1,
+            Update::Cooldown {
+                group: "fixture:shared".into(),
+                ticks: 0
+            }
+        ),
+        Ok(false)
+    );
+    assert_eq!(
+        s.admit(
+            8,
+            2,
+            Update::Cooldown {
+                group: "fixture:shared".into(),
+                ticks: 0
+            }
+        ),
+        Ok(false)
+    );
+    assert_eq!(s.cooldowns.remaining("fixture:shared"), 15);
+    s.begin(7, 3);
+    assert!(!s.cooldowns.active("fixture:shared"));
+}
+#[test]
 fn world_rebind_preserves_only_same_player_storage_and_retires_menu_state() {
     let mut s = State::default();
     s.begin(7, 1);
