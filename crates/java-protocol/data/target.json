@@ -166,10 +166,10 @@
     },
     "use_rules": {
       "path": "data/item-use-facts.json",
-      "sha256": "866903d6c05f720ebf6a836a82a7c4d956dcd8d6a68a5b8b360f0a56ce333642",
-      "bytes": 152314,
+      "sha256": "8708fde13b8ab664658b5aee2cee6ad6587d63356105f0067bf623601d9a8087",
+      "bytes": 173864,
       "items": 1658,
-      "schema": 1,
+      "schema": 2,
       "generator": "tools/java-reference/ExportItemUseFacts.java",
       "source_client_sha256": "4508d006323f24fa02876310c192d739af56516eb259000ac50f0909a68c9a2d"
     }

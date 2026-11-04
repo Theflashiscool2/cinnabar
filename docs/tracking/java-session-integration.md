@@ -78,3 +78,35 @@ The wire regression separately sends replacement registries, retained registries
 play tag updates, reused teleport IDs and stale input, both encrypted and plain.
 The domain regression verifies biome IDs/colors, world epoch, pending receipts,
 vitals and stale-session cleanup. These are fixture evidence, not screenshots.
+
+## Entity-use integration
+
+The same connection and action owners now carry main-hand entity use for already
+presented players and pigs. `ServerboundInteractPacket` in26.3 includes entity ID,
+hand, low-precision Vec3 hit location and secondary action; it has no legacy action
+opcode. LP packing is adapted from the same pinned upstream `horizon-protocol/src/buf.rs`
+under the shipped MIT notice. Independent vectors come from the official pinned
+server codec (the original generator and bytes are in `java-protocol/tests/fixtures`).
+
+The picker retains the actual entry point relative to the current interpolated
+entity position, including baby dimensions, block occlusion and negative boundaries.
+The existing action FIFO retains that point/rotation/sneak through hotbar backpressure.
+The connection rejects stale spawn tokens, world epochs and correction sequences.
+Only server updates change items, health or menus. New inputs must not be dropped
+merely because an incoming game-thread Ping awaits its Pong receipt: Ping changes
+neither pose authority nor the order of already queued outgoing player actions.
+An independent framed-wire regression reproduces the old drop and verifies the fix.
+
+Only ordinary supported instant item fallback is integrated. Active use, complete
+offhand/result prediction, unsupported entity presentation and specialized menus
+remain separate gaps; a successful pig interaction is not NPC-shop acceptance.
+
+Pig fallback eligibility comes from the version-pinned offline item-facts exporter,
+including actual spawn-egg entity defaults; the host does not classify native items
+by name suffix. The extended schema is integrity checked during protocol generation.
+Linux Xvfb/lavapipe official vanilla offline acceptance exercised adult/baby feeding,
+sneak hit points, negative chunk seams, removal/replacement, unload/revisit, reconnect
+and a server-authoritative damage change. The final facts-integrated executable was
+also inspected live: a normal right-click changed the server carrot count9→8 and
+baby age, with the updated count visible in the real HUD. This is not NPC-menu,
+online-mode, iOS or Hypixel acceptance.

@@ -71,6 +71,54 @@ pub fn encode_attack(entity: i32) -> Result<Vec<u8>, Error> {
     write_varint(entity, &mut bytes);
     Ok(bytes)
 }
+/// The26.3 interact packet includes the hit location directly (no legacy interact-at opcode).
+#[derive(Clone, Copy, Debug)]
+pub struct EntityUse {
+    pub entity: i32,
+    pub hand: Hand,
+    pub location: [f64; 3],
+    pub secondary: bool,
+}
+pub fn encode_entity_use(action: EntityUse) -> Result<Vec<u8>, Error> {
+    // Location is entity-relative, not a world position or a fabricated centre point.
+    if action
+        .location
+        .iter()
+        .any(|c| !c.is_finite() || c.abs() > 1.717_986_918_3e10)
+    {
+        return Err(Error::Invalid("invalid Java entity interaction point"));
+    }
+    let mut out = Vec::with_capacity(16);
+    write_varint(action.entity, &mut out);
+    write_varint(
+        i32::from(match action.hand {
+            Hand::Main => target::HAND_MAIN_HAND,
+            Hand::Off => target::HAND_OFF_HAND,
+        }),
+        &mut out,
+    );
+    // MIT LpVec3 packing adapted from horizon-protocol/buf.rs at59d8cc38;
+    // full notice assets/licenses/Native-Java-Reference-MIT.txt. Verified against official26.3.
+    let length = action.location.into_iter().map(f64::abs).fold(0., f64::max);
+    if length < 3.051_944_088_384_301e-5 {
+        out.push(0);
+    } else {
+        let scale = length.ceil() as u64;
+        let extended = scale > 3;
+        let mut packed = if extended { scale & 3 | 4 } else { scale };
+        for (component, shift) in action.location.into_iter().zip([3, 18, 33]) {
+            let quantized = ((component / scale as f64 * 0.5 + 0.5) * 32766.).round() as u64;
+            packed |= quantized << shift;
+        }
+        out.extend([packed as u8, (packed >> 8) as u8]);
+        out.extend(((packed >> 16) as u32).to_be_bytes());
+        if extended {
+            write_varint((scale >> 2) as i32, &mut out);
+        }
+    }
+    out.push(u8::from(action.secondary));
+    Ok(out)
+}
 /// Encodes the pinned use-on-block schema; it does not imply placement succeeded.
 pub fn encode_use_on(action: UseOn) -> Result<Vec<u8>, Error> {
     let position = packed_position(action.position, action.sequence)?;
@@ -278,5 +326,68 @@ mod tests {
             })
             .is_err()
         );
+    }
+    #[test]
+    fn entity_interaction_matches_official_26_3_codec_vectors() {
+        let cases: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/entity-interact-777.json"
+        ))
+        .unwrap();
+        for case in cases.as_array().unwrap() {
+            let expected = case["payload_hex"]
+                .as_str()
+                .unwrap()
+                .as_bytes()
+                .chunks_exact(2)
+                .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
+                .collect::<Vec<_>>();
+            let action = EntityUse {
+                entity: case["entity"].as_i64().unwrap() as i32,
+                hand: if case["hand"] == "MAIN_HAND" {
+                    Hand::Main
+                } else {
+                    Hand::Off
+                },
+                location: std::array::from_fn(|i| case["location"][i].as_f64().unwrap()),
+                secondary: case["secondary"].as_bool().unwrap(),
+            };
+            assert_eq!(encode_entity_use(action).unwrap(), expected, "{case}");
+        }
+        for invalid in [f64::NAN, f64::INFINITY, 1e12] {
+            assert!(
+                encode_entity_use(EntityUse {
+                    entity: 42,
+                    hand: Hand::Main,
+                    location: [0., invalid, 0.],
+                    secondary: false
+                })
+                .is_err()
+            );
+        }
+    }
+    #[test]
+    fn native_pig_fallback_facts_cover_real_consumers_without_gating_other_items() {
+        assert_eq!(target::ITEM_TYPES.len(), target::ITEM_USE_DEFAULTS.len());
+        let hint = |name| {
+            target::ITEM_USE_DEFAULTS[target::ITEM_TYPES.iter().position(|n| *n == name).unwrap()]
+                .pig_interaction_may_consume
+        };
+        for name in [
+            "minecraft:saddle",
+            "minecraft:lead",
+            "minecraft:name_tag",
+            "minecraft:pig_spawn_egg",
+        ] {
+            assert!(hint(name), "{name}");
+        }
+        for name in [
+            "minecraft:carrot",
+            "minecraft:snowball",
+            "minecraft:zombie_spawn_egg",
+            "minecraft:iron_chestplate",
+        ] {
+            assert!(!hint(name), "{name}");
+        }
+        assert_eq!(target::ITEM_COMPONENT_EQUIPPABLE, "minecraft:equippable");
     }
 }

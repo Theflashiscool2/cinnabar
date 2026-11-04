@@ -16,7 +16,7 @@ public final class ExportItemUseFacts {
             .forEach(net.minecraft.core.component.DataComponentInitializers.PendingComponents::apply);
         var version=JsonParser.parseReader(new InputStreamReader(
             ExportItemUseFacts.class.getResourceAsStream("/version.json"),StandardCharsets.UTF_8)).getAsJsonObject();
-        var out=new JsonObject();out.addProperty("schema",1);
+        var out=new JsonObject();out.addProperty("schema",2);
         out.add("game_version",version.get("id"));out.add("protocol",version.get("protocol_version"));
         var items=new JsonArray();var cooldowns=new ItemCooldowns();
         for(var item:BuiltInRegistries.ITEM){
@@ -26,7 +26,16 @@ public final class ExportItemUseFacts {
             // Fail explicitly if a future item requires a non-null user context here.
             int duration=stack.getUseDuration(null);
             if(duration<0)throw new IllegalStateException("Negative native use duration");
-            row.add(duration);row.add(cooldowns.getCooldownGroup(stack).toString());items.add(row);
+            row.add(duration);row.add(cooldowns.getCooldownGroup(stack).toString());
+            // These native pig interactions may consume the click before air-item fallback.
+            // Food is already excluded by its active-use duration. Spawn-egg matching is
+            // resolved from the real default entity-data component, not an item-name suffix.
+            row.add(item == net.minecraft.world.item.Items.SADDLE
+                || item == net.minecraft.world.item.Items.LEAD
+                || item == net.minecraft.world.item.Items.NAME_TAG
+                || (item instanceof net.minecraft.world.item.SpawnEggItem
+                    && net.minecraft.world.item.SpawnEggItem.spawnsEntity(stack, net.minecraft.world.entity.EntityTypes.PIG)));
+            items.add(row);
         }
         out.add("items",items);
         Files.writeString(Path.of(args[0]),new GsonBuilder().setPrettyPrinting().create().toJson(out)+"\n");

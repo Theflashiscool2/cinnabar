@@ -325,6 +325,9 @@ fn captured_entity_edge_stays_ahead_of_slot_change_and_retires_with_authority() 
             incarnation: 4,
         },
         lifetime: 9,
+        location: [0., 1.62, -0.3],
+        rotation: [0., 0.],
+        secondary: false,
     };
     c.append_target(
         [Intent::Attack(true), Intent::Slot(2), Intent::Attack(false)],
@@ -390,4 +393,52 @@ fn air_use_keeps_click_angles_while_waiting_for_hotbar_serialization() {
     assert!(block.is_none());
     assert_eq!(c.front(&state), Some(Intent::Use(false)));
     assert!(c.consume_use(false).0.released);
+}
+
+#[test]
+fn captured_entity_use_stays_before_slot_change_with_exact_hit_and_sneak() {
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, None), None);
+    let target = Target::Entity {
+        network_id: 15,
+        identity: world::java::entities::Identity {
+            session: 7,
+            epoch: 1,
+            incarnation: 4,
+        },
+        lifetime: 9,
+        location: [-0.2, 1.1, 0.3],
+        rotation: [-90., 15.],
+        secondary: true,
+    };
+    c.append_target(
+        [Intent::Use(true), Intent::Slot(2), Intent::Use(false)],
+        Some(target),
+    );
+    for _ in 0..3 {
+        assert_eq!(c.front(&state), Some(Intent::Use(true)));
+        let Some(Target::Entity {
+            location,
+            rotation,
+            secondary,
+            lifetime,
+            ..
+        }) = c.target()
+        else {
+            panic!()
+        };
+        assert_eq!(location, [-0.2, 1.1, 0.3]);
+        assert_eq!(rotation, [-90., 15.]);
+        assert!(secondary);
+        assert_eq!(lifetime, 9);
+    }
+    c.entity_use_queued();
+    c.consume_use(true);
+    assert_eq!(c.front(&state), Some(Intent::Slot(2)));
+    assert_eq!(c.entity_uses_queued, 1);
+    state.begin(8);
+    c.capture(&state, &input(2, None), None);
+    assert!(c.front(&state).is_none());
+    assert_eq!(c.entity_uses_queued, 0);
 }

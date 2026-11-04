@@ -1,0 +1,79 @@
+[
+  {
+    "entity": 300,
+    "hand": "MAIN_HAND",
+    "secondary": false,
+    "location": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "payload_hex": "ac02000000"
+  },
+  {
+    "entity": 42,
+    "hand": "OFF_HAND",
+    "secondary": true,
+    "location": [
+      0.0,
+      1.62,
+      -0.3
+    ],
+    "payload_hex": "2a01faff6ccdcf5501"
+  },
+  {
+    "entity": 42,
+    "hand": "MAIN_HAND",
+    "secondary": false,
+    "location": [
+      -0.25,
+      0.5,
+      0.5
+    ],
+    "payload_hex": "2a00f97fbfff7ffd00"
+  },
+  {
+    "entity": 42,
+    "hand": "OFF_HAND",
+    "secondary": true,
+    "location": [
+      0.449999988,
+      0.7,
+      -0.449999988
+    ],
+    "payload_hex": "2a0159e64667b32e01"
+  },
+  {
+    "entity": 42,
+    "hand": "MAIN_HAND",
+    "secondary": false,
+    "location": [
+      1.0E-9,
+      0.0,
+      0.0
+    ],
+    "payload_hex": "2a000000"
+  },
+  {
+    "entity": 42,
+    "hand": "OFF_HAND",
+    "secondary": true,
+    "location": [
+      -4.0,
+      2.0,
+      0.0
+    ],
+    "payload_hex": "2a0104007fff7ffc0101"
+  },
+  {
+    "entity": 42,
+    "hand": "MAIN_HAND",
+    "secondary": false,
+    "location": [
+      0.0,
+      2.9,
+      -0.3
+    ],
+    "payload_hex": "2a00fbff7333f77100"
+  }
+]

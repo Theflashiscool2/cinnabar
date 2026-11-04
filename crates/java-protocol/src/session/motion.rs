@@ -8,6 +8,8 @@ impl Connection {
         if !self.bootstrapped {
             return Ok(false);
         }
+        // Ping fences incoming game events, not already ordered outbound player intent.
+        // It does not change epoch or correction authority; dropping that input loses actions.
         match command {
             Command::Pong { sequence, id } if self.pending_ping == Some((sequence, id)) => {
                 self.send("ServerboundPongPacket", &id.to_be_bytes())
@@ -88,6 +90,27 @@ impl Connection {
                 .await?;
             }
             Command::Select { .. } => {}
+            Command::UseEntity {
+                dimension_epoch,
+                correction_sequence,
+                lifetime,
+                action,
+            } if dimension_epoch == self.dimension_epoch
+                && correction_sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead
+                && self.entity_lifetimes.accepts(action.entity, lifetime) =>
+            {
+                self.send(
+                    "ServerboundInteractPacket",
+                    &interaction::encode_entity_use(action)?,
+                )
+                .await?;
+                tracing::debug!(target:"java_session", entity=action.entity, lifetime, dimension_epoch, "Native entity use written; awaiting server authority");
+            }
+            Command::UseEntity { .. } => {}
             Command::Attack {
                 dimension_epoch,
                 correction_sequence,
@@ -97,7 +120,6 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
-                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead
                 && self.entity_lifetimes.accepts(entity, lifetime) =>
@@ -119,7 +141,6 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
-                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -140,7 +161,6 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
-                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -159,7 +179,6 @@ impl Connection {
                 && correction_sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
-                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -179,7 +198,6 @@ impl Connection {
                 && sequence == self.correction_sequence
                 && self.pending_teleport.is_none()
                 && self.pending_rotation.is_none()
-                && self.pending_ping.is_none()
                 && self.loaded_epoch == Some(dimension_epoch)
                 && !self.dead =>
             {
@@ -235,7 +253,6 @@ impl Connection {
                     && self.bootstrapped
                     && self.pending_teleport.is_none()
                     && self.pending_rotation.is_none()
-                    && self.pending_ping.is_none()
                     && self.loaded_epoch != Some(dimension_epoch) =>
             {
                 self.send("ServerboundPlayerLoadedPacket", &[]).await?;

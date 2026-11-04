@@ -32,6 +32,9 @@ pub enum Target {
         network_id: i32,
         identity: world::java::entities::Identity,
         lifetime: u64,
+        location: [f64; 3],
+        rotation: [f32; 2],
+        secondary: bool,
     },
 }
 #[derive(Clone, Copy)]
@@ -55,6 +58,7 @@ pub struct Controller {
     pub blocked: Option<&'static str>,
     pub selected: Option<Target>,
     pub entity_attacks_queued: u64,
+    pub entity_uses_queued: u64,
 }
 impl Controller {
     /// Captures a finalized frame once. Authority changes retire only unsent intent;
@@ -182,6 +186,10 @@ impl Controller {
     /// A successful channel write records intent only, never authoritative damage.
     pub fn entity_attack_queued(&mut self) {
         self.entity_attacks_queued = self.entity_attacks_queued.saturating_add(1);
+    }
+    /// A local write count, not evidence of the server accepting an interaction.
+    pub fn entity_use_queued(&mut self) {
+        self.entity_uses_queued = self.entity_uses_queued.saturating_add(1);
     }
     /// No later action can pass a selection until its ordered socket receipt is admitted.
     pub fn front(&mut self, state: &WorldState) -> Option<Intent> {

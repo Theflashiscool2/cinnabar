@@ -111,6 +111,12 @@ pub enum Command {
         correction_sequence: u64,
         action: interaction::UseOn,
     },
+    UseEntity {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+        lifetime: u64,
+        action: interaction::EntityUse,
+    },
     UseItem {
         dimension_epoch: u64,
         correction_sequence: u64,

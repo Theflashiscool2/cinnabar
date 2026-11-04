@@ -673,3 +673,6 @@ mod admission;
 
 #[path = "session/reconfiguration.rs"]
 mod reconfiguration;
+
+#[path = "session/entity_use.rs"]
+mod entity_use;

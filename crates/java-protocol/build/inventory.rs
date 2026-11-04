@@ -122,13 +122,16 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
         entries.len() as u64,
         schema["use_rules"]["items"].as_u64().unwrap()
     );
-    *code += "#[derive(Clone, Copy, Debug)]\npub struct ItemUseDefaults { pub duration: u32, pub group: &'static str }\npub const ITEM_USE_DEFAULTS: &[ItemUseDefaults] = &[\n";
+    *code += "#[derive(Clone, Copy, Debug)]\npub struct ItemUseDefaults { pub duration: u32, pub group: &'static str, pub pig_interaction_may_consume: bool }\npub const ITEM_USE_DEFAULTS: &[ItemUseDefaults] = &[\n";
     for (entry, name) in entries.iter().zip(&items) {
-        assert_eq!(entry.as_array().unwrap().len(), 3);
+        assert_eq!(entry.as_array().unwrap().len(), 4);
         assert_eq!(entry[0].as_str().unwrap(), name);
         let duration = u32::try_from(entry[1].as_u64().unwrap()).unwrap();
         let group = entry[2].as_str().unwrap();
-        *code += &format!("ItemUseDefaults {{ duration: {duration}, group: {group:?} }},\n");
+        let pig_interaction_may_consume = entry[3].as_bool().unwrap();
+        *code += &format!(
+            "ItemUseDefaults {{ duration: {duration}, group: {group:?}, pig_interaction_may_consume: {pig_interaction_may_consume} }},\n"
+        );
     }
     *code += "];\n";
     let empty = u32::try_from(native["empty_item"].as_u64().unwrap()).unwrap();
@@ -178,4 +181,23 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
     }
     *code += "];\n";
     validate(&names, &schema["components"]);
+    let mut constants = std::collections::BTreeSet::new();
+    for (index, name) in names.iter().enumerate() {
+        let suffix = name
+            .strip_prefix("minecraft:")
+            .unwrap()
+            .replace('/', "_")
+            .to_ascii_uppercase();
+        assert!(
+            constants.insert(suffix.clone()),
+            "component constant collision"
+        );
+        assert!(
+            suffix
+                .bytes()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+        );
+        *code +=
+            &format!("pub const ITEM_COMPONENT_{suffix}: &str = ITEM_COMPONENTS[{index}].name;\n");
+    }
 }

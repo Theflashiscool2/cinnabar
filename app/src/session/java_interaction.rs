@@ -19,7 +19,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_and_instant_air_use_ordinary_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_entity_and_instant_air_use_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.1.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -45,7 +45,14 @@ pub(crate) fn update(
         return;
     };
     let state = &controller.java_world;
-    let target = pick(state, &presentation, &special, &movement, &view);
+    let target = pick(
+        state,
+        &presentation,
+        &special,
+        &movement,
+        &view,
+        input.0.phase(semantic_input::Action::Sneak).held,
+    );
     let chosen = target.as_ref().ok().copied().flatten();
     let hit = chosen.and_then(|t| match t {
         Target::Block(h) => Some(h),
@@ -76,6 +83,7 @@ pub(crate) fn update(
                         network_id,
                         identity,
                         lifetime,
+                        ..
                     }) = interaction.1.target()
                 {
                     // Keep the physical edge at the head of the SAME ordered queue until accepted.
@@ -118,6 +126,65 @@ pub(crate) fn update(
             }
             Some(Intent::Use(pressed)) => {
                 let captured = interaction.1.target();
+                if pressed
+                    && let Some(Target::Entity {
+                        network_id,
+                        identity,
+                        lifetime,
+                        location,
+                        rotation,
+                        secondary,
+                    }) = captured
+                {
+                    if state
+                        .entities
+                        .get(network_id)
+                        .is_some_and(|e| e.identity == identity && e.transport_lifetime == lifetime)
+                    {
+                        match java.command(Command::UseEntity {
+                            dimension_epoch: identity.epoch,
+                            correction_sequence: state.motion_sequence(),
+                            lifetime,
+                            action: java_protocol::session::interaction::EntityUse {
+                                entity: network_id,
+                                hand: Hand::Main,
+                                location,
+                                secondary,
+                            },
+                        }) {
+                            Ok(()) => interaction.1.entity_use_queued(),
+                            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                                interaction.0.blocked = Some(
+                                    "Java entity use is waiting for transport capacity".into(),
+                                );
+                                return;
+                            }
+                            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                                interaction.0.blocked =
+                                    Some("Java entity use transport closed".into());
+                                return;
+                            }
+                        }
+                        let (phase, _) = interaction.1.consume_use(pressed);
+                        // Ordinary instant item fallback stays on the same click-time ray. Active
+                        // use/offhand prediction remains unsupported; never consume locally.
+                        if entity::allows_instant_fallback(state, network_id)
+                            && item::instant(state) == Ok(true)
+                        {
+                            advance_use(
+                                &mut interaction.0,
+                                state,
+                                phase,
+                                Some(Target::Air { rotation }),
+                            );
+                        } else {
+                            interaction.0.use_target(state, phase, Ok(None));
+                        }
+                        continue;
+                    }
+                    interaction.1.consume_use(pressed);
+                    continue;
+                }
                 let (phase, _) = interaction.1.consume_use(pressed);
                 advance_use(&mut interaction.0, state, phase, captured);
             }
@@ -167,7 +234,8 @@ fn advance_use(
         Some(Target::Air { rotation }) => {
             item::instant(state).map(|allowed| allowed.then_some(RequestTarget::Air(rotation)))
         }
-        Some(Target::Entity { .. }) => Err("Native entity use/interact-at is not implemented"),
+        // Presses were admitted by the entity branch above; a release has no entity packet.
+        Some(Target::Entity { .. }) => Ok(None),
         None => Err("Native item use requires a loaded targeting snapshot"),
     };
     if phase.pressed
@@ -261,6 +329,7 @@ fn pick(
     special: &super::java_special::Presentation,
     movement: &Movement,
     view: &LocalViewPose,
+    secondary: bool,
 ) -> Result<Option<Target>, String> {
     let (Some(shapes), Some(dimension), Some(motion)) = (
         presentation.interaction_shapes(),
@@ -296,9 +365,16 @@ fn pick(
         |position, id| special.outline(&state.terrain, position, id),
     )
     .map_err(|error| error.to_string())?;
-    Ok(
-        entity::pick(state, from, to, entity_range, range, block).or(Some(Target::Air {
-            rotation: [yaw, pitch],
-        })),
+    Ok(entity::pick(
+        state,
+        from,
+        to,
+        entity_range,
+        range,
+        block,
+        ([yaw, pitch], secondary),
     )
+    .or(Some(Target::Air {
+        rotation: [yaw, pitch],
+    })))
 }
