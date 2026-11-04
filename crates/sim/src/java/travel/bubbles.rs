@@ -141,6 +141,20 @@ fn segment(
             } else {
                 match &state.collision {
                     assets::registry::java::physics::Collision::Static(boxes) => boxes.is_empty(),
+                    assets::registry::java::physics::Collision::Dynamic
+                        if physics.registry().is_some_and(|r| {
+                            assets::registry::java::physics::climbing::kind(r, id)
+                                == Some(
+                                    assets::registry::java::physics::climbing::Kind::Scaffolding,
+                                )
+                        }) =>
+                    {
+                        // Empty CollisionContext selects the stable native scaffold shape,
+                        // independently of the player's below-platform/descending context.
+                        assets::registry::java::physics::climbing::scaffolding_shapes()
+                            .0
+                            .is_empty()
+                    }
                     _ => {
                         return Err(Error::Unsupported {
                             behavior: "bubble-column contextual ceiling shape",

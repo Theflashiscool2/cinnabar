@@ -240,3 +240,62 @@ fn magma_column_floor_keeps_damage_server_authoritative_without_blocking_travel(
     assert_eq!(m.position, [8.5, 0., 8.5]);
     assert!((m.velocity[1] + 0.035).abs() < 1e-14);
 }
+
+#[test]
+fn scaffold_ceilings_use_native_empty_context_instead_of_the_player_context() {
+    let Some(p) = current_reference::native_physics() else {
+        return;
+    };
+    let r = p.registry().unwrap();
+    let up = id(r, "minecraft:bubble_column", &[("drag", "false")]);
+    let f: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/java-bubble-ceilings.json"
+    ))
+    .unwrap();
+    let target: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../java-protocol/data/target.json"
+    ))
+    .unwrap();
+    assert_eq!(f["game_version"], target["game_version"]);
+    assert_eq!(f["protocol"], target["protocol"]);
+    let actual: std::collections::BTreeSet<_> = f["scaffold_ceilings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["state"].as_u64().unwrap() as u32)
+        .collect();
+    let expected: std::collections::BTreeSet<_> = (0..r.len() as u32)
+        .filter(|id| {
+            assets::registry::java::physics::climbing::kind(r, *id)
+                == Some(assets::registry::java::physics::climbing::Kind::Scaffolding)
+        })
+        .collect();
+    assert!(!expected.is_empty());
+    assert_eq!(actual, expected);
+    for c in f["scaffold_ceilings"].as_array().unwrap() {
+        assert_eq!(c["surface"], false);
+        let mut t = scene([8, 0, 8]);
+        t.set_block([8, 0, 8], BlockStateId(up));
+        t.set_block([8, 1, 8], BlockStateId(c["state"].as_u64().unwrap() as u32));
+        let mut m = Motion {
+            position: [8.5, 0., 8.5],
+            ..Motion::default()
+        };
+        let mut b = Body::default();
+        step(
+            &mut m,
+            &mut b,
+            Input::default(),
+            terrain::parameters(),
+            &t,
+            &p,
+            (7, 1),
+        )
+        .unwrap();
+        assert!(
+            (m.velocity[1] - 0.055).abs() < 1e-14,
+            "{c}: {:?}",
+            m.velocity
+        );
+    }
+}

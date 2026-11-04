@@ -34,5 +34,6 @@ Player-head public profile/texture downloads have bounded parsing and cancellati
 
 Native bubble-column travel additionally passes inspected Linux vanilla offline upward/downward,
 magma-floor, roof/source/neighbor edits, negative boundary, correction, reconnect and revisit
-checks. Dynamic ceiling shapes and bubble ambience remain incomplete. This is not iOS or
+checks. Scaffold ceiling context additionally passes native32-state and inspected fresh-process
+offline acceptance; other dynamic ceiling/collision shapes and bubble ambience remain incomplete. This is not iOS or
 Hypixel acceptance; no new IPA was produced.
