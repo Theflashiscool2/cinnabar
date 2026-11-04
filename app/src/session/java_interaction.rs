@@ -3,13 +3,14 @@ use super::{SessionController, java_movement::Movement, java_render::Presentatio
 use bevy::{prelude::*, time::Real};
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
-use gameplay::java::actions::{Controller as Actions, Intent};
+use gameplay::java::actions::{Controller as Actions, Intent, Target};
 use gameplay::java::interaction::Kind;
 use java_protocol::session::{
     Command,
     interaction::{Action, Dig, Face, Hand, UseOn},
 };
 use sim::java::selection;
+mod entity;
 
 #[derive(Resource, Default)]
 pub(crate) struct Interaction(pub gameplay::java::interaction::Controller, pub Actions);
@@ -17,7 +18,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_and_main_hand_block_use", "input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_use_and_unarmed_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -44,8 +45,12 @@ pub(crate) fn update(
     };
     let state = &controller.java_world;
     let target = pick(state, &presentation, &special, &movement, &view);
-    let hit = target.as_ref().ok().copied().flatten();
-    interaction.1.capture(state, &input.0, hit);
+    let chosen = target.as_ref().ok().copied().flatten();
+    let hit = chosen.and_then(|t| match t {
+        Target::Block(h) => Some(h),
+        _ => None,
+    });
+    interaction.1.capture_target(state, &input.0, chosen);
     let snapshot = input.0.snapshot();
     let released =
         snapshot.is_some_and(|s| s.authority_released) || interaction.1.blocked.is_some();
@@ -65,6 +70,48 @@ pub(crate) fn update(
         }
         match interaction.1.front(state) {
             Some(Intent::Attack(pressed)) => {
+                if pressed
+                    && let Some(Target::Entity {
+                        network_id,
+                        identity,
+                        lifetime,
+                    }) = interaction.1.target()
+                {
+                    // Keep the physical edge at the head of the SAME ordered queue until accepted.
+                    if state
+                        .entities
+                        .get(network_id)
+                        .is_some_and(|e| e.identity == identity && e.transport_lifetime == lifetime)
+                    {
+                        if !matches!(state.inventory.held(), Some(None)) {
+                            interaction.0.blocked =
+                                Some("Native armed entity attacks are not implemented".into());
+                        } else {
+                            match java.command(Command::Attack {
+                                dimension_epoch: identity.epoch,
+                                correction_sequence: state.motion_sequence(),
+                                entity: network_id,
+                                lifetime,
+                            }) {
+                                Ok(()) => interaction.1.entity_attack_queued(),
+                                Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                                    interaction.0.blocked = Some(
+                                        "Java attack is waiting for transport capacity".into(),
+                                    );
+                                    return;
+                                }
+                                Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                                    interaction.0.blocked =
+                                        Some("Java attack transport closed".into());
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                    let (phase, _) = interaction.1.consume_attack(pressed);
+                    interaction.0.advance(state, phase, None);
+                    continue;
+                }
                 let (phase, captured_hit) = interaction.1.consume_attack(pressed);
                 interaction.0.advance(state, phase, captured_hit);
             }
@@ -173,7 +220,7 @@ fn pick(
     special: &super::java_special::Presentation,
     movement: &Movement,
     view: &LocalViewPose,
-) -> Result<Option<selection::Hit>, String> {
+) -> Result<Option<Target>, String> {
     let (Some(shapes), Some(dimension), Some(motion)) = (
         presentation.interaction_shapes(),
         state.terrain.dimension(),
@@ -191,8 +238,14 @@ fn pick(
     from[1] += movement.0.eye_height(state);
     let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
     let direction = world::java::player::look(180. - yaw.to_degrees(), -pitch.to_degrees());
-    let to = std::array::from_fn(|i| from[i] + direction[i] * range);
-    selection::pick_with_context(
+    let entity_range = state
+        .player_dynamics
+        .attributes
+        .get("minecraft:entity_interaction_range")
+        .and_then(|a| a.value().ok())
+        .ok_or("Missing native Java entity interaction range")?;
+    let to = std::array::from_fn(|i| from[i] + direction[i] * range.max(entity_range));
+    let block = selection::pick_with_context(
         &state.terrain,
         shapes,
         (dimension.session, dimension.epoch),
@@ -200,5 +253,6 @@ fn pick(
         to,
         |position, id| special.outline(&state.terrain, position, id),
     )
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+    Ok(entity::pick(state, from, to, entity_range, range, block))
 }

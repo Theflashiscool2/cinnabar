@@ -73,6 +73,12 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    Attack {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+        entity: i32,
+        lifetime: u64,
+    },
     ContainerClick {
         dimension_epoch: u64,
         incarnation: u64,
@@ -165,6 +171,7 @@ struct Connection {
     dead: bool,
     loaded_epoch: Option<u64>,
     menu_lifetime: inventory::lifetime::Lifetime,
+    entity_lifetimes: entities::lifetime::Lifetimes,
     pending_teleport: Option<(i32, u64)>,
     pending_rotation: Option<u64>,
     correction_sequence: u64,
@@ -235,6 +242,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         dimensions: Vec::new(),
         dimension_epoch: 0,
         menu_lifetime: Default::default(),
+        entity_lifetimes: Default::default(),
         commands: options.commands.take(),
         dead: false,
         loaded_epoch: None,

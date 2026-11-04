@@ -2,6 +2,7 @@ use super::*;
 
 fn spawn(id: i32, uuid: u8) -> Spawn {
     Spawn {
+        transport_lifetime: 0,
         network_id: id,
         uuid: [uuid; 16],
         kind: "fixture:entity".into(),

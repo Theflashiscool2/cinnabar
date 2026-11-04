@@ -338,3 +338,22 @@ fn survival_and_death_do_not_emit_creative_breaks() {
     c.advance(&state, press(), Some(hit()));
     assert!(c.pending().is_none());
 }
+
+#[test]
+fn entity_or_air_target_does_not_report_an_unsupported_survival_block_break() {
+    let mut s = state();
+    s.status.mode = Some(GameMode::Survival);
+    let mut controller = Controller::default();
+    begin(&mut controller, &s, Duration::ZERO);
+    controller.advance(&s, press(), None);
+    assert!(controller.blocked.is_none());
+    assert!(controller.pending().is_none());
+    controller.advance(&s, press(), Some(hit()));
+    assert!(
+        controller
+            .blocked
+            .as_deref()
+            .unwrap()
+            .contains("survival/tool breaking")
+    );
+}

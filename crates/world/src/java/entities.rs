@@ -38,6 +38,7 @@ pub struct Passengers {
 
 #[derive(Clone, Debug)]
 pub struct Spawn {
+    pub transport_lifetime: u64,
     pub network_id: i32,
     pub uuid: [u8; 16],
     pub kind: String,
@@ -51,6 +52,7 @@ pub struct Spawn {
 
 #[derive(Clone, Debug)]
 pub struct Entity {
+    pub transport_lifetime: u64,
     pub identity: Identity,
     pub network_id: i32,
     pub uuid: [u8; 16],
@@ -258,6 +260,7 @@ impl Entities {
         self.entries.insert(
             spawn.network_id,
             Entity {
+                transport_lifetime: spawn.transport_lifetime,
                 identity: Identity {
                     session: scope.0,
                     epoch: scope.1,

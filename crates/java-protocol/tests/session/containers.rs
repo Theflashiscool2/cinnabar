@@ -307,3 +307,112 @@ async fn quick_craft_phases_are_contiguous_before_the_next_queued_close() {
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn entity_attack_tokens_fence_reuse_and_preserve_attack_punch_selection_order() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let cancel = CancellationToken::new();
+        let stop = cancel.clone();
+        let server = tokio::spawn(async move {
+            let mut wire = through_configuration(listener, true).await;
+            wire.write(&[3]).await.unwrap();
+            assert_eq!(wire.read().await.unwrap(), [3]);
+            wire.write(&world_login()).await.unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundPlayerLoadedPacket", &[])
+            );
+            // Independent pinned AddEntity codec fields: ID300, repeated UUID, pig101,
+            // three f64 zero coordinates, packed zero velocity, three angles, object-data0.
+            let mut spawn = vec![172, 2];
+            spawn.extend([9; 16]);
+            spawn.push(101);
+            spawn.extend([0; 24]);
+            spawn.extend([0; 5]);
+            wire.write(&incoming("ClientboundAddEntityPacket", &spawn))
+                .await
+                .unwrap();
+            wire.write(&incoming("ClientboundRemoveEntitiesPacket", &[1, 172, 2]))
+                .await
+                .unwrap();
+            wire.write(&incoming("ClientboundAddEntityPacket", &spawn))
+                .await
+                .unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundAttackPacket", &[172, 2])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundPunchPacket", &[])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundSetCarriedItemPacket", &[0, 0])
+            );
+            stop.cancelled().await;
+        });
+        let (tx, mut rx) = mpsc::channel(16);
+        let (commands, input) = mpsc::channel(8);
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        let mut first = None;
+        let mut verified = false;
+        while let Some(envelope) = rx.recv().await {
+            match envelope.event {
+                Event::Bootstrap(_) => commands
+                    .send(Command::PlayerLoaded { dimension_epoch: 1 })
+                    .await
+                    .unwrap(),
+                Event::Entities {
+                    packet: session::entities::Packet::Spawn(s),
+                    ..
+                } => {
+                    if let Some(old) = first {
+                        assert_ne!(old, s.lifetime);
+                        for (epoch, correction, lifetime) in [
+                            (1, 0, old),
+                            (2, 0, s.lifetime),
+                            (1, 1, s.lifetime),
+                            (1, 0, s.lifetime),
+                        ] {
+                            commands
+                                .send(Command::Attack {
+                                    dimension_epoch: epoch,
+                                    correction_sequence: correction,
+                                    entity: 300,
+                                    lifetime,
+                                })
+                                .await
+                                .unwrap();
+                        }
+                        commands
+                            .send(Command::Select {
+                                dimension_epoch: 1,
+                                sequence: 1,
+                                slot: 0,
+                            })
+                            .await
+                            .unwrap();
+                    } else {
+                        first = Some(s.lifetime);
+                    }
+                }
+                Event::SelectionSent { sequence: 1, .. } => {
+                    verified = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        cancel.cancel();
+        server.await.unwrap();
+        let _ = client.await.unwrap();
+        assert!(verified);
+    })
+    .await
+    .unwrap();
+}

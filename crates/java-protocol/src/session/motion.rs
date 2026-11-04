@@ -77,6 +77,28 @@ impl Connection {
                 .await?;
             }
             Command::Select { .. } => {}
+            Command::Attack {
+                dimension_epoch,
+                correction_sequence,
+                entity,
+                lifetime,
+            } if dimension_epoch == self.dimension_epoch
+                && correction_sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead
+                && self.entity_lifetimes.accepts(entity, lifetime) =>
+            {
+                self.send(
+                    "ServerboundAttackPacket",
+                    &interaction::encode_attack(entity)?,
+                )
+                .await?;
+                self.send("ServerboundPunchPacket", &[]).await?;
+                tracing::debug!(target: "java_session", entity, lifetime, dimension_epoch, "Native entity attack written; awaiting server authority");
+            }
+            Command::Attack { .. } => {}
             Command::Interact {
                 dimension_epoch,
                 correction_sequence,

@@ -103,11 +103,14 @@ impl Connection {
                 self.emit(Event::Hud(packet)).await?;
                 continue;
             }
-            if let Some(packet) = entities::decode(name, &mut r).map_err(packet_error)? {
+            if let Some(mut packet) = entities::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("entity before Java world login").into());
                 }
+                self.entity_lifetimes
+                    .observe(&mut packet)
+                    .map_err(ProtocolError::Invalid)?;
                 self.emit(Event::Entities {
                     dimension_epoch: self.dimension_epoch,
                     packet,
@@ -190,6 +193,7 @@ impl Connection {
                     self.pending_teleport = None;
                     self.pending_rotation = None;
                     self.menu_lifetime.retire();
+                    self.entity_lifetimes.retire();
                     if self.bootstrapped {
                         // Proxies may send another game login without a configuration phase.
                         // Reuse configured registries; do not clone their NBT for every handoff.
@@ -256,6 +260,7 @@ impl Connection {
                     let message = crate::nbt::read(&mut r)?;
                     self.dead = true;
                     self.menu_lifetime.retire();
+                    self.entity_lifetimes.retire();
                     self.emit(Event::Death { player_id, message }).await?;
                 }
                 "ClientboundRespawnPacket" => {
@@ -268,6 +273,7 @@ impl Connection {
                     self.terrain = Some(self.terrain_context(&spawn)?);
                     self.dimension_epoch += 1;
                     self.menu_lifetime.retire();
+                    self.entity_lifetimes.retire();
                     self.emit(Event::Respawn {
                         spawn,
                         keep_attribute_modifiers: keep & 1 != 0,

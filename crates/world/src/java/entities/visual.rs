@@ -31,6 +31,7 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
+    pub scale: f32,
     pub pose: Arc<str>,
     pub baby: bool,
     pub health: Option<f32>,
@@ -46,6 +47,7 @@ impl Default for Visual {
         // native defaults, not claims that an omitted required variant was received.
         Self {
             flags: 0,
+            scale: 1.,
             pose: "standing".into(),
             baby: false,
             health: None,

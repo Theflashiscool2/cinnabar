@@ -125,6 +125,12 @@ impl Controller {
             self.elapsed = Duration::ZERO;
             return;
         }
+        // This owner handles block intent only. An entity/air ray is not an
+        // unsupported survival block break and must not report one.
+        if hit.is_none() {
+            self.elapsed = Duration::ZERO;
+            return;
+        }
         let creative = state
             .player_dynamics
             .abilities

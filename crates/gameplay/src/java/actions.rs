@@ -23,9 +23,18 @@ pub struct Selection {
     pub slot: u8,
 }
 #[derive(Clone, Copy)]
+pub enum Target {
+    Block(Hit),
+    Entity {
+        network_id: i32,
+        identity: world::java::entities::Identity,
+        lifetime: u64,
+    },
+}
+#[derive(Clone, Copy)]
 struct Entry {
     intent: Intent,
-    hit: Option<Hit>,
+    target: Option<Target>,
 }
 #[derive(Default)]
 pub struct Controller {
@@ -41,11 +50,22 @@ pub struct Controller {
     use_held: bool,
     quarantined: bool,
     pub blocked: Option<&'static str>,
+    pub selected: Option<Target>,
+    pub entity_attacks_queued: u64,
 }
 impl Controller {
     /// Captures a finalized frame once. Authority changes retire only unsent intent;
     /// write receipts remain ordered with server selection corrections in the inventory owner.
     pub fn capture(&mut self, state: &WorldState, input: &FinalizedInput, hit: Option<Hit>) {
+        self.capture_target(state, input, hit.map(Target::Block));
+    }
+    /// Keeps native block/entity choice with its physical input edge through backpressure.
+    pub fn capture_target(
+        &mut self,
+        state: &WorldState,
+        input: &FinalizedInput,
+        target: Option<Target>,
+    ) {
         let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
         if self.scope != scope {
             *self = Self {
@@ -54,6 +74,7 @@ impl Controller {
                 ..Default::default()
             };
         }
+        self.selected = target;
         let snapshot = input.snapshot();
         let authority = snapshot.map(|s| s.authority_generation);
         if self.authority != authority
@@ -95,12 +116,12 @@ impl Controller {
                 self.overflow();
                 return;
             }
-            self.append(
+            self.append_target(
                 ordered
                     .events()
                     .iter()
                     .filter_map(|e| intent(e.action, e.pressed)),
-                hit,
+                target,
             );
         } else {
             // Controller/touch frames have no desktop event order; choose selection before attack.
@@ -110,25 +131,26 @@ impl Controller {
                 .chain([Action::HotbarPrevious, Action::HotbarNext])
                 .filter(|&a| input.phase(a).pressed)
                 .filter_map(|a| intent(a, true));
-            self.append(choices, hit);
+            self.append_target(choices, target);
             let attack = input.phase(Action::Attack);
             if attack.pressed {
-                self.append([Intent::Attack(true)], hit);
+                self.append_target([Intent::Attack(true)], target);
             }
             if attack.released {
-                self.append([Intent::Attack(false)], hit);
+                self.append_target([Intent::Attack(false)], target);
             }
             let use_item = input.phase(Action::Use);
             if use_item.pressed {
-                self.append([Intent::Use(true)], hit);
+                self.append_target([Intent::Use(true)], target);
             }
             if use_item.released {
-                self.append([Intent::Use(false)], hit);
+                self.append_target([Intent::Use(false)], target);
             }
         }
     }
     fn retire(&mut self) {
         self.queue.clear();
+        self.selected = None;
         self.pending = None;
         self.waiting = None;
         self.held = false;
@@ -139,13 +161,24 @@ impl Controller {
         self.quarantined = true;
         self.blocked = Some("Java input queue overflow; release controls before retrying");
     }
+    #[cfg(test)]
     fn append(&mut self, values: impl IntoIterator<Item = Intent>, hit: Option<Hit>) {
+        self.append_target(values, hit.map(Target::Block));
+    }
+    fn append_target(&mut self, values: impl IntoIterator<Item = Intent>, target: Option<Target>) {
         for value in values {
             if self.quarantined {
                 break;
             }
-            self.queue.push_back(Entry { intent: value, hit });
+            self.queue.push_back(Entry {
+                intent: value,
+                target,
+            });
         }
+    }
+    /// A successful channel write records intent only, never authoritative damage.
+    pub fn entity_attack_queued(&mut self) {
+        self.entity_attacks_queued = self.entity_attacks_queued.saturating_add(1);
     }
     /// No later action can pass a selection until its ordered socket receipt is admitted.
     pub fn front(&mut self, state: &WorldState) -> Option<Intent> {
@@ -161,6 +194,10 @@ impl Controller {
         }
         self.queue.front().map(|entry| entry.intent)
     }
+    /// The front edge remains captured until its write is accepted or its target retired.
+    pub fn target(&self) -> Option<Target> {
+        self.queue.front().and_then(|e| e.target)
+    }
     /// Returns the click-time target, rather than repicking after a delayed selection write.
     pub fn consume_attack(&mut self, pressed: bool) -> (ActionPhase, Option<Hit>) {
         let consumed = self.queue.pop_front().expect("observed attack edge");
@@ -172,7 +209,10 @@ impl Controller {
                 held: pressed,
                 released: !pressed,
             },
-            consumed.hit,
+            consumed.target.and_then(|t| match t {
+                Target::Block(h) => Some(h),
+                Target::Entity { .. } => None,
+            }),
         )
     }
     /// Use edges obey the same selection and click-time target ordering as attacks.
@@ -186,7 +226,10 @@ impl Controller {
                 held: pressed,
                 released: !pressed,
             },
-            consumed.hit,
+            consumed.target.and_then(|t| match t {
+                Target::Block(h) => Some(h),
+                Target::Entity { .. } => None,
+            }),
         )
     }
     /// Computes against admitted selection, including server corrections between writes.

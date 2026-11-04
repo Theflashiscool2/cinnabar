@@ -53,6 +53,7 @@ fn repeated_login_replaces_world_not_configuration_or_local_storage() {
         .spawn(
             (7, 1),
             entities::Spawn {
+                transport_lifetime: 0,
                 network_id: 9,
                 uuid: [1; 16],
                 kind: "minecraft:pig".into(),

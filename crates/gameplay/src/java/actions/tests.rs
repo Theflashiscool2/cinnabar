@@ -31,6 +31,7 @@ fn input(sequence: u64, action: Option<Action>) -> FinalizedInput {
     }
     FinalizedInput::from_finalized(ActionSnapshot {
         ordered: None,
+        admitted_desktop: Vec::new(),
         frame_sequence: InputSequence::new(sequence),
         authority_generation: InputAuthorityGeneration::INITIAL,
         movement: [0.; 2],
@@ -309,4 +310,54 @@ fn a_click_retains_its_target_while_selection_waits_for_the_socket() {
     let (phase, target) = c.consume_attack(true);
     assert!(phase.pressed);
     assert_eq!(target.unwrap().block, original.block);
+}
+
+#[test]
+fn captured_entity_edge_stays_ahead_of_slot_change_and_retires_with_authority() {
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, None), None);
+    let target = Target::Entity {
+        network_id: 15,
+        identity: world::java::entities::Identity {
+            session: 7,
+            epoch: 1,
+            incarnation: 4,
+        },
+        lifetime: 9,
+    };
+    c.append_target(
+        [Intent::Attack(true), Intent::Slot(2), Intent::Attack(false)],
+        Some(target),
+    );
+    for _ in 0..3 {
+        assert_eq!(c.front(&state), Some(Intent::Attack(true)));
+        assert!(matches!(
+            c.target(),
+            Some(Target::Entity {
+                network_id: 15,
+                lifetime: 9,
+                ..
+            })
+        ));
+    }
+    c.consume_attack(true);
+    assert_eq!(c.front(&state), Some(Intent::Slot(2)));
+    c.selection(&state).unwrap();
+    c.selection_queued();
+    assert!(c.front(&state).is_none());
+    state.inventory.selection_sent(7, 1, 1, 2);
+    assert_eq!(c.front(&state), Some(Intent::Attack(false)));
+    c.capture(&state, &input(2, None), None);
+    state.terrain.begin(world::java::Dimension {
+        session: 7,
+        epoch: 2,
+        name: "fixture:new".into(),
+        min_y: -64,
+        height: 384,
+        has_skylight: true,
+    });
+    c.capture(&state, &input(3, None), None);
+    assert!(c.front(&state).is_none());
+    assert!(c.target().is_none());
 }

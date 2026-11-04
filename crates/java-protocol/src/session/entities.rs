@@ -1,10 +1,13 @@
 //! Target-pinned entity lifecycle schemas. World identity and interpolation are domain-owned.
 use crate::{ProtocolError as Error, target, wire::Reader};
 use serde::Serialize;
+pub mod lifetime;
 pub mod metadata;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Spawn {
+    /// Socket-issued token; zero exists only before lifecycle admission.
+    pub lifetime: u64,
     pub id: i32,
     pub uuid: [u8; 16],
     pub kind: &'static str,
@@ -90,6 +93,7 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
                 .and_then(|i| target::ENTITY_TYPES.get(i))
                 .ok_or(Error::Invalid("Java entity registry ID"))?;
             Packet::Spawn(Spawn {
+                lifetime: 0,
                 id,
                 uuid,
                 kind,

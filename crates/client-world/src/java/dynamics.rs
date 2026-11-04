@@ -55,7 +55,7 @@ pub(super) fn admit(
                 walking_speed: a.walking_speed,
             })
         }
-        wire::Packet::Attributes { entity, values } if entity == own_id => {
+        wire::Packet::Attributes { entity, values } => {
             let values = values
                 .into_iter()
                 .map(|a| {
@@ -84,7 +84,19 @@ pub(super) fn admit(
                     Ok((a.name.to_owned(), attribute))
                 })
                 .collect::<Result<Vec<_>, &'static str>>()?;
-            state.player_dynamics.attributes.extend(values);
+            if entity == own_id {
+                state.player_dynamics.attributes.extend(values);
+            } else if let Some((_, scale)) =
+                values.iter().find(|(name, _)| name == "minecraft:scale")
+            {
+                let scale = scale.value()? as f32;
+                state
+                    .entities
+                    .update((state.generation(), epoch), entity, |e| {
+                        e.visual.scale = scale;
+                        Ok(())
+                    })?;
+            }
         }
         wire::Packet::Velocity { entity, velocity } if entity == own_id => {
             if !velocity.into_iter().all(f64::is_finite) {
@@ -130,10 +142,6 @@ pub(super) fn admit(
                     e.motion.velocity = velocity;
                     Ok(())
                 });
-        }
-        wire::Packet::Attributes { .. } => {
-            // Remote lifecycle is still unsupported. Do not admit remote IDs as the local player.
-            state.deferred_entity_dynamics = state.deferred_entity_dynamics.saturating_add(1);
         }
     }
     Ok(true)

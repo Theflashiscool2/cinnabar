@@ -105,3 +105,11 @@ with the same verified client/server-library classpath as the entity exporter; r
 log prefixes. Set `CINNABAR_JAVA_PLAYER_POSTURES` to that file for the owning world
 posture test. These are CPU reference vectors, not rendered acceptance. The unit-scale
 crouch world offset (-2/16) comes separately from the verified `AvatarRenderer.getRenderOffset`.
+
+`ProbeEntityTargeting.java` encodes the pinned native attack packet, reads standing/
+crouching avatar dimensions, and samples `AABB.clip`/`contains` with original synthetic
+rays. Compile with that verified classpath and run
+`ProbeEntityTargeting /absolute/path/targeting.json`. The `corpus` field supplies
+`sim/java/entity_selection/reference.json` cases; the fixture records its box and provenance.
+The maximum-face inside-origin and segment-end cases must remain misses. These are CPU
+reference vectors, separate from native GUI/server-authoritative damage acceptance.

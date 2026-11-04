@@ -40,6 +40,12 @@ pub struct UseOn {
     pub world_border: bool,
     pub sequence: i32,
 }
+/// Java 26.3 separates attack from interaction: the payload is only the entity VarInt.
+pub fn encode_attack(entity: i32) -> Result<Vec<u8>, Error> {
+    let mut bytes = Vec::with_capacity(5);
+    write_varint(entity, &mut bytes);
+    Ok(bytes)
+}
 /// Encodes the pinned use-on-block schema; it does not imply placement succeeded.
 pub fn encode_use_on(action: UseOn) -> Result<Vec<u8>, Error> {
     let position = packed_position(action.position, action.sequence)?;
@@ -104,6 +110,19 @@ fn packed_position([x, y, z]: [i32; 3], sequence: i32) -> Result<u64, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_attack_is_only_entity_varint_without_legacy_action_or_sneak_fields() {
+        for (entity, bytes) in [
+            (0, vec![0]),
+            (15, vec![15]),
+            (127, vec![127]),
+            (128, vec![128, 1]),
+            (300, vec![172, 2]),
+            (-1, vec![255, 255, 255, 255, 15]),
+        ] {
+            assert_eq!(encode_attack(entity).unwrap(), bytes);
+        }
+    }
     #[test]
     fn native_use_on_vector_keeps_negative_position_fractional_hit_and_both_flags() {
         // Independent native packet field order and IEEE-754 values. Protocol ID is tested

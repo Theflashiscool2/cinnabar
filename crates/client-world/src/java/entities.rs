@@ -43,6 +43,7 @@ pub(super) fn admit(
             state.entities.spawn(
                 scope,
                 domain::Spawn {
+                    transport_lifetime: s.lifetime,
                     network_id: s.id,
                     uuid: s.uuid,
                     kind: s.kind.into(),

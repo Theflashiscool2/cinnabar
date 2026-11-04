@@ -16,6 +16,7 @@ fn event(epoch: u64, packet: wire::Packet) -> Envelope {
 }
 fn spawn() -> wire::Packet {
     wire::Packet::Spawn(wire::Spawn {
+        lifetime: 1,
         id: 99,
         uuid: [1; 16],
         kind: "minecraft:pig",
