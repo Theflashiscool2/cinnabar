@@ -155,7 +155,7 @@ impl Presentation {
                 "waiting_light": s.metrics.waiting_light,
             })),
             "error": self.failure,
-            "movement_scope": "experimental_dry_land",
+            "movement_scope": "experimental_ground_and_upright_fluid_travel",
             "playable": false,
         })
     }

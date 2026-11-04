@@ -283,6 +283,10 @@ fn parameters(state: &WorldState) -> Result<Parameters, String> {
         scale: value("minecraft:scale")? as f32,
         sneaking_speed: value("minecraft:sneaking_speed")? as f32,
         movement_efficiency: value("minecraft:movement_efficiency")? as f32,
+        water_movement_efficiency: value("minecraft:water_movement_efficiency")? as f32,
+        fast_lava: state
+            .fast_lava()?
+            .unwrap_or_else(assets::registry::java::fluids::contacts::fast_lava_default),
     })
 }
 

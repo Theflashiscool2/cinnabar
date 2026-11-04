@@ -671,3 +671,13 @@ primitives from [MIT reference source](https://github.com/Vasysik/horizon-androi
 Copyright and the full MIT license are retained in
 `assets/licenses/Native-Java-Reference-MIT.txt`. Cinnabar owns the native
 protocol adapter, inventory authority, shared UI and application integration.
+
+## Native Java fluid travel references
+
+`crates/sim/src/java/travel/liquid.rs` and fluid travel in `travel.rs` adapt
+current, immersion and drag rules from the same MIT reference at
+`844ef35f2b14e3fed99d5d2e05b274193fae4388` (`entity_fluid.rs`,
+`fluid_flow.rs`, `living_fluid.rs`). Copyright and license remain in
+`assets/licenses/Native-Java-Reference-MIT.txt`. Native Java 26.3 runtime probes
+independently verify the current vectors and contact facts; Cinnabar owns the
+authoritative terrain, bounded prediction, transport and renderer integration.

@@ -1,7 +1,8 @@
-//! Native dry-land player travel for the pinned Java behavior references.
+//! Native player travel for the pinned Java behavior references.
 //!
 //! Entity.getInputVector, LivingEntity.aiStep/travelInAir and Player edge protection supply
-//! the observable rules. Fluids and context-dependent block callbacks remain explicit gaps.
+//! the observable rules. Context-dependent block callbacks remain explicit gaps.
+mod liquid;
 use super::collision::{self, QueryError};
 use assets::registry::java::physics::{Bounds, State, Table};
 use world::java::{
@@ -30,6 +31,8 @@ pub struct Body {
     pub crouched: bool,
     pub sprinting: bool,
     pub fall_distance: f64,
+    pub water_height: f64,
+    pub lava_height: f64,
     jump_delay: u8,
 }
 impl Body {
@@ -49,12 +52,14 @@ pub struct Parameters {
     pub scale: f32,
     pub sneaking_speed: f32,
     pub movement_efficiency: f32,
+    pub water_movement_efficiency: f32,
+    pub fast_lava: bool,
 }
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Query(#[from] QueryError),
-    #[error("Java dry-land movement cannot yet apply {behavior} at {position:?}")]
+    #[error("Java movement cannot yet apply {behavior} at {position:?}")]
     Unsupported {
         behavior: &'static str,
         position: [i32; 3],
@@ -101,6 +106,7 @@ pub fn step(
             p.scale,
             p.sneaking_speed,
             p.movement_efficiency,
+            p.water_movement_efficiency,
         ]
         .into_iter()
         .all(f32::is_finite)
@@ -121,7 +127,35 @@ pub fn step(
             .any(|b| collision::intersects(standing, *b));
     next_body.sprinting = input.sprint && !next_body.crouched && input.forward > 0.;
     let shape = bounds(next.position, next_body.crouched, p.scale);
-    ensure_dry(terrain, physics, shape)?;
+    ensure_contacts(terrain, physics, shape)?;
+    let cells = liquid::Cells { terrain, physics };
+    let contact = cells.contact(shape)?;
+    next_body.water_height = contact.water;
+    next_body.lava_height = contact.lava;
+    let wet = contact.water > 0. || contact.lava > 0.;
+    if contact.water > 0. {
+        next_body.fall_distance = 0.;
+        liquid::push(&mut next.velocity, contact.water_current, 0.014);
+    }
+    if contact.lava > 0. {
+        liquid::push(
+            &mut next.velocity,
+            contact.lava_current,
+            if p.fast_lava {
+                0.007
+            } else {
+                0.0023333333333333335
+            },
+        );
+    }
+    // Sprint-swimming requires its own pose, dimensions and camera path. Do not silently
+    // simulate a standing sprint with a swimmer's packet-visible motion.
+    if next_body.sprinting && contact.water >= next_body.eye_height(p.scale) {
+        return Err(Error::Unsupported {
+            behavior: "sprint-swimming pose",
+            position: next.position.map(|n| n.floor() as i32),
+        });
+    }
     let feet = surface(terrain, physics, next.position, -0.5)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
     let block_friction = if next_body.on_ground {
@@ -137,7 +171,19 @@ pub fn step(
     if next.velocity[1].abs() < 0.003 {
         next.velocity[1] = 0.;
     }
-    if input.jump && next_body.on_ground && next_body.jump_delay == 0 {
+    let threshold = if next_body.eye_height(p.scale) < 0.4 {
+        0.
+    } else {
+        0.4
+    };
+    let fluid_jump = (contact.water > 0. && (!next_body.on_ground || contact.water > threshold))
+        || (contact.lava > 0. && (!next_body.on_ground || contact.lava > threshold));
+    if input.crouch && contact.water > 0. {
+        next.velocity[1] -= f64::from(0.04_f32);
+    }
+    if input.jump && fluid_jump {
+        next.velocity[1] += f64::from(0.04_f32);
+    } else if input.jump && next_body.on_ground && next_body.jump_delay == 0 {
         let factor = if inside.jump_factor == 1. {
             feet.jump_factor
         } else {
@@ -161,7 +207,21 @@ pub fn step(
     } else {
         p.speed
     };
-    let speed = if next_body.on_ground {
+    let mut water_drag = if next_body.sprinting {
+        0.9_f32
+    } else {
+        0.8_f32
+    };
+    let speed = if wet {
+        if contact.water > 0. {
+            let efficiency =
+                p.water_movement_efficiency * if next_body.on_ground { 1. } else { 0.5 };
+            water_drag += (0.54600006_f32 - water_drag) * efficiency;
+            0.02 + (ground_speed - 0.02) * efficiency
+        } else {
+            0.02
+        }
+    } else if next_body.on_ground {
         if f64::from(block_friction) > 0.6 {
             ground_speed * (0.21600002 / (block_friction * block_friction * block_friction))
         } else {
@@ -192,6 +252,8 @@ pub fn step(
     sweep.max[1] += f64::from(p.step_height);
     sweep.min[1] -= f64::from(p.step_height) + 1.0e-7;
     let colliders = collision::collect(terrain, physics, scope.0, scope.1, sweep)?;
+    let was_falling = next.velocity[1] <= 0.;
+    let old_y = next.position[1];
     let desired = if input.crouch && next.velocity[1] <= 0. {
         backed_off(
             shape,
@@ -234,12 +296,17 @@ pub fn step(
     }
     let feet = surface(terrain, physics, next.position, -0.5)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
-    ensure_dry(
+    ensure_contacts(
         terrain,
         physics,
         bounds(next.position, next_body.crouched, p.scale),
     )?;
-    let surface_speed = if inside.speed_factor == 1. {
+    let cell = next.position.map(|n| n.floor() as i32);
+    let water_block = physics
+        .registry()
+        .and_then(|r| terrain.block(cell).and_then(|id| r.state(id.0)))
+        .is_some_and(|s| s.name.as_ref() == "minecraft:water");
+    let surface_speed = if inside.speed_factor == 1. && !water_block {
         feet.speed_factor
     } else {
         inside.speed_factor
@@ -248,10 +315,47 @@ pub fn step(
     let horizontal = block_friction * modified_friction(0.91, p.air_drag_modifier);
     for i in [0, 2] {
         next.velocity[i] *= f64::from(speed_factor);
-        next.velocity[i] *= f64::from(horizontal);
+        next.velocity[i] *= if contact.water > 0. {
+            f64::from(water_drag)
+        } else if contact.lava > 0. {
+            0.5
+        } else {
+            f64::from(horizontal)
+        };
     }
-    next.velocity[1] =
-        (next.velocity[1] - p.gravity) * f64::from(modified_friction(0.98, p.air_drag_modifier));
+    if wet {
+        if contact.water > 0. || contact.lava <= threshold {
+            next.velocity[1] *= f64::from(0.8_f32);
+            liquid::falling(
+                &mut next.velocity,
+                p.gravity,
+                was_falling,
+                next_body.sprinting,
+            );
+        } else {
+            next.velocity[1] *= 0.5;
+        }
+        if contact.water <= 0. {
+            next.velocity[1] -= p.gravity / 4.;
+        }
+        if next_body.horizontal_collision {
+            let probe = collision::translated(
+                bounds(next.position, next_body.crouched, p.scale),
+                [
+                    next.velocity[0],
+                    next.velocity[1] + f64::from(0.6_f32) - next.position[1] + old_y,
+                    next.velocity[2],
+                ],
+            );
+            let query = collision::collect(terrain, physics, scope.0, scope.1, probe)?;
+            if query.boxes.is_empty() && !cells.contains_liquid(probe)? {
+                next.velocity[1] = f64::from(0.3_f32);
+            }
+        }
+    } else {
+        next.velocity[1] = (next.velocity[1] - p.gravity)
+            * f64::from(modified_friction(0.98, p.air_drag_modifier));
+    }
     if !next.is_finite() {
         return Err(Error::Invalid);
     }
@@ -333,7 +437,7 @@ fn surface<'a>(
     Ok(state)
 }
 
-fn ensure_dry(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<(), Error> {
+fn ensure_contacts(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<(), Error> {
     for y in (shape.min[1] + 1.0e-7).floor() as i32..=(shape.max[1] - 1.0e-7).floor() as i32 {
         for z in (shape.min[2] + 1.0e-7).floor() as i32..=(shape.max[2] - 1.0e-7).floor() as i32 {
             for x in (shape.min[0] + 1.0e-7).floor() as i32..=(shape.max[0] - 1.0e-7).floor() as i32
@@ -341,9 +445,9 @@ fn ensure_dry(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<(), E
                 let cell = [x, y, z];
                 let id = terrain.block(cell).ok_or(QueryError::Missing(cell))?.0;
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-                if !state.fluid_empty || state.special_callbacks {
+                if state.special_callbacks {
                     return Err(Error::Unsupported {
-                        behavior: "fluid or block contact behavior",
+                        behavior: "special block contact behavior",
                         position: cell,
                     });
                 }

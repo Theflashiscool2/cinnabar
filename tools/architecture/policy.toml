@@ -1401,6 +1401,11 @@ exports = ["experience_macros::client", "experience_macros::server"]
 
 # Production identity decisions move to the facts owners; unlisted files have a zero budget.
 [[identifier_literal_exceptions]]
+path = "crates/sim/src/java/travel.rs"
+literal = "minecraft:water"
+reason = "Pinned Java 26.3 Entity.getBlockSpeedFactor explicitly selects Blocks.WATER before underfoot speed factors. This is a native behavior branch over verified registry identity, not visual-model or fluid-family inference; waterlogged hosts retain their separate block semantics."
+
+[[identifier_literal_exceptions]]
 path = "examples/mods/portal-view/src/lib.rs"
 literal = "minecraft:air"
 reason = "The standalone guest example supplies a concrete named-state palette without host registry dependencies."

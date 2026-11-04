@@ -86,7 +86,23 @@ impl Graphics {
         self.states.get(&id).map(|s| s.presentation)
     }
     pub fn fluid_materials(&self, kind: super::fluids::Kind) -> Option<FluidMaterials> {
-        self.builder.fluids.get(&kind).copied()
+        let local = self.builder.fluids.get(&kind)?;
+        // RuntimeAssets rebases ordinary model materials while applying the overlay.
+        // Liquid records bypass model templates and must use that same global address space.
+        let base = u32::try_from(
+            self.runtime
+                .material_count()
+                .checked_sub(self.builder.overlay.materials.len())?,
+        )
+        .ok()?;
+        Some(FluidMaterials {
+            still: local.still.checked_add(base)?,
+            flowing: local.flowing.checked_add(base)?,
+            overlay: match local.overlay {
+                Some(index) => Some(index.checked_add(base)?),
+                None => None,
+            },
+        })
     }
     pub fn contains(&self, id: u32) -> bool {
         self.states.contains_key(&id)

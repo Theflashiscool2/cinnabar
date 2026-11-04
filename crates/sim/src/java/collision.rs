@@ -7,7 +7,7 @@ use world::java::Terrain;
 
 const CONTACT: f64 = 1.0e-7;
 /// Explicit foreground-work budget; exceeding it is an incomplete query, never empty terrain.
-const MAX_QUERY_CELLS: u64 = 32768;
+pub(super) const MAX_QUERY_CELLS: u64 = 32768;
 
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum QueryError {

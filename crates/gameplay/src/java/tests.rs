@@ -45,10 +45,14 @@ fn queued_baselines_and_retired_dimensions_cannot_reuse_an_unsent_frame() {
     assert_eq!(controller.last_input, Some(65));
     assert_eq!(controller.last_sprint, Some(true));
     controller.pending = Some(frame());
+    controller.body.water_height = 3.;
+    controller.body.lava_height = 2.;
     controller.begin_frame(&world(2), TICK);
     assert!(controller.pending().is_none());
     assert!(controller.last_position.is_none());
     assert!(!controller.body.on_ground);
+    assert_eq!(controller.body.water_height, 0.);
+    assert_eq!(controller.body.lava_height, 0.);
 }
 
 #[test]

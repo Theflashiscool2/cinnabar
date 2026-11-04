@@ -170,3 +170,13 @@ explicit server-side menu handler, not vanilla default compass behavior or a cli
 success substitution. Check actual GUI clicks against vanilla cursor/slot state. For
 unmodified vanilla item behavior, use a snowball and verify the server stack count and
 native cooldown events. Neither test qualifies public-server or device compatibility.
+
+`ExportFluidContactFacts.java OUTPUT BLOCKS_JSON` exports run-length encoded native
+sturdy-face and IceBlock-class masks for all pinned block states, plus the native
+fast-lava default. Compile/run against each verified client/server classpath and
+require byte-identical output before updating `crates/assets/data/java-fluid-contacts.json`.
+`ProbeFluidCurrents.java OUTPUT` calls the native FlowingFluid implementation on
+controlled block getters; its independent vectors live in
+`crates/sim/tests/fixtures/java-fluid-currents.json`. These are CPU reference facts,
+not rendered or live movement acceptance. Tests with CINNABAR_JAVA_ASSETS verify
+the existing hash-pinned reports before comparing production current queries.

@@ -2,6 +2,7 @@
 mod biomes;
 mod dynamics;
 mod entities;
+mod environment;
 mod hud;
 #[cfg(test)]
 mod interaction_tests;

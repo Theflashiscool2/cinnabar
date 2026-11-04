@@ -1,5 +1,6 @@
 //! Version-pinned fluid, host and light-transfer facts exported from native Java block states.
 use super::{models::Face, source::Error};
+pub mod contacts;
 pub mod optics;
 /// The report's face order, also used by fluid coverage. Schema 3 records and verifies it.
 pub const FACES: [Face; 6] = [
@@ -56,6 +57,12 @@ impl State {
 #[derive(Debug)]
 pub struct Table(Box<[State]>);
 impl Table {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
     /// Verifies the complete report before admitting any state or resource identity.
     pub fn load(bytes: &[u8], hash: &str, count: usize) -> Result<Self, Error> {
         if format!("{:x}", Sha256::digest(bytes)) != hash {

@@ -32,6 +32,7 @@ pub struct State {
 pub struct Table {
     states: Box<[State]>,
     registry: Option<std::sync::Arc<super::BlockRegistry>>,
+    fluids: Option<std::sync::Arc<super::fluids::Table>>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -115,6 +116,7 @@ impl Table {
         Ok(Self {
             states: states.into(),
             registry: None,
+            fluids: None,
         })
     }
     /// Attaches the same verified native state registry for contextual block-entity shapes.
@@ -130,6 +132,25 @@ impl Table {
     }
     pub fn registry(&self) -> Option<&super::BlockRegistry> {
         self.registry.as_deref()
+    }
+    /// Shares verified native liquid facts with travel rather than interpreting visual models.
+    pub fn with_fluids(
+        mut self,
+        fluids: std::sync::Arc<super::fluids::Table>,
+    ) -> Result<Self, Error> {
+        if fluids.len() != self.states.len()
+            || self.states.iter().enumerate().any(|(id, state)| {
+                state.fluid_empty
+                    != (fluids.state(id as u32).unwrap().kind == super::fluids::Kind::Empty)
+            })
+        {
+            return Err(Error::Invalid("fluid physics identity mismatch"));
+        }
+        self.fluids = Some(fluids);
+        Ok(self)
+    }
+    pub fn fluids(&self) -> Option<&super::fluids::Table> {
+        self.fluids.as_deref()
     }
     pub fn state(&self, id: u32) -> Option<&State> {
         self.states.get(id as usize)

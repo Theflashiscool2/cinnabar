@@ -153,7 +153,12 @@ fn load_inner(
         return Err("Java block report size does not match target manifest".into());
     }
     let registry = Arc::new(BlockRegistry::load(&report, target::BLOCK_REPORT_SHA256)?);
-    let physics = Arc::new(physics.with_registry(Arc::clone(&registry))?);
+    let fluids = load_fluids(&root)?;
+    let physics = Arc::new(
+        physics
+            .with_registry(Arc::clone(&registry))?
+            .with_fluids(Arc::clone(&fluids))?,
+    );
     let jar = Jar::open(
         &root.join("client.jar"),
         target::CLIENT_ASSETS_SHA256,
@@ -248,7 +253,7 @@ fn load_inner(
         }
     }
     let mut models = BlockModels::new(registry, Box::new(source));
-    models.fluids = Some(load_fluids(&root)?);
+    models.fluids = Some(fluids);
     models.entity_models = Some(load_models(&root)?);
     // Baseline device array limit; the renderer validates the actual adapter before upload.
     let graphics = Arc::new(

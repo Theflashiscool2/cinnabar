@@ -9,6 +9,7 @@ publish = false
 reads = [
     "assets/block-projection-v2225.json",
     "crates/assets/data/block-physics-v2225.bin",
+    "crates/java-protocol/data/target.json",
     "tools/bedsimtrace-controls/*",
     "tools/bedsimtrace-v0.1.4/*",
     "tools/bedsimtrace-v0.1.5/*",

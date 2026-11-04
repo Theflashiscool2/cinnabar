@@ -126,6 +126,49 @@ impl Fixture {
 }
 
 #[test]
+fn fluid_materials_sample_the_named_native_sprite_after_runtime_rebasing() {
+    use assets::registry::java::{fluids::Kind, source::Identifier, textures::Sprite};
+    let Some(mut f) = Fixture::load() else { return };
+    for (kind, name) in [(Kind::Water, "water"), (Kind::Lava, "lava")] {
+        let materials = f.graphics.fluid_materials(kind).unwrap();
+        for (suffix, material) in [
+            ("still", Some(materials.still)),
+            ("flow", Some(materials.flowing)),
+            ("overlay", materials.overlay),
+        ] {
+            let Some(material) = material else {
+                continue;
+            };
+            let id = Identifier::parse(&format!("minecraft:block/{name}_{suffix}")).unwrap();
+            let sprite = Sprite::load(f.models.source(), &id).unwrap();
+            let expected = &sprite.frames[0];
+            let texture = f.graphics.runtime.material(material).texture;
+            let page = &f.graphics.runtime.texture_pages()[texture.page() as usize].texture;
+            let mip = &page.mips[0];
+            assert_eq!(
+                f.graphics.runtime.texture_source_size(texture),
+                [expected.width, expected.height]
+            );
+            // Native sprites can be promoted to a larger shared page. Inspect the actual
+            // GPU layer at every source-pixel origin, rather than cropping the larger layer.
+            let mut pixels = Vec::new();
+            for y in 0..expected.height {
+                for x in 0..expected.width {
+                    let px = x * mip.size / expected.width;
+                    let py = y * mip.size / expected.height;
+                    let index = ((texture.layer() * mip.size + py) * mip.size + px) as usize * 4;
+                    pixels.extend_from_slice(&mip.rgba8[index..index + 4]);
+                }
+            }
+            assert_eq!(
+                pixels, expected.rgba,
+                "{id} must name the uploaded sprite, not its preceding material"
+            );
+        }
+    }
+}
+
+#[test]
 fn discovering_lava_keeps_resident_water_mesh_and_resource_addresses_valid() {
     let Some(mut f) = Fixture::load_selected(true) else {
         return;

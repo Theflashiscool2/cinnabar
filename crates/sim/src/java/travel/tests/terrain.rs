@@ -3,7 +3,7 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use world::java::{BiomeId, BlockStateId, Column, Dimension, Light, Palette, Section};
 
-fn scene() -> (Terrain, Table) {
+pub(super) fn scene() -> (Terrain, Table) {
     // Minimal independent report: air, full cube, water and an upper slab.
     let mut bytes = b"CBJPHYS1".to_vec();
     bytes.extend(4u32.to_be_bytes());
@@ -60,7 +60,7 @@ fn scene() -> (Terrain, Table) {
     );
     (terrain, table)
 }
-fn parameters() -> Parameters {
+pub(super) fn parameters() -> Parameters {
     Parameters {
         speed: 0.1,
         sprint_speed: 0.13,
@@ -72,6 +72,8 @@ fn parameters() -> Parameters {
         scale: 1.,
         sneaking_speed: 0.3,
         movement_efficiency: 0.,
+        water_movement_efficiency: 0.,
+        fast_lava: false,
     }
 }
 

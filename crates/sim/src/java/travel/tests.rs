@@ -1,4 +1,6 @@
 use super::*;
+mod current_reference;
+mod liquid;
 mod terrain;
 
 #[test]
