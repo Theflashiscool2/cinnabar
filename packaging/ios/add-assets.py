@@ -98,18 +98,44 @@ def add_file(target, path, name, expected=None):
         raise AssetError(f"{path.name}: Java artifact does not match pinned size/SHA-256; output not replaced")
 
 
-def java_sources(directory):
-    """Only pinned runtime inputs enter the app; exporters, credentials and server jars stay out."""
+def java_specs():
+    """Pinned runtime archive paths and integrity metadata, shared with IPA verification."""
     manifest = json.loads(JAVA_TARGET.read_text(encoding="utf-8"))
     relative = f"assets/java/{manifest['game_version']}"
     specs = [("client.jar", manifest["client_assets"])]
     for key in ("block_registry_report", "physics_report", "interaction_report", "entity_models_report", "fluid_render_report"):
         spec = manifest[key]
         specs.append((PurePosixPath(spec["path"]).name, spec))
+    return relative, specs
+
+
+def java_sources(directory):
+    """Only pinned runtime inputs enter the app; exporters, credentials and server jars stay out."""
+    relative, specs = java_specs()
     for name, _ in specs:
         if not (directory / name).is_file():
             raise AssetError(f"missing Java runtime input {directory / name}; prepare pinned exports on the host")
     return relative, specs
+
+
+def check_inputs(local, java_assets=None):
+    """Check shared directories and hash-pin every supplied Java runtime input before a build."""
+    dirs = source_dirs(local)
+    version = json.loads(JAVA_TARGET.read_text(encoding="utf-8"))["game_version"]
+    java = java_assets if java_assets is not None else local / "assets/java" / version
+    if java_assets is None and not java.exists():
+        return {"shared_directories": dirs, "java_files_verified": 0}
+    _, specs = java_sources(java)
+    for name, expected in specs:
+        digest = hashlib.sha256()
+        size = 0
+        with (java / name).open("rb") as source:
+            while chunk := source.read(1 << 20):
+                digest.update(chunk)
+                size += len(chunk)
+        if size != expected["bytes"] or digest.hexdigest() != expected["sha256"]:
+            raise AssetError(f"{name}: Java artifact does not match pinned size/SHA-256")
+    return {"shared_directories": dirs, "java_version": version, "java_files_verified": len(specs)}
 
 
 def add_assets(ipa, local, out, force=False, java_assets=None):
@@ -152,12 +178,24 @@ def add_assets(ipa, local, out, force=False, java_assets=None):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("ipa", type=Path, help="unsigned IPA from build-ipa.sh or the iOS workflow")
+    parser.add_argument("ipa", type=Path, nargs="?", help="unsigned IPA from build-ipa.sh or the iOS workflow")
     parser.add_argument("--local", type=Path, default=ROOT / ".local", help="checkout .local directory")
     parser.add_argument("--out", type=Path, help="output IPA (default: -unsigned replaced by -assets)")
     parser.add_argument("--java-assets", type=Path, help="prepared Java runtime directory (default: use local/assets/java/<pinned-version> when present); verified against the tracked target manifest")
     parser.add_argument("--force", action="store_true", help="replace an existing output")
+    parser.add_argument("--check-inputs", action="store_true", help="validate prepared input directories without building or modifying an IPA; shared carrier integrity is still checked by assetc/startup")
     args = parser.parse_args(argv)
+    if args.check_inputs:
+        if args.ipa is not None or args.out is not None or args.force:
+            parser.error("--check-inputs takes no IPA/output or --force")
+        try:
+            print(json.dumps(check_inputs(args.local, args.java_assets), indent=2))
+        except (AssetError, OSError) as error:
+            print(f"add-assets: {error}", file=sys.stderr)
+            return 1
+        return 0
+    if args.ipa is None:
+        parser.error("an input IPA is required unless --check-inputs is used")
     out = args.out
     if out is None:
         stem = args.ipa.stem.removesuffix("-unsigned")

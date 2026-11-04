@@ -5,6 +5,22 @@ exchange and the fork's default public application ID. A saved `oauth-client.jso
 still overrides the default. Desktop credentials use the existing private account
 cache; iOS uses Keychain. The desktop cache is not claimed to be an OS vault.
 
+Normal joins capture the selected Java profile when Join is pressed. If selection
+changes or that account is removed before preparation, the join fails explicitly
+instead of silently adopting another account. Existing session monitoring stops a
+connection when the selected account changes. The developer loopback offline
+fixture is a separate entry point and cannot override an account-backed join.
+Account-list actions retain the displayed profile identity across concurrent disk
+changes. These protections have source-level fixture coverage; they do not prove
+an authenticated service exchange or iOS Keychain operation on a device.
+
+The exact Mac build, asset preflight, packaging and controlled online procedure is
+in [the iOS Java test handoff](ios-java-test.md). No new registration is required for
+the already configured and owner-approved application. This execution environment
+has no legitimate account credentials and denies the authentication hosts; its
+GitHub runner API request is also denied. The next online test needs permitted
+Microsoft/Xbox/Minecraft endpoints and one interactive login by the account owner.
+
 For isolated desktop authentication without renderer/assets, from the checkout:
 
 ```sh

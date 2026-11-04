@@ -2,11 +2,13 @@
 
 import importlib.util
 import json
+import hashlib
 from pathlib import Path
 import plistlib
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 
@@ -46,6 +48,34 @@ class SceneBundleTests(unittest.TestCase):
             archive.writestr(resources + "licenses/Cinnabar-LICENSE.md", b"fixture license")
             if assets:
                 archive.writestr(resources + "assets/compiled/fixture.bin", b"fixture carrier")
+
+    def test_required_java_is_verified_inside_the_actual_resource_root(self):
+        relative = "assets/java/fixture"
+        payloads = {name: ("fixture:" + name).encode() for name in
+                    ["client.jar", "blocks.json", "physics.bin", "interaction.bin", "models.json", "fluids.json"]}
+        specs = [(name, {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})
+                 for name, data in payloads.items()]
+        java_prefix = "Payload/Cinnabar.app/" + RUNTIME["resource_dir"] + "/" + relative + "/"
+        with patch.object(VERIFY.ASSETS, "java_specs", return_value=(relative, specs)):
+            for defect in [None, "missing", "corrupt", "extra"]:
+                self.write_bundle()
+                with zipfile.ZipFile(self.path, "a") as archive:
+                    for name, data in payloads.items():
+                        if defect == "missing" and name == "fluids.json":
+                            continue
+                        if defect == "corrupt" and name == "client.jar":
+                            data = bytes([data[0] ^ 1]) + data[1:]
+                        archive.writestr(java_prefix + name, data)
+                    if defect == "extra":
+                        archive.writestr(java_prefix + "credentials.json", b"not a runtime input")
+                if defect:
+                    with self.assertRaisesRegex(ValueError, "Java|java"):
+                        VERIFY.verify(self.path, require_assets=True, require_java=True)
+                else:
+                    result = VERIFY.verify(self.path, require_assets=True, require_java=True)
+                    self.assertEqual(result["java_files_verified"], 6)
+                    self.assertEqual(result["sha256"], hashlib.sha256(self.path.read_bytes()).hexdigest())
+                    self.assertFalse(result["launch_tested"])
 
     def test_single_scene_device_bundle_reports_identity_without_claiming_launch(self):
         self.write_bundle()

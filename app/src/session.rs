@@ -769,6 +769,7 @@ fn follow_transfer(
         cache,
         JoinIntent {
             edition: launcher::menu::ServerEdition::Bedrock,
+            java_account: None,
             address: address.clone(),
             auth_cache,
             local_world: false,

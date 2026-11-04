@@ -7,13 +7,24 @@ use java_protocol::{
 use std::{path::PathBuf, time::Duration};
 
 /// Uses the fork's public OAuth application configuration, never an upstream borrowed client ID.
-pub async fn prepare(address: String, generation: u64, root: PathBuf) -> Result<Options, String> {
+pub async fn prepare(
+    address: String,
+    generation: u64,
+    root: PathBuf,
+    selected: auth::Profile,
+) -> Result<Options, String> {
     let address: Address = address
         .parse()
         .map_err(|e: java_protocol::ProtocolError| e.to_string())?;
     let load_root = root.clone();
     let (client_id, account) = tokio::task::spawn_blocking(move || {
-        let account = launcher::java_accounts::active(&load_root).map_err(|_| {
+        let active = launcher::java_accounts::active_id(&load_root).map_err(|_| {
+            "A separate Minecraft Java sign-in is required. Open Accounts → Java Accounts. The Bedrock/Xbox account does not sign you into Java servers.".to_owned()
+        })?;
+        if active != selected.id {
+            return Err("Java account changed before this join; select an account and retry".to_owned());
+        }
+        let account = launcher::java_accounts::load_id(&load_root, selected.id).map_err(|_| {
             "A separate Minecraft Java sign-in is required. Open Accounts → Java Accounts. The Bedrock/Xbox account does not sign you into Java servers.".to_owned()
         })?;
         let client = crate::java_accounts::configuration(&load_root)?;
@@ -189,10 +200,11 @@ pub async fn run(
     address: String,
     generation: u64,
     root: PathBuf,
+    selected: auth::Profile,
     events: tokio::sync::mpsc::Sender<java_protocol::session::Envelope>,
     commands: tokio::sync::mpsc::Receiver<java_protocol::session::Command>,
 ) -> Result<(), String> {
-    let mut options = prepare(address, generation, root.clone()).await?;
+    let mut options = prepare(address, generation, root.clone(), selected).await?;
     options.commands = Some(commands);
     let id = match &options.identity {
         Identity::Online(account) => account.profile.id,
@@ -231,7 +243,7 @@ mod account_preflight_tests {
     async fn valid_account_prepares_join_without_requiring_status_or_dns() {
         let root = tempfile::tempdir().unwrap();
         let client_id = "00000000-0000-4000-8000-000000000001";
-        let account = serde_json::from_value(serde_json::json!({
+        let account: java_protocol::auth::Account = serde_json::from_value(serde_json::json!({
             "profile": {"id": "00000000-0000-4000-8000-000000000002", "name": "Fixture"},
             "access_token": "fixture-only", "refresh_token": "fixture-only",
             "expires_at": u64::MAX, "client_id": client_id
@@ -243,9 +255,14 @@ mod account_preflight_tests {
             serde_json::to_vec(&serde_json::json!({"client_id": client_id})).unwrap(),
         )
         .unwrap();
-        let options = super::prepare("unresolvable.invalid:25566".into(), 7, root.path().into())
-            .await
-            .unwrap();
+        let options = super::prepare(
+            "unresolvable.invalid:25566".into(),
+            7,
+            root.path().into(),
+            account.profile.clone(),
+        )
+        .await
+        .unwrap();
         assert_eq!(options.address.host, "unresolvable.invalid");
         assert_eq!(options.address.port, 25566);
         assert_eq!(options.generation, 7);
@@ -255,9 +272,70 @@ mod account_preflight_tests {
         ));
     }
     #[tokio::test]
+    async fn queued_join_cannot_adopt_a_newly_selected_account_or_fall_back_after_logout() {
+        let root = tempfile::tempdir().unwrap();
+        let fixture = |id: &str, name: &str| -> java_protocol::auth::Account {
+            serde_json::from_value(serde_json::json!({
+                "profile":{"id":id,"name":name}, "expires_at":u64::MAX,
+                "client_id":launcher::java_accounts::PUBLIC_CLIENT_ID,
+                "access_token":"fixture-only", "refresh_token":"fixture-only"
+            }))
+            .unwrap()
+        };
+        let first = fixture("00000000-0000-4000-8000-000000000002", "First");
+        let second = fixture("00000000-0000-4000-8000-000000000003", "Second");
+        launcher::java_accounts::save(root.path(), &first).unwrap();
+        let requested = first.profile.clone();
+        launcher::java_accounts::save(root.path(), &second).unwrap();
+        let result = super::prepare(
+            "unresolvable.invalid".into(),
+            1,
+            root.path().into(),
+            requested.clone(),
+        )
+        .await;
+        assert!(matches!(result, Err(ref message) if message.contains("changed before this join")));
+        assert_eq!(
+            launcher::java_accounts::active_id(root.path()).unwrap(),
+            second.profile.id
+        );
+        launcher::java_accounts::logout(root.path(), first.profile.id).unwrap();
+        let result = super::prepare(
+            "unresolvable.invalid".into(),
+            2,
+            root.path().into(),
+            requested,
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "removed account must not silently join as the remaining one"
+        );
+        let options = super::prepare(
+            "unresolvable.invalid".into(),
+            3,
+            root.path().into(),
+            second.profile.clone(),
+        )
+        .await
+        .unwrap();
+        assert!(
+            matches!(options.identity, java_protocol::session::Identity::Online(account) if account.profile == second.profile)
+        );
+    }
+    #[tokio::test]
     async fn signed_out_join_explains_java_account_before_discovery_or_app_config() {
         let root = tempfile::tempdir().unwrap();
-        let result = super::prepare("unresolvable.invalid".into(), 1, root.path().into()).await;
+        let result = super::prepare(
+            "unresolvable.invalid".into(),
+            1,
+            root.path().into(),
+            java_protocol::auth::Profile {
+                id: "00000000-0000-4000-8000-000000000002".parse().unwrap(),
+                name: "Fixture".into(),
+            },
+        )
+        .await;
         let error = match result {
             Ok(_) => panic!("signed-out join must not prepare a connection"),
             Err(error) => error,

@@ -11,7 +11,9 @@ pub(super) fn connect(
     menu.show_connecting();
     session.controller.connecting = true;
     #[cfg(feature = "developer-control")]
-    if let Ok(name) = std::env::var("CINNABAR_JAVA_OFFLINE_FIXTURE") {
+    if intent.java_account.is_none()
+        && let Ok(name) = std::env::var("CINNABAR_JAVA_OFFLINE_FIXTURE")
+    {
         match intent.address.parse() {
             Ok(address) => {
                 session.controller.java = Some(
@@ -27,6 +29,13 @@ pub(super) fn connect(
         }
         return;
     }
+    let Some(selected) = intent.java_account.map(|account| account.profile) else {
+        session.controller.fail_join(
+            menu,
+            "Select a Minecraft Java account before joining".into(),
+        );
+        return;
+    };
     let root = menu
         .layout()
         .auth_cache()
@@ -35,7 +44,7 @@ pub(super) fn connect(
         .join("java");
     session.controller.java = Some(
         client_session::java::Session::run(move |events, commands| {
-            launcher_host::java::run(intent.address, generation, root, events, commands)
+            launcher_host::java::run(intent.address, generation, root, selected, events, commands)
         })
         .with_report_directory(menu.layout().log_dir()),
     );

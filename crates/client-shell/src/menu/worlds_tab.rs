@@ -515,6 +515,7 @@ impl MenuRuntime {
         self.local_ui.hosted = hosted;
         self.intents.join = Some(client_state::JoinIntent {
             edition: launcher::menu::ServerEdition::Bedrock,
+            java_account: None,
             address: name,
             auth_cache: None,
             local_world: true,

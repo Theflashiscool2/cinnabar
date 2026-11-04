@@ -63,7 +63,7 @@
   <!-- Documents/ holds config, logs and shader packs; these expose it in the Files app. -->
   <key>UIFileSharingEnabled</key><true/>
   <key>LSSupportsOpeningDocumentsInPlace</key><true/>
-  <key>NSLocalNetworkUsageDescription</key><string>@PRODUCT_NAME@ connects to Bedrock servers on your local network.</string>
+  <key>NSLocalNetworkUsageDescription</key><string>@PRODUCT_NAME@ connects to Java and Bedrock servers on your local network.</string>
   <key>ITSAppUsesNonExemptEncryption</key><false/>
   <!-- iOS appends @2x/@3x and ~ipad to these base names when it picks an icon file. -->
   <key>CFBundleIcons</key>

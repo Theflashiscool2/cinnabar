@@ -27,6 +27,7 @@ pub(super) fn attempt_connect(
     bridge::join_profile::JoinProfile::current().mark("session_controller");
     let JoinIntent {
         edition: _,
+        java_account: _,
         address,
         auth_cache,
         local_world,
@@ -63,6 +64,7 @@ pub(super) fn attempt_connect(
     );
     session.controller.pending = Some(JoinIntent {
         edition: launcher::menu::ServerEdition::Bedrock,
+        java_account: None,
         address,
         auth_cache,
         local_world,
@@ -79,6 +81,7 @@ fn provision_join(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
     };
     let JoinIntent {
         edition: _,
+        java_account: _,
         address,
         auth_cache,
         local_world,

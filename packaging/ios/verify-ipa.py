@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import plistlib
@@ -13,9 +14,12 @@ import zipfile
 
 
 ROOT = Path(__file__).resolve().parents[2]
+_spec = importlib.util.spec_from_file_location("ios_asset_inputs", Path(__file__).with_name("add-assets.py"))
+ASSETS = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(ASSETS)
 
 
-def verify(path, require_assets=False):
+def verify(path, require_assets=False, require_java=False):
     """Require scene metadata, an arm64 device executable and the packaged startup resources."""
     runtime = json.loads((ROOT / "packaging/ios/runtime.json").read_text())
     with zipfile.ZipFile(path) as archive:
@@ -84,12 +88,31 @@ def verify(path, require_assets=False):
         if require_assets and not any(name.startswith(resources + "assets/compiled/")
                                       and not name.endswith("/") for name in names):
             raise ValueError("no compiled carriers; inject local assets before installing")
+        java_verified = 0
+        if require_java:
+            relative, specs = ASSETS.java_specs()
+            java_prefix = resources + relative + "/"
+            expected_files = {java_prefix + name for name, _ in specs}
+            actual_files = {name for name in names if name.startswith(java_prefix) and not name.endswith("/")}
+            if actual_files != expected_files:
+                raise ValueError("missing or unexpected pinned Java runtime files in app resource root")
+            for name, expected in specs:
+                entry = java_prefix + name
+                if archive.getinfo(entry).file_size != expected["bytes"]:
+                    raise ValueError(f"{name}: packaged Java size mismatch")
+                digest = hashlib.sha256()
+                with archive.open(entry) as source:
+                    while chunk := source.read(1 << 20):
+                        digest.update(chunk)
+                if digest.hexdigest() != expected["sha256"]:
+                    raise ValueError(f"{name}: packaged Java SHA-256 mismatch")
+                java_verified += 1
     hasher = hashlib.sha256()
     with path.open("rb") as stream:
         while chunk := stream.read(1 << 20):
             hasher.update(chunk)
     digest = hasher.hexdigest()
-    return {"ipa": str(path), "sha256": digest, "source_commit": commit,
+    return {"java_files_verified": java_verified, "ipa": str(path), "sha256": digest, "source_commit": commit,
             "version": info.get("CFBundleShortVersionString"), "build": info["CFBundleVersion"],
             "scene": scenes[0]["UISceneConfigurationName"], "platform": "iPhoneOS arm64",
             "launch_tested": False, "signing": "not assessed; sign with your installation tool"}
@@ -99,9 +122,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("ipa", type=Path)
     parser.add_argument("--require-assets", action="store_true")
+    parser.add_argument("--require-java", action="store_true", help="hash-verify all pinned Java runtime files inside the actual app archive")
     args = parser.parse_args()
     try:
-        print(json.dumps(verify(args.ipa, args.require_assets), indent=2))
+        print(json.dumps(verify(args.ipa, args.require_assets, args.require_java), indent=2))
     except (ValueError, KeyError, OSError, zipfile.BadZipFile) as error:
         print(f"verify-ipa: {error}", file=sys.stderr)
         return 1

@@ -169,6 +169,7 @@ impl MenuRuntime {
         self.remember_retry_target(&address, None, false);
         self.intents.join = Some(client_state::JoinIntent {
             edition: launcher::menu::ServerEdition::Bedrock,
+            java_account: None,
             address,
             auth_cache: None,
             local_world: false,

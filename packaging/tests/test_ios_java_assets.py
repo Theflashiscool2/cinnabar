@@ -15,6 +15,27 @@ spec.loader.exec_module(module)
 
 
 class JavaAssetsTests(unittest.TestCase):
+    def test_preflight_checks_hashes_without_creating_an_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for directory in [module.COMPILED, module.installed_pack_dir("resource_pack")]:
+                folder = root / directory
+                folder.mkdir(parents=True)
+                (folder / "fixture").write_bytes(b"shared")
+            java = root / "java"
+            java.mkdir()
+            (java / "client.jar").write_bytes(b"reference")
+            spec = {"bytes": 9, "sha256": hashlib.sha256(b"reference").hexdigest()}
+            with patch.object(module, "java_sources", return_value=("fixture", [("client.jar", spec)])):
+                result = module.check_inputs(root, java)
+                self.assertEqual(result["java_files_verified"], 1)
+                (java / "client.jar").write_bytes(b"corrupted")
+                with self.assertRaisesRegex(module.AssetError, "size/SHA-256"):
+                    module.check_inputs(root, java)
+            self.assertFalse(list(root.glob("*.ipa")))
+            self.assertEqual(module.main(["--check-inputs", "--local", str(root)]), 0)
+            self.assertEqual(module.main(["--check-inputs", "--local", str(root), "--java-assets", str(root / "missing")]), 1)
+
     def test_atomic_verified_injection_excludes_private_inputs_and_replaces_stale_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

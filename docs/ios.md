@@ -57,8 +57,8 @@ After rebuilding with the existing workflow, reuse the already compiled assets:
 
 ```sh
 CINNABAR_IOS_PROFILE=play bash packaging/ios/build-ipa.sh
-python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.10-unsigned.ipa
-python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.10-assets.ipa --require-assets
+python3 packaging/ios/add-assets.py target/ios/Cinnabar-0.1.31-build31.11-unsigned.ipa
+python3 packaging/ios/verify-ipa.py target/ios/Cinnabar-0.1.31-build31.11-assets.ipa --require-assets
 ```
 
 The verifier inspects the archived plist, device Mach-O header, single-scene
@@ -132,6 +132,9 @@ keyboard and mouse work only as far as winit's UIKit backend delivers their inpu
   device-code URL and code in a browser manually.
 
 ## Native Java Edition in this fork
+
+Use the [Mac build and authenticated Java test handoff](ios-java-test.md) for the
+current account-bound join path, complete runtime injection and archive verification.
 
 The iPhone runtime observations above describe upstream's Bedrock path. They do not
 qualify native Java networking, authentication, terrain, touch gameplay or Hypixel.

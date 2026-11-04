@@ -908,6 +908,7 @@ impl MenuRuntime {
         self.local_world_joined = false;
         self.intents.join = Some(JoinIntent {
             edition: launcher::menu::ServerEdition::Bedrock,
+            java_account: None,
             address,
             auth_cache,
             local_world: false,

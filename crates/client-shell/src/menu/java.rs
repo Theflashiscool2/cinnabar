@@ -47,16 +47,24 @@ impl MenuRuntime {
             self.request_connect(address);
             return;
         }
-        if !self
+        let selected = self
             .java_accounts
             .as_ref()
-            .is_some_and(|manager| manager.ready_for_join())
-        {
+            .filter(|manager| manager.ready_for_join())
+            .and_then(|manager| {
+                manager
+                    .view
+                    .accounts
+                    .iter()
+                    .find(|account| Some(account.profile.id) == manager.view.selected)
+            })
+            .cloned();
+        let Some(selected) = selected else {
             self.java_pending_server = Some(address);
             self.java_account_action(launcher::java_accounts::Action::Open);
             return;
-        }
-        self.queue_java_join(address);
+        };
+        self.queue_java_join(address, Some(selected));
     }
 
     /// Explicit developer fixture entry; no stored account is read or replaced.
@@ -68,11 +76,15 @@ impl MenuRuntime {
         if !socket.ip().is_loopback() {
             return Err("Java fixture requires loopback".into());
         }
-        self.queue_java_join(address);
+        self.queue_java_join(address, None);
         Ok(())
     }
 
-    fn queue_java_join(&mut self, address: String) {
+    fn queue_java_join(
+        &mut self,
+        address: String,
+        java_account: Option<launcher::java_accounts::Summary>,
+    ) {
         let edition = launcher::menu::ServerEdition::Java;
         self.feeds.java_diagnostic = Some("Preparing Java authentication".to_owned());
         self.local_world_joined = false;
@@ -87,6 +99,7 @@ impl MenuRuntime {
         self.intents.join = Some(JoinIntent {
             address,
             edition,
+            java_account,
             auth_cache: None,
             local_world: false,
         });
@@ -185,6 +198,17 @@ mod tests {
             .take_join_intent()
             .expect("Java join without Bedrock account");
         assert_eq!(intent.edition, ServerEdition::Java);
+        let selected = intent
+            .java_account
+            .as_ref()
+            .expect("Join captures the selected Java profile")
+            .clone();
+        menu.java_accounts.as_mut().unwrap().view.selected = None;
+        assert_eq!(
+            intent.java_account.unwrap(),
+            selected,
+            "later UI changes cannot retarget an already queued join"
+        );
         assert!(intent.auth_cache.is_none());
         assert_eq!(
             menu.retry_target.as_ref().unwrap().edition,

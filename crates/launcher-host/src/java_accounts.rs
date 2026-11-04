@@ -141,6 +141,13 @@ fn sign_in_url(prompt: &auth::DevicePrompt) -> String {
     launcher::menu::sign_in::device_code_url(&prompt.user_code)
         .unwrap_or_else(|| prompt.verification_uri.clone())
 }
+fn credential_error(error: std::io::Error) -> String {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        "This Java account has no saved credentials. Use Add / sign in again.".into()
+    } else {
+        format!("Could not access this Java account's saved credentials: {error}")
+    }
+}
 fn snapshot(root: &std::path::Path) -> View {
     let mut view = View::default();
     match store::list(root) {
@@ -253,7 +260,7 @@ async fn run(
                                 tracing::info!(target: "java_auth", operation = if action == Action::Refresh { "refresh" } else { "sign-in" }, "Java account operation started");
                                 let old = if action == Action::Refresh {
                                     Some(target.as_ref().ok_or("No Java account selected".to_owned())
-                                        .and_then(|profile| store::load_id(&root, profile.id).map_err(|e| e.to_string())))
+                                        .and_then(|profile| store::load_id(&root, profile.id).map_err(credential_error)))
                                 } else { None };
                                 view.busy = true; view.ready = false;
                                 view.message = "Signing in to Minecraft Java…".into();
@@ -279,7 +286,7 @@ async fn run(
                         }
                     }
                     Action::Select(_) => target.ok_or("Java account no longer exists".to_owned())
-                        .and_then(|account| store::select(&root, account.id).map_err(|e| e.to_string())),
+                        .and_then(|account| store::select(&root, account.id).map_err(credential_error)),
                     Action::Remove => target.ok_or("No Java account selected".to_owned())
                         .and_then(|account| store::logout(&root, account.id).map_err(|e| e.to_string())),
                     _ => Ok(()),
@@ -328,6 +335,37 @@ mod tests {
         assert_eq!(super::sign_in_url(&prompt), prompt.verification_uri);
     }
     use super::*;
+    #[test]
+    #[cfg(not(target_os = "ios"))]
+    fn public_profile_without_credentials_stays_signed_out_with_actionable_message() {
+        let root = tempfile::tempdir().unwrap();
+        let id = "00000000-0000-4000-8000-000000000002";
+        std::fs::write(
+            root.path().join(format!("{id}.profile.json")),
+            serde_json::to_vec(&serde_json::json!({
+                "profile": {"id": id, "name": "Missing credentials"}, "expires_at": 0
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let mut manager = Manager::new(root.path().into());
+        manager.request(Action::Open);
+        settle(&mut manager);
+        assert_eq!(manager.view.accounts.len(), 1);
+        assert!(manager.view.labels[0].ends_with("needs sign-in"));
+        manager.request(Action::Select(0));
+        settle(&mut manager);
+        assert_eq!(
+            manager.view.message,
+            "This Java account has no saved credentials. Use Add / sign in again."
+        );
+        assert!(!manager.ready_for_join());
+        assert!(store::active_id(root.path()).is_err());
+        manager.request(Action::Cancel);
+        settle(&mut manager);
+        assert!(!manager.view.open);
+        assert_eq!(store::list(root.path()).unwrap().len(), 1);
+    }
     #[test]
     fn public_application_setup_persists_without_account_credentials() {
         let root = tempfile::tempdir().unwrap();
@@ -403,6 +441,41 @@ mod tests {
         assert_eq!(manager.view.accounts[0].profile.id, kept);
         assert!(manager.view.selected.is_none() && !manager.view.ready);
         assert!(store::load_id(root.path(), kept).is_ok());
+    }
+    #[test]
+    #[cfg(not(target_os = "ios"))]
+    fn actions_follow_displayed_identity_when_another_process_reorders_or_selects_accounts() {
+        let root = tempfile::tempdir().unwrap();
+        let fixture = |id: &str, name: &str| -> auth::Account {
+            serde_json::from_value(serde_json::json!({
+                "profile":{"id":id,"name":name},"expires_at":u64::MAX,
+                "client_id":store::PUBLIC_CLIENT_ID,"access_token":"fixture-only","refresh_token":"fixture-only"
+            })).unwrap()
+        };
+        let first = fixture("00000000-0000-4000-8000-000000000002", "Alpha");
+        let second = fixture("00000000-0000-4000-8000-000000000003", "Beta");
+        store::save(root.path(), &first).unwrap();
+        store::save(root.path(), &second).unwrap();
+        let mut manager = Manager::new(root.path().into());
+        manager.request(Action::Open);
+        settle(&mut manager);
+        assert_eq!(manager.view.accounts[0].profile.id, first.profile.id);
+        // Disk order changes while the displayed list still identifies Alpha at row zero.
+        store::save(
+            root.path(),
+            &fixture("00000000-0000-4000-8000-000000000004", "0-inserted"),
+        )
+        .unwrap();
+        manager.request(Action::Select(0));
+        settle(&mut manager);
+        assert_eq!(store::active_id(root.path()).unwrap(), first.profile.id);
+        // Removal also follows the displayed identity, preserving a later external selection.
+        store::select(root.path(), second.profile.id).unwrap();
+        manager.request(Action::Remove);
+        settle(&mut manager);
+        assert_eq!(store::active_id(root.path()).unwrap(), second.profile.id);
+        assert!(store::load_id(root.path(), first.profile.id).is_err());
+        assert!(store::load_id(root.path(), second.profile.id).is_ok());
     }
     fn settle(manager: &mut Manager) {
         test_time::eventually("Java account worker result", || {

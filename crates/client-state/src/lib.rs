@@ -93,6 +93,8 @@ pub struct ConsentInput(pub bool);
 #[derive(Debug)]
 pub struct JoinIntent {
     pub edition: launcher::menu::ServerEdition,
+    /// Public Java profile selected when Join was requested; never reusable credentials.
+    pub java_account: Option<launcher::java_accounts::Summary>,
     pub address: String,
     pub auth_cache: Option<std::path::PathBuf>,
     /// Joins the launcher core's opened local world instead of the address.
