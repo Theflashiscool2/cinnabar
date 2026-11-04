@@ -14,6 +14,7 @@ impl Movement {
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"ticks":self.0.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
             "pending_frame":self.0.pending().is_some(),"on_ground":self.0.body.on_ground,
+            "last_climbable_position":self.0.body.last_climbable_position,
             "swimming":self.0.body.swimming,"low_profile":self.0.body.low_profile,
             "eye_height":self.0.body.eye_height(1.),
             "water_height":self.0.body.water_height,"lava_height":self.0.body.lava_height,

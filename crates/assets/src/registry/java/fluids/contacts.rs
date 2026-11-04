@@ -46,15 +46,7 @@ pub fn mask(registry: &BlockRegistry, state: u32) -> Option<u8> {
     if registry.len() != facts.report.states {
         return None;
     }
-    // Compare bytes without formatting/allocating on the per-cell query path.
-    let digest = registry.digest();
-    let hash = facts.report.blocks_sha256.as_bytes();
-    const HEX: &[u8] = b"0123456789abcdef";
-    if hash.len() != 64
-        || digest.iter().enumerate().any(|(i, n)| {
-            hash[i * 2] != HEX[(n >> 4) as usize] || hash[i * 2 + 1] != HEX[(n & 15) as usize]
-        })
-    {
+    if !registry.matches_sha256(&facts.report.blocks_sha256) {
         return None;
     }
     facts.masks.get(state as usize).copied()

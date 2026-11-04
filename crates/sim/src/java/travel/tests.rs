@@ -1,4 +1,5 @@
 use super::*;
+mod climbing;
 mod current_reference;
 mod liquid;
 mod swimming;

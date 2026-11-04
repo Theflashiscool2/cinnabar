@@ -5,6 +5,15 @@
 use assets::registry::java::physics::{Bounds, Collision, Table};
 use world::java::Terrain;
 
+mod scaffolding;
+
+/// Player-dependent shape selection uses the original feet position, not the sweep hull.
+#[derive(Clone, Copy)]
+pub struct PlayerContext {
+    pub bottom: f64,
+    pub descending: bool,
+}
+
 const CONTACT: f64 = 1.0e-7;
 /// Explicit foreground-work budget; exceeding it is an incomplete query, never empty terrain.
 pub(super) const MAX_QUERY_CELLS: u64 = 32768;
@@ -37,6 +46,29 @@ pub fn collect(
     session: u64,
     epoch: u64,
     region: Bounds,
+) -> Result<Query, QueryError> {
+    collect_with_context(terrain, physics, session, epoch, region, None)
+}
+
+pub fn collect_player(
+    terrain: &Terrain,
+    physics: &Table,
+    scope: (u64, u64),
+    region: Bounds,
+    context: PlayerContext,
+) -> Result<Query, QueryError> {
+    if !context.bottom.is_finite() {
+        return Err(QueryError::Bounds);
+    }
+    collect_with_context(terrain, physics, scope.0, scope.1, region, Some(context))
+}
+fn collect_with_context(
+    terrain: &Terrain,
+    physics: &Table,
+    session: u64,
+    epoch: u64,
+    region: Bounds,
+    context: Option<PlayerContext>,
 ) -> Result<Query, QueryError> {
     let dimension = terrain
         .dimension()
@@ -90,9 +122,26 @@ pub fn collect(
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
                 match &state.collision {
                     Collision::Dynamic => {
-                        let shape = super::piston::collision::shape(terrain, physics, position)
-                            .ok_or(QueryError::Dynamic { id, position })?;
-                        for bounds in shape {
+                        let scaffold = physics.registry().filter(|r| {
+                            assets::registry::java::physics::climbing::kind(r, id)
+                                == Some(
+                                    assets::registry::java::physics::climbing::Kind::Scaffolding,
+                                )
+                        });
+                        let shape: std::borrow::Cow<'_, [Bounds]> = if let Some(registry) = scaffold
+                        {
+                            let context = context.ok_or(QueryError::Dynamic { id, position })?;
+                            std::borrow::Cow::Borrowed(
+                                scaffolding::shape(registry, id, position, context)
+                                    .ok_or(QueryError::Dynamic { id, position })?,
+                            )
+                        } else {
+                            std::borrow::Cow::Owned(
+                                super::piston::collision::shape(terrain, physics, position)
+                                    .ok_or(QueryError::Dynamic { id, position })?,
+                            )
+                        };
+                        for &bounds in shape.iter() {
                             let bounds = translated(bounds, position.map(f64::from));
                             if intersects(bounds, region) {
                                 boxes.push(bounds);
@@ -100,8 +149,8 @@ pub fn collect(
                         }
                     }
                     Collision::Static(shape) => {
-                        for bounds in shape {
-                            let bounds = translated(*bounds, position.map(f64::from));
+                        for &bounds in shape.iter() {
+                            let bounds = translated(bounds, position.map(f64::from));
                             if intersects(bounds, region) {
                                 boxes.push(bounds);
                             }

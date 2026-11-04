@@ -2,6 +2,7 @@
 //!
 //! Entity.getInputVector, LivingEntity.aiStep/travelInAir and Player edge protection supply
 //! the observable rules. Context-dependent block callbacks remain explicit gaps.
+mod climbing;
 mod liquid;
 mod swimming;
 use super::collision::{self, QueryError};
@@ -34,6 +35,7 @@ pub struct Body {
     /// Native swimming flag, separate from the collision pose retained under low ceilings.
     pub swimming: bool,
     pub low_profile: bool,
+    pub last_climbable_position: Option<[i32; 3]>,
     eyes_in_water: bool,
     pub fall_distance: f64,
     pub water_height: f64,
@@ -61,7 +63,7 @@ impl Body {
     }
 }
 #[derive(Clone, Copy)]
-pub struct Parameters {
+pub struct Parameters<'a> {
     pub speed: f32,
     pub sprint_speed: f32,
     pub friction_modifier: f32,
@@ -75,6 +77,8 @@ pub struct Parameters {
     pub water_movement_efficiency: f32,
     pub fast_lava: bool,
     pub may_fly: bool,
+    /// Current server block-tag members, never client fixture defaults.
+    pub climbable: &'a [i32],
 }
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -109,7 +113,7 @@ pub fn step(
     motion: &mut Motion,
     body: &mut Body,
     input: Input,
-    p: Parameters,
+    p: Parameters<'_>,
     terrain: &Terrain,
     physics: &Table,
     scope: (u64, u64),
@@ -149,14 +153,28 @@ pub fn step(
         && (body.swimming || (body.eyes_in_water && cells.water_at(next.position)?));
     next_body.eyes_in_water = cells.water_at_eye(next.position, body.eye_height(p.scale))?;
     let standing = bounds(next.position, false, p.scale);
-    let nearby = collision::collect(terrain, physics, scope.0, scope.1, standing)?;
+    let nearby = collision::collect_player(
+        terrain,
+        physics,
+        scope,
+        standing,
+        climbing::context(next.position, input.crouch),
+    )?;
     let blocked = nearby
         .boxes
         .iter()
         .any(|b| collision::intersects(standing, *b));
     next_body.crouched = !next_body.swimming
         && (input.crouch || blocked)
-        && swimming::fits(next.position, false, true, p.scale, terrain, physics, scope)?;
+        && swimming::fits(
+            next.position,
+            (false, true),
+            p.scale,
+            terrain,
+            physics,
+            scope,
+            input.crouch,
+        )?;
     next_body.sprinting = input.sprint
         && input.forward > 0.
         && (!next_body.crouched || body.eyes_in_water)
@@ -282,10 +300,24 @@ pub fn step(
     for (v, a) in next.velocity.iter_mut().zip(acceleration) {
         *v += a;
     }
+    if !wet && climbing::at(next.position, &mut next_body, p.climbable, terrain, physics)? {
+        next_body.fall_distance = 0.;
+        climbing::clamp(
+            &mut next.velocity,
+            input.crouch,
+            climbing::is_scaffolding(next.position, terrain, physics)?,
+        );
+    }
     let mut sweep = collision::expanded(shape, next.velocity);
     sweep.max[1] += f64::from(p.step_height);
     sweep.min[1] -= f64::from(p.step_height) + 1.0e-7;
-    let colliders = collision::collect(terrain, physics, scope.0, scope.1, sweep)?;
+    let colliders = collision::collect_player(
+        terrain,
+        physics,
+        scope,
+        sweep,
+        climbing::context(next.position, input.crouch),
+    )?;
     let was_falling = next.velocity[1] <= 0.;
     let old_y = next.position[1];
     let desired = if input.crouch && next.velocity[1] <= 0. {
@@ -327,6 +359,12 @@ pub fn step(
     }
     if desired[1] != actual[1] {
         next.velocity[1] = 0.;
+    }
+    if ((!wet && (next_body.horizontal_collision || input.jump))
+        || (contact.water > 0. && next_body.horizontal_collision))
+        && climbing::at(next.position, &mut next_body, p.climbable, terrain, physics)?
+    {
+        next.velocity[1] = 0.2;
     }
     let feet = surface(terrain, physics, next.position, -0.5)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
@@ -377,7 +415,13 @@ pub fn step(
                     next.velocity[2],
                 ],
             );
-            let query = collision::collect(terrain, physics, scope.0, scope.1, probe)?;
+            let query = collision::collect_player(
+                terrain,
+                physics,
+                scope,
+                probe,
+                climbing::context(next.position, input.crouch),
+            )?;
             if query.boxes.is_empty() && !cells.contains_liquid(probe)? {
                 next.velocity[1] = f64::from(0.3_f32);
             }

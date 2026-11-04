@@ -4,16 +4,16 @@ use super::*;
 
 pub(super) fn fits(
     position: [f64; 3],
-    low: bool,
-    crouched: bool,
+    pose: (bool, bool),
     scale: f32,
     terrain: &Terrain,
     physics: &Table,
     scope: (u64, u64),
+    descending: bool,
 ) -> Result<bool, Error> {
     let mut shape = Body {
-        low_profile: low,
-        crouched,
+        low_profile: pose.0,
+        crouched: pose.1,
         ..Default::default()
     }
     .bounds(position, scale);
@@ -21,7 +21,13 @@ pub(super) fn fits(
         shape.min[i] += 1.0e-7;
         shape.max[i] -= 1.0e-7;
     }
-    let query = collision::collect(terrain, physics, scope.0, scope.1, shape)?;
+    let query = collision::collect_player(
+        terrain,
+        physics,
+        scope,
+        shape,
+        super::climbing::context(position, descending),
+    )?;
     Ok(!query.boxes.iter().any(|b| collision::intersects(shape, *b)))
 }
 
@@ -34,15 +40,29 @@ pub(super) fn finish_pose(
     physics: &Table,
     scope: (u64, u64),
 ) -> Result<(), Error> {
-    if !fits(position, true, false, scale, terrain, physics, scope)? {
+    if !fits(
+        position,
+        (true, false),
+        scale,
+        terrain,
+        physics,
+        scope,
+        shift,
+    )? {
         return Ok(());
     }
     let desired = (body.swimming, !body.swimming && shift);
-    let pose = if fits(
-        position, desired.0, desired.1, scale, terrain, physics, scope,
-    )? {
+    let pose = if fits(position, desired, scale, terrain, physics, scope, shift)? {
         desired
-    } else if fits(position, false, true, scale, terrain, physics, scope)? {
+    } else if fits(
+        position,
+        (false, true),
+        scale,
+        terrain,
+        physics,
+        scope,
+        shift,
+    )? {
         (false, true)
     } else {
         (true, false)

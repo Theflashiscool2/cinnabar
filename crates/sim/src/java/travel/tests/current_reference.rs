@@ -4,13 +4,12 @@ use assets::registry::java::{BlockRegistry, fluids};
 use std::{path::PathBuf, sync::Arc};
 use world::java::{BlockStateId, Column, Light, Palette, Section};
 
-#[test]
-fn native_fluid_currents_match_official_runtime_and_negative_translation() {
+pub(super) fn native_physics() -> Option<Table> {
     let Some(root) = std::env::var_os("CINNABAR_JAVA_ASSETS").map(PathBuf::from) else {
         eprintln!(
             "SKIP native fluid current reference: CINNABAR_JAVA_ASSETS verified runtime missing"
         );
-        return;
+        return None;
     };
     let pin: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../../java-protocol/data/target.json"
@@ -39,6 +38,14 @@ fn native_fluid_currents_match_official_runtime_and_negative_translation() {
     )
     .unwrap();
     let physics = physics.with_fluids(Arc::new(fluid)).unwrap();
+    Some(physics)
+}
+
+#[test]
+fn native_fluid_currents_match_official_runtime_and_negative_translation() {
+    let Some(physics) = native_physics() else {
+        return;
+    };
     let cases: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../tests/fixtures/java-fluid-currents.json"
     ))

@@ -167,6 +167,15 @@ impl BlockRegistry {
     pub fn is_empty(&self) -> bool {
         self.states.is_empty()
     }
+    /// Compares a loaded report digest without rehashing or per-query allocation.
+    pub fn matches_sha256(&self, expected: &str) -> bool {
+        let hash = expected.as_bytes();
+        const HEX: &[u8] = b"0123456789abcdef";
+        hash.len() == 64
+            && self.digest.iter().enumerate().all(|(i, n)| {
+                hash[i * 2] == HEX[(n >> 4) as usize] && hash[i * 2 + 1] == HEX[(n & 15) as usize]
+            })
+    }
     pub fn digest(&self) -> [u8; 32] {
         self.digest
     }

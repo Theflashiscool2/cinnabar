@@ -60,7 +60,7 @@ pub(super) fn scene() -> (Terrain, Table) {
     );
     (terrain, table)
 }
-pub(super) fn parameters() -> Parameters {
+pub(super) fn parameters() -> Parameters<'static> {
     Parameters {
         speed: 0.1,
         sprint_speed: 0.13,
@@ -75,6 +75,7 @@ pub(super) fn parameters() -> Parameters {
         water_movement_efficiency: 0.,
         fast_lava: false,
         may_fly: false,
+        climbable: &[],
     }
 }
 

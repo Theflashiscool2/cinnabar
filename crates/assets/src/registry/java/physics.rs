@@ -1,4 +1,5 @@
 //! Java collision and surface facts exported from the pinned server, never from visual models.
+pub mod climbing;
 use super::source::Identifier;
 use sha2::{Digest, Sha256};
 

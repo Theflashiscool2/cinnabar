@@ -247,7 +247,7 @@ impl Controller {
     }
 }
 
-fn parameters(state: &WorldState) -> Result<Parameters, String> {
+fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
     let get = |name: &str| -> Result<&Attribute, String> {
         state
             .player_dynamics
@@ -267,6 +267,12 @@ fn parameters(state: &WorldState) -> Result<Parameters, String> {
         amount: f64::from(0.3_f32),
         operation: Operation::AddMultipliedTotal,
     });
+    let climbable = state
+        .bootstrap
+        .as_ref()
+        .and_then(|b| b.configuration.tags.get("minecraft:block"))
+        .and_then(|tags| tags.get("minecraft:climbable"))
+        .map_or(&[][..], Vec::as_slice);
     Ok(Parameters {
         speed: base_speed,
         sprint_speed: speed.value().map_err(str::to_owned)? as f32,
@@ -284,6 +290,7 @@ fn parameters(state: &WorldState) -> Result<Parameters, String> {
             .abilities
             .as_ref()
             .is_some_and(|a| a.may_fly),
+        climbable,
         fast_lava: state
             .fast_lava()?
             .unwrap_or_else(assets::registry::java::fluids::contacts::fast_lava_default),
