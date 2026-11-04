@@ -2,6 +2,7 @@
 //!
 //! Entity.getInputVector, LivingEntity.aiStep/travelInAir and Player edge protection supply
 //! the observable rules. Context-dependent block callbacks remain explicit gaps.
+mod bubbles;
 mod climbing;
 mod liquid;
 mod swimming;
@@ -374,6 +375,10 @@ pub fn step(
         .registry()
         .and_then(|r| terrain.block(cell).and_then(|id| r.state(id.0)))
         .is_some_and(|s| s.name.as_ref() == "minecraft:water");
+    let water_block = water_block
+        || terrain
+            .block(cell)
+            .is_some_and(|id| bubbles::is_column(physics, id.0));
     let surface_speed = if inside.speed_factor == 1. && !water_block {
         feet.speed_factor
     } else {
@@ -433,6 +438,16 @@ pub fn step(
     if !next.is_finite() {
         return Err(Error::Invalid);
     }
+    bubbles::apply(
+        motion.position,
+        desired,
+        &mut next,
+        &mut next_body,
+        travel_pose,
+        p.scale,
+        terrain,
+        physics,
+    )?;
     swimming::finish_pose(
         &mut next_body,
         next.position,
@@ -511,7 +526,11 @@ fn surface<'a>(
     ];
     let id = terrain.block(cell).ok_or(QueryError::Missing(cell))?.0;
     let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-    if state.special_callbacks || state.bounce_restitution != 0. {
+    if (state.special_callbacks
+        && !bubbles::is_column(physics, id)
+        && !bubbles::server_damage(physics, id))
+        || state.bounce_restitution != 0.
+    {
         return Err(Error::Unsupported {
             behavior: "special block movement callbacks",
             position: cell,
@@ -528,7 +547,10 @@ fn ensure_contacts(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<
                 let cell = [x, y, z];
                 let id = terrain.block(cell).ok_or(QueryError::Missing(cell))?.0;
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-                if state.special_callbacks {
+                if state.special_callbacks
+                    && !bubbles::is_column(physics, id)
+                    && !bubbles::server_damage(physics, id)
+                {
                     return Err(Error::Unsupported {
                         behavior: "special block contact behavior",
                         position: cell,

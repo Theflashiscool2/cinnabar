@@ -261,7 +261,10 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   evidence, including low-tunnel entry, drain/crawl, ceiling recovery, negative boundaries,
   pose-preserving corrections and reconnect. Native tag-driven ladder/trapdoor climbing and
   context-dependent scaffolding now also pass inspected Linux vanilla offline traversal,
-  support edits, boundaries, corrections and reconnect. Bubble callbacks, flight/mounts,
+  support edits, boundaries, corrections and reconnect. Ordered native bubble-column
+  impulses and server-owned magma damage also pass controlled graphical offline checks
+  for columns, source/roof/neighbor edits, boundaries and reconnect. Contextual bubble
+  ceilings, flight/mounts,
   broader movement/entity/effect behavior and iPhone/online acceptance remain open.
 - [x] Publish native pig hierarchies and registry-selected textures through the existing
   actor renderer, with off-frame asset preparation and scoped pose ownership. Linux

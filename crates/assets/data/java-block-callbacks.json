@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "game_version": "26.3",
+  "protocol": 777,
+  "states": 35723,
+  "blocks_sha256": "7a0de8aaf7b04d00c40b8ffdc4cfe75184cff2e821d336a020573201867105a4",
+  "bubble": [
+    "minecraft:bubble_column"
+  ],
+  "server_damage": [
+    "minecraft:magma_block"
+  ]
+}

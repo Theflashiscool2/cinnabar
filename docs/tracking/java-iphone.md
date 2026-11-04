@@ -31,3 +31,8 @@ establish iOS, physical-device, online-server or Hypixel acceptance. Asset prepa
 and Mac commands are in [the iOS guide](../ios.md#native-java-edition-in-this-fork).
 
 Player-head public profile/texture downloads have bounded parsing and cancellation fixtures but remain live-unvalidated under the current network policy. Local resource patches and native defaults were inspected in offline vanilla gameplay; these do not establish iPhone or Hypixel qualification.
+
+Native bubble-column travel additionally passes inspected Linux vanilla offline upward/downward,
+magma-floor, roof/source/neighbor edits, negative boundary, correction, reconnect and revisit
+checks. Dynamic ceiling shapes and bubble ambience remain incomplete. This is not iOS or
+Hypixel acceptance; no new IPA was produced.

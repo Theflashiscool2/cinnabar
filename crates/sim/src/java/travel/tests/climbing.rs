@@ -3,7 +3,7 @@ use assets::registry::java::{BlockRegistry, physics::climbing::Kind};
 use std::{collections::BTreeMap, sync::Arc};
 use world::java::{BiomeId, BlockStateId, Column, Dimension, Light, Palette, Section};
 
-fn id(r: &BlockRegistry, name: &str, props: &[(&str, &str)]) -> u32 {
+pub(super) fn id(r: &BlockRegistry, name: &str, props: &[(&str, &str)]) -> u32 {
     r.state_id(
         name,
         &props
@@ -13,7 +13,7 @@ fn id(r: &BlockRegistry, name: &str, props: &[(&str, &str)]) -> u32 {
     )
     .unwrap()
 }
-fn scene(center: [i32; 3]) -> Terrain {
+pub(super) fn scene(center: [i32; 3]) -> Terrain {
     let mut t = Terrain::default();
     t.begin(Dimension {
         session: 7,

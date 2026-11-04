@@ -1,4 +1,5 @@
 use super::*;
+mod bubbles;
 mod climbing;
 mod current_reference;
 mod liquid;

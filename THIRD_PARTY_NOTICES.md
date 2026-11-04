@@ -681,3 +681,11 @@ current, immersion and drag rules from the same MIT reference at
 `assets/licenses/Native-Java-Reference-MIT.txt`. Native Java 26.3 runtime probes
 independently verify the current vectors and contact facts; Cinnabar owns the
 authoritative terrain, bounded prediction, transport and renderer integration.
+
+## Native Java block contact traversal
+
+`crates/sim/src/java/collision/sweep.rs` adapts ordered box traversal from the same
+MIT reference (`horizon-core/src/geometry/sweep.rs` and `position/iter.rs`).
+Copyright and the full license remain in
+`assets/licenses/Native-Java-Reference-MIT.txt`. Version-matched native probes
+independently check visitation order; Cinnabar owns scoped terrain and effects.

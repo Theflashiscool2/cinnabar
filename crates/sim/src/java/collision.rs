@@ -6,6 +6,7 @@ use assets::registry::java::physics::{Bounds, Collision, Table};
 use world::java::Terrain;
 
 mod scaffolding;
+pub(crate) mod sweep;
 
 /// Player-dependent shape selection uses the original feet position, not the sweep hull.
 #[derive(Clone, Copy)]
