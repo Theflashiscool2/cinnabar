@@ -1,5 +1,6 @@
 use crate::chunk::*;
 use crate::device_settings::vertex_storage_buffers;
+use bevy::render::render_resource::CachedRenderPipelineId;
 
 #[cfg(test)]
 mod cutout_contact_tests;
@@ -33,8 +34,9 @@ pub(crate) struct ChunkPipeline {
     pub(in crate::chunk) compact: bool,
     pub(in crate::chunk) solid_variants: Variants<RenderPipeline, ChunkPipelineSpecializer>,
     pub(in crate::chunk) model_variants: Variants<RenderPipeline, ChunkPipelineSpecializer>,
-    /// Sorted transparent liquid and model draws, one pipeline so they never switch programs.
+    /// Hardware keeps one sorted liquid/model program; CPU variants retain the same ordering.
     pub(in crate::chunk) transparent_variants: Variants<RenderPipeline, ChunkPipelineSpecializer>,
+    software_transparent: Option<[Variants<RenderPipeline, ChunkPipelineSpecializer>; 2]>,
     pub(in crate::chunk) depth_liquid_variants: Variants<RenderPipeline, ChunkPipelineSpecializer>,
     pub(in crate::chunk) bind_group_layout: BindGroupLayoutDescriptor,
     pub(in crate::chunk) transparent_bind_group_layout: BindGroupLayoutDescriptor,
@@ -52,6 +54,18 @@ impl FromWorld for ChunkPipeline {
             transparent_descriptor,
             depth_liquid_descriptor,
         ] = descriptors::build(compact);
+        let software_transparent = world
+            .get_resource::<bevy::render::renderer::RenderAdapterInfo>()
+            .filter(|info| info.device_type == wgpu::DeviceType::Cpu)
+            .map(|_| {
+                ["model", "liquid"].map(|family| {
+                    let mut descriptor = transparent_descriptor.clone();
+                    descriptor.vertex.entry_point = Some(format!("vertex_{family}").into());
+                    descriptor.fragment.as_mut().unwrap().entry_point =
+                        Some(format!("fragment_{family}").into());
+                    Variants::new(ChunkPipelineSpecializer, descriptor)
+                })
+            });
         let bind_group_layout = descriptor.layout[0].clone();
         let transparent_bind_group_layout = transparent_descriptor.layout[0].clone();
         let unit_variants = [
@@ -63,6 +77,7 @@ impl FromWorld for ChunkPipeline {
         .map(|descriptor| Variants::new(ChunkPipelineSpecializer, unit_descriptor(descriptor)));
         Self {
             compact,
+            software_transparent,
             unit_variants,
             unit_supported: false,
             variants: Variants::new(ChunkPipelineSpecializer, descriptor),
@@ -73,6 +88,23 @@ impl FromWorld for ChunkPipeline {
             bind_group_layout,
             transparent_bind_group_layout,
         }
+    }
+}
+
+impl ChunkPipeline {
+    /// Exact family programs for CPU adapters; hardware keeps its single-program draw path.
+    pub(in crate::chunk) fn transparent_for_view(
+        &mut self,
+        cache: &PipelineCache,
+        key: ChunkPipelineKey,
+    ) -> Result<[CachedRenderPipelineId; 2], BevyError> {
+        if let Some([model, liquid]) = self.software_transparent.as_mut() {
+            return Ok([
+                model.specialize(cache, key)?,
+                liquid.specialize(cache, key)?,
+            ]);
+        }
+        Ok([self.transparent_variants.specialize(cache, key)?; 2])
     }
 }
 
@@ -625,10 +657,14 @@ impl crate::pipeline_warmup::PrewarmPipelines for ChunkPipeline {
             &mut self.variants,
             &mut self.solid_variants,
             &mut self.model_variants,
-            &mut self.transparent_variants,
             &mut self.depth_liquid_variants,
         ] {
             ids.push(variants.specialize(cache, key)?);
+        }
+        let transparent = self.transparent_for_view(cache, key)?;
+        ids.push(transparent[0]);
+        if transparent[1] != transparent[0] {
+            ids.push(transparent[1]);
         }
         if self.unit_supported && !view.enhanced {
             for variants in &mut self.unit_variants {

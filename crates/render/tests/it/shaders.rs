@@ -396,3 +396,71 @@ fn moving_block_vertices_share_valid_native_material_programs() {
         );
     }
 }
+
+#[test]
+fn cpu_transparent_entries_reach_only_their_real_family_program() {
+    fn calls(block: &naga::Block, out: &mut Vec<naga::Handle<naga::Function>>) {
+        for statement in block {
+            match statement {
+                naga::Statement::Call { function, .. } => out.push(*function),
+                naga::Statement::Block(block) => calls(block, out),
+                naga::Statement::If { accept, reject, .. } => {
+                    calls(accept, out);
+                    calls(reject, out);
+                }
+                naga::Statement::Switch { cases, .. } => {
+                    for case in cases {
+                        calls(&case.body, out);
+                    }
+                }
+                naga::Statement::Loop {
+                    body, continuing, ..
+                } => {
+                    calls(body, out);
+                    calls(continuing, out);
+                }
+                _ => {}
+            }
+        }
+    }
+    let source = shader_source::composed(include_str!("../../src/transparent_terrain.wesl"), &[]);
+    let module = naga::front::wgsl::parse_str(&source).unwrap();
+    naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    )
+    .validate(&module)
+    .expect("all transparent entry points validate");
+    for (entry, required, excluded) in [
+        ("vertex_liquid", "vertex_for_record", "model_vertex"),
+        ("vertex_model", "model_vertex", "vertex_for_record"),
+        ("fragment_liquid", "shade_liquid", "shade_blend"),
+        ("fragment_model", "shade_blend", "shade_liquid"),
+    ] {
+        let entry_point = module
+            .entry_points
+            .iter()
+            .find(|point| point.name == entry)
+            .unwrap();
+        let mut pending = Vec::new();
+        calls(&entry_point.function.body, &mut pending);
+        let mut seen = std::collections::HashSet::new();
+        let mut names = Vec::new();
+        while let Some(handle) = pending.pop() {
+            if !seen.insert(handle) {
+                continue;
+            }
+            let function = &module.functions[handle];
+            names.push(function.name.as_deref().unwrap_or_default());
+            calls(&function.body, &mut pending);
+        }
+        assert!(
+            names.iter().any(|name| name.ends_with(required)),
+            "{entry} lost its actual shader family: {names:?}"
+        );
+        assert!(
+            !names.iter().any(|name| name.ends_with(excluded)),
+            "{entry} still compiles the other family"
+        );
+    }
+}

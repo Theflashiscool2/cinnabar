@@ -25,7 +25,7 @@ No JVM, JIT, additional runtime client or new framework dependency was introduce
 | Player simulation/corrections | `sim/java`, `gameplay/java`, `client-world/java/player` | Pose receipts resolve relative fields before protocol acknowledgements |
 | Entities | Native entity lifetime/admission domain | Existing generation/epoch/network-ID incarnations |
 | Inventory/revisions | `inventory/java`, `client-world/java/inventory` | Existing server-authoritative model, scoped transaction receipts |
-| Input/action order | Existing semantic controls and session command channel | No independent tick loop or second action producer |
+| Input/action order | Existing semantic controls, loaned native movement controller and session command channel | Same20Hz tick owner on either the frame or service, never both; one ordered action channel |
 | Accounts/credentials | `launcher/java_accounts`, launcher host, platform credential backend | Selected Java account only; iOS Keychain, no implicit offline fallback |
 
 ## Active integration slice
@@ -34,6 +34,17 @@ Previously, awaiting an admitted teleport stopped reading every play packet and
 aborted after ten seconds. Rendering latency could therefore suppress keep-alives.
 The repaired actor services network keep-alives while retaining ordered game frames
 in a bounded FIFO. Capacity applies backpressure rather than dropping packets.
+A full game-event channel uses the same bounded, codec-boundary-aware read-ahead:
+network KeepAlive replies remain live, deferred facts retain FIFO order, and a real
+disconnect reason is surfaced. The memory watermark counts retained payload capacity.
+
+The existing Java session, world and movement controller are lent exclusively to a
+between-frame worker and reclaimed before `First`. It admits the same events and
+corrections and runs the same20Hz simulation while graphics blocks. A shared elapsed
+clock prevents double-counting that work on the next frame. `PlayerLoaded`, world
+scope, collision availability and correction authority remain required; no parallel
+world, inventory or physics engine is introduced.
+
 Pings are game-thread barriers: Pong follows domain admission and cannot overtake
 an earlier correction. Teleport IDs may be reused, but receipts still require the
 matching sequence and dimension epoch. Transport idle timeout and cancellation remain.
@@ -59,7 +70,8 @@ already integrity-verified26.3 server artifact with its extracted library classp
 
 ```sh
 javac -cp "$VANILLA_SERVER_CLASSPATH" -d "$ACCEPTANCE_DIR/classes" \
-  docs/testing/fixtures/VanillaDebugServer.java
+  docs/testing/fixtures/VanillaDebugServer.java \
+  docs/testing/fixtures/VanillaMovementTrace.java
 # In the disposable server directory containing server.properties/eula.txt:
 java -Xms256M -Xmx768M -cp "$ACCEPTANCE_DIR/classes:$VANILLA_SERVER_CLASSPATH" \
   VanillaDebugServer nogui
@@ -137,3 +149,10 @@ cold joins also produced a30s capture timeout and one floating kick after damage
 that unresolved cold-load observation is retained, not counted as passed. Warm
 repeats passed without changing server flight policy. Physical-iPhone, online-mode
 and Hypixel NPC-menu acceptance remain untested.
+
+For bounded movement diagnostics, also set `-Dcinnabar.acceptance.trace=<private-directory>`
+with `entityCommands`. Console `acceptance_trace <player>` samples actual server
+position, velocity, collision, load/teleport state and native floating counters.
+`acceptance_keepalive <player>` makes one native probe due early, preserving its
+actual response validation and timeout; this is instrumented evidence, not a server
+policy or client fix. Neither command changes player authority or flight checks.

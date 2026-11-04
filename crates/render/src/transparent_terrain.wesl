@@ -49,36 +49,53 @@ fn vertex(
 }
 
 // Shared reconstruction also serves host-meshed retained geometry.
+// Dedicated entry points keep CPU shader compilers from merging both large reconstruction
+// programs. They share the exact family functions and outputs used by the unified path.
+@vertex
+fn vertex_liquid(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> VertexOutput {
+    return terrain_liquid_vertex(vertex_index, instance_index);
+}
+@vertex
+fn vertex_model(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> VertexOutput {
+    return terrain_model_vertex(vertex_index, instance_index);
+}
 fn terrain_vertex(vertex_index: u32, instance_index: u32) -> VertexOutput {
-    var out: VertexOutput;
     if ((instance_index & TRANSPARENT_WATER_DRAW_FLAG) != 0u) {
-        let record = liquid_record(instance_index & ~TRANSPARENT_WATER_DRAW_FLAG);
-        let liquid = vertex_for_record(record, vertex_index);
-        out.clip_position = liquid.clip_position;
-        out.routing.x = 1u;
-        out.textures.x = liquid.current_texture;
-        out.textures.y = liquid.next_texture;
-        out.frame_face.x = liquid.frame_blend;
-        out.routing.y = liquid.two_sided;
-        out.world_position = liquid.world_position;
-        @if(ENHANCED)
-        out.lighting = liquid.lighting;
-        @if(ENHANCED)
-        out.normal = liquid.normal;
-        @if(ENHANCED)
-        out.sky_ao.x = liquid.sky_light;
-        @if(ENHANCED)
-        out.sky_ao.y = liquid.ambient_occlusion;
-        @if(ENHANCED)
-        out.surface_class = liquid.surface_class;
-        @if(!ENHANCED)
-        out.native_light_ao = vec3(liquid.native_light_levels, 0.0);
-        out.liquid_uv = liquid.uv;
-        out.water_tint = liquid.water_tint;
-        out.routing.z = liquid.depth_write_route;
-        out.frame_face.y = liquid.native_face_shade;
-        return out;
+        return terrain_liquid_vertex(vertex_index, instance_index);
     }
+    return terrain_model_vertex(vertex_index, instance_index);
+}
+fn terrain_liquid_vertex(vertex_index: u32, instance_index: u32) -> VertexOutput {
+    var out: VertexOutput;
+    let record = liquid_record(instance_index & ~TRANSPARENT_WATER_DRAW_FLAG);
+    let liquid = vertex_for_record(record, vertex_index);
+    out.clip_position = liquid.clip_position;
+    out.routing.x = 1u;
+    out.textures.x = liquid.current_texture;
+    out.textures.y = liquid.next_texture;
+    out.frame_face.x = liquid.frame_blend;
+    out.routing.y = liquid.two_sided;
+    out.world_position = liquid.world_position;
+    @if(ENHANCED)
+    out.lighting = liquid.lighting;
+    @if(ENHANCED)
+    out.normal = liquid.normal;
+    @if(ENHANCED)
+    out.sky_ao.x = liquid.sky_light;
+    @if(ENHANCED)
+    out.sky_ao.y = liquid.ambient_occlusion;
+    @if(ENHANCED)
+    out.surface_class = liquid.surface_class;
+    @if(!ENHANCED)
+    out.native_light_ao = vec3(liquid.native_light_levels, 0.0);
+    out.liquid_uv = liquid.uv;
+    out.water_tint = liquid.water_tint;
+    out.routing.z = liquid.depth_write_route;
+    out.frame_face.y = liquid.native_face_shade;
+    return out;
+}
+fn terrain_model_vertex(vertex_index: u32, instance_index: u32) -> VertexOutput {
+    var out: VertexOutput;
     let model = model_vertex(vertex_index, instance_index);
     out.clip_position = model.clip_position;
     out.routing.x = 0u;
@@ -194,4 +211,13 @@ fn fragment(in: VertexOutput, @builtin(front_facing) front_facing: bool) -> @loc
         return shade_liquid(liquid_output(in), !front_facing, liquid_dx, liquid_dy);
     }
     return shade_blend(model_output(in), front_facing, model_dx, model_dy);
+}
+
+@fragment
+fn fragment_liquid(in: VertexOutput, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    return shade_liquid(liquid_output(in), !front_facing, dpdx(in.liquid_uv), dpdy(in.liquid_uv));
+}
+@fragment
+fn fragment_model(in: VertexOutput, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
+    return shade_blend(model_output(in), front_facing, dpdx(in.model_uv), dpdy(in.model_uv));
 }

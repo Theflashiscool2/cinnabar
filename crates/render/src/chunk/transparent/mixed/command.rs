@@ -88,18 +88,19 @@ impl RenderCommand<Transparent3d> for DrawMixedTerrain {
         if !frame_probe.accepts(item.entity(), frame_identity) {
             return RenderCommandResult::Skip;
         }
-        let (Some(pipeline), Some(model_args)) = (
-            pipelines.get_render_pipeline(draw.pipeline),
+        let ([Some(model_pipeline), Some(liquid_pipeline)], Some(model_args)) = (
+            draw.pipeline.map(|id| pipelines.get_render_pipeline(id)),
             transparent_model_direct_draw_command(allocation),
         ) else {
             return RenderCommandResult::Skip;
         };
-        pass.set_render_pipeline(pipeline);
+        pass.set_render_pipeline(model_pipeline);
         pass.set_bind_group(0, bind_group, &[view_offset.offset]);
         pass.set_index_buffer(arena.index_buffer.slice(..), IndexFormat::Uint32);
         for segment in draw.segments.iter() {
             match segment.stream {
                 MixedStream::Model => {
+                    pass.set_render_pipeline(model_pipeline);
                     pass.draw_indexed(
                         model_args.first_index..model_args.first_index + model_args.index_count,
                         model_args.base_vertex,
@@ -108,6 +109,7 @@ impl RenderCommand<Transparent3d> for DrawMixedTerrain {
                     );
                 }
                 MixedStream::Water => {
+                    pass.set_render_pipeline(liquid_pipeline);
                     let start = draw.water_range.start;
                     let Some(args) = transparent_draw_range_args(
                         draw.water_slot,

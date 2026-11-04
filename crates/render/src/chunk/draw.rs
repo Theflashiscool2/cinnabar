@@ -618,9 +618,8 @@ pub(in crate::chunk) fn queue_transparent_chunks(
             enhanced: enhanced.is_some(),
         };
         let rangefinder = view.rangefinder3d();
-        let Ok(pipeline_id) = pipeline
-            .transparent_variants
-            .specialize(&pipeline_cache, key)
+        let Ok([model_pipeline, liquid_pipeline]) =
+            pipeline.transparent_for_view(&pipeline_cache, key)
         else {
             continue;
         };
@@ -667,7 +666,7 @@ pub(in crate::chunk) fn queue_transparent_chunks(
                         sorting_info:
                             bevy::core_pipeline::core_3d::TransparentSortingInfo3d::AlwaysOnTop,
                         entity: (entity, main),
-                        pipeline: pipeline_id,
+                        pipeline: liquid_pipeline,
                         draw_function: record_draw,
                         distance: transparent_liquid_phase_distance(&rangefinder, water_key),
                         batch_range: 0..1,
@@ -693,7 +692,7 @@ pub(in crate::chunk) fn queue_transparent_chunks(
                     &texture_assets,
                     committed,
                     group,
-                    pipeline_id,
+                    [model_pipeline, liquid_pipeline],
                 )
             {
                 merged[model_index] = true;
@@ -703,7 +702,7 @@ pub(in crate::chunk) fn queue_transparent_chunks(
                         sorting_info:
                             bevy::core_pipeline::core_3d::TransparentSortingInfo3d::AlwaysOnTop,
                         entity: (entity, main),
-                        pipeline: pipeline_id,
+                        pipeline: liquid_pipeline,
                         draw_function: mixed_draw,
                         distance: transparent_model_phase_distance(&rangefinder, group.key),
                         batch_range: 0..1,
@@ -722,7 +721,7 @@ pub(in crate::chunk) fn queue_transparent_chunks(
                     sorting_info:
                         bevy::core_pipeline::core_3d::TransparentSortingInfo3d::AlwaysOnTop,
                     entity: (view_entity, *main_entity),
-                    pipeline: pipeline_id,
+                    pipeline: liquid_pipeline,
                     draw_function: direct_draw,
                     distance: transparent_liquid_phase_distance(&rangefinder, group.key),
                     batch_range: 0..1,
@@ -752,7 +751,7 @@ pub(in crate::chunk) fn queue_transparent_chunks(
                     sorting_info:
                         bevy::core_pipeline::core_3d::TransparentSortingInfo3d::AlwaysOnTop,
                     entity: (entity, main),
-                    pipeline: pipeline_id,
+                    pipeline: model_pipeline,
                     draw_function: transparent_model_draw,
                     distance: transparent_model_phase_distance(&rangefinder, model_key),
                     batch_range: 0..1,

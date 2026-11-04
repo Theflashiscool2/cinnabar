@@ -46,7 +46,7 @@ struct MixedTerrainDraw {
     water_slot: u8,
     /// Water segment ranges are relative to this snapshot range.
     water_range: Range<u32>,
-    pipeline: CachedRenderPipelineId,
+    pipeline: [CachedRenderPipelineId; 2],
     segments: Arc<[MixedTerrainSegment]>,
 }
 
@@ -119,7 +119,7 @@ impl MixedTerrainRuntime {
         assets: &ChunkTextureAssets,
         snapshot: &TransparentOrderedSnapshot,
         group: &TransparentLiquidPhaseGroup,
-        pipeline: CachedRenderPipelineId,
+        pipeline: [CachedRenderPipelineId; 2],
     ) -> Option<u32> {
         let budget_fallbacks =
             self.stats.reference_budget_fallbacks + self.stats.segment_budget_fallbacks;
@@ -156,7 +156,7 @@ impl MixedTerrainRuntime {
         assets: &ChunkTextureAssets,
         snapshot: &TransparentOrderedSnapshot,
         group: &TransparentLiquidPhaseGroup,
-        pipeline: CachedRenderPipelineId,
+        pipeline: [CachedRenderPipelineId; 2],
     ) -> Option<u32> {
         let water = snapshot.key.allocation(group.key)?;
         if water.mesh_generation != allocation.generation
