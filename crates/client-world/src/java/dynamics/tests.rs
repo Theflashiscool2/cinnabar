@@ -182,3 +182,45 @@ fn respawn_preserves_bases_and_obeys_modifier_retention() {
         assert!(!s.admit(event(7, old_epoch, velocity(42))));
     }
 }
+
+#[test]
+fn remote_attribute_gaps_remain_visible_without_editing_local_attributes() {
+    let mut s = state();
+    s.player_dynamics = initial();
+    let update = |entity, name| {
+        event(
+            7,
+            1,
+            wire::Packet::Attributes {
+                entity,
+                values: vec![wire::Attribute {
+                    name,
+                    minimum: 0.,
+                    maximum: 16.,
+                    base: 1.,
+                    modifiers: vec![],
+                }],
+            },
+        )
+    };
+    let speed = s.player_dynamics.attributes["minecraft:movement_speed"].clone();
+    assert!(s.admit(update(99, "minecraft:movement_speed")));
+    assert_eq!(s.deferred_entity_dynamics, 1);
+    assert_eq!(
+        s.player_dynamics.attributes["minecraft:movement_speed"],
+        speed
+    );
+    assert!(s.admit(update(99, "minecraft:scale")));
+    assert_eq!(s.deferred_entity_dynamics, 1);
+    // A late value for an absent remote ID cannot become the local player's scale.
+    assert_eq!(s.player_dynamics.attributes["minecraft:scale"].base, 1.);
+    assert!(!s.admit(event(
+        6,
+        1,
+        wire::Packet::Attributes {
+            entity: 99,
+            values: vec![]
+        }
+    )));
+    assert_eq!(s.deferred_entity_dynamics, 1);
+}

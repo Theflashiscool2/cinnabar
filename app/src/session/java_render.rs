@@ -254,10 +254,10 @@ pub(crate) fn update(
     {
         let feet = Vec3::from_array(position.position.map(|n| n as f32));
         view.set_subject_position(feet + Vec3::Y * movement.0.eye_height(state) as f32, feet);
-        view.set_rotation(
-            Quat::from_rotation_y((-position.yaw + 180.).to_radians())
-                * Quat::from_rotation_x(-position.pitch.to_radians()),
-        );
+        view.set_rotation(super::java_look::view_rotation([
+            position.yaw,
+            position.pitch,
+        ]));
         view.reanchor_camera();
         p.teleport = Some(state.player_pose_revision);
     }

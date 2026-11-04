@@ -113,3 +113,22 @@ rays. Compile with that verified classpath and run
 `sim/java/entity_selection/reference.json` cases; the fixture records its box and provenance.
 The maximum-face inside-origin and segment-end cases must remain misses. These are CPU
 reference vectors, separate from native GUI/server-authoritative damage acceptance.
+
+`NativeMotionCounters.java` composes a read-only observer with the opted-in fixture's
+existing bootstrap callback. It samples the actual vanilla listener's server-tick and
+received-movement counters; it neither replaces packets nor changes player/world state.
+Use only the isolated acceptance JVM. Compile it with JDK25, package its class with
+`Premain-Class: NativeMotionCounters` and `Agent-Class: NativeMotionCounters`, then attach:
+
+```sh
+"$JAVA_HOME/bin/java" --add-modules jdk.attach -cp /absolute/path/motion.jar NativeMotionCounters SERVER_PID /absolute/path/motion.jar /absolute/path/motion-request
+printf sample > /absolute/path/motion-request
+```
+
+The callback consumes the dedicated request file at most once per second. Capture a
+second `sample` after further real client ticks; compare counter deltas while stationary,
+then exercise walking/jumping and corrections. `detach` restores the prior callback.
+Without attach access, place its `-javaagent:...=.../motion-request` after the existing
+menu-fixture agent argument on the controlled server's next clean startup. Counter
+observations establish packet cadence only; they do not prove complete movement,
+knockback, public-server or graphical parity. Do not use a normal user's file as a request.

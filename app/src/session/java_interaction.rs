@@ -236,8 +236,9 @@ fn pick(
         .ok_or("Missing native Java block interaction range")?;
     let mut from = motion.position;
     from[1] += movement.0.eye_height(state);
-    let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
-    let direction = world::java::player::look(180. - yaw.to_degrees(), -pitch.to_degrees());
+    let [yaw, pitch] =
+        super::java_look::native_angles(view.rotation(), Some([motion.yaw, motion.pitch]));
+    let direction = world::java::player::look(yaw, pitch);
     let entity_range = state
         .player_dynamics
         .attributes

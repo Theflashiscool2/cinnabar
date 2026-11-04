@@ -21,6 +21,7 @@ fn frame() -> Frame {
         position: Some([1., 64., 2.]),
         rotation: Some([90., 25.]),
         on_ground: true,
+        status_changed: true,
         horizontal_collision: false,
         input: Some(65),
         sprinting: Some(true),
@@ -102,5 +103,47 @@ fn admitted_correction_replaces_stale_view_even_after_ack_has_already_queued() {
     assert!(controller.last_position.is_none());
     assert!(controller.last_input.is_none());
     assert!(controller.last_sprint.is_none());
+    assert!(controller.last_flags.is_none());
     assert!(!controller.begin_frame(&state, TICK));
+}
+
+#[test]
+fn stationary_native_ticks_keep_tick_cadence_without_repeating_unchanged_wire_flags() {
+    let state = world(1);
+    let mut c = Controller::default();
+    c.begin_frame(&state, TICK);
+    let motion = Motion {
+        position: [1., 64., 2.],
+        yaw: 90.,
+        pitch: 25.,
+        ..Default::default()
+    };
+    let mut body = Body::default();
+    body.on_ground = true;
+    let first = c.next_frame(1, 42, motion, body, 0);
+    assert!(first.position.is_some() && first.rotation.is_some() && first.status_changed);
+    c.pending = Some(first);
+    c.queued();
+    for _ in 1..20 {
+        let next = c.next_frame(1, 42, motion, body, 0);
+        assert!(next.position.is_none() && next.rotation.is_none() && !next.status_changed);
+        c.reminder += 1;
+        c.pending = Some(next);
+        c.queued();
+    }
+    let reminder = c.next_frame(1, 42, motion, body, 0);
+    assert_eq!(reminder.position, Some([1., 64., 2.]));
+    assert!(!reminder.status_changed);
+    let mut airborne = body;
+    airborne.on_ground = false;
+    let changed = c.next_frame(1, 42, motion, airborne, 0);
+    assert!(changed.status_changed);
+    // Until admission, backpressure retains the original ground baseline.
+    assert!(!c.next_frame(1, 42, motion, body, 0).status_changed);
+    c.pending = Some(changed);
+    c.queued();
+    assert!(!c.next_frame(1, 42, motion, airborne, 0).status_changed);
+    let mut collided = airborne;
+    collided.horizontal_collision = true;
+    assert!(c.next_frame(1, 42, motion, collided, 0).status_changed);
 }

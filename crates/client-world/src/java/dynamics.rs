@@ -86,16 +86,21 @@ pub(super) fn admit(
                 .collect::<Result<Vec<_>, &'static str>>()?;
             if entity == own_id {
                 state.player_dynamics.attributes.extend(values);
-            } else if let Some((_, scale)) =
-                values.iter().find(|(name, _)| name == "minecraft:scale")
-            {
-                let scale = scale.value()? as f32;
-                state
-                    .entities
-                    .update((state.generation(), epoch), entity, |e| {
-                        e.visual.scale = scale;
-                        Ok(())
-                    })?;
+            } else {
+                if values.iter().any(|(name, _)| name != "minecraft:scale") {
+                    state.deferred_entity_dynamics =
+                        state.deferred_entity_dynamics.saturating_add(1);
+                }
+                if let Some((_, scale)) = values.iter().find(|(name, _)| name == "minecraft:scale")
+                {
+                    let scale = scale.value()? as f32;
+                    state
+                        .entities
+                        .update((state.generation(), epoch), entity, |e| {
+                            e.visual.scale = scale;
+                            Ok(())
+                        })?;
+                }
             }
         }
         wire::Packet::Velocity { entity, velocity } if entity == own_id => {

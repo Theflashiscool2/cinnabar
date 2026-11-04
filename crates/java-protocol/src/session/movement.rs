@@ -7,6 +7,8 @@ pub struct Frame {
     pub position: Option<[f64; 3]>,
     pub rotation: Option<[f32; 2]>,
     pub on_ground: bool,
+    /// The simulation owner compares flags with the last admitted outbound frame.
+    pub status_changed: bool,
     pub horizontal_collision: bool,
     /// Seven vanilla input bits, only supplied when intent changes.
     pub input: Option<u8>,
@@ -36,25 +38,27 @@ pub(super) fn encode(frame: Frame) -> Result<Vec<(&'static str, Vec<u8>)>, Proto
         bytes.extend([if sprinting { 1 } else { 2 }, 0]);
         packets.push(("ServerboundPlayerCommandPacket", bytes));
     }
-    let mut bytes = Vec::with_capacity(33);
-    if let Some(position) = frame.position {
-        for v in position {
-            bytes.extend(v.to_be_bytes());
+    if frame.position.is_some() || frame.rotation.is_some() || frame.status_changed {
+        let mut bytes = Vec::with_capacity(33);
+        if let Some(position) = frame.position {
+            for v in position {
+                bytes.extend(v.to_be_bytes());
+            }
         }
-    }
-    if let Some(rotation) = frame.rotation {
-        for v in rotation {
-            bytes.extend(v.to_be_bytes());
+        if let Some(rotation) = frame.rotation {
+            for v in rotation {
+                bytes.extend(v.to_be_bytes());
+            }
         }
+        bytes.push(u8::from(frame.on_ground) | u8::from(frame.horizontal_collision) << 1);
+        let name = match (frame.position.is_some(), frame.rotation.is_some()) {
+            (true, true) => "ServerboundMovePlayerPosRotPacket",
+            (true, false) => "ServerboundMovePlayerPosPacket",
+            (false, true) => "ServerboundMovePlayerRotPacket",
+            (false, false) => "ServerboundMovePlayerStatusOnlyPacket",
+        };
+        packets.push((name, bytes));
     }
-    bytes.push(u8::from(frame.on_ground) | u8::from(frame.horizontal_collision) << 1);
-    let name = match (frame.position.is_some(), frame.rotation.is_some()) {
-        (true, true) => "ServerboundMovePlayerPosRotPacket",
-        (true, false) => "ServerboundMovePlayerPosPacket",
-        (false, true) => "ServerboundMovePlayerRotPacket",
-        (false, false) => "ServerboundMovePlayerStatusOnlyPacket",
-    };
-    packets.push((name, bytes));
     packets.push(("ServerboundClientTickEndPacket", vec![]));
     Ok(packets)
 }
@@ -63,12 +67,60 @@ pub(super) fn encode(frame: Frame) -> Result<Vec<(&'static str, Vec<u8>)>, Proto
 mod tests {
     use super::*;
     #[test]
+    fn unchanged_stationary_flags_send_tick_end_without_a_movement_packet() {
+        let frame = Frame {
+            entity: 42,
+            position: None,
+            rotation: None,
+            on_ground: true,
+            horizontal_collision: false,
+            status_changed: false,
+            input: None,
+            sprinting: None,
+        };
+        assert_eq!(
+            encode(frame.clone()).unwrap(),
+            vec![("ServerboundClientTickEndPacket", vec![])]
+        );
+        assert_eq!(
+            encode(Frame {
+                status_changed: true,
+                ..frame.clone()
+            })
+            .unwrap(),
+            vec![
+                ("ServerboundMovePlayerStatusOnlyPacket", vec![1]),
+                ("ServerboundClientTickEndPacket", vec![])
+            ]
+        );
+        assert_eq!(
+            encode(Frame {
+                input: Some(65),
+                ..frame.clone()
+            })
+            .unwrap(),
+            vec![
+                ("ServerboundPlayerInputPacket", vec![65]),
+                ("ServerboundClientTickEndPacket", vec![])
+            ]
+        );
+        let packets = encode(Frame {
+            position: Some([0.; 3]),
+            ..frame
+        })
+        .unwrap();
+        assert_eq!(packets.len(), 2);
+        assert_eq!(packets[0].0, "ServerboundMovePlayerPosPacket");
+        assert_eq!(packets[0].1.last(), Some(&1));
+    }
+    #[test]
     fn ordered_intent_sprint_pose_and_tick_end_match_independent_wire_fields() {
         let packets = encode(Frame {
             entity: 300,
             position: Some([1., -64., 0.5]),
             rotation: Some([90., -45.]),
             on_ground: true,
+            status_changed: true,
             horizontal_collision: true,
             input: Some(65),
             sprinting: Some(true),
@@ -98,6 +150,7 @@ mod tests {
                 position: position.then_some([0.; 3]),
                 rotation: rotation.then_some([0.; 2]),
                 on_ground: false,
+                status_changed: true,
                 horizontal_collision: false,
                 input: None,
                 sprinting: None,

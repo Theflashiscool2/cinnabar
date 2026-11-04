@@ -48,10 +48,7 @@ pub(crate) fn update(
     // World publication follows network send. Without this replacement a simulation tick
     // could overwrite an admitted correction with the previous frame's camera rotation.
     if corrected && let Some(motion) = java_world.player_motion {
-        view.set_rotation(
-            Quat::from_rotation_y((180. - motion.yaw).to_radians())
-                * Quat::from_rotation_x(-motion.pitch.to_radians()),
-        );
+        view.set_rotation(super::java_look::view_rotation([motion.yaw, motion.pitch]));
         view.reanchor_camera();
     }
     let Some(physics) = physics else {
@@ -76,7 +73,10 @@ pub(crate) fn update(
     .into_iter()
     .enumerate()
     .fold(0, |bits, (index, held)| bits | (u8::from(held) << index));
-    let (yaw, pitch, _) = view.rotation().to_euler(EulerRot::YXZ);
+    let [yaw, pitch] = super::java_look::native_angles(
+        view.rotation(),
+        java_world.player_motion.map(|m| [m.yaw, m.pitch]),
+    );
     let controls = gameplay::java::Controls {
         travel: sim::java::travel::Input {
             sideways: -axes[0],
@@ -86,8 +86,8 @@ pub(crate) fn update(
             sprint: held(Action::Sprint),
         },
         buttons: bits,
-        yaw: 180. - yaw.to_degrees(),
-        pitch: -pitch.to_degrees(),
+        yaw,
+        pitch,
     };
     // Four ticks bound per-frame work; unconsumed elapsed time remains visible in diagnostics.
     for _ in 0..4 {
@@ -105,6 +105,7 @@ pub(crate) fn update(
                 position: frame.position,
                 rotation: frame.rotation,
                 on_ground: frame.on_ground,
+                status_changed: frame.status_changed,
                 horizontal_collision: frame.horizontal_collision,
                 input: frame.input,
                 sprinting: frame.sprinting,

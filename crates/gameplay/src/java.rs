@@ -5,7 +5,10 @@ use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
 use std::time::Duration;
-use world::java::dynamics::{Attribute, Modifier, Operation};
+use world::java::{
+    dynamics::{Attribute, Modifier, Operation},
+    player::Motion,
+};
 
 const TICK: Duration = Duration::from_nanos(1_000_000_000 / travel::TICKS_PER_SECOND as u64);
 
@@ -24,6 +27,7 @@ pub struct Frame {
     pub position: Option<[f64; 3]>,
     pub rotation: Option<[f32; 2]>,
     pub on_ground: bool,
+    pub status_changed: bool,
     pub horizontal_collision: bool,
     pub input: Option<u8>,
     pub sprinting: Option<bool>,
@@ -40,6 +44,7 @@ pub struct Controller {
     last_rotation: Option<[f32; 2]>,
     last_input: Option<u8>,
     last_sprint: Option<bool>,
+    last_flags: Option<(bool, bool)>,
     reminder: u8,
     pub ticks: u64,
     pub blocked: Option<String>,
@@ -65,6 +70,7 @@ impl Controller {
             self.last_position = None;
             self.last_input = None;
             self.last_sprint = None;
+            self.last_flags = None;
             self.last_rotation = state.player_motion.map(|m| [m.yaw, m.pitch]);
             self.reminder = 0;
             let teleport = state.teleport.map(|t| t.revision);
@@ -108,6 +114,7 @@ impl Controller {
         let Some(frame) = self.pending.take() else {
             return;
         };
+        self.last_flags = Some((frame.on_ground, frame.horizontal_collision));
         if let Some(position) = frame.position {
             self.last_position = Some(position);
             self.reminder = 0;
@@ -144,6 +151,37 @@ impl Controller {
                 self.elapsed = Duration::ZERO;
                 false
             }
+        }
+    }
+
+    /// LocalPlayer.sendPosition compares against the last frame admitted to transport.
+    fn next_frame(
+        &self,
+        epoch: u64,
+        entity: i32,
+        motion: Motion,
+        body: Body,
+        buttons: u8,
+    ) -> Frame {
+        let moved = self.last_position.is_none_or(|old| {
+            old.into_iter()
+                .zip(motion.position)
+                .map(|(a, b)| (a - b) * (a - b))
+                .sum::<f64>()
+                > 0.0002_f64.powi(2)
+        }) || self.reminder.saturating_add(1) >= 20;
+        let rotation = [motion.yaw, motion.pitch];
+        Frame {
+            dimension_epoch: epoch,
+            sequence: self.sequence,
+            entity,
+            position: moved.then_some(motion.position),
+            rotation: (self.last_rotation != Some(rotation)).then_some(rotation),
+            on_ground: body.on_ground,
+            horizontal_collision: body.horizontal_collision,
+            status_changed: self.last_flags != Some((body.on_ground, body.horizontal_collision)),
+            input: (self.last_input != Some(buttons)).then_some(buttons),
+            sprinting: (self.last_sprint != Some(body.sprinting)).then_some(body.sprinting),
         }
     }
 
@@ -197,27 +235,14 @@ impl Controller {
             .player_pose_revision
             .checked_add(1)
             .ok_or("Java player pose revision overflow")?;
-        let next_reminder = self.reminder.saturating_add(1);
-        let moved = self.last_position.is_none_or(|old| {
-            old.into_iter()
-                .zip(motion.position)
-                .map(|(a, b)| (a - b) * (a - b))
-                .sum::<f64>()
-                > 0.0002_f64.powi(2)
-        }) || next_reminder >= 20;
-        let rotation = [motion.yaw, motion.pitch];
-        self.pending = Some(Frame {
-            dimension_epoch: scope.1,
-            sequence: self.sequence,
-            entity: bootstrap.world.entity_id,
-            position: moved.then_some(motion.position),
-            rotation: (self.last_rotation != Some(rotation)).then_some(rotation),
-            on_ground: body.on_ground,
-            horizontal_collision: body.horizontal_collision,
-            input: (self.last_input != Some(controls.buttons)).then_some(controls.buttons),
-            sprinting: (self.last_sprint != Some(body.sprinting)).then_some(body.sprinting),
-        });
-        self.reminder = next_reminder;
+        self.pending = Some(self.next_frame(
+            scope.1,
+            bootstrap.world.entity_id,
+            motion,
+            body,
+            controls.buttons,
+        ));
+        self.reminder = self.reminder.saturating_add(1);
         self.body = body;
         state.player_motion = Some(motion);
         state.player_pose_revision = revision;

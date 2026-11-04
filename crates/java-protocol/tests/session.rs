@@ -440,6 +440,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                                     position: None,
                                     rotation: None,
                                     on_ground: true,
+                                    status_changed: true,
                                     horizontal_collision: false,
                                     input: Some(65),
                                     sprinting: Some(true),

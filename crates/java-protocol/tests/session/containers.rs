@@ -416,3 +416,84 @@ async fn entity_attack_tokens_fence_reuse_and_preserve_attack_punch_selection_or
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn stationary_native_tick_sends_tick_end_without_an_extra_status_only_packet() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let cancel = CancellationToken::new();
+        let stop = cancel.clone();
+        let server = tokio::spawn(async move {
+            let mut wire = through_configuration(listener, true).await;
+            wire.write(&[3]).await.unwrap();
+            assert_eq!(wire.read().await.unwrap(), [3]);
+            wire.write(&world_login()).await.unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundPlayerLoadedPacket", &[])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundClientTickEndPacket", &[])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundSetCarriedItemPacket", &[0, 0])
+            );
+            stop.cancelled().await;
+        });
+        let (tx, mut rx) = mpsc::channel(16);
+        let (commands, input) = mpsc::channel(8);
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        let mut verified = false;
+        while let Some(envelope) = rx.recv().await {
+            match envelope.event {
+                Event::Bootstrap(_) => {
+                    commands
+                        .send(Command::PlayerLoaded { dimension_epoch: 1 })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::Move {
+                            dimension_epoch: 1,
+                            sequence: 0,
+                            frame: session::movement::Frame {
+                                entity: 42,
+                                position: None,
+                                rotation: None,
+                                on_ground: true,
+                                horizontal_collision: false,
+                                status_changed: false,
+                                input: None,
+                                sprinting: None,
+                            },
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::Select {
+                            dimension_epoch: 1,
+                            sequence: 1,
+                            slot: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                Event::SelectionSent { sequence: 1, .. } => {
+                    verified = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        cancel.cancel();
+        server.await.unwrap();
+        let _ = client.await.unwrap();
+        assert!(verified);
+    })
+    .await
+    .unwrap();
+}
