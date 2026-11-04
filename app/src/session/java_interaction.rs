@@ -4,13 +4,14 @@ use bevy::{prelude::*, time::Real};
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
 use gameplay::java::actions::{Controller as Actions, Intent, Target};
-use gameplay::java::interaction::Kind;
+use gameplay::java::interaction::{Kind, Target as RequestTarget};
 use java_protocol::session::{
     Command,
     interaction::{Action, Dig, Face, Hand, UseOn},
 };
 use sim::java::selection;
 mod entity;
+mod item;
 
 #[derive(Resource, Default)]
 pub(crate) struct Interaction(pub gameplay::java::interaction::Controller, pub Actions);
@@ -18,7 +19,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":hit(r.hit)})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_use_and_ordinary_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_and_instant_air_use_ordinary_player_attack", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -85,6 +86,7 @@ pub(crate) fn update(
                     {
                         if let Err(error) = entity::ordinary_attack(state.inventory.held()) {
                             interaction.0.blocked = Some(error.into());
+                            bevy::log::warn!(target: "java_session", error, "Native entity attack rejected before transport");
                         } else {
                             match java.command(Command::Attack {
                                 dimension_epoch: identity.epoch,
@@ -115,8 +117,9 @@ pub(crate) fn update(
                 interaction.0.advance(state, phase, captured_hit);
             }
             Some(Intent::Use(pressed)) => {
-                let (phase, captured_hit) = interaction.1.consume_use(pressed);
-                interaction.0.use_on(state, phase, captured_hit);
+                let captured = interaction.1.target();
+                let (phase, _) = interaction.1.consume_use(pressed);
+                advance_use(&mut interaction.0, state, phase, captured);
             }
             Some(Intent::Slot(_) | Intent::Cycle(_)) => {
                 let Some(selection) = interaction.1.selection(state) else {
@@ -140,7 +143,7 @@ pub(crate) fn update(
             }
             None => {
                 let use_phase = interaction.1.held_use();
-                interaction.0.use_on(state, use_phase, hit);
+                advance_use(&mut interaction.0, state, use_phase, chosen);
                 if !send_pending(java, &mut interaction.0) {
                     return;
                 }
@@ -153,6 +156,28 @@ pub(crate) fn update(
     }
 }
 
+fn advance_use(
+    interaction: &mut gameplay::java::interaction::Controller,
+    state: &client_world::java::WorldState,
+    phase: semantic_input::ActionPhase,
+    target: Option<Target>,
+) {
+    let target = match target {
+        Some(Target::Block(hit)) => Ok(Some(RequestTarget::Block(hit))),
+        Some(Target::Air { rotation }) => {
+            item::instant(state).map(|allowed| allowed.then_some(RequestTarget::Air(rotation)))
+        }
+        Some(Target::Entity { .. }) => Err("Native entity use/interact-at is not implemented"),
+        None => Err("Native item use requires a loaded targeting snapshot"),
+    };
+    if phase.pressed
+        && let Err(error) = target
+    {
+        bevy::log::warn!(target: "java_session", error, "Native item use rejected before transport");
+    }
+    interaction.use_target(state, phase, target);
+}
+
 /// Keeps the captured action unchanged until the bounded transport accepts it.
 fn send_pending(
     java: &client_session::java::Session,
@@ -161,41 +186,58 @@ fn send_pending(
     let Some(request) = interaction.pending() else {
         return true;
     };
-    let face = match request.hit.face {
-        selection::Face::Down => Face::Down,
-        selection::Face::Up => Face::Up,
-        selection::Face::North => Face::North,
-        selection::Face::South => Face::South,
-        selection::Face::West => Face::West,
-        selection::Face::East => Face::East,
-    };
-    let command = match request.kind {
-        Kind::UseOn => Command::UseOn {
+    let command = match (request.kind, request.target) {
+        (Kind::UseAir, RequestTarget::Air(rotation)) => Command::UseItem {
             dimension_epoch: request.dimension_epoch,
             correction_sequence: request.correction_sequence,
-            action: UseOn {
+            action: java_protocol::session::interaction::UseItem {
                 hand: Hand::Main,
-                position: request.hit.block,
-                face,
-                cursor: std::array::from_fn(|i| {
-                    (request.hit.position[i] - f64::from(request.hit.block[i])) as f32
-                }),
-                inside: request.hit.inside,
-                // The native outline picker returns a block hit, never a world-border hit.
-                world_border: false,
                 sequence: request.sequence,
+                rotation,
             },
         },
-        Kind::Break => Command::Interact {
-            dimension_epoch: request.dimension_epoch,
-            correction_sequence: request.correction_sequence,
-            action: Dig {
-                action: Action::Start,
-                position: request.hit.block,
-                face,
-                sequence: request.sequence,
-            },
-        },
+        (kind @ (Kind::Break | Kind::UseOn), RequestTarget::Block(hit)) => {
+            let face = match hit.face {
+                selection::Face::Down => Face::Down,
+                selection::Face::Up => Face::Up,
+                selection::Face::North => Face::North,
+                selection::Face::South => Face::South,
+                selection::Face::West => Face::West,
+                selection::Face::East => Face::East,
+            };
+            if kind == Kind::UseOn {
+                Command::UseOn {
+                    dimension_epoch: request.dimension_epoch,
+                    correction_sequence: request.correction_sequence,
+                    action: UseOn {
+                        hand: Hand::Main,
+                        position: hit.block,
+                        face,
+                        cursor: std::array::from_fn(|i| {
+                            (hit.position[i] - f64::from(hit.block[i])) as f32
+                        }),
+                        inside: hit.inside,
+                        world_border: false,
+                        sequence: request.sequence,
+                    },
+                }
+            } else {
+                Command::Interact {
+                    dimension_epoch: request.dimension_epoch,
+                    correction_sequence: request.correction_sequence,
+                    action: Dig {
+                        action: Action::Start,
+                        position: hit.block,
+                        face,
+                        sequence: request.sequence,
+                    },
+                }
+            }
+        }
+        _ => {
+            interaction.blocked = Some("Invalid native interaction target/kind".into());
+            return false;
+        }
     };
     match java.command(command) {
         Ok(()) => {
@@ -254,5 +296,9 @@ fn pick(
         |position, id| special.outline(&state.terrain, position, id),
     )
     .map_err(|error| error.to_string())?;
-    Ok(entity::pick(state, from, to, entity_range, range, block))
+    Ok(
+        entity::pick(state, from, to, entity_range, range, block).or(Some(Target::Air {
+            rotation: [yaw, pitch],
+        })),
+    )
 }

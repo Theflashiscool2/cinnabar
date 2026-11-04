@@ -25,6 +25,9 @@ pub struct Selection {
 #[derive(Clone, Copy)]
 pub enum Target {
     Block(Hit),
+    Air {
+        rotation: [f32; 2],
+    },
     Entity {
         network_id: i32,
         identity: world::java::entities::Identity,
@@ -211,7 +214,7 @@ impl Controller {
             },
             consumed.target.and_then(|t| match t {
                 Target::Block(h) => Some(h),
-                Target::Entity { .. } => None,
+                Target::Entity { .. } | Target::Air { .. } => None,
             }),
         )
     }
@@ -228,7 +231,7 @@ impl Controller {
             },
             consumed.target.and_then(|t| match t {
                 Target::Block(h) => Some(h),
-                Target::Entity { .. } => None,
+                Target::Entity { .. } | Target::Air { .. } => None,
             }),
         )
     }

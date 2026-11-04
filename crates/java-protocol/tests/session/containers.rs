@@ -568,3 +568,111 @@ async fn native_grouped_cooldowns_decode_signed_removal_and_preserve_following_p
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn air_use_transport_fences_loading_and_scope_and_orders_slot_use_slot() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let cancel = CancellationToken::new();
+        let stop = cancel.clone();
+        let server = tokio::spawn(async move {
+            let mut wire = through_configuration(listener, true).await;
+            wire.write(&[3]).await.unwrap();
+            assert_eq!(wire.read().await.unwrap(), [3]);
+            wire.write(&world_login()).await.unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundPlayerLoadedPacket", &[])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundSetCarriedItemPacket", &[0, 1])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing(
+                    "ServerboundUseItemPacket",
+                    &[0, 0x81, 1, 0x42, 0xb4, 0, 0, 0xc2, 0x34, 0, 0]
+                )
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                outgoing("ServerboundSetCarriedItemPacket", &[0, 2])
+            );
+            stop.cancelled().await;
+        });
+        let (tx, mut rx) = mpsc::channel(16);
+        let (commands, input) = mpsc::channel(8);
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        let mut verified = false;
+        while let Some(e) = rx.recv().await {
+            match e.event {
+                Event::Bootstrap(_) => {
+                    let action = session::interaction::UseItem {
+                        hand: session::interaction::Hand::Main,
+                        sequence: 129,
+                        rotation: [90., -45.],
+                    };
+                    commands
+                        .send(Command::UseItem {
+                            dimension_epoch: 1,
+                            correction_sequence: 0,
+                            action,
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::UseItem {
+                            dimension_epoch: 0,
+                            correction_sequence: 0,
+                            action,
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::PlayerLoaded { dimension_epoch: 1 })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::Select {
+                            dimension_epoch: 1,
+                            sequence: 1,
+                            slot: 1,
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::UseItem {
+                            dimension_epoch: 1,
+                            correction_sequence: 0,
+                            action,
+                        })
+                        .await
+                        .unwrap();
+                    commands
+                        .send(Command::Select {
+                            dimension_epoch: 1,
+                            sequence: 2,
+                            slot: 2,
+                        })
+                        .await
+                        .unwrap();
+                }
+                Event::SelectionSent { sequence: 2, .. } => {
+                    verified = true;
+                    break;
+                }
+                _ => {}
+            }
+        }
+        cancel.cancel();
+        server.await.unwrap();
+        let _ = client.await.unwrap();
+        assert!(verified);
+    })
+    .await
+    .unwrap();
+}

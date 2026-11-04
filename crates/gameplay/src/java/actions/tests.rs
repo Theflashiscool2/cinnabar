@@ -361,3 +361,33 @@ fn captured_entity_edge_stays_ahead_of_slot_change_and_retires_with_authority() 
     assert!(c.front(&state).is_none());
     assert!(c.target().is_none());
 }
+
+#[test]
+fn air_use_keeps_click_angles_while_waiting_for_hotbar_serialization() {
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, None), None);
+    c.append_target(
+        [Intent::Slot(1), Intent::Use(true), Intent::Use(false)],
+        Some(Target::Air {
+            rotation: [72.5, -30.],
+        }),
+    );
+    c.selection(&state).unwrap();
+    c.selection_queued();
+    assert!(c.front(&state).is_none());
+    assert!(!c.held_use().held);
+    state.inventory.selection_sent(7, 1, 1, 1);
+    assert_eq!(c.front(&state), Some(Intent::Use(true)));
+    assert!(matches!(
+        c.target(),
+        Some(Target::Air {
+            rotation: [72.5, -30.]
+        })
+    ));
+    let (phase, block) = c.consume_use(true);
+    assert!(phase.pressed);
+    assert!(block.is_none());
+    assert_eq!(c.front(&state), Some(Intent::Use(false)));
+    assert!(c.consume_use(false).0.released);
+}

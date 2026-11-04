@@ -8,6 +8,12 @@ use std::time::Duration;
 pub enum Kind {
     Break,
     UseOn,
+    UseAir,
+}
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Target {
+    Block(Hit),
+    Air([f32; 2]),
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
@@ -15,7 +21,7 @@ pub struct Request {
     pub dimension_epoch: u64,
     pub correction_sequence: u64,
     pub sequence: i32,
-    pub hit: Hit,
+    pub target: Target,
 }
 #[derive(Default)]
 pub struct Controller {
@@ -78,7 +84,7 @@ impl Controller {
                 .is_some_and(|a| a.creative);
         if self.pending.is_some_and(|request| match request.kind {
             Kind::Break => invalid_break,
-            Kind::UseOn => !can_use(state),
+            Kind::UseOn | Kind::UseAir => !can_use(state),
         }) || state.death.is_some()
             || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
         {
@@ -101,7 +107,7 @@ impl Controller {
                     self.delay = 5; // Pinned MultiPlayerGameMode creative destroyDelay, in ticks.
                     self.elapsed = Duration::ZERO;
                 }
-                Kind::UseOn => self.use_elapsed = self.use_remainder,
+                Kind::UseOn | Kind::UseAir => self.use_elapsed = self.use_remainder,
             }
         }
     }
@@ -181,6 +187,22 @@ impl Controller {
     /// Main-hand block use is server-authoritative. No offhand/air-use fallback is invented.
     pub fn use_on(&mut self, state: &WorldState, action: ActionPhase, hit: Option<Hit>) {
         self.selected = hit;
+        self.use_target(
+            state,
+            action,
+            hit.map(Target::Block)
+                .ok_or("Native Java air use and offhand fallback are not implemented")
+                .map(Some),
+        );
+    }
+    /// Schedules a captured use target through the same sequence and transport queue as blocks.
+    /// Ok(None) represents a legitimate cooldown/no-item gate, not a successful action.
+    pub fn use_target(
+        &mut self,
+        state: &WorldState,
+        action: ActionPhase,
+        target: Result<Option<Target>, &'static str>,
+    ) {
         if self.pending.is_some() {
             return;
         }
@@ -210,9 +232,16 @@ impl Controller {
             };
             // Retain the tick remainder, excluding any subsequent transport wait.
             self.use_remainder = self.use_elapsed;
-            if !self.request(hit, Kind::UseOn) && hit.is_none() {
-                self.blocked =
-                    Some("Native Java air use and offhand fallback are not implemented".into());
+            match target {
+                Ok(Some(target)) => {
+                    let kind = match target {
+                        Target::Block(_) => Kind::UseOn,
+                        Target::Air(_) => Kind::UseAir,
+                    };
+                    self.request_target(target, kind);
+                }
+                Ok(None) => {}
+                Err(error) => self.blocked = Some(error.into()),
             }
         } else if !action.held {
             self.use_elapsed = Duration::ZERO;
@@ -222,6 +251,9 @@ impl Controller {
         let Some(hit) = hit else {
             return false;
         };
+        self.request_target(Target::Block(hit), kind)
+    }
+    fn request_target(&mut self, target: Target, kind: Kind) -> bool {
         let Some((_, epoch)) = self.scope else {
             return false;
         };
@@ -235,7 +267,7 @@ impl Controller {
             dimension_epoch: epoch,
             correction_sequence: self.correction,
             sequence,
-            hit,
+            target,
         });
         true
     }

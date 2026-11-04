@@ -151,3 +151,22 @@ and `detach` operate on the native cooldown group of that player's actual main h
 This is server administration: the vanilla server emits the normal cooldown packets;
 it does not fake a client use or successful interaction. Check timer expiry, menu/cursor
 reconciliation and reconnect separately. A parsed timer is not a rendered cooldown overlay.
+
+`ExportItemUseFacts.java` exports schema1 of native default use durations and cooldown
+groups. Run it with the verified client and server classpaths and require identical output
+before updating `data/item-use-facts.json` and `inventory_schema.use_rules` in the pinned
+target manifest. The build validates every registry identity and derives its runtime table.
+Server component overrides/removals and grouped cooldown packets remain authoritative.
+The instant-use implementation does not implement active use/release or offhand fallback.
+
+`NativeAirUseFixture.java` observes real item-use packets after the vanilla listener's
+thread-admission check. Compile its separate `NativeAirUseBridge.java` into the sibling
+`air-use-bridge.jar`; the agent JAR needs `Agent-Class: NativeAirUseFixture` and
+`Can-Retransform-Classes: true`. On the isolated server, attach after the fixture player
+has connected using its main arguments `SERVER_PID agent.jar
+/absolute/menu-fixture-request,FixturePlayer`. The existing menu fixture must be enabled.
+A main-hand compass use triggers that server fixture's real four-row menu. This is an
+explicit server-side menu handler, not vanilla default compass behavior or a client
+success substitution. Check actual GUI clicks against vanilla cursor/slot state. For
+unmodified vanilla item behavior, use a snowball and verify the server stack count and
+native cooldown events. Neither test qualifies public-server or device compatibility.

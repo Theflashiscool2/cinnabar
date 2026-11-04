@@ -40,6 +40,31 @@ pub struct UseOn {
     pub world_border: bool,
     pub sequence: i32,
 }
+#[derive(Clone, Copy, Debug)]
+pub struct UseItem {
+    pub hand: Hand,
+    pub sequence: i32,
+    pub rotation: [f32; 2],
+}
+/// Native hand, prediction sequence, yaw and pitch; no fabricated block hit or use result.
+pub fn encode_use_item(action: UseItem) -> Result<Vec<u8>, Error> {
+    if action.sequence < 0 || action.rotation.iter().any(|v| !v.is_finite()) {
+        return Err(Error::Invalid("Java item use sequence/rotation"));
+    }
+    let mut bytes = Vec::with_capacity(14);
+    write_varint(
+        i32::from(match action.hand {
+            Hand::Main => target::HAND_MAIN_HAND,
+            Hand::Off => target::HAND_OFF_HAND,
+        }),
+        &mut bytes,
+    );
+    write_varint(action.sequence, &mut bytes);
+    for angle in action.rotation {
+        bytes.extend(angle.to_be_bytes());
+    }
+    Ok(bytes)
+}
 /// Java 26.3 separates attack from interaction: the payload is only the entity VarInt.
 pub fn encode_attack(entity: i32) -> Result<Vec<u8>, Error> {
     let mut bytes = Vec::with_capacity(5);
@@ -110,6 +135,47 @@ fn packed_position([x, y, z]: [i32; 3], sequence: i32) -> Result<u64, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_air_use_vector_has_hand_sequence_and_captured_angles_without_a_block() {
+        let action = UseItem {
+            hand: Hand::Main,
+            sequence: 129,
+            rotation: [90., -45.],
+        };
+        assert_eq!(
+            encode_use_item(action).unwrap(),
+            [0, 0x81, 1, 0x42, 0xb4, 0, 0, 0xc2, 0x34, 0, 0]
+        );
+        assert_eq!(
+            encode_use_item(UseItem {
+                hand: Hand::Off,
+                ..action
+            })
+            .unwrap()[0],
+            1
+        );
+        assert!(
+            encode_use_item(UseItem {
+                sequence: -1,
+                ..action
+            })
+            .is_err()
+        );
+        assert!(
+            encode_use_item(UseItem {
+                rotation: [f32::NAN, 0.],
+                ..action
+            })
+            .is_err()
+        );
+        assert!(
+            encode_use_item(UseItem {
+                rotation: [0., f32::INFINITY],
+                ..action
+            })
+            .is_err()
+        );
+    }
     #[test]
     fn native_attack_is_only_entity_varint_without_legacy_action_or_sneak_fields() {
         for (entity, bytes) in [

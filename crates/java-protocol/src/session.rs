@@ -107,6 +107,11 @@ pub enum Command {
         correction_sequence: u64,
         action: interaction::UseOn,
     },
+    UseItem {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+        action: interaction::UseItem,
+    },
     Move {
         dimension_epoch: u64,
         sequence: u64,

@@ -137,6 +137,25 @@ impl Connection {
                 .await?;
             }
             Command::UseOn { .. } => {}
+            Command::UseItem {
+                dimension_epoch,
+                correction_sequence,
+                action,
+            } if dimension_epoch == self.dimension_epoch
+                && correction_sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead =>
+            {
+                self.send(
+                    "ServerboundUseItemPacket",
+                    &interaction::encode_use_item(action)?,
+                )
+                .await?;
+                tracing::debug!(target: "java_session", dimension_epoch, sequence=action.sequence, "Native item use written; awaiting server authority");
+            }
+            Command::UseItem { .. } => {}
             Command::Move {
                 dimension_epoch,
                 sequence,

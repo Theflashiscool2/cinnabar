@@ -96,7 +96,7 @@ fn survival_use_is_buffered_and_does_not_predict_blocks_or_stack_consumption() {
     assert_eq!(c.pending().unwrap().sequence, 1);
     begin(&mut c, &state, Duration::from_secs(1));
     c.use_on(&state, ActionPhase::default(), None);
-    assert_eq!(c.pending().unwrap().hit, hit());
+    assert_eq!(c.pending().unwrap().target, Target::Block(hit()));
     c.queued();
     assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 7);
     assert_eq!(state.block_updates, 0);
@@ -249,7 +249,7 @@ fn taps_survive_backpressure_and_creative_repeat_uses_native_tick_delay() {
     assert_eq!(c.queued_actions, 0);
     begin(&mut c, &state, Duration::from_secs(1));
     c.advance(&state, ActionPhase::default(), None);
-    assert_eq!(c.pending().unwrap().hit, hit());
+    assert_eq!(c.pending().unwrap().target, Target::Block(hit()));
     c.queued();
     assert_eq!(c.queued_actions, 1);
     // Backpressured time cannot become a burst of future held actions.
@@ -356,4 +356,38 @@ fn entity_or_air_target_does_not_report_an_unsupported_survival_block_break() {
             .unwrap()
             .contains("survival/tool breaking")
     );
+}
+
+#[test]
+fn air_requests_share_sequences_and_keep_backpressure_out_of_repeat_time() {
+    let state = state();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    c.use_target(&state, press(), Ok(Some(Target::Air([90., -45.]))));
+    let first = c.pending().unwrap();
+    assert_eq!(first.kind, Kind::UseAir);
+    assert_eq!(first.target, Target::Air([90., -45.]));
+    assert_eq!(first.sequence, 1);
+    begin(&mut c, &state, Duration::from_secs(2));
+    c.use_target(&state, press(), Ok(Some(Target::Air([0., 0.]))));
+    assert_eq!(c.pending().unwrap().target, first.target);
+    c.queued();
+    begin(&mut c, &state, Duration::from_millis(199));
+    let held = ActionPhase {
+        held: true,
+        ..Default::default()
+    };
+    c.use_target(&state, held, Ok(Some(Target::Air([30., -10.]))));
+    assert!(c.pending().is_none());
+    begin(&mut c, &state, Duration::from_millis(1));
+    c.use_target(&state, held, Ok(Some(Target::Air([30., -10.]))));
+    assert_eq!(c.pending().unwrap().sequence, 2);
+    c.queued();
+    c.use_target(&state, press(), Ok(None));
+    assert!(c.pending().is_none());
+    c.use_on(&state, press(), Some(hit()));
+    assert_eq!(c.pending().unwrap().sequence, 3);
+    assert_eq!(c.pending().unwrap().target, Target::Block(hit()));
+    c.begin_frame(&state, Duration::ZERO, None, true);
+    assert!(c.pending().is_none());
 }

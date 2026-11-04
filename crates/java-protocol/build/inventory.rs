@@ -108,6 +108,29 @@ pub fn generate(code: &mut String, target: &serde_json::Value) {
         );
     }
     *code += "];\n";
+    let uses: serde_json::Value = serde_json::from_str(&source(&schema["use_rules"])).unwrap();
+    assert_eq!(uses["schema"], schema["use_rules"]["schema"]);
+    assert_eq!(uses["game_version"], target["game_version"]);
+    assert_eq!(uses["protocol"], target["protocol"]);
+    assert_eq!(
+        schema["use_rules"]["source_client_sha256"],
+        target["client_assets"]["sha256"]
+    );
+    let entries = uses["items"].as_array().unwrap();
+    assert_eq!(entries.len(), items.len());
+    assert_eq!(
+        entries.len() as u64,
+        schema["use_rules"]["items"].as_u64().unwrap()
+    );
+    *code += "#[derive(Clone, Copy, Debug)]\npub struct ItemUseDefaults { pub duration: u32, pub group: &'static str }\npub const ITEM_USE_DEFAULTS: &[ItemUseDefaults] = &[\n";
+    for (entry, name) in entries.iter().zip(&items) {
+        assert_eq!(entry.as_array().unwrap().len(), 3);
+        assert_eq!(entry[0].as_str().unwrap(), name);
+        let duration = u32::try_from(entry[1].as_u64().unwrap()).unwrap();
+        let group = entry[2].as_str().unwrap();
+        *code += &format!("ItemUseDefaults {{ duration: {duration}, group: {group:?} }},\n");
+    }
+    *code += "];\n";
     let empty = u32::try_from(native["empty_item"].as_u64().unwrap()).unwrap();
     assert!((empty as usize) < items.len());
     *code += &format!("pub const ITEM_EMPTY_ID: u32 = {empty};\n");

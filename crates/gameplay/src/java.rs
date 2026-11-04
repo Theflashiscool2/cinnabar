@@ -2,6 +2,7 @@
 pub mod actions;
 pub mod attack;
 pub mod interaction;
+pub mod item_use;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
