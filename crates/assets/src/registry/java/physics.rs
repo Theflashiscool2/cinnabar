@@ -154,6 +154,11 @@ impl Table {
     pub fn fluids(&self) -> Option<&super::fluids::Table> {
         self.fluids.as_deref()
     }
+    /// Native out-of-build-height space uses air's actual surface properties.
+    /// This is not a fallback for unknown/unloaded cells inside the dimension.
+    pub fn air(&self) -> Option<&State> {
+        self.states.iter().find(|state| state.is_air)
+    }
     pub fn state(&self, id: u32) -> Option<&State> {
         self.states.get(id as usize)
     }

@@ -135,6 +135,17 @@ impl Connection {
             Command::Attack { .. } => {}
             Command::Interact {
                 dimension_epoch,
+                action,
+                ..
+            } if action.action == interaction::Action::ReleaseUse => {
+                // A neutral release is independent of a position correction. It still
+                // belongs to this exact world, and the server must really be loaded.
+                self.cancelled_use
+                    .hold(dimension_epoch, self.dimension_epoch);
+                self.flush_use_cancellation().await?;
+            }
+            Command::Interact {
+                dimension_epoch,
                 correction_sequence,
                 action,
             } if dimension_epoch == self.dimension_epoch
@@ -260,10 +271,24 @@ impl Connection {
             {
                 self.send("ServerboundPlayerLoadedPacket", &[]).await?;
                 self.loaded_epoch = Some(dimension_epoch);
+                self.flush_use_cancellation().await?;
             }
             Command::PlayerLoaded { .. } => {}
         }
         Ok(false)
+    }
+    async fn flush_use_cancellation(&mut self) -> Result<(), Error> {
+        if self
+            .cancelled_use
+            .take_ready(self.dimension_epoch, self.loaded_epoch, self.dead)
+        {
+            self.send(
+                "ServerboundPlayerActionPacket",
+                &interaction::encode(interaction::Dig::release_use())?,
+            )
+            .await?;
+        }
+        Ok(())
     }
 }
 

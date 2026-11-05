@@ -531,7 +531,12 @@ fn surface<'a>(
         (position[1] + y_offset).floor() as i32,
         position[2].floor() as i32,
     ];
-    let id = terrain.block(cell).ok_or(QueryError::Missing(cell))?.0;
+    let Some(id) = climbing::cell(terrain, cell)? else {
+        return physics.air().ok_or(Error::Unsupported {
+            behavior: "missing native air surface facts",
+            position: cell,
+        });
+    };
     let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
     if (state.special_callbacks
         && !bubbles::is_column(physics, id)
@@ -552,7 +557,9 @@ fn ensure_contacts(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<
             for x in (shape.min[0] + 1.0e-7).floor() as i32..=(shape.max[0] - 1.0e-7).floor() as i32
             {
                 let cell = [x, y, z];
-                let id = terrain.block(cell).ok_or(QueryError::Missing(cell))?.0;
+                let Some(id) = climbing::cell(terrain, cell)? else {
+                    continue;
+                };
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
                 if state.special_callbacks
                     && !bubbles::is_column(physics, id)

@@ -258,3 +258,54 @@ fn forced_crouch_cannot_keep_sprint_acceleration() {
     assert_eq!(forced.position, manual.position);
     assert_eq!(forced.velocity, manual.velocity);
 }
+
+#[test]
+fn outside_build_height_is_void_travel_but_inside_missing_columns_still_wait() {
+    let (terrain, physics) = scene();
+    // Neither sky nor void outside the registered interval is an unloaded column.
+    let dim = terrain.dimension().unwrap();
+    let min = dim.min_y as f64;
+    let max = min + dim.height as f64;
+    for y in [min - 3., max + 3.] {
+        let mut motion = Motion {
+            position: [8.5, y, 8.5],
+            ..Default::default()
+        };
+        let mut body = Body::default();
+        for _ in 0..3 {
+            step(
+                &mut motion,
+                &mut body,
+                Input::default(),
+                parameters(),
+                &terrain,
+                &physics,
+                (7, 1),
+            )
+            .unwrap();
+        }
+        assert!(motion.position[1] < y);
+        assert!(motion.velocity[1] < -0.15);
+        assert!(!body.on_ground);
+    }
+    let mut motion = Motion {
+        position: [32.5, min + 3., 8.5],
+        ..Default::default()
+    };
+    let before = motion;
+    let mut body = Body::default();
+    assert!(matches!(
+        step(
+            &mut motion,
+            &mut body,
+            Input::default(),
+            parameters(),
+            &terrain,
+            &physics,
+            (7, 1)
+        ),
+        Err(super::super::Error::Query(QueryError::Missing(_)))
+    ));
+    assert_eq!(motion.position, before.position);
+    assert_eq!(motion.velocity, before.velocity);
+}

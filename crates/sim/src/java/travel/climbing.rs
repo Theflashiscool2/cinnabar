@@ -8,7 +8,7 @@ pub(super) fn context(position: [f64; 3], descending: bool) -> collision::Player
         descending,
     }
 }
-fn cell(terrain: &Terrain, p: [i32; 3]) -> Result<Option<u32>, Error> {
+pub(super) fn cell(terrain: &Terrain, p: [i32; 3]) -> Result<Option<u32>, Error> {
     let d = terrain.dimension().ok_or(QueryError::Retired)?;
     if p[1] < d.min_y || i64::from(p[1]) >= i64::from(d.min_y) + i64::from(d.height) {
         return Ok(None);

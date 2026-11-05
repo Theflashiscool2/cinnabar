@@ -165,3 +165,12 @@ cancellation-vs-position policy test. This is a connected implementation checkpo
 Bed Wars/Duels completion or iOS/online/Hypixel qualification. Full Cargo/MCP tests remain
 incomplete; production-graph focused tests are narrower. A whole world-test wrapper lacked
 its dev-feature dependencies; focused authoritative admission tests passed instead.
+
+Out-of-height entry now retains real section publication receipts while allowing native void
+gravity; only out-of-dimension cells become air, and missing in-range columns still wait.
+Controlled Linux lavapipe vanilla26.3 accepted actual falling, server void damage/death, the
+shared Respawn button, server-confirmed movement, inventory opening and reconnect. Respawn
+retires old loaded/correction state. Neutral item-use cancellation is bounded/epoch-scoped and
+waits for actual PlayerLoaded; its forced preloaded race has focused tests, not live coverage.
+The fixture preserved items with keep_inventory during death and restored false afterward;
+loot-drop behavior is unqualified. Full Cargo/MCP, iOS, online and Hypixel remain pending.

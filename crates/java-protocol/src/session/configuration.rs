@@ -10,6 +10,7 @@ impl Connection {
         self.terrain = None;
         self.dimensions.clear();
         self.loaded_epoch = None;
+        self.cancelled_use.clear();
         self.pending_teleport = None;
         self.pending_rotation = None;
         self.pending_ping = None;

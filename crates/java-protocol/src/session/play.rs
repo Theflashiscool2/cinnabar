@@ -205,6 +205,7 @@ impl Connection {
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
                     self.dead = false;
                     self.loaded_epoch = None;
+                    self.cancelled_use.clear();
                     self.pending_teleport = None;
                     self.pending_rotation = None;
                     self.menu_lifetime.retire();
@@ -281,7 +282,16 @@ impl Connection {
                         return Err(ProtocolError::Invalid("Java respawn keep flags").into());
                     }
                     self.terrain = Some(self.terrain_context(&spawn)?);
-                    self.dimension_epoch += 1;
+                    self.dimension_epoch = self
+                        .dimension_epoch
+                        .checked_add(1)
+                        .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
+                    // This is the server's new player/world, not proof from a sent respawn request.
+                    self.dead = false;
+                    self.loaded_epoch = None;
+                    self.cancelled_use.clear();
+                    self.pending_teleport = None;
+                    self.pending_rotation = None;
                     self.menu_lifetime.retire();
                     self.entity_lifetimes.retire();
                     self.emit(Event::Respawn {

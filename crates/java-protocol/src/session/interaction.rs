@@ -1,6 +1,8 @@
 //! Native block actions. Action IDs derive from the pinned enum, including changed directions.
 use crate::{ProtocolError as Error, codec::write_varint, target};
 
+pub(crate) mod cancel;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
     Start,

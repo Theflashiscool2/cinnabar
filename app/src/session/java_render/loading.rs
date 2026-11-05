@@ -1,5 +1,6 @@
 //! World entry follows current section publication, including legitimate empty sections.
 use super::*;
+mod cell;
 
 /// Start preparing received spawn terrain without waiting for optional surrounding columns.
 pub(super) fn initial_terrain_ready(terrain: &world::java::Terrain, position: [f64; 3]) -> bool {
@@ -11,7 +12,11 @@ impl Presentation {
     /// Keep the renderer receipt gate for both empty and nonempty compiled sections.
     pub(super) fn spawn_ready(&self, state: &client_world::java::WorldState) -> bool {
         state.teleport.as_ref().is_some_and(|t| {
-            self.cell_resident(&state.terrain, t.motion.position.map(|n| n.floor() as i32))
+            let Some(dimension) = state.terrain.dimension() else {
+                return false;
+            };
+            cell::renderer_cell(dimension, t.motion.position)
+                .is_some_and(|cell| self.cell_resident(&state.terrain, cell))
         })
     }
     pub(super) fn waiting_stage(&self, state: &client_world::java::WorldState) -> &'static str {
@@ -129,6 +134,29 @@ mod tests {
         assert_eq!(
             presentation.waiting_stage(&state),
             "awaiting_server_position"
+        );
+    }
+    #[test]
+    fn out_of_height_spawn_still_needs_a_current_nearest_section_receipt() {
+        let mut state = fixture();
+        state.teleport.as_mut().unwrap().motion.position[1] = -60.;
+        let mut p = Presentation::default();
+        assert!(!p.spawn_ready(&state));
+        let old = state.terrain.publication_key([-1, -2]).unwrap();
+        p.resident_keys.insert([-1, -4, -2], old.clone());
+        assert!(
+            !p.spawn_ready(&state),
+            "an impossible section is not a receipt for the nearest real one"
+        );
+        p.resident_keys.insert([-1, 0, -2], old);
+        assert!(p.spawn_ready(&state));
+        state.teleport.as_mut().unwrap().motion.position[1] = 16.;
+        assert!(p.spawn_ready(&state));
+        let column = state.terrain.column([-1, -2]).unwrap().as_ref().clone();
+        state.terrain.replace([-1, -2], column);
+        assert!(
+            !p.spawn_ready(&state),
+            "stale column publication cannot open an out-of-height spawn"
         );
     }
     #[test]
