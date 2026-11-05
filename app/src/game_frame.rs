@@ -86,7 +86,11 @@ pub(crate) fn configure_actor_render_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            (publish_actor_render_frame, publish_entity_shadows)
+            (
+                publish_actor_render_frame,
+                crate::session::java_hands::update,
+                publish_entity_shadows,
+            )
                 .chain()
                 .in_set(ClientFrameSet::ActorPublication),
         );

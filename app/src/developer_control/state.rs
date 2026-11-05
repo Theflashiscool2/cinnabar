@@ -508,6 +508,15 @@ pub(super) fn snapshot(world: &World) -> Value {
             "alive":ui.local_player_alive(),"visual_parity":false,
         })
     }));
+    snapshot["native_java_hand"] = if world
+        .get_resource::<crate::session::SessionController>()
+        .and_then(|s| s.java_world_if_active())
+        .is_some()
+    {
+        json!(world.get_resource::<render_scene::HandRigScene>().and_then(|s|s.frame.as_ref()).map(|f|json!({"instances":f.rig.instances.len(),"vertices":f.rig.maximum_vertex_count,"material_layers":f.item_atlases.iter().map(|a|a.as_ref().map(|a|a.layers)).collect::<Vec<_>>(),"revision":f.revision})))
+    } else {
+        serde_json::Value::Null
+    };
     snapshot["native_java_special"] = json!(
         world
             .get_resource::<crate::session::java_special::Presentation>()

@@ -58,6 +58,7 @@ pub(crate) struct PublishExtras<'w, 's> {
     #[cfg(target_arch = "wasm32")]
     skin: Res<'w, client_shell::player_skin::LocalPlayerSkin>,
     hand_rig: ResMut<'w, client_presentation::actor_publication::ActorFrameState>,
+    hand_scene: Option<Res<'w, render_scene::HandRigScene>>,
     collisions: Option<Res<'w, client_interaction::movement::PhysicsCollisionRegistries>>,
     profiler: Option<Res<'w, render_scene::RuntimeStageProfiler>>,
     actor_pipelines: Option<Res<'w, render_scene::ActorPipelineReadiness>>,
@@ -118,6 +119,7 @@ pub(crate) fn prepare_ui_runtime(
         #[cfg(target_arch = "wasm32")]
         skin,
         mut hand_rig,
+        hand_scene,
         collisions,
         profiler,
         actor_pipelines,
@@ -394,12 +396,24 @@ pub(crate) fn prepare_ui_runtime(
                 },
                 |rig| rig.java_equipped.is_some(),
             );
+    #[cfg(not(target_arch = "wasm32"))]
+    let native_java_hand = java_session
+        .as_ref()
+        .and_then(|s| s.java_world_if_active())
+        .is_some();
+    #[cfg(target_arch = "wasm32")]
+    let native_java_hand = false;
+    let hand_active = if native_java_hand {
+        hand_scene.as_ref().is_some_and(|scene| scene.is_active())
+    } else {
+        hand_rig.hand_is_active()
+    };
     let preview = PreviewCapture {
         ready: preview_ready,
         skin,
         pose,
         shown: runtime.inventory_open() || menu_visible || hud_doll || runtime.emotes().is_open(),
-        hands: first_person && !hide_hand && !hand_rig.hand_is_active() && !java_held_item,
+        hands: first_person && !hide_hand && !hand_active && !java_held_item,
     };
     client_ui::ui_runtime::presentation::forms::observe_station_block(
         &player_runtime,
@@ -474,8 +488,8 @@ pub(crate) fn prepare_ui_runtime(
     // static empty-hand scene and the HUD's CPU hand/item carriers are retired so nothing
     // double-draws.
     presentation.hud_frame_mut().first_person = first_person && !hide_hand;
-    presentation.hud_frame_mut().hand_rig_active = hand_rig.hand_is_active();
-    if hand_rig.hand_is_active() {
+    presentation.hud_frame_mut().hand_rig_active = hand_active;
+    if hand_active {
         hand.use_animated_rig();
     } else {
         hand.observe(

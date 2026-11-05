@@ -81,6 +81,22 @@ pub struct HeadTextures {
     pub revision: u64,
     pub textures: BTreeMap<String, HeadTexture>,
 }
+/// Native item display context; GUI transforms are never reused as held geometry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum View {
+    Gui,
+    FirstPersonRight,
+    FirstPersonLeft,
+}
+impl View {
+    fn display(self) -> DisplayContext {
+        match self {
+            Self::Gui => DisplayContext::Gui,
+            Self::FirstPersonRight => DisplayContext::FirstPersonRightHand,
+            Self::FirstPersonLeft => DisplayContext::FirstPersonLeftHand,
+        }
+    }
+}
 #[derive(Clone)]
 pub enum HeadTexture {
     Pack(String),
@@ -91,6 +107,22 @@ pub fn profile_key(value: &Value) -> String {
         "{:x}",
         Sha256::digest(serde_json::to_vec(value).expect("JSON profile"))
     )
+}
+/// Native glint override and enchantments resolve through the same default-component owner.
+pub fn glint(item: &str, added: &BTreeMap<String, Value>, removed: &BTreeSet<String>) -> bool {
+    let component = |name: &str| {
+        if removed.contains(name) {
+            None
+        } else {
+            added.get(name).or_else(|| defaults::component(item, name))
+        }
+    };
+    component("minecraft:enchantment_glint_override")
+        .and_then(Value::as_bool)
+        .unwrap_or_else(|| {
+            component("minecraft:enchantments")
+                .is_some_and(|v| v.as_object().is_some_and(|v| !v.is_empty()))
+        })
 }
 
 /// Immutable resource generation. Shared by cancellable presentation workers, never a game tick owner.
@@ -245,9 +277,19 @@ impl Catalog {
         stack: &Stack,
         heads: &HeadTextures,
     ) -> Result<Vec<Quad>, Error> {
+        self.geometry_in(stack, heads, View::Gui)
+    }
+    /// Applies the selected native display transform before crossing the shared mesh boundary.
+    pub fn geometry_in(
+        &self,
+        stack: &Stack,
+        heads: &HeadTextures,
+        view: View,
+    ) -> Result<Vec<Quad>, Error> {
+        let display = view.display();
         let view = stack.view();
         let context = Context {
-            display: DisplayContext::Gui,
+            display,
             owner: None,
             level: None,
             seed: 0,
@@ -280,7 +322,7 @@ impl Catalog {
             self.models.resolve(&name).map_err(model_error)?;
             let baked =
                 item_bake::bake_item_model(&self.models, self, &name).map_err(model_error)?;
-            let matrix = baked.layer_matrix(DisplayContext::Gui, &layer.transform);
+            let matrix = baked.layer_matrix(display, &layer.transform);
             if let Some(special) = special {
                 let normal_matrix =
                     glam::Mat3::from_mat4(glam::Mat4::from_cols_array_2d(&matrix.0))

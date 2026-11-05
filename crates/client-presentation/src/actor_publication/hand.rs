@@ -526,7 +526,7 @@ pub(super) fn item_atlas(
 }
 
 /// Vanilla's hand stack order: hurt tilt, walk bob, then sway about X and Y.
-pub(super) fn hand_motion_matrix(motion: &crate::camera::FirstPersonHandMotion) -> Mat4 {
+pub fn hand_motion_matrix(motion: &crate::camera::FirstPersonHandMotion) -> Mat4 {
     motion
         .legacy_effect
         .unwrap_or_else(|| motion.hurt * motion.bob.matrix())
@@ -535,7 +535,7 @@ pub(super) fn hand_motion_matrix(motion: &crate::camera::FirstPersonHandMotion) 
 }
 
 /// Java sets fixed lights after the camera effects and world look, before the lagging hand sway.
-pub(super) fn java_light_matrix(
+pub fn java_light_matrix(
     motion: Option<&crate::camera::FirstPersonHandMotion>,
     look: bevy::math::Quat,
 ) -> Mat4 {

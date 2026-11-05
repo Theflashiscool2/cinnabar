@@ -30,6 +30,7 @@ mod hand;
 mod java;
 pub use commit::{PreparedActorPublication, publish_actor_render_frame};
 use hand::{HandSource, publish_hand_rig};
+pub use hand::{hand_motion_matrix, java_light_matrix};
 
 use std::sync::Arc;
 

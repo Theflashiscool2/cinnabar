@@ -314,3 +314,65 @@ fn native_special_item_geometry_and_component_changes_use_real_materials() {
             .any(|p| p[1] > p[0] && p[1] > p[2] && p[3] > 0)
     );
 }
+
+#[test]
+fn native_first_person_selects_real_models_instead_of_gui_sprites() {
+    let Some(c) = native_catalog() else {
+        return;
+    };
+    let heads = HeadTextures::default();
+    for name in [
+        "diamond_sword",
+        "bow",
+        "trident",
+        "shield",
+        "chest",
+        "white_banner",
+        "decorated_pot",
+    ] {
+        let item = Stack {
+            item: format!("minecraft:{name}"),
+            ..stack()
+        };
+        for view in [View::FirstPersonRight, View::FirstPersonLeft] {
+            let quads = c.geometry_in(&item, &heads, view).unwrap();
+            assert!(!quads.is_empty(), "{name} {view:?}");
+            assert!(
+                quads
+                    .iter()
+                    .flat_map(|q| q.positions.iter().flatten())
+                    .all(|v| v.is_finite())
+            );
+        }
+    }
+    let trident = Stack {
+        item: "minecraft:trident".into(),
+        ..stack()
+    };
+    let root = std::env::var_os("CINNABAR_JAVA_ASSETS").unwrap();
+    let target: Value = serde_json::from_slice(include_bytes!(
+        "../../../../../java-protocol/data/target.json"
+    ))
+    .unwrap();
+    let mut jar = super::super::source::Jar::open(
+        &std::path::Path::new(&root).join("client.jar"),
+        target["client_assets"]["sha256"].as_str().unwrap(),
+        target["client_assets"]["bytes"].as_u64().unwrap(),
+    )
+    .unwrap();
+    let expected = Image::decode(
+        &jar.read("assets/minecraft/textures/entity/trident/trident.png")
+            .unwrap(),
+    )
+    .unwrap();
+    let held = c
+        .geometry_in(&trident, &heads, View::FirstPersonRight)
+        .unwrap();
+    assert!(held.iter().all(|q| q.image.rgba == expected.rgba));
+    assert!(
+        c.geometry(&trident)
+            .unwrap()
+            .iter()
+            .any(|q| q.image.rgba != expected.rgba)
+    );
+}

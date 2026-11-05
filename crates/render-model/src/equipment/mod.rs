@@ -3,6 +3,7 @@
 mod attachable;
 pub mod blocks;
 mod display;
+pub mod java_item;
 pub mod shield;
 #[cfg(test)]
 mod tests;

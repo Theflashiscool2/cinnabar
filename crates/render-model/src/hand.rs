@@ -3,6 +3,8 @@ use glam::{Mat4, Vec3};
 use std::{mem::size_of, sync::Arc};
 /// Instance texture-selector bits shared with the hand shader.
 pub const HAND_ITEM_LAYER_FLAG: u32 = 0x8000_0000;
+/// Native held-material preparation stays within the minimum supported GPU array depth.
+pub const MAX_HAND_ITEM_LAYERS: usize = 256;
 
 pub const HAND_OFFHAND_LAYER_FLAG: u32 = 0x4000_0000;
 

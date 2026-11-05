@@ -205,12 +205,7 @@ fn item(slot: &Option<Slot>, artwork: &UiPresentationRuntime) -> HudItem {
                 .filter(|damage| *damage > 0)
                 .map(|damage| (max.saturating_sub(damage) as f64 / max as f64).clamp(0.0, 1.0))
         });
-    let glint = component(stack, "minecraft:enchantment_glint_override")
-        .and_then(|v| v.as_bool())
-        .unwrap_or_else(|| {
-            component(stack, "minecraft:enchantments")
-                .is_some_and(|v| v.as_object().is_some_and(|v| !v.is_empty()))
-        });
+    let glint = assets::registry::java::items::glint(&stack.item, &stack.added, &stack.removed);
     HudItem {
         known: true,
         count: stack.count,

@@ -76,18 +76,41 @@ impl State {
                 stacks.entry(key).or_insert(value);
             }
             work.desired = Some(ticket);
+            let stack_key = |stack: &inventory::java::Stack| {
+                assets::registry::java::items::key(
+                    &stack.item,
+                    stack.count,
+                    &stack.added,
+                    &stack.removed,
+                )
+            };
+            let main = world
+                .inventory
+                .selected
+                .and_then(|i| projection.hotbar.get(i))
+                .and_then(Option::as_ref)
+                .and_then(Option::as_ref)
+                .map(stack_key);
+            let off = projection
+                .offhand
+                .as_ref()
+                .and_then(Option::as_ref)
+                .map(stack_key);
             work.request = Some(Request {
                 ticket,
                 stacks,
                 heads,
+                hands: [main, off],
             });
             work.result = None;
             self.shared.1.notify_one();
         }
-        work.result.take().and_then(|(key, icons)| {
+        work.result.take().and_then(|(key, output)| {
             if key == ticket {
-                work.installed = Some(icons.clone());
-                Some(icons)
+                work.installed = Some(output.icons.clone());
+                work.hands = output.hands;
+                work.held_misses = output.held_misses;
+                Some(output.icons)
             } else {
                 None
             }
@@ -139,6 +162,22 @@ fn normalize_registry_components(stack: &mut Stack, world: &client_world::java::
     }
 }
 impl UiRuntime {
+    /// A held model is usable only for the exact current stack; pending revisions never reuse a different item.
+    pub fn java_held_item(
+        &self,
+        key: &str,
+        offhand: bool,
+    ) -> Option<Arc<render_model::equipment::java_item::Prepared>> {
+        self.java_hud()?;
+        let state = self.session.java_item_artwork.as_ref()?;
+        let work = state.shared.0.lock().unwrap();
+        if work.closed {
+            return None;
+        }
+        let (identity, prepared) = work.hands[usize::from(offhand)].as_ref()?;
+        (identity == key).then(|| prepared.clone())
+    }
+
     /// Bounded operational state; no component payloads or authentication data are retained.
     pub fn java_item_artwork_diagnostics(&self) -> serde_json::Value {
         let Some(state) = self.session.java_item_artwork.as_ref() else {
@@ -149,7 +188,7 @@ impl UiRuntime {
         let misses = icons
             .map(|i| i.misses.iter().take(16).collect::<BTreeMap<_, _>>())
             .unwrap_or_default();
-        serde_json::json!({"desired":work.desired,"queued":work.request.is_some(),"closed":work.closed,"icons":icons.map_or(0,|i|i.icons.len()),"missing":icons.map_or(0,|i|i.misses.len()),"examples":misses})
+        serde_json::json!({"desired":work.desired,"queued":work.request.is_some(),"closed":work.closed,"icons":icons.map_or(0,|i|i.icons.len()),"missing":icons.map_or(0,|i|i.misses.len()),"examples":misses,"held_missing":work.held_misses})
     }
     pub(in crate::ui_runtime) fn clear_java_item_artwork(&mut self) {
         if let Some(old) = self.session.java_item_artwork.take() {

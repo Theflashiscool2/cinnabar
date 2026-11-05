@@ -4,11 +4,19 @@ use std::{
     collections::BTreeMap,
     sync::{Arc, Condvar, Mutex},
 };
+pub(super) type Held = Option<(String, Arc<render_model::equipment::java_item::Prepared>)>;
+#[derive(Default)]
+pub(super) struct Output {
+    pub(super) icons: Arc<SessionIcons>,
+    pub(super) hands: [Held; 2],
+    pub(super) held_misses: Vec<String>,
+}
 pub(super) type Ticket = (u64, u64, u64, u64);
 pub(super) struct Request {
     pub(super) ticket: Ticket,
     pub(super) stacks: BTreeMap<String, Stack>,
     pub(super) heads: Arc<HeadTextures>,
+    pub(super) hands: [Option<String>; 2],
 }
 #[derive(Default)]
 pub(super) struct Shared {
@@ -16,12 +24,14 @@ pub(super) struct Shared {
     pub(super) installed: Option<Arc<SessionIcons>>,
     pub(super) desired: Option<Ticket>,
     pub(super) request: Option<Request>,
-    pub(super) result: Option<(Ticket, Arc<SessionIcons>)>,
+    pub(super) result: Option<(Ticket, Output)>,
+    pub(super) hands: [Held; 2],
+    pub(super) held_misses: Vec<String>,
 }
 impl Shared {
-    fn finish(&mut self, ticket: Ticket, icons: Arc<SessionIcons>) {
+    fn finish(&mut self, ticket: Ticket, output: Output) {
         if !self.closed && self.desired == Some(ticket) {
-            self.result = Some((ticket, icons));
+            self.result = Some((ticket, output));
         }
     }
 }
@@ -38,7 +48,7 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
             work.request.take().unwrap()
         };
         let mut icons = SessionIcons::default();
-        for (key, stack) in request.stacks {
+        for (key, stack) in &request.stacks {
             {
                 let work = shared.0.lock().unwrap();
                 if work.closed {
@@ -48,9 +58,9 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
                     break;
                 }
             }
-            match catalog.icon_with_heads(&stack, &request.heads) {
+            match catalog.icon_with_heads(stack, &request.heads) {
                 Ok(image) => icons.icons.push(SessionIcon {
-                    identifier: Arc::from(key),
+                    identifier: Arc::from(key.as_str()),
                     metadata: 0,
                     width: image.width,
                     height: image.height,
@@ -58,9 +68,33 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
                 }),
                 Err(error) => {
                     icons.misses.insert(
-                        Arc::from(key),
+                        Arc::from(key.as_str()),
                         format!("{}: {error}", stack.item).into_boxed_str(),
                     );
+                }
+            }
+        }
+        let mut hands = std::array::from_fn(|_| None);
+        let mut held_misses = Vec::new();
+        for (hand, key) in request.hands.into_iter().enumerate() {
+            if let Some(key) = key
+                && let Some(stack) = request.stacks.get(&key)
+            {
+                let view = if hand == 0 {
+                    assets::registry::java::items::View::FirstPersonRight
+                } else {
+                    assets::registry::java::items::View::FirstPersonLeft
+                };
+                let result = catalog
+                    .geometry_in(stack, &request.heads, view)
+                    .map_err(|e| e.to_string())
+                    .and_then(|quads| {
+                        render_model::equipment::java_item::prepare(quads, hand == 1)
+                    });
+                match result {
+                    Ok(Some(prepared)) => hands[hand] = Some((key, Arc::new(prepared))),
+                    Ok(None) => {}
+                    Err(error) => held_misses.push(format!("{}: {error}", stack.item)),
                 }
             }
         }
@@ -68,7 +102,14 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
         if work.closed {
             return;
         }
-        work.finish(request.ticket, Arc::new(icons));
+        work.finish(
+            request.ticket,
+            Output {
+                icons: Arc::new(icons),
+                hands,
+                held_misses,
+            },
+        );
     }
 }
 
@@ -81,17 +122,20 @@ mod tests {
         let replacement = (7, 2, 20, 1);
         let reloaded = (7, 2, 20, 2);
         let mut work = Shared::default();
-        let icons = Arc::new(SessionIcons::default());
+        let output = || Output {
+            icons: Arc::new(SessionIcons::default()),
+            ..Default::default()
+        };
         work.desired = Some(replacement);
-        work.finish(first, icons.clone());
+        work.finish(first, output());
         assert!(work.result.is_none());
         work.desired = Some(reloaded);
-        work.finish(replacement, icons.clone());
+        work.finish(replacement, output());
         assert!(work.result.is_none());
-        work.finish(reloaded, icons.clone());
+        work.finish(reloaded, output());
         assert_eq!(work.result.take().unwrap().0, reloaded);
         work.closed = true;
-        work.finish(reloaded, icons);
+        work.finish(reloaded, output());
         assert!(work.result.is_none());
     }
 }
