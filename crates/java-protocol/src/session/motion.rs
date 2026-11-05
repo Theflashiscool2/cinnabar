@@ -76,10 +76,33 @@ impl Connection {
                 sequence,
                 text,
             } => {
-                let written = dimension_epoch == self.dimension_epoch && self.phase == Phase::Play;
-                if written {
-                    self.send("ServerboundChatCommandPacket", &chat::command(&text)?)
-                        .await?;
+                let mut written = false;
+                if dimension_epoch == self.dimension_epoch && self.phase == Phase::Play {
+                    use rand::RngCore;
+                    let timestamp = auth::chat::now_millis_protocol()?;
+                    let salt = rand::rngs::OsRng.next_u64() as i64;
+                    match self.chat.outgoing_command(&text, timestamp, salt) {
+                        Ok(command) => {
+                            self.send(command.packet, &command.payload).await?;
+                            written = true;
+                            if let Some(warning) = command.warning {
+                                self.emit(Event::SystemChat(chat::System {
+                                    content: crate::nbt::Value::String(warning.into()),
+                                    overlay: false,
+                                }))
+                                .await?;
+                            }
+                        }
+                        Err(error) => {
+                            self.emit(Event::SystemChat(chat::System {
+                                content: crate::nbt::Value::String(format!(
+                                    "Java command was not sent: {error}"
+                                )),
+                                overlay: false,
+                            }))
+                            .await?
+                        }
+                    }
                 }
                 self.emit(Event::ChatCommandSent { sequence, written })
                     .await?;

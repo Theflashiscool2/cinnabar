@@ -127,6 +127,11 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::CommandTree {
+                nodes,
+                message_arguments,
+            } => self.chat.command_tree = Some((nodes, message_arguments)),
+            Event::CommandPermission(level) => self.chat.command_permission = level,
             Event::CommandSuggestions(packet) => self.chat.suggestions = Some(packet.into()),
             Event::SystemChat(message) => self
                 .chat

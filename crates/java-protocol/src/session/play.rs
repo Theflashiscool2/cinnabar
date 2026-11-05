@@ -130,6 +130,21 @@ impl Connection {
                 }
                 continue;
             }
+            if *name == "ClientboundCommandsPacket" {
+                self.command_tree(&mut r).await?;
+                r.finish().map_err(packet_error)?;
+                continue;
+            }
+            if *name == "ClientboundEntityEventPacket" {
+                let mut probe = Reader(r.0);
+                let id = probe.i32().map_err(packet_error)?;
+                let event = probe.byte().map_err(packet_error)?;
+                if chat::permission_level(event).is_some() {
+                    probe.finish().map_err(packet_error)?;
+                    self.command_permission(id, event).await?;
+                    continue;
+                }
+            }
             if *name == "ClientboundCommandSuggestionsPacket" {
                 let response = chat::suggestions::decode(&mut r).map_err(packet_error)?;
                 r.finish().map_err(packet_error)?;
@@ -300,6 +315,7 @@ impl Connection {
                         world.secure_chat,
                         auth::chat::now_millis_protocol()?,
                     )?;
+                    self.chat.command_entity = Some(world.entity_id);
                     self.chat_pending = ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED);
                     if !world.online_mode {
                         self.chat_preparation = None;
@@ -441,7 +457,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundBossEventPacket",
     "ClientboundChangeDifficultyPacket",
     "ClientboundClearTitlesPacket",
-    "ClientboundCommandsPacket",
     "ClientboundCustomChatCompletionsPacket",
     "ClientboundDamageEventPacket",
     "ClientboundDebugBlockValuePacket",

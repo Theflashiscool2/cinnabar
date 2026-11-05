@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/Vasysik/horizon-android",
+  "revision": "5b8e6d0b6453e57fb23eb7bbb365bbc7edd5b9b2",
+  "source": "crates/horizon-command/src/lib.rs",
+  "license": "MIT",
+  "adaptation": "Brigadier relevant-child selection, parsing order and redirect-context traversal adapted into java-protocol/session/chat/commands/parse.rs. Networking, world, inventory, simulation and authentication remain Cinnabar-owned. Unsupported signed prefixes are explicit; no approximate argument parser is used to advance the signature chain.",
+  "source_sha256": "eba41e11230fa2a232b11d6c286ad9fc18053a6c54f76580fa7e7b08b58f0468",
+  "native_reference": "Verified26.3 ArgumentVisitor and CommandDispatcher fixtures; parser properties generated from the pinned official server registry."
+}

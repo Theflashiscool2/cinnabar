@@ -23,6 +23,8 @@ pub mod wire;
 /// A malformed or unsupported Java wire value.
 #[derive(Debug, thiserror::Error)]
 pub enum ProtocolError {
+    #[error("native Java command argument {0} is not implemented")]
+    UnsupportedCommandArgument(&'static str),
     #[error("native Java item component {0} is not implemented")]
     UnsupportedItemComponent(&'static str),
     #[error("invalid Java value: {0}")]

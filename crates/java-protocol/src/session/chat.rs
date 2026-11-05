@@ -1,4 +1,8 @@
 //! Version-pinned player chat, commands, signatures and acknowledgements.
+#[path = "chat/command_send.rs"]
+mod command_send;
+#[path = "chat/commands.rs"]
+mod commands;
 #[path = "chat/player.rs"]
 mod player;
 #[path = "chat/security.rs"]
@@ -102,6 +106,9 @@ mod tests {
 #[derive(Default)]
 pub(super) struct State {
     pub suggestions: suggestions::Pending,
+    pub commands: Option<commands::Tree>,
+    pub command_permission: u8,
+    pub command_entity: Option<i32>,
     window: window::Window,
     cache: window::Cache,
     next_index: i32,
@@ -207,10 +214,12 @@ impl State {
         secure: bool,
         now: i64,
     ) -> Result<Option<Vec<u8>>, Error> {
+        let commands = self.commands.take();
         let roots = self.roots.take();
         let remotes = std::mem::take(&mut self.remotes);
         let cached_certificate = self.cached_certificate.take();
         *self = Self {
+            commands,
             roots,
             remotes,
             cached_certificate,
@@ -232,6 +241,7 @@ impl State {
             .transpose()
     }
     pub fn reconfigure(&mut self) -> Result<Option<Vec<u8>>, Error> {
+        self.commands = None;
         self.remotes = Default::default();
         self.world_login(false, false, 0)
     }
@@ -539,4 +549,37 @@ impl super::Connection {
         }
         Ok(())
     }
+}
+
+impl super::Connection {
+    pub(super) async fn command_tree(&mut self, r: &mut Reader<'_>) -> Result<(), super::Error> {
+        let tree = commands::Tree::decode(r)?;
+        std::mem::replace(r, Reader(&[])).finish()?;
+        let (nodes, message_arguments) = tree.counts();
+        self.chat.commands = Some(tree);
+        self.emit(super::Event::CommandTree {
+            nodes,
+            message_arguments,
+        })
+        .await
+    }
+    pub(super) async fn command_permission(
+        &mut self,
+        id: i32,
+        event: u8,
+    ) -> Result<(), super::Error> {
+        if self.chat.command_entity == Some(id)
+            && let Some(level) = permission_level(event)
+        {
+            self.chat.command_permission = level;
+            self.emit(super::Event::CommandPermission(level)).await?;
+        }
+        Ok(())
+    }
+}
+
+/// EntityEvent.PERMISSION_LEVEL_ALL..PERMISSION_LEVEL_OWNERS in the verified26.3 archive.
+pub(crate) fn permission_level(event: u8) -> Option<u8> {
+    const FIRST: u8 = 24;
+    (FIRST..=FIRST + 4).contains(&event).then(|| event - FIRST)
 }

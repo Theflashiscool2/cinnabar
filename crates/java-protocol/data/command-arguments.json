@@ -1,0 +1,436 @@
+[
+  {
+    "id": 0,
+    "name": "brigadier:bool",
+    "argument_class": "com.mojang.brigadier.arguments.BoolArgumentType",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 1,
+    "name": "brigadier:float",
+    "argument_class": "com.mojang.brigadier.arguments.FloatArgumentType",
+    "signable": false,
+    "properties": "float"
+  },
+  {
+    "id": 2,
+    "name": "brigadier:double",
+    "argument_class": "com.mojang.brigadier.arguments.DoubleArgumentType",
+    "signable": false,
+    "properties": "double"
+  },
+  {
+    "id": 3,
+    "name": "brigadier:integer",
+    "argument_class": "com.mojang.brigadier.arguments.IntegerArgumentType",
+    "signable": false,
+    "properties": "integer"
+  },
+  {
+    "id": 4,
+    "name": "brigadier:long",
+    "argument_class": "com.mojang.brigadier.arguments.LongArgumentType",
+    "signable": false,
+    "properties": "long"
+  },
+  {
+    "id": 5,
+    "name": "brigadier:string",
+    "argument_class": "com.mojang.brigadier.arguments.StringArgumentType",
+    "signable": false,
+    "properties": "string"
+  },
+  {
+    "id": 6,
+    "name": "minecraft:entity",
+    "argument_class": "net.minecraft.commands.arguments.EntityArgument",
+    "signable": false,
+    "properties": "byte"
+  },
+  {
+    "id": 7,
+    "name": "minecraft:game_profile",
+    "argument_class": "net.minecraft.commands.arguments.GameProfileArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 8,
+    "name": "minecraft:block_pos",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.BlockPosArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 9,
+    "name": "minecraft:column_pos",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.ColumnPosArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 10,
+    "name": "minecraft:vec3",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.Vec3Argument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 11,
+    "name": "minecraft:vec2",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.Vec2Argument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 12,
+    "name": "minecraft:block_state",
+    "argument_class": "net.minecraft.commands.arguments.blocks.BlockStateArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 13,
+    "name": "minecraft:block_predicate",
+    "argument_class": "net.minecraft.commands.arguments.blocks.BlockPredicateArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 14,
+    "name": "minecraft:item_stack",
+    "argument_class": "net.minecraft.commands.arguments.item.ItemArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 15,
+    "name": "minecraft:item_predicate",
+    "argument_class": "net.minecraft.commands.arguments.item.ItemPredicateArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 16,
+    "name": "minecraft:team_color",
+    "argument_class": "net.minecraft.commands.arguments.TeamColorArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 17,
+    "name": "minecraft:hex_color",
+    "argument_class": "net.minecraft.commands.arguments.HexColorArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 18,
+    "name": "minecraft:component",
+    "argument_class": "net.minecraft.commands.arguments.ComponentArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 19,
+    "name": "minecraft:style",
+    "argument_class": "net.minecraft.commands.arguments.StyleArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 20,
+    "name": "minecraft:message",
+    "argument_class": "net.minecraft.commands.arguments.MessageArgument",
+    "signable": true,
+    "properties": "none"
+  },
+  {
+    "id": 21,
+    "name": "minecraft:nbt_compound_tag",
+    "argument_class": "net.minecraft.commands.arguments.CompoundTagArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 22,
+    "name": "minecraft:nbt_tag",
+    "argument_class": "net.minecraft.commands.arguments.NbtTagArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 23,
+    "name": "minecraft:nbt_path",
+    "argument_class": "net.minecraft.commands.arguments.NbtPathArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 24,
+    "name": "minecraft:objective",
+    "argument_class": "net.minecraft.commands.arguments.ObjectiveArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 25,
+    "name": "minecraft:objective_criteria",
+    "argument_class": "net.minecraft.commands.arguments.ObjectiveCriteriaArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 26,
+    "name": "minecraft:operation",
+    "argument_class": "net.minecraft.commands.arguments.OperationArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 27,
+    "name": "minecraft:particle",
+    "argument_class": "net.minecraft.commands.arguments.ParticleArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 28,
+    "name": "minecraft:angle",
+    "argument_class": "net.minecraft.commands.arguments.AngleArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 29,
+    "name": "minecraft:rotation",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.RotationArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 30,
+    "name": "minecraft:scoreboard_slot",
+    "argument_class": "net.minecraft.commands.arguments.ScoreboardSlotArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 31,
+    "name": "minecraft:score_holder",
+    "argument_class": "net.minecraft.commands.arguments.ScoreHolderArgument",
+    "signable": false,
+    "properties": "byte"
+  },
+  {
+    "id": 32,
+    "name": "minecraft:swizzle",
+    "argument_class": "net.minecraft.commands.arguments.coordinates.SwizzleArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 33,
+    "name": "minecraft:team",
+    "argument_class": "net.minecraft.commands.arguments.TeamArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 34,
+    "name": "minecraft:item_slot",
+    "argument_class": "net.minecraft.commands.arguments.SlotArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 35,
+    "name": "minecraft:item_slots",
+    "argument_class": "net.minecraft.commands.arguments.SlotsArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 36,
+    "name": "minecraft:resource_location",
+    "argument_class": "net.minecraft.commands.arguments.IdentifierArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 37,
+    "name": "minecraft:function",
+    "argument_class": "net.minecraft.commands.arguments.item.FunctionArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 38,
+    "name": "minecraft:entity_anchor",
+    "argument_class": "net.minecraft.commands.arguments.EntityAnchorArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 39,
+    "name": "minecraft:int_range",
+    "argument_class": "net.minecraft.commands.arguments.RangeArgument$Ints",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 40,
+    "name": "minecraft:float_range",
+    "argument_class": "net.minecraft.commands.arguments.RangeArgument$Floats",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 41,
+    "name": "minecraft:dimension",
+    "argument_class": "net.minecraft.commands.arguments.DimensionArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 42,
+    "name": "minecraft:gamemode",
+    "argument_class": "net.minecraft.commands.arguments.GameModeArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 43,
+    "name": "minecraft:time",
+    "argument_class": "net.minecraft.commands.arguments.TimeArgument",
+    "signable": false,
+    "properties": "int"
+  },
+  {
+    "id": 44,
+    "name": "minecraft:resource_or_tag",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrTagArgument",
+    "signable": false,
+    "properties": "registry"
+  },
+  {
+    "id": 45,
+    "name": "minecraft:resource_or_tag_key",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrTagKeyArgument",
+    "signable": false,
+    "properties": "registry"
+  },
+  {
+    "id": 46,
+    "name": "minecraft:resource",
+    "argument_class": "net.minecraft.commands.arguments.ResourceArgument",
+    "signable": false,
+    "properties": "registry"
+  },
+  {
+    "id": 47,
+    "name": "minecraft:resource_key",
+    "argument_class": "net.minecraft.commands.arguments.ResourceKeyArgument",
+    "signable": false,
+    "properties": "registry"
+  },
+  {
+    "id": 48,
+    "name": "minecraft:resource_selector",
+    "argument_class": "net.minecraft.commands.arguments.ResourceSelectorArgument",
+    "signable": false,
+    "properties": "registry"
+  },
+  {
+    "id": 49,
+    "name": "minecraft:template_mirror",
+    "argument_class": "net.minecraft.commands.arguments.TemplateMirrorArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 50,
+    "name": "minecraft:template_rotation",
+    "argument_class": "net.minecraft.commands.arguments.TemplateRotationArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 51,
+    "name": "minecraft:heightmap",
+    "argument_class": "net.minecraft.commands.arguments.HeightmapTypeArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 52,
+    "name": "minecraft:loot_table",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$LootTableArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 53,
+    "name": "minecraft:loot_predicate",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$LootPredicateArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 54,
+    "name": "minecraft:loot_modifier",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$LootModifierArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 55,
+    "name": "minecraft:context_float_provider",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$ContextFloatProviderArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 56,
+    "name": "minecraft:context_int_provider",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$ContextIntProviderArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 57,
+    "name": "minecraft:slot_source",
+    "argument_class": "net.minecraft.commands.arguments.SlotSourceArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 58,
+    "name": "minecraft:dialog",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$DialogArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 59,
+    "name": "minecraft:feature",
+    "argument_class": "net.minecraft.commands.arguments.ResourceOrIdArgument$FeatureArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 60,
+    "name": "minecraft:swing_animation",
+    "argument_class": "net.minecraft.commands.arguments.SwingAnimationArgument",
+    "signable": false,
+    "properties": "none"
+  },
+  {
+    "id": 61,
+    "name": "minecraft:uuid",
+    "argument_class": "net.minecraft.commands.arguments.UuidArgument",
+    "signable": false,
+    "properties": "none"
+  }
+]

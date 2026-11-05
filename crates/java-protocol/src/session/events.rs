@@ -4,6 +4,11 @@ use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    CommandTree {
+        nodes: usize,
+        message_arguments: usize,
+    },
+    CommandPermission(u8),
     CommandSuggestions(chat::suggestions::Packet),
     SystemChat(chat::System),
     /// Local socket-write receipt, never a server command-success acknowledgement.

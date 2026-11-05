@@ -17,6 +17,8 @@ pub struct State {
     /// The UI permits one write in flight, so this cannot overwrite an unconsumed receipt.
     pub written: Option<(u64, bool)>,
     pub suggestions: Option<Suggestions>,
+    pub command_tree: Option<(usize, usize)>,
+    pub command_permission: u8,
     sequence: u64,
 }
 impl State {

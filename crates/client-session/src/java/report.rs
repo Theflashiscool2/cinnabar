@@ -99,6 +99,8 @@ impl Report {
                 }
                 "inventory"
             }
+            Event::CommandTree { .. } => "command_tree",
+            Event::CommandPermission(_) => "command_permission",
             Event::CommandSuggestions(_) => "command_suggestions",
             Event::SystemChat(_) => "system_chat",
             Event::ChatCommandSent { written: true, .. } => "command_write_receipt",

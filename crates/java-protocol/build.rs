@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, env, fs, path::PathBuf};
 #[path = "build/attributes.rs"]
 mod attributes;
+#[path = "build/commands.rs"]
+mod commands;
 #[path = "build/entities.rs"]
 mod entities;
 #[path = "build/hud.rs"]
@@ -97,6 +99,7 @@ fn main() {
         client["sha256"].as_str().unwrap(),
         client["bytes"].as_u64().unwrap()
     );
+    commands::generate(&mut code, &target);
     for (state, directions) in tables {
         code += &format!("pub mod {state} {{\n");
         for (direction, packets) in directions {

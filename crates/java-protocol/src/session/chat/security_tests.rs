@@ -397,3 +397,82 @@ fn configuration_flush_sends_only_the_real_remaining_offset() {
     assert!(state.flush_acknowledgement().is_none());
     assert_eq!(state.window.update(), [0, 0, 0, 0, 1]);
 }
+
+#[test]
+fn signed_command_and_player_chat_share_the_native_chain_without_consuming_failed_commands() {
+    let now = 1_700_000_000_123;
+    let (certificate, roots) = fixture(4_070_908_800_000);
+    let public = certificate.private.to_public_key();
+    let mut state = State::default();
+    state.secure = true;
+    state.online = true;
+    let announcement = state
+        .install(
+            crate::auth::chat::Material {
+                roots,
+                certificate: Some(certificate),
+            },
+            now,
+        )
+        .unwrap()
+        .unwrap();
+    let id: [u8; 16] = announcement[..16].try_into().unwrap();
+    let bytes = decode_hex(include_str!("../../../data/command-tree-fixture.hex").trim());
+    state.commands = Some(commands::Tree::decode(&mut Reader(&bytes)).unwrap());
+    let seen = [6; 256];
+    state.window.observe(seen, true);
+    assert!(
+        state
+            .outgoing_command(
+                "msg 00000000-0000-0000-0000-000000000007 unsupported",
+                now,
+                42
+            )
+            .is_err()
+    );
+    assert_eq!(state.window.offset(), 1);
+    let packet = state.outgoing_command("w Bob hello 夜", now, 42).unwrap();
+    assert_eq!(packet.packet, "ServerboundChatCommandSignedPacket");
+    let mut r = Reader(&packet.payload);
+    assert_eq!(r.string(32767).unwrap(), "w Bob hello 夜");
+    assert_eq!(r.i64().unwrap(), now);
+    assert_eq!(r.i64().unwrap(), 42);
+    assert_eq!(r.var().unwrap(), 1);
+    assert_eq!(r.string(16).unwrap(), "message");
+    let signature = r.take(256).unwrap();
+    let body = security::Body {
+        sender: [7; 16],
+        session: id,
+        index: 0,
+        text: "hello 夜",
+        timestamp_millis: now,
+        salt: 42,
+        last_seen: &[seen],
+    };
+    public
+        .verify(
+            Pkcs1v15Sign::new::<sha2::Sha256>(),
+            &sha2::Sha256::digest(body.payload().unwrap()),
+            signature,
+        )
+        .unwrap();
+    assert_eq!(r.0, [1, 0, 0, 8, 32]);
+    let next = state.outgoing("after command", now + 1, 43).unwrap();
+    let (text, time, salt, signature, _) = read_outgoing(&next);
+    let body = security::Body {
+        sender: [7; 16],
+        session: id,
+        index: 1,
+        text: &text,
+        timestamp_millis: time,
+        salt,
+        last_seen: &[seen],
+    };
+    public
+        .verify(
+            Pkcs1v15Sign::new::<sha2::Sha256>(),
+            &sha2::Sha256::digest(body.payload().unwrap()),
+            &signature,
+        )
+        .unwrap();
+}

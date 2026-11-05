@@ -10,6 +10,7 @@ use sha2::Digest;
 use std::collections::BTreeMap;
 /// Native ProfilePublicKey.EXPIRY_GRACE_PERIOD, verified against26.3 bytecode.
 const REMOTE_GRACE_MILLIS: i64 = 8 * 60 * 60 * 1000;
+#[derive(Clone)]
 pub(super) struct Local {
     pub certificate: std::sync::Arc<Certificate>,
     id: [u8; 16],

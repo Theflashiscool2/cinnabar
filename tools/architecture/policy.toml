@@ -1437,6 +1437,11 @@ path = "crates/java-protocol/src/session/chat/player.rs"
 literal = "target"
 reason = "Pinned26.3 ChatTypeDecoration.Parameter.TARGET serializes as target in server-provided chat-type registry NBT. This dispatch selects a bound component by protocol field, not a block/item/entity identity; native codec vectors verify the parameter order."
 
+[[identifier_literal_exceptions]]
+path = "crates/java-protocol/src/session/chat/commands.rs"
+literal = "string"
+reason = "CommandArguments.java derives this parser-property shape from native StringArgumentSerializer in the pinned server registry. It is a wire grammar tag, not a block/item/entity identity; the native all62-parser property fixture checks field alignment."
+
 [identifier_literals]
 owners = [
     "crates/asset-compiler/src/registry_policy/",

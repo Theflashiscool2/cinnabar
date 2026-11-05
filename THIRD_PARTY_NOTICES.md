@@ -703,3 +703,11 @@ and pose algorithms from `Vasysik/horizon-android` at
 `assets/licenses/Native-Java-Reference-MIT.txt`. Cinnabar owns the authoritative
 inventory, asynchronous resource integration, atlas/GPU publication and UI. See
 [the resource boundary and remaining limits](docs/references/java-item-artwork.md).
+
+## Native Java command parsing
+
+Brigadier child selection and redirect-context traversal are adapted from
+`Vasysik/horizon-android`, revision `5b8e6d0b6453e57fb23eb7bbb365bbc7edd5b9b2`,
+`crates/horizon-command/src/lib.rs` (MIT). The retained license and adaptation
+boundary are in `third_party/java-command-parser/`. Cinnabar retains networking,
+authentication, world, simulation, inventory and input ownership.

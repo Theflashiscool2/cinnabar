@@ -565,6 +565,9 @@ pub(super) fn snapshot(world: &World) -> Value {
             })
             .collect::<Vec<_>>()
     }));
+    snapshot["native_java_commands"] = json!(world.get_resource::<crate::session::SessionController>()
+        .and_then(|controller| controller.native_java_world())
+        .map(|state| json!({"tree":state.chat.command_tree,"permission":state.chat.command_permission})));
     snapshot["chat_editor"] = json!(world.get_resource::<UiRuntimeResource>().map(|ui| {
         json!({"focused":ui.chat_focused(),"input":ui.chat_editor().as_str(),
             "cursor_byte":ui.chat_editor().cursor_byte(),"suggestions":ui.chat_suggestions(),

@@ -192,5 +192,11 @@
     "blocks": 1286,
     "items": 1658,
     "generator": "ExportUseRules.java from verified pinned runtime; declaring methods classify guaranteed base dispatch only"
+  },
+  "command_argument_schema": {
+    "path": "data/command-arguments.json",
+    "sha256": "4533fc3e5ff57bac1ab784fefaa4e37eea714fbf5e375667be93e2da84a89dc6",
+    "generator": "data/CommandArguments.java against verified pinned server libraries",
+    "registry": "BuiltInRegistries.COMMAND_ARGUMENT_TYPE"
   }
 }
