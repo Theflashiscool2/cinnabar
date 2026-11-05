@@ -31,7 +31,18 @@ pub fn engine_held_stack_press(frame: &EngineFrame, gui: [f32; 2]) -> Option<Hel
     // A scroll view without its own press mapping takes the wheel, not the press: the press
     // reaches the input panel around it, as the item grid's background does.
     let region = frame.hits.iter().rev().find(|region| {
-        region.contains(point)
+        // Vanilla's held/progress companions follow the cursor but carry no action. Their
+        // otherwise viewport-sized Button regions must not absorb the screen's outside drop.
+        let decoration = region.kind == HitKind::Button
+            && region.input.follows_cursor
+            && region.pressed.is_none()
+            && region.input.mappings.is_empty()
+            && region.input.hover_mappings.is_empty()
+            && region.input.any.is_none()
+            && !region.input.modal
+            && !region.input.inline_modal;
+        !decoration
+            && region.contains(point)
             && match region.kind {
                 HitKind::ScrollView | HitKind::Panel => region.pressed.is_some(),
                 _ => true,

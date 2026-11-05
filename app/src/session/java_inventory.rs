@@ -63,6 +63,30 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
             0,
         ));
     }
+    if let Intent::DropCursor { button } = input.intent {
+        let (revision, carried) = state.observe_carried(id)?;
+        if carried.is_none() {
+            return Err("Java carried stack is empty".into());
+        }
+        let (carried, missing) = hash(carried)?;
+        let click = outbound::observed_pickup(
+            id.container,
+            revision,
+            outbound::SLOT_CLICKED_OUTSIDE,
+            u8::from(button == Button::Right),
+            carried,
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok((
+            Command::ContainerClick {
+                dimension_epoch: id.epoch,
+                incarnation: id.incarnation,
+                sequence: input.sequence,
+                click,
+            },
+            missing,
+        ));
+    }
     if let Intent::QuickCraft {
         ref slots,
         one_each,
@@ -100,7 +124,7 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
         | Intent::Collect { slot }
         | Intent::Swap { slot, .. }
         | Intent::Throw { slot, .. } => slot,
-        Intent::Close | Intent::QuickCraft { .. } => unreachable!(),
+        Intent::Close | Intent::QuickCraft { .. } | Intent::DropCursor { .. } => unreachable!(),
     };
     let (revision, carried) = state.observe_storage_slot(id, slot)?;
     if let Intent::Pickup { button, .. } = input.intent {
@@ -149,7 +173,7 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
             outbound::ObservedAction::Throw { whole_stack },
             carried,
         ),
-        Intent::Close | Intent::QuickCraft { .. } => unreachable!(),
+        Intent::Close | Intent::QuickCraft { .. } | Intent::DropCursor { .. } => unreachable!(),
     }
     .map_err(|e| e.to_string())?;
     Ok((
@@ -193,4 +217,63 @@ pub(crate) fn max_stack(stack: &inventory::java::Stack) -> Result<u32, String> {
         .position(|name| *name == stack.item)
         .ok_or("unknown Java item")?;
     Ok(target::ITEM_STACK_LIMITS[id])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn cursor_drop_preserves_authority_and_rejects_replaced_menus() {
+        let mut state = inventory::java::State::default();
+        state.begin(7, 2);
+        state
+            .admit(
+                7,
+                2,
+                inventory::java::Update::Content {
+                    container: 0,
+                    state: 19,
+                    slots: vec![None; inventory::java::PLAYER_MENU_SIZE],
+                    carried: Some(inventory::java::Stack {
+                        item: "minecraft:emerald".into(),
+                        count: 8,
+                        added: Default::default(),
+                        removed: Default::default(),
+                    }),
+                },
+            )
+            .unwrap();
+        let id = state.active_identity().unwrap();
+        let before = serde_json::to_value(&state).unwrap();
+        for button in [Button::Left, Button::Right] {
+            let input = Input {
+                identity: id,
+                sequence: 1,
+                intent: Intent::DropCursor { button },
+            };
+            let (Command::ContainerClick { click, .. }, 0) = prepare(&input, &state).unwrap()
+            else {
+                panic!("not an ordinary native click")
+            };
+            assert_eq!(
+                &click.payload()[..7],
+                &[0, 19, 0xfc, 0x19, u8::from(button == Button::Right), 0, 0]
+            );
+            assert_eq!(serde_json::to_value(&state).unwrap(), before);
+        }
+        state.begin(7, 3);
+        assert!(
+            prepare(
+                &Input {
+                    identity: id,
+                    sequence: 2,
+                    intent: Intent::DropCursor {
+                        button: Button::Left
+                    }
+                },
+                &state
+            )
+            .is_err()
+        );
+    }
 }

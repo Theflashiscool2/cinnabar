@@ -414,6 +414,9 @@ pub enum Intent {
         slot: usize,
         whole_stack: bool,
     },
+    DropCursor {
+        button: inventory::java::pickup::Button,
+    },
     Close,
 }
 #[derive(Clone, Debug)]
@@ -423,6 +426,12 @@ pub struct Input {
     pub intent: Intent,
 }
 impl UiRuntime {
+    /// Invoked only after the displayed screen's resolved hit policy identifies an outside press.
+    pub fn java_drop_cursor(&mut self, button: inventory::java::pickup::Button) {
+        if self.java_hud().is_some() && self.inventory_open() && self.java_inventory_holding() {
+            self.queue_java_inventory(Intent::DropCursor { button });
+        }
+    }
     fn queue_java_inventory(&mut self, intent: Intent) {
         let Some(identity) = self.session.java_inventory.identity else {
             self.session.java_inventory_error =

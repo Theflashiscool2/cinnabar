@@ -92,6 +92,9 @@ impl HashedStack {
     }
 }
 
+/// AbstractContainerMenu.SLOT_CLICKED_OUTSIDE in the verified target version.
+pub const SLOT_CLICKED_OUTSIDE: i16 = -999;
+
 #[derive(Clone, Debug)]
 pub struct Pickup {
     pub container: i32,
@@ -134,9 +137,10 @@ fn encode(click: &Pickup, action: u8) -> Result<PreparedClick, Error> {
     if click.container < 0
         || click.state < 0
         || (click.slot < 0
-            && !(action == target::CONTAINER_INPUT_QUICK_CRAFT
-                && click.slot == -999
-                && matches!(click.button, 0 | 2 | 4 | 6)))
+            && !(click.slot == SLOT_CLICKED_OUTSIDE
+                && ((action == target::CONTAINER_INPUT_PICKUP && click.button <= 1)
+                    || (action == target::CONTAINER_INPUT_QUICK_CRAFT
+                        && matches!(click.button, 0 | 2 | 4 | 6)))))
         || click.changed.len() > target::CONTAINER_MAX_CHANGED_SLOTS
         || click.changed.keys().any(|slot| *slot < 0)
     {
@@ -333,6 +337,15 @@ pub fn observed_pickup(
 mod observed_tests {
     use super::*;
     #[test]
+    fn outside_drop_uses_native_pickup_sentinel_and_rejects_other_negative_slots() {
+        for button in [0, 1] {
+            let click = observed_pickup(2, 19, SLOT_CLICKED_OUTSIDE, button, None).unwrap();
+            assert_eq!(&click.payload()[..7], &[2, 19, 0xfc, 0x19, button, 0, 0]);
+        }
+        assert!(observed_pickup(2, 19, -998, 0, None).is_err());
+        assert!(observed_pickup(2, 19, SLOT_CLICKED_OUTSIDE, 2, None).is_err());
+    }
+    #[test]
     fn unpredicted_action_never_claims_the_post_click_cursor_or_changed_slots() {
         // An initially empty cursor and unchanged local slots. The server must compute the
         // pickup and return its deltas, rather than being told we already display the result.
@@ -465,11 +478,13 @@ pub fn quick_craft(
             target::CONTAINER_INPUT_QUICK_CRAFT,
         )
     };
-    let mut first = phase(-999, 0)?;
+    let mut first = phase(SLOT_CLICKED_OUTSIDE, 0)?;
     for slot in slots {
         first.continuation.push(phase(*slot, 1)?.bytes);
     }
-    first.continuation.push(phase(-999, 2)?.bytes);
+    first
+        .continuation
+        .push(phase(SLOT_CLICKED_OUTSIDE, 2)?.bytes);
     Ok(first)
 }
 
@@ -520,6 +535,7 @@ mod quick_craft_tests {
             )
             .is_err()
         );
-        assert!(observed_pickup(1, 0, -999, 0, None).is_err());
+        // Ordinary outside PICKUP is valid; a different negative slot is not.
+        assert!(observed_pickup(1, 0, -998, 0, None).is_err());
     }
 }

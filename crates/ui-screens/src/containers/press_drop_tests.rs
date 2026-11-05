@@ -35,6 +35,8 @@ const SCREEN: &str = r#"{
     "button_mappings": [{"from_button_id": "button.menu_select",
       "to_button_id": "button.cursor_drop_all", "mapping_type": "pressed"}],
     "controls": [
+      {"cursor_progress": {"type":"button", "size":["100%","100%"],
+        "layer":1000, "follows_cursor":true, "always_handle_pointer":true}},
       {"root_panel@drop.section": {"offset": [0, 0]}},
       {"recipe_book@drop.section": {"offset": [50, 0]}},
       {"background": {"type": "panel", "size": [40, 40],
@@ -155,4 +157,37 @@ fn a_scroll_view_with_its_own_drop_mapping_drops_the_held_stack() {
         engine_held_stack_press(&frame(), [10.0, 60.0]),
         Some(HeldStackPress::Drop)
     );
+}
+
+#[test]
+fn cursor_companions_fall_through_but_actionable_or_modal_followers_do_not() {
+    let mut frame = frame();
+    let index = frame
+        .hits
+        .iter()
+        .position(|h| h.name == "cursor_progress")
+        .unwrap();
+    assert!(
+        frame.hits[index].input.follows_cursor,
+        "authored flag survives resolution"
+    );
+    let outside = [145., 95.];
+    assert_eq!(
+        engine_held_stack_press(&frame, outside),
+        Some(HeldStackPress::Drop)
+    );
+    for modal in [false, true] {
+        let mut hits = frame.hits.to_vec();
+        if modal {
+            hits[index].input.modal = true;
+        } else {
+            hits[index].pressed = Some("button.container_reset_held".into());
+        }
+        frame.hits = hits.into();
+        assert_eq!(engine_held_stack_press(&frame, outside), None);
+        let mut hits = frame.hits.to_vec();
+        hits[index].pressed = None;
+        hits[index].input.modal = false;
+        frame.hits = hits.into();
+    }
 }

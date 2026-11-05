@@ -83,3 +83,73 @@ fn native_cleanup_retires_own_atlas_but_preserves_a_new_edition_owner() {
     switched.clear_java_hud();
     assert!(Arc::ptr_eq(switched.session_icons().unwrap(), &bedrock));
 }
+
+#[test]
+fn outside_cursor_input_is_scoped_and_never_mutates_items() {
+    use client_ui::ui_runtime::java_inventory::Intent;
+    use inventory::java::{Stack, Update, pickup::Button};
+    let mut state = client_world::java::WorldState::default();
+    state.begin(7);
+    state.inventory.begin(7, 1);
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Open {
+                incarnation: 1,
+                container: 2,
+                kind: "GENERIC_9X3".into(),
+                title: serde_json::Value::Null,
+            },
+        )
+        .unwrap();
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 2,
+                state: 19,
+                slots: vec![None; 63],
+                carried: Some(Stack {
+                    item: "minecraft:emerald".into(),
+                    count: 8,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut ui = UiRuntime::new(7);
+    assert!(ui.publish_java_hud(world::java::hud::Snapshot {
+        session: 7,
+        epoch: 1,
+        mode: None,
+        hardcore: false,
+        selected_slot: Some(0),
+        health: None,
+        maximum_health: None,
+        food: None,
+        saturation: None,
+        armor: None,
+        experience: None
+    }));
+    assert!(ui.publish_java_inventory(&state));
+    let before = serde_json::to_value(&state.inventory).unwrap();
+    ui.java_drop_cursor(Button::Right);
+    let input = ui.next_java_inventory_input().unwrap();
+    assert_eq!(input.identity, state.inventory.active_identity().unwrap());
+    assert!(matches!(
+        input.intent,
+        Intent::DropCursor {
+            button: Button::Right
+        }
+    ));
+    assert_eq!(serde_json::to_value(&state.inventory).unwrap(), before);
+    ui.clear_java_hud();
+    assert!(ui.next_java_inventory_input().is_none());
+    ui.java_drop_cursor(Button::Left);
+    assert!(ui.next_java_inventory_input().is_none());
+}

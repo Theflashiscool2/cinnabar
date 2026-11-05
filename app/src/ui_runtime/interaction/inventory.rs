@@ -315,6 +315,13 @@ pub(super) fn apply_inventory_pointer(
     for control in mouse_hotbar {
         dispatch_bound_inventory_hotbar(menu, control, player_runtime, runtime, hit);
     }
+    if runtime.java_hud().is_some() && (primary_pressed || secondary_pressed) {
+        bevy::log::debug!(target:"java_session", ?gui, ?hit, mod_owned, scrollbar_owned,
+            holding=runtime.java_inventory_holding(),
+            hit_regions=?gui.zip(presentation.engine_container_frame()).map(|(p,f)| f.hits.iter().rev().filter(|h| h.contains(p.map(f64::from))).take(4).map(|h|(&h.key,h.kind,&h.pressed,h.enabled,h.rect)).collect::<Vec<_>>()),
+            drop_policy=?gui.and_then(|point| presentation.inventory_held_stack_press(point, physical_size, window.scale_factor(), screen)),
+            "Native Java inventory pointer press");
+    }
     if !scrollbar_owned {
         let frame = crate::ui_runtime::inventory_drag::PointerFrame {
             primary_pressed,
@@ -359,7 +366,7 @@ pub(super) fn apply_inventory_pointer(
             }
         }
     }
-    if runtime.java_hud().is_none() && !scrollbar_owned && hit.is_none() && !mod_owned {
+    if !scrollbar_owned && hit.is_none() && !mod_owned {
         use ui_screens::containers::presses::HeldStackPress;
         // A held stack clicked off the screen's panels is dropped: all of it
         // on a primary click, one item on a secondary click. A primary click on
@@ -374,12 +381,20 @@ pub(super) fn apply_inventory_pointer(
         });
         match press {
             Some(HeldStackPress::Drop) if primary_pressed || secondary_pressed => {
+                if runtime.java_hud().is_some() {
+                    runtime.java_drop_cursor(if primary_pressed {
+                        inventory::java::pickup::Button::Left
+                    } else {
+                        inventory::java::pickup::Button::Right
+                    });
+                    return;
+                }
                 let amount = (!primary_pressed).then_some(1);
                 let _ = runtime
                     .inventory_ledger_mut(player_runtime)
                     .begin_drop(DropSource::Cursor, amount);
             }
-            Some(HeldStackPress::Destroy) if primary_pressed => {
+            Some(HeldStackPress::Destroy) if primary_pressed && runtime.java_hud().is_none() => {
                 let _ = runtime.destroy_held_on_item_grid(player_runtime);
             }
             _ => {}

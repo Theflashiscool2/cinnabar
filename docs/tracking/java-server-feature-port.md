@@ -68,3 +68,9 @@ play clientbound packets,122 source match-arm variants in the reference (includi
 unknown/debug handling), source locations and15 actual deferred types from this controlled
 offline run. It is a discovery index, not a support assertion: a named guard or ignored arm
 is not an implemented feature, and production delegation must be traced before assigning a gap.
+
+Native outside cursor drops additionally have inspected personal/chest offline vanilla26.3
+evidence through normal client clicks, server cursor reconciliation and independently queried
+one/four dropped entities. Empty cursor, blank-panel, retired-menu and reconnect checks pass.
+The shared hit-policy repair preserves real/disabled/modal controls and skips only unmapped
+decorative cursor followers. Dropped-item world presentation and specialized menus remain gaps.

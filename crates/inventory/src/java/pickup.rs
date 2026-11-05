@@ -67,6 +67,24 @@ impl State {
             })
         })
     }
+    /// Current carried state for native outside-screen pickup. No local drop is installed.
+    pub fn observe_carried(&self, identity: MenuIdentity) -> Result<(i32, &Slot), String> {
+        if self.active_identity() != Some(identity) || self.error.is_some() {
+            return Err("Java container lifetime is no longer current".into());
+        }
+        let menu = self
+            .menu(identity.container)
+            .ok_or("Java container is unknown")?;
+        if menu.container != 0 && generic_storage_slots(&menu.kind).is_none() {
+            return Err("Java specialized slot rules not implemented".into());
+        }
+        Ok((
+            menu.state.ok_or("Java container contents are not ready")?,
+            menu.carried
+                .as_ref()
+                .ok_or("Java carried stack is unknown")?,
+        ))
+    }
     /// Validates a current ordinary storage slot without predicting any item movement.
     /// Server quick-move/swap/throw rules remain authoritative; unknown/specialized slots refuse.
     pub fn observe_storage_slot(
@@ -83,14 +101,9 @@ impl State {
         {
             return Err("Java specialized slot rules not implemented".into());
         }
-        let state = menu.state.ok_or("Java container contents are not ready")?;
         self.slot(menu.container, slot)
             .ok_or("Java slot is unknown")?;
-        let carried = menu
-            .carried
-            .as_ref()
-            .ok_or("Java carried stack is unknown")?;
-        Ok((state, carried))
+        self.observe_carried(identity)
     }
     /// Computes vanilla pickup metadata without mutating slots/cursor or declaring acceptance.
     /// Specialized slots (crafting, armor, outputs) require their own native placement rules.
@@ -174,6 +187,25 @@ fn counted(item: &Stack, count: u32) -> Slot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn observed_cursor_is_current_known_and_does_not_drop_locally() {
+        let mut s = menu(item(9), item(7));
+        let id = s.active_identity().unwrap();
+        let before = serde_json::to_value(&s).unwrap();
+        assert_eq!(s.observe_carried(id).unwrap(), (19, &item(7)));
+        assert_eq!(serde_json::to_value(&s).unwrap(), before);
+        assert!(
+            s.observe_carried(MenuIdentity {
+                incarnation: id.incarnation + 1,
+                ..id
+            })
+            .is_err()
+        );
+        s.opened.as_mut().unwrap().carried = None;
+        assert!(s.observe_carried(id).is_err());
+        s.begin(id.session, id.epoch + 1);
+        assert!(s.observe_carried(id).is_err());
+    }
     #[test]
     fn socket_receipts_never_change_authoritative_items_or_confirm_a_transfer() {
         let mut s = menu(item(9), None);
