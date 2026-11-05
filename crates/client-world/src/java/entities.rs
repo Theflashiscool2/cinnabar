@@ -24,6 +24,7 @@ pub(super) fn admit(
         .world
         .entity_id;
     match packet {
+        wire::Packet::Equipment(packet) => super::equipment::admit(state, scope, packet),
         wire::Packet::Metadata(packet) => metadata::admit(state, scope, own, packet),
         wire::Packet::FinishUsing { id } => {
             if id == own {
@@ -86,6 +87,7 @@ pub(super) fn admit(
             )?;
             if admitted && let Some(previous) = previous {
                 state.removed_player_modes.remove(&previous);
+                state.equipment.remove(previous);
             }
             Ok(admitted)
         }
@@ -98,6 +100,7 @@ pub(super) fn admit(
             if admitted {
                 for identity in removed {
                     state.removed_player_modes.remove(&identity);
+                    state.equipment.remove(identity);
                 }
             }
             Ok(admitted)

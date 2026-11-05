@@ -242,6 +242,13 @@ impl ActorRenderScene {
     pub fn contains_geometry(&self, id: EntityRigId) -> bool {
         self.rig_builder.contains_geometry(id)
     }
+    /// Snapshot-owned native equipment meshes; removing a stack also retires its geometry.
+    pub fn replace_java_item_geometries(
+        &mut self,
+        geometries: Vec<ActorRigGeometry>,
+    ) -> Result<(), ActorRigGeometryError> {
+        self.rig_builder.replace_java_item_geometries(geometries)
+    }
 
     /// Borrows the geometry that this scene currently draws, including pack replacements.
     pub fn geometry(&self, id: EntityRigId) -> Option<&ActorRigGeometry> {

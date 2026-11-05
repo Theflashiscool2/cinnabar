@@ -1,6 +1,7 @@
 //! Target-pinned entity lifecycle schemas. World identity and interpolation are domain-owned.
 use crate::{ProtocolError as Error, target, wire::Reader};
 use serde::Serialize;
+pub mod equipment;
 pub mod lifetime;
 pub mod metadata;
 
@@ -44,6 +45,7 @@ pub enum Position {
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
     Spawn(Spawn),
+    Equipment(equipment::Packet),
     Metadata(metadata::Packet),
     /// EntityEvent.USE_ITEM_COMPLETE=9 from the pinned26.3 archive; other events
     /// retain their explicit optional-observation path rather than pretending support.
@@ -88,6 +90,9 @@ pub enum Packet {
 
 /// Decodes only identified lifecycle packets. Callers must check complete payload consumption.
 pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
+    if name == "ClientboundSetEquipmentPacket" {
+        return equipment::decode(r).map(|packet| Some(Packet::Equipment(packet)));
+    }
     Ok(Some(match name {
         "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
         "ClientboundEntityEventPacket" => {

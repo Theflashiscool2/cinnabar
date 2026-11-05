@@ -59,8 +59,12 @@ fn inner(
     let mut compiled = BTreeMap::new();
     for (index, (name, part)) in models.iter().enumerate() {
         check()?;
-        let id =
-            java_model_rig_id(u32::try_from(index)?).ok_or("Java model GPU namespace exhausted")?;
+        let id = if name.starts_with("armor/") {
+            render_model::actor::java_equipment_rig_id(u32::try_from(index)?)
+        } else {
+            java_model_rig_id(u32::try_from(index)?)
+        }
+        .ok_or("Java model GPU namespace exhausted")?;
         compiled.insert(name.to_owned(), Arc::new(Model::compile(part, id)?));
     }
     let mut jar = Jar::open(
@@ -126,10 +130,33 @@ fn inner(
         });
     }
     let routes = compiled
-        .values()
-        .map(|model| (model.geometry.id, 0, 0))
+        .iter()
+        .filter(|(name, _)| !name.starts_with("armor/"))
+        .map(|(_, model)| (model.geometry.id, 0, 0))
         .collect::<Vec<_>>();
-    let artwork = ActorArtworkPages::from_entity_pages(pages, &routes)?;
+    let mut artwork = ActorArtworkPages::from_entity_pages(pages, &routes)?;
+    for (path, armor) in [
+        (
+            "assets/minecraft/textures/misc/enchanted_glint_armor.png",
+            true,
+        ),
+        (
+            "assets/minecraft/textures/misc/enchanted_glint_item.png",
+            false,
+        ),
+    ] {
+        let image = Image::decode(&jar.read(path)?)?;
+        let raster = render_model::EquipmentRaster {
+            width: u16::try_from(image.width)?,
+            height: u16::try_from(image.height)?,
+            rgba8: image.rgba.into(),
+        };
+        artwork = if armor {
+            artwork.with_actor_glint(raster)
+        } else {
+            artwork.with_item_glint(raster)
+        };
+    }
     check()?;
     Ok(Prepared {
         models: compiled,

@@ -142,6 +142,16 @@ public final class ExportEntities {
                     .findFirst().orElseThrow(() -> new IllegalStateException("missing native item model " + name));
             models.add("item/" + name.replace('#', '/'), part(layer.getValue().bakeRoot(), "root"));
         }
+        // Native26.3 has per-slot armor layers, including separate slim arms.
+        // Keep model data in the verified generated runtime, never in source control.
+        for (String body : List.of("player", "player_slim")) {
+            for (String slot : List.of("helmet", "chestplate", "leggings", "boots")) {
+                String name = "minecraft:" + body + "#" + slot;
+                var layer = roots.entrySet().stream().filter(e -> e.getKey().toString().equals(name))
+                        .findFirst().orElseThrow(() -> new IllegalStateException("missing native armor layer " + name));
+                models.add("armor/" + body + "/" + slot, part(layer.getValue().bakeRoot(), "root"));
+            }
+        }
     }
     static JsonElement canonical(JsonElement value) {
         if (value.isJsonObject()) {

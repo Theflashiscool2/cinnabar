@@ -30,7 +30,24 @@ impl Sample {
     /// Pinned HumanoidModel/AvatarRenderer posture, verified by ProbePlayerPosture.java.
     /// Crouching preserves gait/head rotation and changes local offsets, torso and arm pitch.
     pub fn player_posture(self, crouching: bool) -> super::PlayerPosture {
+        self.player_posture_with_items(crouching, false, false)
+    }
+    /// Native idle ITEM arm pose is applied before crouch offsets and arm bobbing.
+    /// Active-use and attack poses have their own authoritative animation lifecycle.
+    pub fn player_posture_with_items(
+        self,
+        crouching: bool,
+        right_item: bool,
+        left_item: bool,
+    ) -> super::PlayerPosture {
         let [head, mut right_arm, mut left_arm, right_leg, left_leg] = self.player_rotations();
+        let bob_x = trig(self.age_in_ticks * 0.067)[0] as f32 * 0.05;
+        if right_item {
+            right_arm[0] = (right_arm[0] - bob_x) * 0.5 - std::f32::consts::PI / 10. + bob_x;
+        }
+        if left_item {
+            left_arm[0] = (left_arm[0] + bob_x) * 0.5 - std::f32::consts::PI / 10. - bob_x;
+        }
         let mut offsets = [
             [0., 0., 0.],
             [0., 0., 0.],

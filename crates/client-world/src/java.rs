@@ -3,6 +3,7 @@ mod biomes;
 mod dynamics;
 mod entities;
 mod environment;
+pub mod equipment;
 mod hud;
 #[cfg(test)]
 mod interaction_tests;
@@ -34,6 +35,7 @@ pub struct WorldState {
     pub lighting: lighting::Engine,
     piston_registry: Option<std::sync::Arc<assets::registry::java::BlockRegistry>>,
     pub entities: world::java::entities::Entities,
+    pub equipment: equipment::State,
     pub players: world::java::roster::Roster,
     /// A live player entity retains its PlayerInfo after tab-list removal.
     removed_player_modes:
@@ -194,6 +196,7 @@ impl WorldState {
                     self.respawn = None;
                     self.terrain = world::java::Terrain::default();
                     self.entities = Default::default();
+                    self.equipment.clear();
                     self.removed_player_modes.clear();
                     self.players = world::java::roster::Roster::new(self.generation);
                     self.player_visual = Default::default();

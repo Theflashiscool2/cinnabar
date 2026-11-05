@@ -3,7 +3,7 @@ use super::WorldState;
 use ::inventory::java::{Stack, Update};
 use java_protocol::{session::inventory as wire, target};
 
-fn stack(value: Option<wire::Stack>) -> Result<Option<Stack>, &'static str> {
+pub(super) fn stack(value: Option<wire::Stack>) -> Result<Option<Stack>, &'static str> {
     value
         .map(|s| {
             Ok(Stack {

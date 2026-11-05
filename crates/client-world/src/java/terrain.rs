@@ -74,6 +74,7 @@ fn begin_inner(
         .entities
         .begin(state.generation, state.dimension_epoch);
     state.removed_player_modes.clear();
+    state.equipment.clear();
     state.status.mode = Some(super::hud::mode(
         java_protocol::session::hud::GameMode::from_id(i32::from(spawn.game_mode)),
     ));

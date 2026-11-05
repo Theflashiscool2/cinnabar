@@ -38,6 +38,7 @@ pub(crate) fn update(
     if p.scope != scope {
         if p.scope.is_some() {
             p.reset();
+            let _ = scene.replace_java_item_geometries(Vec::new());
             if let Some(base) = &base {
                 scene.configure_artwork(base.0.clone());
             }
@@ -113,6 +114,16 @@ pub(crate) fn update(
                 }
             }
             Err(e) => p.failure = Some(e),
+        }
+    }
+    if let (Some(assets), Some(catalog)) = (&p.assets, terrain.items(scope.0, scope.1)) {
+        if p.equipment.as_ref().is_none_or(|e| !e.matches(&catalog)) {
+            scene.configure_artwork(assets.artwork.clone());
+            let _ = scene.replace_java_item_geometries(Vec::new());
+            p.equipment = Some(equipment::State::new(catalog, assets));
+        }
+        if let Some(equipment) = &mut p.equipment {
+            equipment.update(state, &mut scene);
         }
     }
     let mut batch = empty();
@@ -201,7 +212,15 @@ pub(crate) fn update(
                 p.unknown_light += 1;
                 continue;
             };
-            let posture = is_player.then(|| sampled.player_posture(crouching));
+            let gear = state.equipment.get(e.identity);
+            let held = gear.map_or([false; 2], |g| [g.slots[0].is_some(), g.slots[1].is_some()]);
+            let [right, left] = if e.visual.left_handed {
+                [held[1], held[0]]
+            } else {
+                held
+            };
+            let posture =
+                is_player.then(|| sampled.player_posture_with_items(crouching, right, left));
             let angles = if let Some(posture) = posture {
                 posture.rotations
             } else {
@@ -319,6 +338,22 @@ pub(crate) fn update(
                 uv_anim: [0., 0., 1., 1.],
                 light,
             });
+            if let (Some(posture), Some(gear), Some(equipment)) = (posture, gear, &p.equipment)
+                && let Some(entry) = equipment.entry(e, gear)
+            {
+                let body = batch.submissions.last().unwrap().clone();
+                if let Err(error) = equipment::append(
+                    &mut batch,
+                    entry,
+                    &body,
+                    model,
+                    posture,
+                    p.ticks as f32 / 20. + fraction / 20.,
+                ) {
+                    p.failure = Some(error);
+                    break;
+                }
+            }
             batch.artwork.insert(identity, artwork);
             p.published_players += usize::from(is_player);
         }

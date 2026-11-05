@@ -10,6 +10,9 @@ pub struct Lifetimes {
 impl Lifetimes {
     pub fn observe(&mut self, packet: &mut Packet) -> Result<(), &'static str> {
         match packet {
+            Packet::Equipment(packet) => {
+                packet.lifetime = self.active.get(&packet.id).copied().unwrap_or(0);
+            }
             Packet::Spawn(spawn) => {
                 self.serial = self
                     .serial

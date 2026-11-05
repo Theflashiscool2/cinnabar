@@ -443,6 +443,13 @@ impl ActorRigFrameBuilder {
         self.replace_range_geometries(is_pack_rig_id, geometries)
     }
 
+    pub fn replace_java_item_geometries(
+        &mut self,
+        geometries: Vec<ActorRigGeometry>,
+    ) -> Result<(), ActorRigGeometryError> {
+        self.replace_range_geometries(crate::actor::is_java_item_mesh, geometries)
+    }
+
     /// Like [`Self::replace_pack_geometries`] for the pack equipment id range.
     pub fn replace_pack_equipment_geometries(
         &mut self,

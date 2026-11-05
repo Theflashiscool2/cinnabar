@@ -4,6 +4,8 @@ use assets::registry::java::items::Quad;
 use glam::Vec3;
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, sync::Arc};
+mod attachment;
+pub use attachment::{held_bone, posed_bounds};
 /// One geometry per sampled material; each uses the corresponding texture-array layer.
 #[derive(Clone, Debug)]
 pub struct Prepared {
@@ -15,6 +17,17 @@ pub struct Prepared {
 /// Prepares actual model quads, never an extruded GUI thumbnail. Runs on artwork workers.
 /// Operational texture/geometry budgets fail explicitly rather than substituting artwork.
 pub fn prepare(quads: Vec<Quad>, offhand: bool) -> Result<Option<Prepared>, String> {
+    prepare_with_ids(quads, |index| {
+        crate::actor::java_model_rig_id(
+            (index + usize::from(offhand) * crate::hand::MAX_HAND_ITEM_LAYERS) as u32,
+        )
+    })
+}
+/// The same material/geometry preparation with a caller-owned world-rig namespace.
+pub fn prepare_with_ids(
+    quads: Vec<Quad>,
+    mut rig: impl FnMut(usize) -> Option<crate::EntityRigId>,
+) -> Result<Option<Prepared>, String> {
     if quads.is_empty() {
         return Ok(None);
     }
@@ -133,10 +146,7 @@ pub fn prepare(quads: Vec<Quad>, offhand: bool) -> Result<Option<Prepared>, Stri
                 });
             }
         }
-        let id = crate::actor::java_model_rig_id(
-            (index + usize::from(offhand) * crate::hand::MAX_HAND_ITEM_LAYERS) as u32,
-        )
-        .ok_or("native held geometry identity exhausted")?;
+        let id = rig(index).ok_or("native held geometry identity exhausted")?;
         groups.push(
             ActorRigGeometry::new(id, vertices, vec![[0.; 3]])
                 .map_err(|e| format!("native held geometry: {e:?}"))?,

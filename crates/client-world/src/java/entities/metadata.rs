@@ -97,8 +97,13 @@ pub(super) fn admit(
         }
     };
     let id = packet.id;
+    let identity = entity.identity;
+    let left_handed = entity.visual.left_handed;
     let mut visual = entity.visual.clone();
     apply(state, &mut visual, schema, packet)?;
+    if left_handed != visual.left_handed {
+        state.equipment.appearance_changed(identity);
+    }
     state.entities.update(scope, id, |e| {
         e.visual = visual;
         Ok(())
@@ -137,6 +142,13 @@ fn apply(
             }
             ("DATA_BABY_ID", Value::Bool(baby)) => visual.baby = baby,
             ("DATA_HEALTH_ID", Value::Float(health)) => visual.health = Some(health),
+            ("DATA_PLAYER_MAIN_HAND", Value::Int(hand)) => {
+                visual.left_handed = match hand {
+                    0 => true,
+                    1 => false,
+                    _ => return Err("Invalid native humanoid arm"),
+                };
+            }
             ("DATA_PLAYER_MODE_CUSTOMISATION", Value::Byte(parts)) => {
                 visual.player_layers = world::java::entities::visual::PlayerLayers {
                     hat: parts & target::PLAYER_MODEL_PART_HAT != 0,

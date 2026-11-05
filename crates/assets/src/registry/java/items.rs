@@ -87,6 +87,8 @@ pub enum View {
     Gui,
     FirstPersonRight,
     FirstPersonLeft,
+    ThirdPersonRight,
+    ThirdPersonLeft,
 }
 impl View {
     fn display(self) -> DisplayContext {
@@ -94,6 +96,8 @@ impl View {
             Self::Gui => DisplayContext::Gui,
             Self::FirstPersonRight => DisplayContext::FirstPersonRightHand,
             Self::FirstPersonLeft => DisplayContext::FirstPersonLeftHand,
+            Self::ThirdPersonRight => DisplayContext::ThirdPersonRightHand,
+            Self::ThirdPersonLeft => DisplayContext::ThirdPersonLeftHand,
         }
     }
 }

@@ -41,6 +41,8 @@ pub struct Visual {
     pub pig: Option<Arc<PigAppearance>>,
     pub player: Option<Arc<super::super::roster::Profile>>,
     pub player_layers: PlayerLayers,
+    /// Avatar.DATA_PLAYER_MAIN_HAND; native constructor defaults to RIGHT.
+    pub left_handed: bool,
     /// A missed representation persists until a fresh spawn, since later packets are deltas.
     pub incomplete: Option<MetadataGap>,
 }
@@ -59,6 +61,7 @@ impl Default for Visual {
             pig: None,
             player: None,
             player_layers: PlayerLayers::default(),
+            left_handed: false,
             incomplete: None,
         }
     }

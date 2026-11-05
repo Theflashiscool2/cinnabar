@@ -53,8 +53,8 @@
   },
   "entity_models_report": {
     "path": "models.json",
-    "bytes": 761789,
-    "sha256": "40b87fb44eb12654bee8f9b64ad09de01eed4ff5988040abee3aaaa5cee7cebe",
+    "bytes": 893375,
+    "sha256": "5efc55c7b8ee52af3b9779aa44454c1b6181bf27edceb218bb7326413618a34b",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "entity_facts_report": {

@@ -432,3 +432,59 @@ fn local_use_flags_and_completion_are_scoped_authority_without_inventory_predict
         (0, 0)
     );
 }
+
+#[test]
+fn equipment_is_atomic_incarnation_scoped_and_separate_from_personal_inventory() {
+    use java_protocol::session::entities::equipment;
+    let mut s = state();
+    assert!(s.admit(event(1, spawn())));
+    let identity = s.entities.get(99).unwrap().identity;
+    let inventory_before = serde_json::to_value(&s.inventory).unwrap();
+    let packet = |lifetime| {
+        wire::Packet::Equipment(equipment::Packet {
+            id: 99,
+            lifetime,
+            slots: [
+                (
+                    0,
+                    Some(java_protocol::session::inventory::Stack {
+                        item: 1,
+                        count: 3,
+                        added: Default::default(),
+                        removed: Default::default(),
+                    }),
+                ),
+                (5, None),
+            ]
+            .into(),
+        })
+    };
+    assert!(!s.admit(event(1, packet(0))));
+    assert!(s.admit(event(1, packet(1))));
+    assert_eq!(
+        s.equipment.get(identity).unwrap().slots[0]
+            .as_ref()
+            .unwrap()
+            .count,
+        3
+    );
+    assert_eq!(
+        serde_json::to_value(&s.inventory).unwrap(),
+        inventory_before
+    );
+    assert!(!s.admit(event(2, packet(1))));
+    assert!(s.admit(event(1, wire::Packet::Remove(vec![99]))));
+    assert!(s.equipment.get(identity).is_none());
+    let wire::Packet::Spawn(mut replacement) = spawn() else {
+        unreachable!()
+    };
+    replacement.lifetime = 2;
+    assert!(s.admit(event(1, wire::Packet::Spawn(replacement))));
+    assert!(!s.admit(event(1, packet(1))));
+    assert!(s.admit(event(1, packet(2))));
+    let identity2 = s.entities.get(99).unwrap().identity;
+    assert_ne!(identity, identity2);
+    assert!(s.equipment.get(identity2).is_some());
+    s.begin(8);
+    assert!(s.equipment.get(identity2).is_none());
+}

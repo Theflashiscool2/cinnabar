@@ -100,3 +100,39 @@ pub fn java_model_rig_id(model_index: u32) -> Option<EntityRigId> {
     const _: () = assert!(assets::MAX_ENTITY_RIG_BINDINGS < BASE as usize);
     (model_index < BASE).then(|| EntityRigId(BASE + model_index))
 }
+
+/// Native equipment occupies the gap between bounded built-in equipment and
+/// pack equipment. Model indices below 65536 are fixed native armor factories;
+/// higher indices are replaceable meshes for the current equipment snapshot.
+pub fn java_equipment_rig_id(index: u32) -> Option<EntityRigId> {
+    const _: () = assert!(assets::MAX_ENTITY_RIG_BINDINGS < 0x0800_0000);
+    const _: () = assert!(assets::PACK_EQUIPMENT_INDEX_BASE >= 0x1000_0000);
+    (index < 0x0800_0000).then(|| EntityRigId(0x8800_0000 + index))
+}
+pub fn is_java_item_mesh(id: EntityRigId) -> bool {
+    (0x8801_0000..0x9000_0000).contains(&id.0)
+}
+
+#[cfg(test)]
+mod native_equipment_tests {
+    use super::*;
+    #[test]
+    fn native_equipment_namespace_never_retires_body_or_pack_or_builtin_meshes() {
+        for index in [0, 42, 65535, 65536, 65537, 0x07ffffff] {
+            let id = java_equipment_rig_id(index).unwrap();
+            assert!(is_equipment_rig_id(id));
+            assert!(!is_pack_equipment_rig_id(id));
+            assert_eq!(is_java_item_mesh(id), index >= 65536);
+        }
+        for id in [
+            java_model_rig_id(42).unwrap(),
+            EntityRigId(EQUIPMENT_RIG_ID_BASE),
+            EntityRigId(0x90000000),
+            item_mesh_rig_id(0),
+            skin_rig_id(0),
+        ] {
+            assert!(!is_java_item_mesh(id));
+        }
+        assert!(java_equipment_rig_id(0x08000000).is_none());
+    }
+}

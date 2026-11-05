@@ -2348,3 +2348,13 @@ reason = "PlayerSkin.Patch codec field name in native Java profile NBT, not an i
 path = "crates/assets/src/registry/java/items/defaults.rs"
 literal = "minecraft:water"
 reason = "Pinned Java26.3 PotionItem.useOn explicitly tests Potions.WATER with no custom effects for mud conversion. The native facts owner resolves its wire registry identity; this is target gameplay semantics, not pack-name inference."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/equipment.rs"
+literal = "chest"
+reason = "Pinned Java EquipmentSlot persistent enum name, paired with its native wire ordinal in the equipment resource owner; not an item or block-name heuristic."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/equipment.rs"
+literal = "saddle"
+reason = "Pinned Java EquipmentSlot persistent enum name, paired with its native wire ordinal in the equipment resource owner; not an item or block-name heuristic."

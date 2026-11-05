@@ -174,7 +174,26 @@ mod tests {
             pin.entity_models_report.bytes,
         )
         .unwrap();
-        assert_eq!(models.iter().count(), 15);
+        assert_eq!(models.iter().count(), 42);
+        for body in ["player", "player_slim"] {
+            for (slot, visible) in [
+                ("helmet", ["head"].as_slice()),
+                ("chestplate", ["body", "right_arm", "left_arm"].as_slice()),
+                ("leggings", ["body", "right_leg", "left_leg"].as_slice()),
+                ("boots", ["right_leg", "left_leg"].as_slice()),
+            ] {
+                let name = format!("armor/{body}/{slot}");
+                let model = models.get(&name).expect("native per-slot armor root");
+                for child in &model.children {
+                    assert_eq!(
+                        !child.faces.is_empty(),
+                        visible.contains(&child.name.as_str()),
+                        "{name}/{}",
+                        child.name
+                    );
+                }
+            }
+        }
         for name in [
             "statue_standing",
             "statue_running",
