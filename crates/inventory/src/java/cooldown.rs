@@ -12,6 +12,11 @@ pub struct Cooldowns {
     bytes: usize,
 }
 impl Cooldowns {
+    /// Native logical client ticks; gameplay never derives use duration from render frames.
+    pub fn client_tick(&self) -> u64 {
+        self.tick
+    }
+
     pub fn set(&mut self, group: String, ticks: i32) -> Result<(), String> {
         if ticks <= 0 {
             self.remove(&group);

@@ -18,6 +18,7 @@ pub mod source;
 pub mod special;
 pub mod statue;
 pub mod textures;
+pub mod use_rules;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, sync::Arc};

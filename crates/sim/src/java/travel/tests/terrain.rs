@@ -71,6 +71,7 @@ pub(super) fn parameters() -> Parameters<'static> {
         step_height: 0.6,
         scale: 1.,
         sneaking_speed: 0.3,
+        use_speed_multiplier: 1.,
         movement_efficiency: 0.,
         water_movement_efficiency: 0.,
         fast_lava: false,

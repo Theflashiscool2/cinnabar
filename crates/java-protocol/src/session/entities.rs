@@ -45,6 +45,11 @@ pub enum Position {
 pub enum Packet {
     Spawn(Spawn),
     Metadata(metadata::Packet),
+    /// EntityEvent.USE_ITEM_COMPLETE=9 from the pinned26.3 archive; other events
+    /// retain their explicit optional-observation path rather than pretending support.
+    FinishUsing {
+        id: i32,
+    },
     Remove(Vec<i32>),
     Move {
         id: i32,
@@ -85,6 +90,15 @@ pub enum Packet {
 pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
         "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
+        "ClientboundEntityEventPacket" => {
+            let mut probe = Reader(r.0);
+            let id = probe.i32()?;
+            if probe.byte()? != 9 {
+                return Ok(None);
+            }
+            *r = probe;
+            Packet::FinishUsing { id }
+        }
         "ClientboundAddEntityPacket" => {
             let id = r.var()?;
             let uuid = r.uuid()?.into_bytes();

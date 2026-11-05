@@ -61,9 +61,21 @@ fn sneak_edge_protection_stops_before_losing_support() {
 
 #[test]
 fn diagonal_input_preserves_unit_bound_and_sneak_speed() {
-    assert_eq!(modified_input([0., 1.], 1.), [0., 0.98]);
-    let diagonal = modified_input([1., 1.], 1.);
+    assert_eq!(modified_input([0., 1.], 1., 1.), [0., 0.98]);
+    let diagonal = modified_input([1., 1.], 1., 1.);
     assert!((diagonal[0] * diagonal[0] + diagonal[1] * diagonal[1] - 1.).abs() < 1.0e-6);
-    assert!(modified_input([0., 1.], 0.3)[1] < 0.3);
-    assert_eq!(modified_input([0., 1.], 0.), [0.; 2]);
+    assert!(modified_input([0., 1.], 1., 0.3)[1] < 0.3);
+    assert_eq!(modified_input([0., 1.], 1., 0.), [0.; 2]);
+}
+
+#[test]
+fn item_use_scales_normalized_axes_before_sneak_and_square_adjustment() {
+    let straight = modified_input([0., 1.], 0.2, 1.);
+    assert!((straight[1] - 0.196).abs() < 1e-7);
+    let sneaking = modified_input([0., 1.], 0.2, 0.3);
+    assert!((sneaking[1] - 0.058800004).abs() < 1e-7);
+    let diagonal = modified_input([1., 1.], 0.2, 1.);
+    assert!((diagonal[0] - 0.196).abs() < 1e-7);
+    assert!((diagonal[1] - 0.196).abs() < 1e-7);
+    assert_eq!(modified_input([1., 1.], 0., 1.), [0., 0.]);
 }

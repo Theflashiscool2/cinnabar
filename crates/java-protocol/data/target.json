@@ -185,5 +185,12 @@
     "bytes": 44369,
     "blocks": 1286,
     "generator": "assetc java-mining (ExportMining.java)"
+  },
+  "use_rules_report": {
+    "sha256": "54af18ec5fbb88d4f60667e444be8d869eda863b8bc41cb52194fc99d20e563b",
+    "bytes": 225956,
+    "blocks": 1286,
+    "items": 1658,
+    "generator": "ExportUseRules.java from verified pinned runtime; declaring methods classify guaranteed base dispatch only"
   }
 }

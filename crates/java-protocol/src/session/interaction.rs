@@ -7,6 +7,13 @@ pub enum Action {
     ChangeDirection,
     Abort,
     Finish,
+    ReleaseUse,
+}
+impl Action {
+    /// Native startAttack has a Punch edge; completion/cancellation/release do not.
+    pub fn punches(self) -> bool {
+        self == Self::Start
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Face {
@@ -23,6 +30,17 @@ pub struct Dig {
     pub position: [i32; 3],
     pub face: Face,
     pub sequence: i32,
+}
+impl Dig {
+    /// Native MultiPlayerGameMode.releaseUsingItem uses the unpredicted constructor.
+    pub const fn release_use() -> Self {
+        Self {
+            action: Action::ReleaseUse,
+            position: [0; 3],
+            face: Face::Down,
+            sequence: 0,
+        }
+    }
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Hand {
@@ -150,6 +168,7 @@ pub fn encode(dig: Dig) -> Result<Vec<u8>, Error> {
         Action::ChangeDirection => target::PLAYER_ACTION_CHANGE_DIGGING_DIRECTION,
         Action::Abort => target::PLAYER_ACTION_CANCEL_DIGGING,
         Action::Finish => target::PLAYER_ACTION_FINISH_DIGGING,
+        Action::ReleaseUse => target::PLAYER_ACTION_RELEASE_USE_ITEM,
     };
     let mut bytes = Vec::with_capacity(15);
     write_varint(i32::from(action), &mut bytes);
@@ -389,5 +408,35 @@ mod tests {
             assert!(!hint(name), "{name}");
         }
         assert_eq!(target::ITEM_COMPONENT_EQUIPPABLE, "minecraft:equippable");
+    }
+}
+
+#[cfg(test)]
+mod use_lifecycle_tests {
+    use super::*;
+    #[test]
+    fn native_release_is_unpredicted_and_not_an_attack_edge() {
+        // Verified native releaseUsingItem constructs RELEASE_USE_ITEM, ZERO, DOWN,
+        // through the sequence-less constructor (which delegates with sequence0).
+        let oracle: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/item-use-lifecycle-777.json"
+        ))
+        .unwrap();
+        let expected: Vec<u8> = oracle["release_use"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_u64().unwrap() as u8)
+            .collect();
+        assert_eq!(encode(Dig::release_use()).unwrap(), expected);
+        assert!(Action::Start.punches());
+        for action in [
+            Action::ChangeDirection,
+            Action::Abort,
+            Action::Finish,
+            Action::ReleaseUse,
+        ] {
+            assert!(!action.punches());
+        }
     }
 }

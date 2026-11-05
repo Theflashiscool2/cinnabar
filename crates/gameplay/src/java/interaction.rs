@@ -11,6 +11,7 @@ pub enum Kind {
     FinishBreak,
     UseOn,
     UseAir,
+    ReleaseUse,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
@@ -45,6 +46,16 @@ pub struct Controller {
     pending: Option<Request>,
     mining: Option<Mining>,
     creative: bool,
+    active_use: Option<super::item_use::active::Using>,
+    prepared_use: Option<(inventory::java::Stack, super::item_use::plan::Active)>,
+    use_tick: u64,
+    use_revision: u64,
+    server_use: Option<bool>,
+    use_fallback: Option<(
+        [f32; 2],
+        super::item_use::plan::Plan,
+        inventory::java::Stack,
+    )>,
     /// Supplied by the sole native collision simulation, not an optimistic on-ground flag.
     pub contact: Option<(bool, bool)>,
     pub selected: Option<Hit>,
@@ -75,7 +86,9 @@ impl Controller {
             || self.correction != correction
             || state.awaiting_correction_ack()
         {
-            if self.pending.is_none_or(|r| r.kind != Kind::AbortBreak)
+            if self
+                .pending
+                .is_none_or(|r| !matches!(r.kind, Kind::AbortBreak | Kind::ReleaseUse))
                 || self.correction != correction
                 || state.awaiting_correction_ack()
             {
@@ -86,6 +99,8 @@ impl Controller {
             } else {
                 self.mining = None;
             }
+            self.prepared_use = None;
+            self.use_fallback = None;
             self.elapsed = Duration::ZERO;
             self.use_elapsed = Duration::ZERO;
             self.delay = 0;
@@ -104,7 +119,7 @@ impl Controller {
             );
         if self.pending.is_some_and(|request| match request.kind {
             Kind::Break | Kind::FinishBreak => invalid_break,
-            Kind::AbortBreak => false,
+            Kind::AbortBreak | Kind::ReleaseUse => false,
             Kind::UseOn | Kind::UseAir => !can_use(state),
         }) || state.death.is_some()
             || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
@@ -114,7 +129,14 @@ impl Controller {
             self.elapsed = Duration::ZERO;
             self.use_elapsed = Duration::ZERO;
         }
+        if self.active_use.is_some() {
+            // Native using-item frames do not advance block breaking. The right-click
+            // delay can expire, but cannot accumulate a burst of repeated uses.
+            self.elapsed = Duration::ZERO;
+            self.use_elapsed = self.use_elapsed.min(simulation_clock::TICK_DURATION * 4);
+        }
         self.blocked = None;
+        self.use_tick = state.inventory.cooldowns.client_tick();
     }
     /// The renderer may be stalled; the same owner continues an already captured hold.
     pub fn service_frame(&mut self, state: &WorldState, elapsed: Duration) {
@@ -125,6 +147,11 @@ impl Controller {
     }
     pub fn queued(&mut self) {
         if let Some(request) = self.pending.take() {
+            let fallback = if request.kind == Kind::UseOn {
+                self.use_fallback.take()
+            } else {
+                None
+            };
             self.last_queued = Some(request);
             self.queued_actions = self.queued_actions.saturating_add(1);
             // Backpressure paused this action; old elapsed time must not become fresh presses.
@@ -147,9 +174,125 @@ impl Controller {
                     self.mining = None;
                     self.elapsed = Duration::ZERO;
                 }
-                Kind::UseOn | Kind::UseAir => self.use_elapsed = self.use_remainder,
+                Kind::UseOn | Kind::UseAir => {
+                    self.use_elapsed = self.use_remainder;
+                    if request.kind == Kind::UseAir {
+                        self.active_use = self.prepared_use.take().map(|(item, plan)| {
+                            super::item_use::active::Using::start(item, plan, self.use_tick)
+                        });
+                    }
+                }
+                Kind::ReleaseUse => {
+                    self.server_use = None;
+                    self.active_use = None;
+                    self.prepared_use = None;
+                }
+            }
+            if let Some((rotation, plan, item)) = fallback {
+                self.request_target(Target::Air(rotation), Kind::UseAir);
+                self.prepared_use = match plan.result {
+                    super::item_use::plan::ResultKind::Consume(Some(active)) => {
+                        Some((item, active))
+                    }
+                    _ => None,
+                };
             }
         }
+    }
+    /// Called before movement and by the between-frame owner. A physical release is
+    /// retained ahead of later movement/slot packets when transport is backpressured.
+    pub fn maintain_use(&mut self, state: &WorldState, tick: u64, release: bool) {
+        self.use_tick = tick;
+        let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
+        if scope != self.scope
+            || state.death.is_some()
+            || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
+        {
+            self.active_use = None;
+            self.prepared_use = None;
+            self.server_use = None;
+            return;
+        }
+        if self.use_revision != state.player_visual.use_revision {
+            self.use_revision = state.player_visual.use_revision;
+            if state.player_visual.use_flags & 1 == 0 {
+                self.active_use = None;
+                self.server_use = None;
+            } else if self.active_use.is_none() {
+                self.server_use = Some(state.player_visual.use_flags & 2 != 0);
+            }
+        }
+        if self
+            .active_use
+            .as_ref()
+            .is_some_and(|u| !u.matches(state.inventory.held()))
+        {
+            self.active_use = None;
+        }
+        if release && (self.active_use.is_some() || self.server_use.is_some()) {
+            if self.pending.is_none() && self.request_target(Target::Air([0.; 2]), Kind::ReleaseUse)
+            {
+                // Retain slowdown until the release has actually entered transport.
+                self.prepared_use = None;
+            }
+        }
+    }
+    pub fn prepare_use_fallback(
+        &mut self,
+        state: &WorldState,
+        rotation: [f32; 2],
+        plan: super::item_use::plan::Plan,
+    ) {
+        if self.pending.is_some_and(|r| r.kind == Kind::UseOn) && plan.send {
+            self.use_revision = state.player_visual.use_revision;
+            self.use_fallback = state
+                .inventory
+                .held()
+                .and_then(Option::as_ref)
+                .map(|s| (rotation, plan, s.clone()));
+        }
+    }
+    pub fn prepare_use(&mut self, state: &WorldState, plan: super::item_use::plan::Plan) {
+        if self.pending.is_some_and(|r| r.kind == Kind::UseAir) {
+            self.use_revision = state.player_visual.use_revision;
+            self.prepared_use = match plan.result {
+                super::item_use::plan::ResultKind::Consume(Some(active)) => state
+                    .inventory
+                    .held()
+                    .and_then(Option::as_ref)
+                    .map(|s| (s.clone(), active)),
+                _ => None,
+            };
+        }
+    }
+    pub fn server_use_requested(&self) -> Option<bool> {
+        self.server_use
+    }
+    pub fn resume_server_use(&mut self, state: &WorldState, plan: super::item_use::plan::Plan) {
+        if self.server_use == Some(false) {
+            if let (Some(item), super::item_use::plan::ResultKind::Consume(Some(active))) =
+                (state.inventory.held().and_then(Option::as_ref), plan.result)
+            {
+                self.active_use = Some(super::item_use::active::Using::start(
+                    item.clone(),
+                    active,
+                    self.use_tick,
+                ));
+            }
+            self.server_use = None;
+        }
+    }
+    pub fn using_item(&self) -> bool {
+        self.active_use.is_some()
+    }
+    pub fn use_effects(&self) -> Option<super::item_use::plan::Effects> {
+        self.active_use.as_ref().map(|u| u.effects())
+    }
+    pub fn use_duration(&self) -> Option<u32> {
+        self.active_use.as_ref().map(|u| u.duration())
+    }
+    pub fn use_ticks(&self) -> Option<u32> {
+        self.active_use.as_ref().map(|u| u.elapsed(self.use_tick))
     }
     pub fn backlog_ticks(&self) -> u128 {
         self.elapsed.as_nanos() / simulation_clock::TICK_DURATION.as_nanos()
@@ -158,7 +301,10 @@ impl Controller {
     /// Each accepted request remains buffered until queued, including taps shorter than a tick.
     pub fn advance(&mut self, state: &WorldState, attack: ActionPhase, hit: Option<Hit>) {
         self.selected = hit;
-        if self.pending.is_some() {
+        if self.active_use.is_some() {
+            return;
+        }
+        if self.active_use.is_some() || self.pending.is_some() {
             return;
         }
         if !self.enabled
@@ -390,7 +536,7 @@ impl Controller {
         action: ActionPhase,
         target: Result<Option<Target>, &'static str>,
     ) {
-        if self.pending.is_some() {
+        if self.active_use.is_some() || self.pending.is_some() {
             return;
         }
         if !self.enabled
@@ -444,11 +590,18 @@ impl Controller {
         let Some((_, epoch)) = self.scope else {
             return false;
         };
-        let Some(sequence) = self.sequence.checked_add(1) else {
-            self.blocked = Some("Native Java interaction sequence exhausted".into());
-            return false;
+        // Native cancellation is unpredicted (constructor sequence0), unlike starts,
+        // finishes and uses. It must not advance the prediction sequence counter.
+        let sequence = if matches!(kind, Kind::AbortBreak | Kind::ReleaseUse) {
+            0
+        } else {
+            let Some(sequence) = self.sequence.checked_add(1) else {
+                self.blocked = Some("Native Java interaction sequence exhausted".into());
+                return false;
+            };
+            self.sequence = sequence;
+            sequence
         };
-        self.sequence = sequence;
         self.pending = Some(Request {
             kind,
             dimension_epoch: epoch,

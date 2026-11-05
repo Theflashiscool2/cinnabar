@@ -72,6 +72,8 @@ mod java_physics;
 mod java_prepare;
 #[path = "assetc/java_runtime.rs"]
 mod java_runtime;
+#[path = "assetc/java_use_rules.rs"]
+mod java_use_rules;
 #[path = "assetc/output_validation.rs"]
 mod output_validation;
 #[path = "assetc/particle_command.rs"]
@@ -538,6 +540,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
         Command::JavaMining(options) => java_mining::generate(options)?,
+        Command::JavaUseRules(options) => java_use_rules::generate(options)?,
         Command::JavaFluids(options) => java_fluids::generate(options)?,
         Command::JavaPrepare(options) => java_prepare::prepare(options)?,
         Command::JavaAudit(options) => java_audit::run(options)?,

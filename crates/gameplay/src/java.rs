@@ -40,6 +40,7 @@ pub struct Controller {
     scope: Option<(u64, u64)>,
     sequence: u64,
     pub body: Body,
+    pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
     last_position: Option<[f64; 3]>,
@@ -139,7 +140,6 @@ impl Controller {
             Ok(true) => {
                 self.elapsed -= TICK;
                 self.ticks = self.ticks.saturating_add(1);
-                state.player_dynamics.tick_effects();
                 self.blocked = None;
                 true
             }
@@ -216,7 +216,11 @@ impl Controller {
         let mut input = controls.travel;
         input.sprint &= input.forward > 0.8
             && (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6));
-        let parameters = parameters(state)?;
+        let mut parameters = parameters(state)?;
+        if let Some(effects) = self.use_effects {
+            input.sprint &= effects.can_sprint;
+            parameters.use_speed_multiplier = effects.speed_multiplier;
+        }
         motion.yaw = controls.yaw;
         motion.pitch = controls.pitch;
         let mut body = self.body;
@@ -284,6 +288,7 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         jump_strength: value("minecraft:jump_strength")? as f32,
         step_height: value("minecraft:step_height")? as f32,
         scale: value("minecraft:scale")? as f32,
+        use_speed_multiplier: 1.,
         sneaking_speed: value("minecraft:sneaking_speed")? as f32,
         movement_efficiency: value("minecraft:movement_efficiency")? as f32,
         water_movement_efficiency: value("minecraft:water_movement_efficiency")? as f32,

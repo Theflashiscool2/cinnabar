@@ -14,6 +14,7 @@ struct Authority {
     java: client_session::java::Session,
     world: client_world::java::WorldState,
     movement: Movement,
+    clock: super::java_cooldowns::Clock,
     interaction: super::java_interaction::Interaction,
     shapes: Option<Arc<assets::registry::java::interaction::Table>>,
     physics: Option<Arc<assets::registry::java::physics::Table>>,
@@ -34,6 +35,7 @@ impl Authority {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
+        self.clock.service(&mut self.world, now);
         let elapsed = self.movement.elapsed(&self.world, now);
         let current = self.world.terrain.dimension().map(|d| (d.session, d.epoch));
         // A replacement world requires its own real PlayerLoaded/publication admission.
@@ -54,6 +56,14 @@ impl Authority {
             self.movement.1.controls.yaw = motion.yaw;
             self.movement.1.controls.pitch = motion.pitch;
         }
+        if !self.interaction.prepare_movement(
+            &self.java,
+            &self.world,
+            !self.interaction.1.held_use().held || self.world.inventory.opened.is_some(),
+        ) {
+            return;
+        }
+        self.movement.0.use_effects = self.interaction.0.use_effects();
         if let Some(physics) = physics {
             let before = self.movement.0.ticks;
             super::java_movement::advance(&self.java, &mut self.world, physics, &mut self.movement);
@@ -80,11 +90,17 @@ fn launch(
     slot: Res<Slot>,
     controller: Option<ResMut<SessionController>>,
     movement: Option<ResMut<Movement>>,
+    clock: Option<ResMut<super::java_cooldowns::Clock>>,
     interaction: Option<ResMut<super::java_interaction::Interaction>>,
     presentation: Option<Res<Presentation>>,
 ) {
-    let (Some(mut controller), Some(mut movement), Some(mut interaction), Some(presentation)) =
-        (controller, movement, interaction, presentation)
+    let (
+        Some(mut controller),
+        Some(mut movement),
+        Some(mut clock),
+        Some(mut interaction),
+        Some(presentation),
+    ) = (controller, movement, clock, interaction, presentation)
     else {
         return;
     };
@@ -113,6 +129,7 @@ fn launch(
         java: controller.java.take().unwrap(),
         world: std::mem::take(&mut controller.java_world),
         movement: std::mem::take(&mut *movement),
+        clock: std::mem::take(&mut *clock),
         interaction: std::mem::take(&mut *interaction),
         shapes: presentation.service_interaction(),
         physics,
@@ -123,13 +140,14 @@ fn reclaim(
     slot: Res<Slot>,
     controller: Option<ResMut<SessionController>>,
     movement: Option<ResMut<Movement>>,
+    clock: Option<ResMut<super::java_cooldowns::Clock>>,
     interaction: Option<ResMut<super::java_interaction::Interaction>>,
 ) {
     let Some(authority) = slot.0.lock().unwrap().as_mut().and_then(Worker::take) else {
         return;
     };
-    let (Some(mut controller), Some(mut movement), Some(mut interaction)) =
-        (controller, movement, interaction)
+    let (Some(mut controller), Some(mut movement), Some(mut clock), Some(mut interaction)) =
+        (controller, movement, clock, interaction)
     else {
         return;
     };
@@ -140,5 +158,6 @@ fn reclaim(
     controller.java = Some(authority.java);
     controller.java_world = authority.world;
     *movement = authority.movement;
+    *clock = authority.clock;
     *interaction = authority.interaction;
 }

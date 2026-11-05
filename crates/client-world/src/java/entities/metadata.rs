@@ -126,6 +126,7 @@ fn apply(
         }
         match (spec.name, entry.value) {
             ("DATA_SHARED_FLAGS_ID", Value::Byte(flags)) => visual.flags = flags,
+            ("DATA_LIVING_ENTITY_FLAGS", Value::Byte(flags)) => visual.observe_use(flags)?,
             ("DATA_POSE", Value::Int(pose)) => {
                 visual.pose = usize::try_from(pose)
                     .ok()

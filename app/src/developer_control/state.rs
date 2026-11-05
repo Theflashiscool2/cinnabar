@@ -458,6 +458,7 @@ pub(super) fn snapshot(world: &World) -> Value {
             |m| json!({"position":m.position,"velocity":m.velocity,"yaw":m.yaw,"pitch":m.pitch})
         ));
         snapshot["native_java"]["pose_revision"] = json!(state.player_pose_revision);
+        snapshot["native_java"]["player_use"] = json!({"flags":state.player_visual.use_flags,"revision":state.player_visual.use_revision});
         snapshot["native_java"]["player_entity"] =
             json!(state.bootstrap.as_ref().map(|b| b.world.entity_id));
         snapshot["native_java"]["attributes"] = json!(state.player_dynamics.attributes.iter().map(|(name, attribute)| (name, json!({"base":attribute.base,"value":attribute.value().ok(),"modifiers":attribute.modifiers.iter().map(|m|json!({"name":m.name,"amount":m.amount,"operation":format!("{:?}",m.operation)})).collect::<Vec<_>>()}))).collect::<std::collections::BTreeMap<_,_>>());

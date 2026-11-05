@@ -77,6 +77,7 @@ pub struct Parameters<'a> {
     pub step_height: f32,
     pub scale: f32,
     pub sneaking_speed: f32,
+    pub use_speed_multiplier: f32,
     pub movement_efficiency: f32,
     pub water_movement_efficiency: f32,
     pub fast_lava: bool,
@@ -134,6 +135,7 @@ pub fn step(
             p.step_height,
             p.scale,
             p.sneaking_speed,
+            p.use_speed_multiplier,
             p.movement_efficiency,
             p.water_movement_efficiency,
         ]
@@ -290,6 +292,7 @@ pub fn step(
     };
     let axes = modified_input(
         [input.sideways, input.forward],
+        p.use_speed_multiplier,
         if next_body.crouched || (next_body.low_profile && contact.water <= 0.) {
             p.sneaking_speed
         } else {
@@ -470,7 +473,7 @@ fn modified_friction(friction: f32, modifier: f32) -> f32 {
 }
 
 /// Keyboard input is normalized, then Java's square adjustment preserves diagonal reach.
-fn modified_input(mut axes: [f32; 2], slow: f32) -> [f32; 2] {
+fn modified_input(mut axes: [f32; 2], use_speed: f32, slow: f32) -> [f32; 2] {
     let length = (axes[0] * axes[0] + axes[1] * axes[1]).sqrt();
     if length == 0. {
         return axes;
@@ -482,6 +485,7 @@ fn modified_input(mut axes: [f32; 2], slow: f32) -> [f32; 2] {
     }
     for v in &mut axes {
         *v *= 0.98;
+        *v *= use_speed;
         *v *= slow;
     }
     let length = (axes[0] * axes[0] + axes[1] * axes[1]).sqrt();

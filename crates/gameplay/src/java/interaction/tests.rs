@@ -675,3 +675,262 @@ fn zero_speed_zero_hardness_waits_for_release_instead_of_repeating_instant_start
     assert_eq!(c.pending().unwrap().kind, Kind::AbortBreak);
     assert_eq!(s.block_updates, 0);
 }
+
+#[test]
+fn native_cancel_does_not_allocate_another_prediction_sequence() {
+    let s = mining_state();
+    let mut h = hit();
+    h.state = 1;
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    c.contact = Some((true, false));
+    c.advance(&s, press(), Some(h));
+    assert_eq!(c.pending().unwrap().sequence, 1);
+    c.queued();
+    c.advance(
+        &s,
+        ActionPhase {
+            released: true,
+            ..Default::default()
+        },
+        Some(h),
+    );
+    assert_eq!(
+        (c.pending().unwrap().kind, c.pending().unwrap().sequence),
+        (Kind::AbortBreak, 0)
+    );
+    c.queued();
+    c.advance(&s, press(), Some(h));
+    assert_eq!(c.pending().unwrap().sequence, 2);
+}
+
+#[test]
+fn active_use_waits_for_transport_release_is_unpredicted_and_never_consumes() {
+    use crate::java::item_use::plan::{Active, Effects, End, Plan, ResultKind};
+    let mut state = state();
+    state
+        .inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:apple".into(),
+                    count: 3,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &state, Duration::ZERO);
+    let plan = Plan {
+        send: true,
+        result: ResultKind::Consume(Some(Active {
+            ticks: 32,
+            end: End::Complete,
+            effects: Effects {
+                can_sprint: false,
+                speed_multiplier: 0.2,
+            },
+        })),
+    };
+    c.use_target(&state, press(), Ok(Some(Target::Air([10., 0.]))));
+    c.prepare_use(&state, plan);
+    assert!(!c.using_item());
+    c.queued();
+    assert!(c.using_item());
+    c.maintain_use(&state, 8, false);
+    assert_eq!(c.use_ticks(), Some(8));
+    c.maintain_use(&state, 8, true);
+    assert_eq!(c.pending().unwrap().kind, Kind::ReleaseUse);
+    assert_eq!(c.pending().unwrap().sequence, 0);
+    assert!(c.using_item(), "backpressure retains native slowdown");
+    c.queued();
+    assert!(!c.using_item());
+    assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 3);
+    c.use_target(&state, press(), Ok(Some(Target::Air([0., 0.]))));
+    c.prepare_use(&state, plan);
+    c.queued();
+    c.maintain_use(&state, 40, false);
+    assert!(
+        c.using_item(),
+        "local duration is not a server completion acknowledgement"
+    );
+    state.player_visual.complete_use().unwrap();
+    c.maintain_use(&state, 41, false);
+    assert!(!c.using_item());
+    assert!(
+        c.pending().is_none(),
+        "server completion invents no release/ack/stack mutation"
+    );
+}
+
+#[test]
+fn guaranteed_use_on_fallback_is_bounded_ordered_and_retired_on_world_change() {
+    use crate::java::item_use::plan::{Plan, ResultKind};
+    let mut s = state();
+    s.inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:apple".into(),
+                    count: 3,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    c.use_on(&s, press(), Some(hit()));
+    c.prepare_use_fallback(
+        &s,
+        [91., 19.],
+        Plan {
+            send: true,
+            result: ResultKind::Pass,
+        },
+    );
+    assert_eq!(c.pending().unwrap().kind, Kind::UseOn);
+    c.queued();
+    let air = c.pending().unwrap();
+    assert_eq!(air.kind, Kind::UseAir);
+    assert_eq!(air.sequence, 2);
+    assert_eq!(air.target, Target::Air([91., 19.]));
+    c.queued();
+    assert!(c.pending().is_none());
+    assert!(!c.using_item());
+    c.use_on(&s, press(), Some(hit()));
+    c.prepare_use_fallback(
+        &s,
+        [91., 19.],
+        Plan {
+            send: true,
+            result: ResultKind::Pass,
+        },
+    );
+    s.terrain.begin(Dimension {
+        session: 7,
+        epoch: 2,
+        name: "fixture:replacement".into(),
+        min_y: -64,
+        height: 384,
+        has_skylight: true,
+    });
+    begin(&mut c, &s, Duration::ZERO);
+    assert!(c.pending().is_none());
+    c.queued();
+    assert!(c.pending().is_none());
+}
+
+#[test]
+fn active_use_cannot_bank_mining_ticks_or_a_burst_of_following_uses() {
+    use crate::java::item_use::plan::{Active, Effects, End, Plan, ResultKind};
+    let mut s = state();
+    s.inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:apple".into(),
+                    count: 3,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    c.use_target(&s, press(), Ok(Some(Target::Air([0., 0.]))));
+    c.prepare_use(
+        &s,
+        Plan {
+            send: true,
+            result: ResultKind::Consume(Some(Active {
+                ticks: 1200,
+                end: End::Complete,
+                effects: Effects {
+                    can_sprint: false,
+                    speed_multiplier: 0.2,
+                },
+            })),
+        },
+    );
+    c.queued();
+    begin(&mut c, &s, Duration::from_secs(20));
+    assert_eq!(c.backlog_ticks(), 0);
+    assert_eq!(c.use_elapsed, simulation_clock::TICK_DURATION * 4);
+    c.advance(&s, press(), Some(hit()));
+    assert!(c.pending().is_none());
+    assert!(c.mining_progress().is_none());
+    assert_eq!(c.backlog_ticks(), 0);
+}
+
+#[test]
+fn old_stop_does_not_cancel_a_new_use_but_a_new_authoritative_stop_does() {
+    use crate::java::item_use::plan::{Active, Effects, End, Plan, ResultKind};
+    let mut s = state();
+    s.inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 0,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:apple".into(),
+                    count: 2,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    s.player_visual.observe_use(0).unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    let plan = Plan {
+        send: true,
+        result: ResultKind::Consume(Some(Active {
+            ticks: 32,
+            end: End::Complete,
+            effects: Effects {
+                can_sprint: false,
+                speed_multiplier: 0.2,
+            },
+        })),
+    };
+    c.use_target(&s, press(), Ok(Some(Target::Air([0., 0.]))));
+    c.prepare_use(&s, plan);
+    c.queued();
+    c.maintain_use(&s, 100, false);
+    assert!(
+        c.using_item(),
+        "old stop and local duration are not new authority"
+    );
+    s.player_visual.observe_use(0).unwrap();
+    c.maintain_use(&s, 101, false);
+    assert!(!c.using_item());
+    assert!(c.pending().is_none());
+    s.player_visual.observe_use(1).unwrap();
+    c.maintain_use(&s, 102, false);
+    assert_eq!(c.server_use_requested(), Some(false));
+    c.resume_server_use(&s, plan);
+    assert!(c.using_item());
+    assert!(
+        c.pending().is_none(),
+        "server start does not emit another UseItem"
+    );
+    s.player_visual.complete_use().unwrap();
+    c.maintain_use(&s, 103, false);
+    assert!(!c.using_item());
+}

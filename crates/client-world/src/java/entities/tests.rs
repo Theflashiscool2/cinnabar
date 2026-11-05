@@ -384,3 +384,51 @@ fn local_metadata_stays_out_of_remote_store_and_obeys_respawn_retention() {
         assert_eq!(s.player_visual.invisible(), keep_metadata);
     }
 }
+
+#[test]
+fn local_use_flags_and_completion_are_scoped_authority_without_inventory_prediction() {
+    let mut s = state();
+    let inventory = s.inventory.revision;
+    assert!(s.admit(event(
+        1,
+        decoded("ClientboundSetEntityDataPacket", &[42, 8, 0, 1, 255])
+    )));
+    assert_eq!(
+        (s.player_visual.use_flags, s.player_visual.use_revision),
+        (1, 1)
+    );
+    assert!(s.entities.get(42).is_none());
+    assert!(s.admit(event(
+        1,
+        decoded("ClientboundEntityEventPacket", &[0, 0, 0, 42, 9])
+    )));
+    assert_eq!(
+        (s.player_visual.use_flags, s.player_visual.use_revision),
+        (0, 2)
+    );
+    assert_eq!(
+        s.inventory.revision, inventory,
+        "use completion is not a slot-content acknowledgement"
+    );
+    assert!(!s.admit(event(
+        2,
+        decoded("ClientboundSetEntityDataPacket", &[42, 8, 0, 3, 255])
+    )));
+    assert_eq!(
+        (s.player_visual.use_flags, s.player_visual.use_revision),
+        (0, 2)
+    );
+    assert!(s.admit(event(
+        1,
+        decoded("ClientboundSetEntityDataPacket", &[42, 8, 0, 3, 255])
+    )));
+    assert_eq!(
+        s.player_visual.use_flags, 3,
+        "offhand bit is retained distinctly"
+    );
+    s.begin(8);
+    assert_eq!(
+        (s.player_visual.use_flags, s.player_visual.use_revision),
+        (0, 0)
+    );
+}

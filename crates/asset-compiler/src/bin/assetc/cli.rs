@@ -355,6 +355,8 @@ pub(super) enum Command {
     JavaPhysics(super::java_physics::Options),
     /// Verify and export the source-bundled native block breaking properties.
     JavaMining(super::java_physics::Options),
+    /// Verify and regenerate the source-bundled native block/item use dispatch facts.
+    JavaUseRules(super::java_physics::Options),
     /// Export pinned fluid and host-occlusion facts for native Java rendering.
     JavaFluids(super::java_physics::Options),
     /// Prepare all pinned native Java runtime resources, reusing verified local files.

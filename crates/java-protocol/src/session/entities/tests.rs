@@ -140,3 +140,29 @@ fn position_path_tags_counts_and_nonfinite_coordinates_are_checked() {
     bytes[2..10].copy_from_slice(&[0x7f, 0xf0, 0, 0, 0, 0, 0, 0]);
     assert!(packet("ClientboundEntityPositionSyncPacket", &bytes).is_err());
 }
+
+#[test]
+fn use_complete_is_fixed_int_entity_and_native_event_nine_only() {
+    // Verified ClientboundEntityEventPacket.write: Int32 + Byte;
+    // pinned EntityEvent.USE_ITEM_COMPLETE =9 (not a VarInt entity).
+    let bytes = [0, 0, 1, 44, 9];
+    assert!(matches!(
+        packet("ClientboundEntityEventPacket", &bytes).unwrap(),
+        Packet::FinishUsing { id: 300 }
+    ));
+    for n in 0..bytes.len() {
+        assert!(packet("ClientboundEntityEventPacket", &bytes[..n]).is_err());
+    }
+    assert!(packet("ClientboundEntityEventPacket", &[0, 0, 1, 44, 9, 0]).is_err());
+    let passive = [0, 0, 1, 44, 3];
+    let mut reader = Reader(&passive);
+    assert!(
+        decode("ClientboundEntityEventPacket", &mut reader)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        reader.0, passive,
+        "other events retain their observation path unchanged"
+    );
+}

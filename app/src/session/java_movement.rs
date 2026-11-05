@@ -40,6 +40,7 @@ pub(crate) fn update(
     controller: Option<ResMut<SessionController>>,
     presentation: Res<Presentation>,
     mut movement: ResMut<Movement>,
+    interaction: Res<super::java_interaction::Interaction>,
 ) {
     let Some(mut controller) = controller else {
         return;
@@ -71,6 +72,14 @@ pub(crate) fn update(
     let Some(physics) = physics else {
         return;
     };
+    if interaction
+        .0
+        .pending()
+        .is_some_and(|r| r.kind == gameplay::java::interaction::Kind::ReleaseUse)
+    {
+        return;
+    }
+    movement.0.use_effects = interaction.0.use_effects();
     let axes = input.0.raw_movement();
     let held = |action| input.0.phase(action).held;
     let buttons = input

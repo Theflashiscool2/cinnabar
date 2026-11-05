@@ -31,6 +31,9 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
+    /// LivingEntity use/offhand/spin bits, admitted only from native authoritative updates.
+    pub use_flags: u8,
+    pub use_revision: u64,
     pub scale: f32,
     pub pose: Arc<str>,
     pub baby: bool,
@@ -47,6 +50,8 @@ impl Default for Visual {
         // native defaults, not claims that an omitted required variant was received.
         Self {
             flags: 0,
+            use_flags: 0,
+            use_revision: 0,
             scale: 1.,
             pose: "standing".into(),
             baby: false,
@@ -59,6 +64,18 @@ impl Default for Visual {
     }
 }
 impl Visual {
+    pub fn observe_use(&mut self, flags: u8) -> Result<(), &'static str> {
+        let revision = self
+            .use_revision
+            .checked_add(1)
+            .ok_or("Java use revision exhausted")?;
+        self.use_flags = flags;
+        self.use_revision = revision;
+        Ok(())
+    }
+    pub fn complete_use(&mut self) -> Result<(), &'static str> {
+        self.observe_use(self.use_flags & !1)
+    }
     pub fn invisible(&self) -> bool {
         self.flags & 0x20 != 0
     }

@@ -25,6 +25,20 @@ pub(super) fn admit(
         .entity_id;
     match packet {
         wire::Packet::Metadata(packet) => metadata::admit(state, scope, own, packet),
+        wire::Packet::FinishUsing { id } => {
+            if id == own {
+                state.player_visual.complete_use()?;
+                Ok(true)
+            } else {
+                state.entities.update(scope, id, |e| {
+                    if e.kind.as_ref() == java_protocol::target::ENTITY_PLAYER {
+                        e.visual.complete_use()
+                    } else {
+                        Ok(())
+                    }
+                })
+            }
+        }
         wire::Packet::Spawn(s) => {
             if s.id == own {
                 return Err("Java remote spawn reuses local player identity");

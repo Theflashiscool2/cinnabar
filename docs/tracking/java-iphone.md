@@ -31,7 +31,7 @@ owners; no second network, inventory, simulation or world authority is introduce
 | Item and held artwork | `assets/registry/java/items`, `app/session/java_render`, shared `SessionIcons`: native GUI model/tint/special factories integrated, with authoritative component patches and scoped workers. **Remaining:** first-person/remote equipment, owner/world predicates, animation and full pack layering | Inspected Linux vanilla icons, component updates, chest transfers, unload/revisit and reconnect; held/reload/iOS acceptance still pending |
 | Inventory/menu actions | `inventory/java`, `client-ui/ui_runtime/java_inventory`, `app/session/java_inventory`: finish outside/cursor drop, offhand swaps and required specialized menus; preserve state/incarnation fencing | Controlled accepted/rejected transfers, rapid menu replacement and authoritative counts |
 | Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: equipment/skins/poses, representative entities, ranged/shield/use, damage/death/respawn | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
-| Block/item actions | `gameplay/java`, native outbound: full survival mining/progress/cancel, placement/offhand and use precedence, multi-stage use | Actual inputs, denied-action recovery and server state |
+| Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; remaining placement/offhand precedence, specialized/continuous uses and Adventure predicates | Actual inputs, denied-action recovery and server state |
 | Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: chat/command/ack signing, suggestions and remaining rich text/HUD surfaces | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
 | Packs and transitions | Native session/configuration and resource ownership: transfer consent/destination, full Java pack offer/application/status, stale work retirement | Controlled reconfiguration/backend changes, reload and world/session cleanup |
 | iOS actions | Existing semantic/touch/menu/text paths: connect every implemented Java action, text input, safe-area and background release | Shared input fixtures now; actual device flow remains external acceptance |
@@ -120,7 +120,48 @@ between native ticks. Independent 36 vanilla tool vectors and focused regression
 Native ordinary-model crack stages use the shared GPU pass and target destroy textures;
 replacement/removal/reconnect cleanup was inspected. Backpressured targets are revalidated
 before START/FINISH, and unsent starts do not emit misleading aborts. Special-model crack
-surfaces, swing/audio, active item-use/release/offhand precedence and Adventure can-break
+surfaces, swing/audio, offhand precedence and Adventure can-break
 predicates remain implementation gaps. This is not Bed Wars, Duels, online or iOS
 qualification. Full Cargo/MCP suite remains incomplete; the exporter command build exhausted
 local disk, while its actual verified Runtime/generator reproduced the pinned report.
+
+
+## Active item-use integration checkpoint (2026-11-05)
+
+The existing ordered native controller now starts supported main-hand consumables, bows
+and base blocking components. Exact target defaults/patches, hunger, ammo, cooldowns and
+use effects choose native local intent; the server alone changes inventory/effects. A
+pinned declaring-method report (1286 blocks/1658 items) permits guaranteed ordinary
+UseOn PASS -> UseItem fallback; block/item overrides are not guessed to pass. Its original
+`assetc java-use-rules` exporter uses the existing verified-runtime/EULA/output boundaries.
+The report is source-bundled, with no extra player-side runtime export.
+
+One client timer follows the world/movement/interaction loan between frames. It advances
+cooldowns and effect durations even while collision/rendering waits. Native use slowdown
+and sprint restrictions feed the same movement simulation. Early release, slot changes
+and inventory focus queue native RELEASE_USE_ITEM (neutral hit, sequence0) before later
+movement/selection. Mining cannot bank time while using an item. Native living-use flags
+and USE_ITEM_COMPLETE=9 are admitted with existing session/epoch protection. Local elapsed
+duration never invents server completion, item consumption or a transaction acknowledgement.
+Native eating/drinking arm transforms use existing held geometry/GPU ownership.
+
+Controlled official26.3/protocol777, Linux Xvfb91/Mesa lavapipe: real chest pickup/place
+obtained apples/bow/arrows; apple3->2, early60-second consume cancellation kept3, bow release
+spawned an authoritative arrow (8->7 ammo, damage1), no-ammo use stayed inactive, slot/menu
+release and reconnect passed. Inspected eating, release, inventory and reconnect output.
+Ordinary/use horizontal velocities were approximately .117814/.023572 (about one-fifth),
+with sprint disabled. Holding attack during use produced no mining/backlog; release resumed
+ordinary mining and abort preserved the server block. Admin commands only prepared scene,
+hunger, attributes and corrections; they did not perform these client interactions.
+Evidence: executor `/workspace/recovery/java-item-use/` live-authority.log,
+live-backlog.log, live-more-authority.log and retained JSON/screenshots; server
+JAVA_ITEM_USE_ACCEPT markers in java-entity-use/server-console.log.
+
+Remaining implementation: offhand/fallback and override-specific precedence, bow/charged
+held-model predicates and full use animations/audio, crossbow/trident/kinetic uses, required
+inventory/specialized menus, broader entities/combat/lifecycle and server UI/session work
+in the queue above. Cancellation during a queued transport correction needs an explicit
+cancellation-vs-position policy test. This is a connected implementation checkpoint, not
+Bed Wars/Duels completion or iOS/online/Hypixel qualification. Full Cargo/MCP tests remain
+incomplete; production-graph focused tests are narrower. A whole world-test wrapper lacked
+its dev-feature dependencies; focused authoritative admission tests passed instead.

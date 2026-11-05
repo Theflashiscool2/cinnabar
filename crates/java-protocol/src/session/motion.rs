@@ -149,8 +149,11 @@ impl Connection {
                     &interaction::encode(action)?,
                 )
                 .await?;
-                // Pinned Minecraft.startAttack sends the empty Punch packet after block intent.
-                self.send("ServerboundPunchPacket", &[]).await?;
+                // FINISH/ABORT/RELEASE are not attack edges. Sending Punch here would
+                // incorrectly reset attack timing and animate an extra attack.
+                if action.action.punches() {
+                    self.send("ServerboundPunchPacket", &[]).await?;
+                }
             }
             Command::Interact { .. } => {}
             Command::UseOn {

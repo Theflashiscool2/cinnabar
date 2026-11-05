@@ -12,7 +12,10 @@ pub(super) fn validate_command_outputs(command: &Command) -> Result<(), AssetErr
     let sidecar;
     let item_inputs;
     match command {
-        JavaPhysics(options) | JavaFluids(options) | JavaMining(options) => {
+        JavaPhysics(options)
+        | JavaFluids(options)
+        | JavaMining(options)
+        | JavaUseRules(options) => {
             inputs.extend([
                 options.server.as_path(),
                 options.java.as_path(),

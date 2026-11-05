@@ -11,6 +11,7 @@ use render_model::{
     ActorRigSubmission, HandRigLight, RenderBoneTransform, equipment::java_item::Prepared,
 };
 use render_scene::HandRigScene;
+mod use_pose;
 use std::sync::Arc;
 #[derive(Default)]
 pub(crate) struct State {
@@ -33,6 +34,7 @@ pub(crate) fn update(
     camera: Res<CameraSettingsAuthority>,
     server_camera: Option<Res<client_presentation::camera::ServerCameraView>>,
     movement: Res<java_movement::Movement>,
+    interaction: Res<super::java_interaction::Interaction>,
     motion: Option<Res<FirstPersonHandMotion>>,
     artwork: Option<Res<render_scene::ActorArtworkResource>>,
     time: Res<Time<bevy::time::Real>>,
@@ -156,7 +158,39 @@ pub(crate) fn update(
             continue;
         };
         // Verified FirstPersonHandsAndItemsRenderer.applyItemArmTransform at idle equip/swing.
+        let use_pose = if hand == 0 && interaction.0.using_item() {
+            let consumable = stacks[hand].and_then(|s| {
+                if s.removed.contains("minecraft:consumable") {
+                    None
+                } else {
+                    s.added.get("minecraft:consumable").or_else(|| {
+                        assets::registry::java::items::defaults::component(
+                            &s.item,
+                            "minecraft:consumable",
+                        )
+                    })
+                }
+            });
+            let animation = consumable.and_then(|v| v.get("animation"));
+            let eating = animation.is_none()
+                || animation.is_some_and(|v| {
+                    matches!(v.as_str(), Some("eat" | "drink")) || matches!(v.as_u64(), Some(1 | 2))
+                });
+            if consumable.is_some() && eating {
+                use_pose::eat(
+                    interaction.0.use_ticks().unwrap_or(0),
+                    interaction.0.use_duration().unwrap_or(0),
+                    0.,
+                    true,
+                )
+            } else {
+                Mat4::IDENTITY
+            }
+        } else {
+            Mat4::IDENTITY
+        };
         let transform = (motion
+            * use_pose
             * Mat4::from_translation(Vec3::new(
                 if hand == 0 { 0.56 } else { -0.56 },
                 -0.52,

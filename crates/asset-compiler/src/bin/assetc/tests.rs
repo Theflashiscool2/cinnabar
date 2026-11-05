@@ -181,3 +181,19 @@ fn mining_report_command_rejects_input_output_aliases() {
     assert!(matches!(cli.command, Command::JavaMining(_)));
     assert!(super::command_outputs::validate_command_outputs(&cli.command).is_err());
 }
+
+#[test]
+fn use_rules_command_rejects_input_output_aliases() {
+    let cli = Cli::try_parse_from([
+        "assetc",
+        "java-use-rules",
+        "--server",
+        "pinned.jar",
+        "--out",
+        "pinned.jar",
+        "--accept-eula",
+    ])
+    .unwrap();
+    assert!(matches!(cli.command, Command::JavaUseRules(_)));
+    assert!(super::command_outputs::validate_command_outputs(&cli.command).is_err());
+}

@@ -1,5 +1,8 @@
-//! Instant main-hand air use. Active use/release and offhand fallback remain explicit gaps.
+//! Native use planning/lifetimes. The legacy instant-only admission below remains
+//! for entity fallback; ordinary block/air use uses plan and active.
 use inventory::java::{Slot, cooldown::Cooldowns};
+pub mod active;
+pub mod plan;
 
 #[derive(Clone, Copy)]
 pub struct Defaults<'a> {
