@@ -261,3 +261,30 @@ fn absorption_points_round_up_and_zero_remains_authoritative() {
         assert!(BoundedStat::from_absorption_points(points).is_none());
     }
 }
+
+#[test]
+fn caller_owned_actionbar_timing_does_not_change_bedrock_or_title_defaults() {
+    let mut hud = HudStore::default();
+    let original = hud.durations();
+    hud.set_timed_actionbar(
+        "Native overlay".into(),
+        1,
+        1000,
+        TitleDurations {
+            fade_in_ticks: 0,
+            stay_ticks: 40,
+            fade_out_ticks: 20,
+        },
+    );
+    let text = hud.actionbar().unwrap();
+    assert_eq!(text.expires_millis, 4000);
+    assert_eq!(text.alpha_at(3000), 255);
+    assert_eq!(text.alpha_at(3500), 127);
+    assert_eq!(text.alpha_at(4000), 0);
+    assert_eq!(hud.durations(), original);
+    hud.set_actionbar("Bedrock popup".into(), 2, 1000);
+    assert_eq!(
+        hud.actionbar().unwrap().expires_millis,
+        1000 + original.total_millis()
+    );
+}

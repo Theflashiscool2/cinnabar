@@ -64,6 +64,11 @@ impl Connection {
                 r.finish().map_err(packet_error)?;
                 continue;
             }
+            if let Some(message) = chat::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
+                self.emit(Event::SystemChat(message)).await?;
+                continue;
+            }
             if *name == "ClientboundBlockChangedAckPacket" {
                 let sequence = r.var()?;
                 r.finish().map_err(packet_error)?;
@@ -369,7 +374,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundRemoveMobEffectPacket",
     "ClientboundSelectAdvancementsTabPacket",
     "ClientboundServerDataPacket",
-    "ClientboundSetActionBarTextPacket",
     "ClientboundSetBorderCenterPacket",
     "ClientboundSetBorderLerpSizePacket",
     "ClientboundSetBorderSizePacket",
@@ -389,7 +393,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSoundPacket",
     "ClientboundStopSoundPacket",
     "ClientboundSwingAnimationPacket",
-    "ClientboundSystemChatPacket",
     "ClientboundTabListPacket",
     "ClientboundTagQueryPacket",
     "ClientboundTakeItemEntityPacket",

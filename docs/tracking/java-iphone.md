@@ -32,7 +32,7 @@ owners; no second network, inventory, simulation or world authority is introduce
 | Inventory/menu actions | `inventory/java`, `client-ui/ui_runtime/java_inventory`, `app/session/java_inventory`: finish outside/cursor drop, offhand swaps and required specialized menus; preserve state/incarnation fencing | Controlled accepted/rejected transfers, rapid menu replacement and authoritative counts |
 | Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: custom skins/non-idle poses, representative mobs/projectiles/NPCs, ranged presentation and active poses; ordinary offhand shielding/use and remote armor/held and basic two-client damage/death/respawn now pass controlled offline evidence | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
 | Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; basic both-hand block/entity/air precedence and active-use lifetime now pass controlled vanilla; remaining specialized uses, dynamic same-item component refresh, target-slot fallthrough and Adventure predicates | Actual inputs, denied-action recovery and server state |
-| Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: chat/command/ack signing, suggestions and remaining rich text/HUD surfaces | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
+| Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: unsigned command/system-message/actionbar routing now passes controlled vanilla; player chat/ack signing, signed command arguments, suggestions and remaining rich text/HUD surfaces remain incomplete | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
 | Packs and transitions | Native session/configuration and resource ownership: transfer consent/destination, full Java pack offer/application/status, stale work retirement | Controlled reconfiguration/backend changes, reload and world/session cleanup |
 | iOS actions | Existing semantic/touch/menu/text paths: connect every implemented Java action, text input, safe-area and background release | Shared input fixtures now; actual device flow remains external acceptance |
 | Bed Wars then Duels | Integrate the above through lobby, shop/build/combat/death and return; track modes separately | Controlled implementation fixtures plus user-directed real mode acceptance |
@@ -229,3 +229,17 @@ dimension cleanup and reconnect passed with server state. `/workspace/recovery/j
 retains screenshots, native pose oracle, focused tests and cold-capture/driver failures.
 Trims, head/wing layers, active poses, custom skins, full resource-pack application/reload and
 online/iOS/Hypixel acceptance remain incomplete; no new IPA exists. Full Cargo/MCP suite remains incomplete.
+
+Native slash commands now use the existing chat editor/FIFO through the Java connection,
+with session/epoch fences, retained backpressure and actual socket-write receipts. These
+receipts do not mean that the server accepted a command. A normal-player vanilla trigger
+fixture verified score7, then8, then9 after reconnect through real T/text/Enter input.
+System components use the target language table, ordered/positional arguments and existing
+bounded named styles; native heterogeneous NBT argument wrappers are preserved. Actual
+formatted system text and action-bar display/expiry were inspected on Linux/lavapipe.
+The native100-message history and separate coalesced overlay do not create another UI owner.
+Player chat is explicitly unavailable rather than routed into Bedrock or sent with invented
+signatures/acknowledgements. Signed arguments, suggestions, underlined error context, full
+font/pack fidelity and online/iOS/Hypixel qualification remain open. Shared HUD regressions,
+focused native-codec/text/input checks, production compilation and architecture pass; full
+Cargo/MCP execution remains incomplete.

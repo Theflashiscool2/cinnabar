@@ -1,5 +1,6 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
 mod biomes;
+pub mod chat;
 mod dynamics;
 mod entities;
 mod environment;
@@ -28,6 +29,7 @@ use java_protocol::session::{
 };
 #[derive(Default, Debug)]
 pub struct WorldState {
+    pub chat: chat::State,
     pub inventory: ::inventory::java::State,
     generation: u64,
     dimension_epoch: u64,
@@ -125,6 +127,12 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::SystemChat(message) => self
+                .chat
+                .receive(message, self.inventory.cooldowns.client_tick()),
+            Event::ChatCommandSent { sequence, written } => {
+                self.chat.written = Some((sequence, written))
+            }
             Event::SelectionSent {
                 dimension_epoch,
                 sequence,
@@ -176,6 +184,7 @@ impl WorldState {
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {
+                    self.chat.overlay = None;
                     self.scoreboard.clear();
                     self.inventory = Default::default();
                     self.block_ack = None;
@@ -202,7 +211,10 @@ impl WorldState {
                     self.player_visual = Default::default();
                 }
             }
-            Event::WorldLogin(world) => return world_login::admit(self, *world),
+            Event::WorldLogin(world) => {
+                self.chat.overlay = None;
+                return world_login::admit(self, *world);
+            }
             Event::Bootstrap(facts) => {
                 if facts.generation != self.generation {
                     return false;
@@ -321,6 +333,7 @@ impl WorldState {
                 keep_attribute_modifiers,
                 keep_metadata,
             } => {
+                self.chat.overlay = None;
                 // ClientPacketListener.handleRespawn copies these only with KEEP_ENTITY_DATA.
                 // Do not publish the old position as movement authority in the new dimension.
                 let inherited = if keep_metadata {

@@ -1,4 +1,5 @@
 //! Native login/configuration/play owner. One future owns all ordered socket operations.
+pub mod chat;
 mod configuration;
 mod crypto;
 pub mod dynamics;
@@ -72,6 +73,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    ChatCommand {
+        dimension_epoch: u64,
+        sequence: u64,
+        text: String,
+    },
     /// Ordered game-thread receipt; unlike keep-alive, a pong cannot overtake world admission.
     Pong {
         sequence: u64,

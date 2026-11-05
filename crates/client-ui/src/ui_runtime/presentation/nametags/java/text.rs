@@ -18,11 +18,11 @@ pub(super) fn player(name: &str, team: Option<&Parameters>) -> Result<Arc<str>, 
     let mut out = String::new();
     let mut remaining = ui::MAX_TEXT_SPANS;
     if let Some(t) = team {
-        component(&t.prefix, style, &mut out, &mut remaining, 0)?;
+        component(&t.prefix, style, &mut out, &mut remaining, 0, None)?;
     }
     literal(name, style, &mut out)?;
     if let Some(t) = team {
-        component(&t.suffix, style, &mut out, &mut remaining, 0)?;
+        component(&t.suffix, style, &mut out, &mut remaining, 0, None)?;
     }
     Ok(out.into())
 }
@@ -35,15 +35,32 @@ pub(crate) fn component_text(value: &NbtValue, team: Option<&Parameters>) -> Res
     let mut out = String::new();
     let mut remaining = ui::MAX_TEXT_SPANS;
     if let Some(team) = team {
-        component(&team.prefix, style, &mut out, &mut remaining, 0)?;
+        component(&team.prefix, style, &mut out, &mut remaining, 0, None)?;
     }
-    component(value, style, &mut out, &mut remaining, 0)?;
+    component(value, style, &mut out, &mut remaining, 0, None)?;
     if let Some(team) = team {
-        component(&team.suffix, style, &mut out, &mut remaining, 0)?;
+        component(&team.suffix, style, &mut out, &mut remaining, 0, None)?;
     }
     Ok(out.into())
 }
 
+/// Native literal/translated system components, sharing existing styles and atlas bounds.
+pub(crate) fn translated_component_text(
+    value: &NbtValue,
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Result<Arc<str>, ()> {
+    let mut out = String::new();
+    let mut remaining = ui::MAX_TEXT_SPANS;
+    component(
+        value,
+        Style::default(),
+        &mut out,
+        &mut remaining,
+        0,
+        Some(lookup),
+    )?;
+    Ok(out.into())
+}
 fn literal(s: &str, style: Style, out: &mut String) -> Result<(), ()> {
     // Reset sibling formatting before restoring inherited fields. Bedrock colour codes alone
     // do not reset bold/italic, so simply concatenating component strings is incorrect.
@@ -78,6 +95,7 @@ fn component(
     out: &mut String,
     remaining: &mut usize,
     depth: usize,
+    translate: Option<&dyn Fn(&str) -> Option<String>>,
 ) -> Result<(), ()> {
     if depth > world::MAX_NBT_DEPTH || *remaining == 0 {
         return Err(());
@@ -92,28 +110,98 @@ fn component(
                 if i == 0 {
                     style = styled(part, inherited)?;
                 }
-                component(part, style, out, remaining, depth + 1)?;
+                component(part, style, out, remaining, depth + 1, translate)?;
             }
             Ok(())
         }
         NbtValue::Compound(c) => {
             let style = styled(v, inherited)?;
-            let Some(NbtValue::String(s)) = c.get("text") else {
+            if let Some(NbtValue::String(s)) = c.get("text") {
+                literal(s, style, out)?;
+            } else if let (Some(lookup), Some(NbtValue::String(key))) =
+                (translate, c.get("translate"))
+            {
+                let fallback = match c.get("fallback") {
+                    Some(NbtValue::String(s)) => Some(s.as_ref()),
+                    None => None,
+                    _ => return Err(()),
+                };
+                let format = lookup(key)
+                    .or_else(|| fallback.map(str::to_owned))
+                    .unwrap_or_else(|| key.to_string());
+                let args = match c.get("with") {
+                    Some(NbtValue::List(args)) => args.as_slice(),
+                    None => &[],
+                    _ => return Err(()),
+                };
+                translated(&format, args, style, out, remaining, depth, lookup)?;
+            } else {
                 return Err(());
-            };
-            literal(s, style, out)?;
+            }
             if let Some(extra) = c.get("extra") {
                 let NbtValue::List(parts) = extra else {
                     return Err(());
                 };
                 for part in parts {
-                    component(part, style, out, remaining, depth + 1)?;
+                    component(part, style, out, remaining, depth + 1, translate)?;
                 }
             }
             Ok(())
         }
         _ => Err(()),
     }
+}
+fn translated(
+    mut text: &str,
+    args: &[NbtValue],
+    style: Style,
+    out: &mut String,
+    remaining: &mut usize,
+    depth: usize,
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Result<(), ()> {
+    let mut next = 0usize;
+    while let Some(at) = text.find('%') {
+        if *remaining == 0 {
+            return Err(());
+        }
+        *remaining -= 1;
+        literal(&text[..at], style, out)?;
+        text = &text[at + 1..];
+        if let Some(rest) = text.strip_prefix('%') {
+            literal("%", style, out)?;
+            text = rest;
+            continue;
+        }
+        let digits = text.bytes().take_while(u8::is_ascii_digit).count();
+        let index = if digits > 0 {
+            let i = text[..digits]
+                .parse::<usize>()
+                .map_err(|_| ())?
+                .checked_sub(1)
+                .ok_or(())?;
+            text = text[digits..].strip_prefix('$').ok_or(())?;
+            i
+        } else {
+            let i = next;
+            next = next.checked_add(1).ok_or(())?;
+            i
+        };
+        text = text.strip_prefix('s').ok_or(())?;
+        let arg = args.get(index).ok_or(())?;
+        // NbtOps wraps heterogeneous primitive list entries in a single empty-key
+        // compound. The pinned native mixed-argument codec vector verifies this.
+        let arg = match arg {
+            NbtValue::Compound(c) if c.iter().take(2).count() == 1 => c.get("").unwrap_or(arg),
+            _ => arg,
+        };
+        match arg {
+            NbtValue::Int(n) => literal(&n.to_string(), style, out)?,
+            NbtValue::Long(n) => literal(&n.to_string(), style, out)?,
+            value => component(value, style, out, remaining, depth + 1, Some(lookup))?,
+        }
+    }
+    literal(text, style, out)
 }
 fn styled(v: &NbtValue, mut s: Style) -> Result<Style, ()> {
     let NbtValue::Compound(c) = v else {
@@ -173,7 +261,7 @@ mod tests {
         ]);
         let mut out = String::new();
         let mut remaining = ui::MAX_TEXT_SPANS;
-        component(&v, Style::default(), &mut out, &mut remaining, 0).unwrap();
+        component(&v, Style::default(), &mut out, &mut remaining, 0, None).unwrap();
         assert_eq!(out, "§r§c§l名§r§cA§r§c§l𐐀");
     }
     #[test]
@@ -186,7 +274,8 @@ mod tests {
                 Style::default(),
                 &mut out,
                 &mut nodes,
-                0
+                0,
+                None
             )
             .is_err()
         );
@@ -197,9 +286,53 @@ mod tests {
                 Style::default(),
                 &mut out,
                 &mut 0,
-                0
+                0,
+                None
             )
             .is_err()
+        );
+    }
+    #[test]
+    fn translations_preserve_ordered_arguments_unicode_and_literal_percent() {
+        let value = compound([
+            ("translate", NbtValue::String("fixture.message".into())),
+            ("color", NbtValue::String("gold".into())),
+            (
+                "with",
+                NbtValue::List(vec![
+                    compound([("", NbtValue::String("夜".into()))]),
+                    compound([("", NbtValue::Int(7))]),
+                ]),
+            ),
+        ]);
+        let out = translated_component_text(&value, &|k| {
+            (k == "fixture.message").then(|| "%2$s: %1$s (100%%)".into())
+        })
+        .unwrap();
+        let mut chars = out.chars();
+        let mut plain = String::new();
+        while let Some(c) = chars.next() {
+            if c == '§' {
+                chars.next();
+            } else {
+                plain.push(c);
+            }
+        }
+        assert_eq!(plain, "7: 夜 (100%)");
+        assert!(out.contains("§6"));
+        let fallback = compound([
+            ("translate", NbtValue::String("unknown".into())),
+            ("fallback", NbtValue::String("Fallback".into())),
+        ]);
+        assert_eq!(
+            translated_component_text(&fallback, &|_| None)
+                .unwrap()
+                .as_ref(),
+            "§rFallback"
+        );
+        assert!(
+            translated_component_text(&value, &|_| Some("%999999999999999999999999$s".into()))
+                .is_err()
         );
     }
 }

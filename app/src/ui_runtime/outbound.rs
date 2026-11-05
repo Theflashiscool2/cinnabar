@@ -42,7 +42,18 @@ pub(crate) fn flush_chat_network(
     mut runtime: ResMut<UiRuntimeResource>,
     network: Res<NetworkHandle<PackApplication>>,
     mut fatal_error: ResMut<crate::runtime::shutdown::FatalError>,
+    mut controller: Option<ResMut<crate::session::SessionController>>,
+    time: Res<Time<Real>>,
 ) {
+    if controller.as_mut().is_some_and(|c| {
+        crate::session::java_chat::flush(
+            c,
+            &mut runtime,
+            u64::try_from(time.elapsed().as_millis()).unwrap_or(u64::MAX),
+        )
+    }) {
+        return;
+    }
     runtime.service_pending_chat_autocomplete(&player_runtime);
     if network.closed_command_has_pending_control() {
         return;

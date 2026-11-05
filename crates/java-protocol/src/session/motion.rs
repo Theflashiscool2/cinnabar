@@ -6,11 +6,31 @@ impl Connection {
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         // Queued input from a retired level cannot be serialized before its replacement login.
         if !self.bootstrapped {
+            if let Command::ChatCommand { sequence, .. } = command {
+                self.emit(Event::ChatCommandSent {
+                    sequence,
+                    written: false,
+                })
+                .await?;
+            }
             return Ok(false);
         }
         // Ping fences incoming game events, not already ordered outbound player intent.
         // It does not change epoch or correction authority; dropping that input loses actions.
         match command {
+            Command::ChatCommand {
+                dimension_epoch,
+                sequence,
+                text,
+            } => {
+                let written = dimension_epoch == self.dimension_epoch && self.phase == Phase::Play;
+                if written {
+                    self.send("ServerboundChatCommandPacket", &chat::command(&text)?)
+                        .await?;
+                }
+                self.emit(Event::ChatCommandSent { sequence, written })
+                    .await?;
+            }
             Command::Pong { sequence, id } if self.pending_ping == Some((sequence, id)) => {
                 self.send("ServerboundPongPacket", &id.to_be_bytes())
                     .await?;

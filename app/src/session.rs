@@ -35,6 +35,7 @@ use std::{path::PathBuf, time::Instant};
 mod cache_tests;
 mod client_id;
 mod java;
+pub(crate) mod java_chat;
 mod join;
 use join::{attempt_connect, prepare_join};
 pub(crate) mod java_cooldowns;

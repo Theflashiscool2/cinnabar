@@ -22,6 +22,7 @@ impl UiRuntime {
             .java_hud
             .is_some_and(|old| old.epoch != snapshot.epoch)
         {
+            self.session.hud.reset_titles();
             self.session.gameplay_hud.clear();
             self.session.java_inventory = Default::default();
             self.session.java_item_names = None;
@@ -84,6 +85,7 @@ impl UiRuntime {
     /// Clears only a native projection; an ordinary Bedrock frame remains untouched.
     pub fn clear_java_hud(&mut self) {
         if self.session.java_hud.take().is_some() {
+            self.session.hud.reset_titles();
             self.session.java_sidebar = Default::default();
             self.session.java_inventory = Default::default();
             self.session.java_item_names = None;
@@ -95,6 +97,7 @@ impl UiRuntime {
             self.session.inventory_pointer_gui = None;
             self.session.java_inventory_error = None;
             self.session.hud.clear();
+            self.session.hud.reset_titles();
             self.session.gameplay_hud.clear();
             self.session.local_player_health_available = false;
             self.session.local_player_respawn_ready = false;

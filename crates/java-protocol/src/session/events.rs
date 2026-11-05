@@ -1,9 +1,15 @@
 //! Ordered native session messages exposed to admission consumers.
-use super::{Phase, dynamics, entities, facts, hud, inventory, roster, scoreboard};
+use super::{Phase, chat, dynamics, entities, facts, hud, inventory, roster, scoreboard};
 use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    SystemChat(chat::System),
+    /// Local socket-write receipt, never a server command-success acknowledgement.
+    ChatCommandSent {
+        sequence: u64,
+        written: bool,
+    },
     /// Local write receipt, not a server transaction acknowledgement.
     SelectionSent {
         dimension_epoch: u64,

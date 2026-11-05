@@ -25,6 +25,7 @@ pub mod interaction;
 pub mod inventory_actions;
 pub mod inventory_drag;
 pub mod inventory_ingress;
+mod java_chat;
 pub mod java_hud;
 pub mod java_inventory;
 mod java_sidebar;

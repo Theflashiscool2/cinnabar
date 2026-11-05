@@ -9,6 +9,7 @@ pub(crate) fn update(
     presentation: Option<Res<super::java_render::Presentation>>,
     mut heads: Local<super::java_items::Heads>,
     time: Res<Time<bevy::time::Real>>,
+    mut chat: Local<super::java_chat::Projection>,
 ) {
     let Some(mut ui) = ui else {
         return;
@@ -29,6 +30,11 @@ pub(crate) fn update(
                 ui.publish_java_item_names(snapshot.session, snapshot.epoch, names);
             }
             if let Some(controller) = controller.as_ref() {
+                chat.publish(
+                    &controller.java_world,
+                    &mut ui,
+                    u64::try_from(time.elapsed().as_millis()).unwrap_or(u64::MAX),
+                );
                 ui.publish_java_sidebar(&controller.java_world);
                 ui.publish_java_inventory(&controller.java_world);
                 if let Some(items) = presentation

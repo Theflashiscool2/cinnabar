@@ -452,12 +452,17 @@ impl HudStore {
     }
 
     pub fn set_actionbar(&mut self, text: Arc<str>, fifo_sequence: u64, now_millis: u64) {
-        self.actionbar = Some(TimedText::new(
-            text,
-            fifo_sequence,
-            now_millis,
-            self.durations,
-        ));
+        self.set_timed_actionbar(text, fifo_sequence, now_millis, self.durations);
+    }
+    /// Uses caller-owned timing without altering subsequent title or Bedrock timings.
+    pub fn set_timed_actionbar(
+        &mut self,
+        text: Arc<str>,
+        fifo_sequence: u64,
+        now_millis: u64,
+        durations: TitleDurations,
+    ) {
+        self.actionbar = Some(TimedText::new(text, fifo_sequence, now_millis, durations));
     }
 
     pub fn set_tip(&mut self, text: Arc<str>, fifo_sequence: u64, now_millis: u64) {
