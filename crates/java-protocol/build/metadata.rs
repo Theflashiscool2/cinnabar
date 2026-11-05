@@ -44,6 +44,13 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
     *code += &format!("pub const METADATA_SERIALIZERS: &[&str] = &{names:?};\n");
     let facts: serde_json::Value =
         serde_json::from_slice(&load(&target["entity_facts_report"])).unwrap();
+    let effects: Vec<&str> = facts["effect_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    *code += &format!("pub const MOB_EFFECTS: &[&str] = &{effects:?};\n");
     let piston = &facts["piston_blocks"];
     let count = piston["states"].as_u64().unwrap();
     assert_eq!(

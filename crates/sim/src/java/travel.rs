@@ -44,6 +44,9 @@ pub struct Body {
     jump_delay: u8,
 }
 impl Body {
+    pub fn eyes_in_water(self) -> bool {
+        self.eyes_in_water
+    }
     pub fn eye_height(self, scale: f32) -> f64 {
         f64::from(
             if self.low_profile {

@@ -14,6 +14,8 @@ struct Authority {
     java: client_session::java::Session,
     world: client_world::java::WorldState,
     movement: Movement,
+    interaction: super::java_interaction::Interaction,
+    shapes: Option<Arc<assets::registry::java::interaction::Table>>,
     physics: Option<Arc<assets::registry::java::physics::Table>>,
     scope: Option<(u64, u64)>,
 }
@@ -56,6 +58,12 @@ impl Authority {
             let before = self.movement.0.ticks;
             super::java_movement::advance(&self.java, &mut self.world, physics, &mut self.movement);
             self.movement.1.ticks += self.movement.0.ticks.saturating_sub(before);
+            self.interaction.service(
+                &self.java,
+                &self.world,
+                &self.movement,
+                self.shapes.as_deref(),
+            );
         }
     }
 }
@@ -72,10 +80,11 @@ fn launch(
     slot: Res<Slot>,
     controller: Option<ResMut<SessionController>>,
     movement: Option<ResMut<Movement>>,
+    interaction: Option<ResMut<super::java_interaction::Interaction>>,
     presentation: Option<Res<Presentation>>,
 ) {
-    let (Some(mut controller), Some(mut movement), Some(presentation)) =
-        (controller, movement, presentation)
+    let (Some(mut controller), Some(mut movement), Some(mut interaction), Some(presentation)) =
+        (controller, movement, interaction, presentation)
     else {
         return;
     };
@@ -104,6 +113,8 @@ fn launch(
         java: controller.java.take().unwrap(),
         world: std::mem::take(&mut controller.java_world),
         movement: std::mem::take(&mut *movement),
+        interaction: std::mem::take(&mut *interaction),
+        shapes: presentation.service_interaction(),
         physics,
         scope,
     });
@@ -112,11 +123,14 @@ fn reclaim(
     slot: Res<Slot>,
     controller: Option<ResMut<SessionController>>,
     movement: Option<ResMut<Movement>>,
+    interaction: Option<ResMut<super::java_interaction::Interaction>>,
 ) {
     let Some(authority) = slot.0.lock().unwrap().as_mut().and_then(Worker::take) else {
         return;
     };
-    let (Some(mut controller), Some(mut movement)) = (controller, movement) else {
+    let (Some(mut controller), Some(mut movement), Some(mut interaction)) =
+        (controller, movement, interaction)
+    else {
         return;
     };
     assert!(
@@ -126,4 +140,5 @@ fn reclaim(
     controller.java = Some(authority.java);
     controller.java_world = authority.world;
     *movement = authority.movement;
+    *interaction = authority.interaction;
 }

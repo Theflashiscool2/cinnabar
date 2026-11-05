@@ -107,3 +107,20 @@ chest price update, hidden-lore/title-only, hidden-tooltip and close cleanup. Si
 tests and two public UI regressions pass. This is a controlled chest with shop-style text, not
 shop/Hypixel acceptance. Full rarity/enchantment/effect lines, translated arguments/custom fonts,
 full pack layering and iOS acceptance remain incomplete.
+
+Native Survival tool mining now has pinned per-state hardness/drop facts, default/patch tool
+rules with authoritative block tags, float tick progress, haste/fatigue admission and expiry,
+ground/eye-water penalties, ordered START/ABORT/FINISH, and cancellation on identity/input
+boundaries. The existing simulation/network service owns held progress during rendering.
+Facts are source-bundled; players need no extra export or seventh runtime asset. Controlled
+Linux Xvfb/lavapipe vanilla26.3 inspected chest→obtain/equip→mine, abort, haste/fatigue,
+accepted/denied placement, x31/32 boundary, correction and same-process reconnect. A live-found
+look regression was repaired: position publication no longer overwrites newer look angles
+between native ticks. Independent 36 vanilla tool vectors and focused regressions pass.
+Native ordinary-model crack stages use the shared GPU pass and target destroy textures;
+replacement/removal/reconnect cleanup was inspected. Backpressured targets are revalidated
+before START/FINISH, and unsent starts do not emit misleading aborts. Special-model crack
+surfaces, swing/audio, active item-use/release/offhand precedence and Adventure can-break
+predicates remain implementation gaps. This is not Bed Wars, Duels, online or iOS
+qualification. Full Cargo/MCP suite remains incomplete; the exporter command build exhausted
+local disk, while its actual verified Runtime/generator reproduced the pinned report.

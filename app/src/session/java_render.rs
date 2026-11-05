@@ -118,6 +118,13 @@ impl Presentation {
             .then_some(self.physics.as_deref())
             .flatten()
     }
+    pub(super) fn service_interaction(
+        &self,
+    ) -> Option<Arc<::assets::registry::java::interaction::Table>> {
+        (self.opened && self.failure.is_none())
+            .then(|| self.interaction.clone())
+            .flatten()
+    }
     pub(super) fn service_physics(&self) -> Option<Arc<::assets::registry::java::physics::Table>> {
         (self.opened && self.failure.is_none())
             .then(|| self.physics.clone())
@@ -276,13 +283,14 @@ pub(crate) fn update(
     if let Some(position) = &state.player_motion
         && p.teleport != Some(state.player_pose_revision)
     {
-        let feet = Vec3::from_array(position.position.map(|n| n as f32));
-        view.set_subject_position(feet + Vec3::Y * movement.0.eye_height(state) as f32, feet);
-        view.set_rotation(super::java_look::view_rotation([
-            position.yaw,
-            position.pitch,
-        ]));
-        view.reanchor_camera();
+        // Motion is a 20Hz position publication, not a new authoritative rotation.
+        // The movement/correction owner alone replaces angles; retaining a newer
+        // input here prevents taps between simulation ticks from being erased.
+        super::java_look::publish_position(
+            &mut view,
+            position.position,
+            movement.0.eye_height(state),
+        );
         p.teleport = Some(state.player_pose_revision);
     }
     if p.failure.is_none()

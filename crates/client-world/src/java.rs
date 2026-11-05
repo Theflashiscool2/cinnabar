@@ -80,6 +80,13 @@ impl WorldState {
         self.piston_registry = Some(registry);
         Ok(())
     }
+    /// Name from the same validated registry installed for this world, never a fallback.
+    pub fn block_name(&self, state: u32) -> Option<&str> {
+        self.piston_registry
+            .as_ref()?
+            .state(state)
+            .map(|s| s.name.as_ref())
+    }
     pub fn tick_pistons(&mut self) -> Result<(), &'static str> {
         piston::tick(&mut self.terrain, self.piston_registry.as_deref())
     }
@@ -327,6 +334,7 @@ impl WorldState {
                     }
                 }
                 if !keep_metadata {
+                    self.player_dynamics.effects.clear();
                     self.player_visual = Default::default();
                 }
                 self.death = None;

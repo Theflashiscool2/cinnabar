@@ -1,0 +1,347 @@
+{
+  "source": "Original ExportMiningVectors.java; verified vanilla26.3/protocol777 with SERVER_DATA tags and bound default components; ItemStack.getDestroySpeed/isCorrectToolForDrops and matching rule tag membership",
+  "vectors": [
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1073741824,
+      "correct": true,
+      "tags": [
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1073741824,
+      "correct": false,
+      "tags": [
+        "minecraft:incorrect_for_wooden_tool",
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_pickaxe",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1086324736,
+      "correct": true,
+      "tags": [
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1086324736,
+      "correct": false,
+      "tags": [
+        "minecraft:incorrect_for_iron_tool",
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1090519040,
+      "correct": true,
+      "tags": [
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1090519040,
+      "correct": true,
+      "tags": [
+        "minecraft:mineable/pickaxe"
+      ]
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_pickaxe",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1097859072,
+      "correct": false,
+      "tags": [
+        "minecraft:shears_extreme_breaking_speed"
+      ]
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1097859072,
+      "correct": true,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1069547520,
+      "correct": false,
+      "tags": [
+        "minecraft:sword_efficient"
+      ]
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1097859072,
+      "correct": true,
+      "tags": []
+    },
+    {
+      "item": "minecraft:diamond_sword",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:obsidian",
+      "state": 4925,
+      "block_id": 237,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:oak_log",
+      "state": 140,
+      "block_id": 51,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:oak_leaves",
+      "state": 294,
+      "block_id": 94,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:stick",
+      "block": "minecraft:dirt",
+      "state": 10,
+      "block_id": 9,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    }
+  ]
+}

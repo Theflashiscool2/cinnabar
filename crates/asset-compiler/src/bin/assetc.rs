@@ -64,6 +64,8 @@ mod java_entities;
 mod java_fluids;
 #[path = "assetc/java_interaction.rs"]
 mod java_interaction;
+#[path = "assetc/java_mining.rs"]
+mod java_mining;
 #[path = "assetc/java_physics.rs"]
 mod java_physics;
 #[path = "assetc/java_prepare.rs"]
@@ -535,6 +537,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         Command::JavaPhysics(options) => java_physics::generate(options)?,
+        Command::JavaMining(options) => java_mining::generate(options)?,
         Command::JavaFluids(options) => java_fluids::generate(options)?,
         Command::JavaPrepare(options) => java_prepare::prepare(options)?,
         Command::JavaAudit(options) => java_audit::run(options)?,

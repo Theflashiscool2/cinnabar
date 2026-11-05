@@ -3,6 +3,7 @@ pub mod actions;
 pub mod attack;
 pub mod interaction;
 pub mod item_use;
+pub mod mining;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
@@ -138,6 +139,7 @@ impl Controller {
             Ok(true) => {
                 self.elapsed -= TICK;
                 self.ticks = self.ticks.saturating_add(1);
+                state.player_dynamics.tick_effects();
                 self.blocked = None;
                 true
             }

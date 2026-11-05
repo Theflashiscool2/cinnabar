@@ -232,6 +232,7 @@ pub(crate) fn advance(
 )]
 pub(crate) fn update(
     controller: Option<Res<super::SessionController>>,
+    interaction: Option<Res<super::java_interaction::Interaction>>,
     mut terrain_presentation: ResMut<super::java_render::Presentation>,
     mut presentation: ResMut<Presentation>,
     frame: Option<ResMut<render_scene::BlockEntityFrameResource>>,
@@ -765,13 +766,36 @@ pub(crate) fn update(
         p.scene
             .set_camera_position(camera.transform().translation.to_array());
     }
+    let mut cracks = Vec::new();
+    if let Some((hit, progress)) = interaction.as_ref().and_then(|i| i.0.mining_progress())
+        && progress > 0.
+        && terrain.block(hit.block).is_some_and(|id| id.0 == hit.state)
+    {
+        let mut faces = Vec::new();
+        if let Ok(parts) = graphics.select(hit.state, hit.block) {
+            for part in parts {
+                if let Some(render_model::CrackShape::Quads(shape)) =
+                    render_model::crack_shape_from_template(&graphics.runtime, part, 0, hit.block)
+                {
+                    faces.extend_from_slice(&shape);
+                }
+            }
+        }
+        if !faces.is_empty() {
+            cracks.push(render_model::CrackInstance {
+                block: hit.block,
+                stage: ((progress * 10.) as u8).min(9),
+                shape: render_model::CrackShape::Quads(faces.into()),
+            });
+        }
+    }
     frame.0 = p
         .scene
         .update(
             SceneClock {
                 ticks: time.elapsed_secs_f64() * 20.,
             },
-            &[],
+            &cracks,
             &submissions,
         )
         .clone();

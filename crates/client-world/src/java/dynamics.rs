@@ -45,6 +45,30 @@ pub(super) fn admit(
         .world
         .entity_id;
     match packet {
+        wire::Packet::Effect {
+            entity,
+            effect,
+            value,
+        } => {
+            // Remote effect presentation remains a separate gap; never apply another entity's
+            // effects to local breaking/movement merely because it shares this dimension.
+            if entity != own_id {
+                return Ok(false);
+            }
+            if let Some(value) = value {
+                state.player_dynamics.effects.insert(
+                    effect.into(),
+                    domain::Effect {
+                        amplifier: value.amplifier,
+                        duration: value.duration,
+                        flags: value.flags,
+                    },
+                );
+            } else {
+                state.player_dynamics.effects.remove(effect);
+            }
+        }
+
         wire::Packet::Abilities(a) => {
             state.player_dynamics.abilities = Some(domain::Abilities {
                 invulnerable: a.invulnerable,

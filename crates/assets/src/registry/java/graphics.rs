@@ -82,6 +82,29 @@ pub struct Template {
     pub occludes: u8,
 }
 impl Graphics {
+    /// Adds target-native destroy stages before this graphics revision is published.
+    /// Keep source images in the extension builder so later state discovery retains
+    /// exactly the same atlas inputs. A malformed/missing stage never partly commits.
+    pub fn prepare_mining(&mut self, source: &mut dyn super::source::Source) -> Result<(), Error> {
+        let mut images = self.builder.special_images.clone();
+        for stage in 0..10 {
+            let bytes = source.read(&format!(
+                "assets/minecraft/textures/block/destroy_stage_{stage}.png"
+            ))?;
+            let image = Image::decode(&bytes)?;
+            if image.width != image.height {
+                return Err(invalid("Java destroy-stage texture is not square"));
+            }
+            images.insert(
+                format!("textures/environment/destroy_stage_{stage}"),
+                Arc::new(image),
+            );
+        }
+        let atlas = super::special::atlas(&images)?;
+        self.builder.special_images = images;
+        self.special_atlas = atlas;
+        Ok(())
+    }
     pub fn presentation(&self, id: u32) -> Option<Presentation> {
         self.states.get(&id).map(|s| s.presentation)
     }

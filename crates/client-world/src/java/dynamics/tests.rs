@@ -224,3 +224,44 @@ fn remote_attribute_gaps_remain_visible_without_editing_local_attributes() {
     )));
     assert_eq!(s.deferred_entity_dynamics, 1);
 }
+
+#[test]
+fn effects_have_local_scope_authoritative_replacement_and_simulation_expiry() {
+    let mut s = state();
+    let effect = |entity, duration| wire::Packet::Effect {
+        entity,
+        effect: "minecraft:haste",
+        value: Some(wire::Effect {
+            amplifier: 2,
+            duration,
+            flags: 6,
+        }),
+    };
+    assert!(!s.admit(event(6, 1, effect(42, 20))));
+    assert!(!s.admit(event(7, 2, effect(42, 20))));
+    assert!(!s.admit(event(7, 1, effect(99, 20))));
+    assert!(s.player_dynamics.effects.is_empty());
+    assert!(s.admit(event(7, 1, effect(42, 2))));
+    s.player_dynamics.tick_effects();
+    assert_eq!(s.player_dynamics.effects["minecraft:haste"].duration, 1);
+    s.player_dynamics.tick_effects();
+    assert!(s.player_dynamics.effects.is_empty());
+    assert!(s.admit(event(7, 1, effect(42, -1))));
+    for _ in 0..50 {
+        s.player_dynamics.tick_effects();
+    }
+    assert_eq!(s.player_dynamics.effects["minecraft:haste"].duration, -1);
+    assert!(s.admit(event(
+        7,
+        1,
+        wire::Packet::Effect {
+            entity: 42,
+            effect: "minecraft:haste",
+            value: None
+        }
+    )));
+    assert!(s.player_dynamics.effects.is_empty());
+    assert!(s.admit(event(7, 1, effect(42, 20))));
+    s.begin(8);
+    assert!(s.player_dynamics.effects.is_empty());
+}

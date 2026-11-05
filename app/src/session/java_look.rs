@@ -16,9 +16,38 @@ pub(crate) fn native_angles(view: Quat, previous: Option<[f32; 2]>) -> [f32; 2] 
     [180. - yaw.to_degrees(), -pitch.to_degrees()]
 }
 
+/// Position publication cannot carry a stale simulation angle back into input state.
+pub(crate) fn publish_position(
+    view: &mut client_presentation::local_player::LocalViewPose,
+    position: [f64; 3],
+    eye_height: f64,
+) {
+    let feet = bevy::prelude::Vec3::from_array(position.map(|v| v as f32));
+    view.set_subject_position(feet + bevy::prelude::Vec3::Y * eye_height as f32, feet);
+    view.reanchor_camera();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn position_publication_preserves_look_between_native_simulation_ticks() {
+        let mut view = client_presentation::local_player::LocalViewPose::default();
+        view.set_rotation(view_rotation([0., 18.]));
+        // The player looks down after the last native tick, then the renderer receives
+        // a position from that older tick. It must retain the new input until sampled.
+        let wanted = view_rotation([0., 45.]);
+        view.set_rotation(wanted);
+        for step in 0..5 {
+            publish_position(&mut view, [31.5, -60., -0.5 + step as f64 * 0.01], 1.62);
+            assert_eq!(view.rotation(), wanted.normalize());
+        }
+        // A genuine correction still replaces angles through the explicit owner.
+        view.set_rotation(view_rotation([90., 10.]));
+        publish_position(&mut view, [32., -60., 2.], 1.62);
+        let native = native_angles(view.rotation(), Some([90., 10.]));
+        assert_eq!(native, [90., 10.]);
+    }
     #[test]
     fn native_angles_survive_repeated_render_publication_without_input() {
         for initial in [[0., 13.00000286102295_f32], [72.3, -27.8], [-3200.5, 89.]] {

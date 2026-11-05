@@ -7,6 +7,7 @@ pub mod graphics;
 pub mod interaction;
 pub mod items;
 pub mod language;
+pub mod mining;
 pub mod models;
 pub mod physics;
 pub mod piston;

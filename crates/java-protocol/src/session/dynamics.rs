@@ -26,8 +26,19 @@ pub struct Attribute {
     pub modifiers: Vec<Modifier>,
 }
 #[derive(Clone, Debug, Serialize)]
+pub struct Effect {
+    pub amplifier: u8,
+    pub duration: i32,
+    pub flags: u8,
+}
+#[derive(Clone, Debug, Serialize)]
 pub enum Packet {
     Abilities(Abilities),
+    Effect {
+        entity: i32,
+        effect: &'static str,
+        value: Option<Effect>,
+    },
     Attributes {
         entity: i32,
         values: Vec<Attribute>,
@@ -46,6 +57,35 @@ pub enum Packet {
 
 pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
+        "ClientboundUpdateMobEffectPacket" | "ClientboundRemoveMobEffectPacket" => {
+            let entity = r.var()?;
+            let effect = usize::try_from(r.var()?)
+                .ok()
+                .and_then(|id| target::MOB_EFFECTS.get(id))
+                .copied()
+                .ok_or(Error::Invalid("Java effect ID"))?;
+            let value = if name == "ClientboundUpdateMobEffectPacket" {
+                let amplifier =
+                    u8::try_from(r.var()?).map_err(|_| Error::Invalid("Java effect amplifier"))?;
+                let duration = r.var()?;
+                let flags = r.byte()?;
+                if duration < -1 || flags & !15 != 0 {
+                    return Err(Error::Invalid("Java effect duration/flags"));
+                }
+                Some(Effect {
+                    amplifier,
+                    duration,
+                    flags,
+                })
+            } else {
+                None
+            };
+            Packet::Effect {
+                entity,
+                effect,
+                value,
+            }
+        }
         "ClientboundPlayerAbilitiesPacket" => {
             let flags = r.byte()?;
             if flags & !15 != 0 {

@@ -165,3 +165,19 @@ fn synthetic_compiled() -> CompiledAtmosphereAssets {
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+
+#[test]
+fn mining_report_command_rejects_input_output_aliases() {
+    let cli = Cli::try_parse_from([
+        "assetc",
+        "java-mining",
+        "--server",
+        "pinned.jar",
+        "--out",
+        "pinned.jar",
+        "--accept-eula",
+    ])
+    .unwrap();
+    assert!(matches!(cli.command, Command::JavaMining(_)));
+    assert!(super::command_outputs::validate_command_outputs(&cli.command).is_err());
+}

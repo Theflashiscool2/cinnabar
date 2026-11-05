@@ -1,6 +1,6 @@
 //! Binds edition-owned block selection and intent to native transport; no Bedrock packets.
 use super::{SessionController, java_movement::Movement, java_render::Presentation};
-use bevy::{prelude::*, time::Real};
+use bevy::prelude::*;
 use client_presentation::local_player::LocalViewPose;
 use client_state::SemanticInputSnapshot;
 use gameplay::java::actions::{Controller as Actions, Intent, Target};
@@ -14,12 +14,70 @@ mod entity;
 mod item;
 
 #[derive(Resource, Default)]
-pub(crate) struct Interaction(pub gameplay::java::interaction::Controller, pub Actions);
+pub(crate) struct Interaction(
+    pub gameplay::java::interaction::Controller,
+    pub Actions,
+    Option<web_time::Instant>,
+);
 impl Interaction {
+    pub(super) fn elapsed(&mut self) -> std::time::Duration {
+        let now = web_time::Instant::now();
+        self.2
+            .replace(now)
+            .map_or(std::time::Duration::ZERO, |last| {
+                now.saturating_duration_since(last)
+            })
+    }
+    /// Continue only an existing held target. Re-pick against the current simulated pose
+    /// and current authoritative blocks; a stale click never mines through a new obstacle.
+    pub(super) fn service(
+        &mut self,
+        java: &client_session::java::Session,
+        state: &client_world::java::WorldState,
+        movement: &Movement,
+        shapes: Option<&::assets::registry::java::interaction::Table>,
+    ) {
+        let elapsed = self.elapsed();
+        self.0.service_frame(state, elapsed);
+        self.0.contact = Some((movement.0.body.on_ground, movement.0.body.eyes_in_water()));
+        if !send_pending(java, state, &mut self.0) {
+            return;
+        }
+        if self.0.mining_progress().is_none() {
+            return;
+        }
+        let hit = (|| {
+            let shapes = shapes?;
+            let dimension = state.terrain.dimension()?;
+            let motion = state.player_motion?;
+            let range = state
+                .player_dynamics
+                .attributes
+                .get("minecraft:block_interaction_range")?
+                .value()
+                .ok()?;
+            let mut from = motion.position;
+            from[1] += movement.0.eye_height(state);
+            let direction = world::java::player::look(motion.yaw, motion.pitch);
+            let to = std::array::from_fn(|i| from[i] + direction[i] * range);
+            selection::pick(
+                &state.terrain,
+                shapes,
+                (dimension.session, dimension.epoch),
+                from,
+                to,
+            )
+            .ok()
+            .flatten()
+        })();
+        self.0.advance(state, self.1.held_attack(), hit);
+        send_pending(java, state, &mut self.0);
+    }
+
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"creative_breaking_main_hand_block_entity_and_instant_air_use_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.1.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"mining":self.0.mining_progress().map(|(h,p)|serde_json::json!({"hit":hit(h),"progress":p})),"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"native_survival_and_creative_breaking_main_hand_block_entity_and_instant_air_use_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.1.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -28,7 +86,6 @@ impl Interaction {
     reason = "host binds session, input, camera and native asset owners"
 )]
 pub(crate) fn update(
-    time: Res<Time<Real>>,
     input: Res<SemanticInputSnapshot>,
     view: Res<LocalViewPose>,
     controller: Option<ResMut<SessionController>>,
@@ -62,18 +119,20 @@ pub(crate) fn update(
     let snapshot = input.0.snapshot();
     let released =
         snapshot.is_some_and(|s| s.authority_released) || interaction.1.blocked.is_some();
+    let elapsed = interaction.elapsed();
     interaction.0.begin_frame(
         state,
-        time.delta(),
+        elapsed,
         snapshot.map(|s| s.authority_generation),
         released,
     );
+    interaction.0.contact = Some((movement.0.body.on_ground, movement.0.body.eyes_in_water()));
     if let Err(error) = target {
         interaction.0.blocked = Some(error);
     }
     // A retained attack must enter the transport before a following slot change.
     for _ in 0..=interaction.1.backlog() {
-        if !send_pending(java, &mut interaction.0) {
+        if !send_pending(java, state, &mut interaction.0) {
             return;
         }
         match interaction.1.front(state) {
@@ -125,6 +184,10 @@ pub(crate) fn update(
                 interaction.0.advance(state, phase, captured_hit);
             }
             Some(Intent::Use(pressed)) => {
+                if !interaction.0.cancel_mining() || !send_pending(java, state, &mut interaction.0)
+                {
+                    return;
+                }
                 let captured = interaction.1.target();
                 if pressed
                     && let Some(Target::Entity {
@@ -189,6 +252,10 @@ pub(crate) fn update(
                 advance_use(&mut interaction.0, state, phase, captured);
             }
             Some(Intent::Slot(_) | Intent::Cycle(_)) => {
+                if !interaction.0.cancel_mining() || !send_pending(java, state, &mut interaction.0)
+                {
+                    return;
+                }
                 let Some(selection) = interaction.1.selection(state) else {
                     continue;
                 };
@@ -211,12 +278,12 @@ pub(crate) fn update(
             None => {
                 let use_phase = interaction.1.held_use();
                 advance_use(&mut interaction.0, state, use_phase, chosen);
-                if !send_pending(java, &mut interaction.0) {
+                if !send_pending(java, state, &mut interaction.0) {
                     return;
                 }
                 let phase = interaction.1.held_attack();
                 interaction.0.advance(state, phase, hit);
-                send_pending(java, &mut interaction.0);
+                send_pending(java, state, &mut interaction.0);
                 return;
             }
         }
@@ -247,13 +314,25 @@ fn advance_use(
 }
 
 /// Keeps the captured action unchanged until the bounded transport accepts it.
-fn send_pending(
+pub(super) fn send_pending(
     java: &client_session::java::Session,
+    state: &client_world::java::WorldState,
     interaction: &mut gameplay::java::interaction::Controller,
 ) -> bool {
     let Some(request) = interaction.pending() else {
         return true;
     };
+    if matches!(request.kind, Kind::Break | Kind::FinishBreak) {
+        let current = match request.target {
+            RequestTarget::Block(hit) => state.terrain.block(hit.block).map(|id| id.0),
+            _ => None,
+        };
+        if !interaction.validate_mining_target(current) {
+            // Invalidating an already started action leaves only an ABORT, so recursion
+            // is bounded to one cancellation and never sends an obsolete finish.
+            return send_pending(java, state, interaction);
+        }
+    }
     let command = match (request.kind, request.target) {
         (Kind::UseAir, RequestTarget::Air(rotation)) => Command::UseItem {
             dimension_epoch: request.dimension_epoch,
@@ -264,7 +343,10 @@ fn send_pending(
                 rotation,
             },
         },
-        (kind @ (Kind::Break | Kind::UseOn), RequestTarget::Block(hit)) => {
+        (
+            kind @ (Kind::Break | Kind::AbortBreak | Kind::FinishBreak | Kind::UseOn),
+            RequestTarget::Block(hit),
+        ) => {
             let face = match hit.face {
                 selection::Face::Down => Face::Down,
                 selection::Face::Up => Face::Up,
@@ -294,7 +376,11 @@ fn send_pending(
                     dimension_epoch: request.dimension_epoch,
                     correction_sequence: request.correction_sequence,
                     action: Dig {
-                        action: Action::Start,
+                        action: match kind {
+                            Kind::AbortBreak => Action::Abort,
+                            Kind::FinishBreak => Action::Finish,
+                            _ => Action::Start,
+                        },
                         position: hit.block,
                         face,
                         sequence: request.sequence,

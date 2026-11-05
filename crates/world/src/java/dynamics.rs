@@ -70,14 +70,33 @@ impl Attribute {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Effect {
+    pub amplifier: u8,
+    pub duration: i32,
+    pub flags: u8,
+}
 #[derive(Default, Debug)]
 pub struct PlayerDynamics {
     pub abilities: Option<Abilities>,
+    pub effects: BTreeMap<String, Effect>,
     /// Pinned player-builder values with server-authoritative replacements. Generic registry
     /// defaults are not player defaults; the admission owner supplies the verified initial set.
     pub attributes: BTreeMap<String, Attribute>,
     /// Velocity can arrive before the first position; this does not create a position anchor.
     pub unplaced_velocity: Option<[f64; 3]>,
+}
+
+impl PlayerDynamics {
+    /// Effect durations advance on the native simulation cadence, never on render frames.
+    pub fn tick_effects(&mut self) {
+        self.effects.retain(|_, effect| {
+            if effect.duration > 0 {
+                effect.duration -= 1;
+            }
+            effect.duration != 0
+        });
+    }
 }
 
 #[cfg(test)]

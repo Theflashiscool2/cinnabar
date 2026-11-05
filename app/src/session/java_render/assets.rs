@@ -302,14 +302,16 @@ fn load_inner(
     models.fluids = Some(fluids);
     models.entity_models = Some(load_models(&root)?);
     // Baseline device array limit; the renderer validates the actual adapter before upload.
-    let graphics = Arc::new(
-        graphics::compile(
-            &mut models,
-            states,
-            assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
-        )
-        .map_err(|error| model_error(error, &cancel))?,
-    );
+    let mut graphics = graphics::compile(
+        &mut models,
+        states,
+        assets::MAX_CARRIER_TEXTURE_LAYERS as u32,
+    )
+    .map_err(|error| model_error(error, &cancel))?;
+    graphics
+        .prepare_mining(models.source())
+        .map_err(|error| model_error(error, &cancel))?;
+    let graphics = Arc::new(graphics);
     Ok(Prepared {
         item_names,
         interaction,

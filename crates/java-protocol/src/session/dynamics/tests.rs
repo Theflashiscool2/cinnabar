@@ -96,3 +96,50 @@ fn attributes_resolve_pinned_registry_and_reject_invalid_modifiers() {
         .is_err()
     );
 }
+
+#[test]
+fn effect_updates_and_removal_use_pinned_ids_and_reject_truncation() {
+    // Native UpdateMobEffect: entity varint, mob-effect registry ID, amplifier
+    // varint, duration varint (300), flags. ID2 is the verified haste registry entry.
+    let bytes = [7, 2, 1, 0xac, 2, 6];
+    for end in 0..bytes.len() {
+        assert!(
+            decode(
+                "ClientboundUpdateMobEffectPacket",
+                &mut Reader(&bytes[..end])
+            )
+            .is_err()
+        );
+    }
+    let mut r = Reader(&bytes);
+    let Some(Packet::Effect {
+        entity,
+        effect,
+        value: Some(v),
+    }) = decode("ClientboundUpdateMobEffectPacket", &mut r).unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(
+        (entity, effect, v.amplifier, v.duration, v.flags),
+        (7, "minecraft:haste", 1, 300, 6)
+    );
+    r.finish().unwrap();
+    let mut r = Reader(&[7, 2]);
+    assert!(matches!(
+        decode("ClientboundRemoveMobEffectPacket", &mut r).unwrap(),
+        Some(Packet::Effect {
+            entity: 7,
+            effect: "minecraft:haste",
+            value: None
+        })
+    ));
+    r.finish().unwrap();
+    assert!(
+        decode(
+            "ClientboundUpdateMobEffectPacket",
+            &mut Reader(&[7, 2, 0, 5, 16])
+        )
+        .is_err()
+    );
+}

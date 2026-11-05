@@ -179,5 +179,11 @@
     "sha256": "7613010cf19ab6f8078995153239d2762f3b49ba30c6ec6e7cc08027708bb4de",
     "bytes": 10852616,
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportFluids.java"
+  },
+  "mining_report": {
+    "sha256": "c94b9c17f759660c6530ef694355bdeb9d836923b0ff2755e00b38801d0b2074",
+    "bytes": 44369,
+    "blocks": 1286,
+    "generator": "assetc java-mining (ExportMining.java)"
   }
 }

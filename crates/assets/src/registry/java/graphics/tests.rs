@@ -280,3 +280,41 @@ fn moving_state_dispatches_to_posed_terrain_without_reading_an_ordinary_model() 
     assert!(graphics.select(0, [-16, 0, 15]).unwrap().is_empty());
     assert!(graphics.templates.is_empty());
 }
+
+#[test]
+fn native_mining_atlas_prepares_all_stages_atomically_and_survives_extensions() {
+    let mut models = models();
+    let mut graphics = compile(&mut models, [0], 256).unwrap();
+    let mut source = Resources(
+        (0..10)
+            .map(|stage| {
+                (
+                    format!("assets/minecraft/textures/block/destroy_stage_{stage}.png"),
+                    png(&[stage, 20, 30, 255], 1, 1),
+                )
+            })
+            .collect(),
+    );
+    graphics.prepare_mining(&mut source).unwrap();
+    let atlas = graphics.special_atlas.as_ref().unwrap();
+    assert_eq!(atlas.placements().len(), 10);
+    let identity = atlas.identity();
+    source
+        .0
+        .remove("assets/minecraft/textures/block/destroy_stage_9.png");
+    assert!(graphics.prepare_mining(&mut source).is_err());
+    assert_eq!(
+        graphics.special_atlas.as_ref().unwrap().identity(),
+        identity
+    );
+    let extension = extend(Arc::new(graphics), &mut models, [2]).unwrap();
+    assert_eq!(
+        extension
+            .graphics()
+            .special_atlas
+            .as_ref()
+            .unwrap()
+            .identity(),
+        identity
+    );
+}
