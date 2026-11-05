@@ -287,7 +287,6 @@ impl Connection {
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
                     // This is the server's new player/world, not proof from a sent respawn request.
-                    self.dead = false;
                     self.loaded_epoch = None;
                     self.cancelled_use.clear();
                     self.pending_teleport = None;

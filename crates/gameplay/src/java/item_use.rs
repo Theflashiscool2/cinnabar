@@ -2,6 +2,7 @@
 //! for entity fallback; ordinary block/air use uses plan and active.
 use inventory::java::{Slot, cooldown::Cooldowns};
 pub mod active;
+pub mod block;
 pub mod plan;
 
 #[derive(Clone, Copy)]

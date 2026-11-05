@@ -68,6 +68,31 @@ fn name<'a>(value: &'a Value, ids: &'static [String]) -> Option<&'a str> {
             .map(String::as_str)
     })
 }
+/// Resolves the target's built-in potion wire identity; custom effects do not
+/// change the base potion. Callers must separately apply PotionContents.is rules.
+pub fn potion_name(contents: &Value) -> Option<&str> {
+    contents
+        .get("potion")
+        .and_then(|p| name(p, &facts().potion_ids))
+}
+/// PotionItem's native mud conversion uses WATER without any custom effects.
+pub fn is_plain_water(contents: &Value) -> Result<bool, &'static str> {
+    let base = potion_name(contents);
+    if contents.get("potion").is_some_and(|p| !p.is_null())
+        && base.is_none_or(|p| !facts().potion_ids.iter().any(|n| n == p))
+    {
+        return Err("Unknown native potion identity");
+    }
+    let custom = contents
+        .get("effects")
+        .or_else(|| contents.get("custom_effects"));
+    let has_custom = custom.map_or(Ok(false), |v| {
+        v.as_array()
+            .map(|a| !a.is_empty())
+            .ok_or("Invalid native potion effects")
+    })?;
+    Ok(base == Some("minecraft:water") && !has_custom)
+}
 pub(super) fn potion_color(contents: &Value) -> Option<i32> {
     if let Some(color) = contents
         .get("custom_color")
@@ -131,7 +156,8 @@ pub(super) fn potion_color(contents: &Value) -> Option<i32> {
 }
 pub(super) fn validate_potion(contents: &Value) -> bool {
     if let Some(p) = contents.get("potion").filter(|p| !p.is_null())
-        && name(p, &facts().potion_ids).is_none_or(|p| !facts().potion_colors.contains_key(p))
+        && name(p, &facts().potion_ids)
+            .is_none_or(|p| !facts().potion_ids.iter().any(|name| name == p))
     {
         return false;
     }

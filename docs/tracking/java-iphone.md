@@ -174,3 +174,12 @@ retires old loaded/correction state. Neutral item-use cancellation is bounded/ep
 waits for actual PlayerLoaded; its forced preloaded race has focused tests, not live coverage.
 The fixture preserved items with keep_inventory during death and restored false afterward;
 loot-drop behavior is unqualified. Full Cargo/MCP, iOS, online and Hypixel remain pending.
+
+Native potion use now resolves PotionItem's conditional block PASS from authoritative block
+tags, hit face, base potion registry and component patches. Water converts mud only without
+custom effects; other admitted targets fall through to the existing drink/release owner.
+Water/mundane/thick/awkward artwork now validates against the complete native potion registry
+instead of the optional effect-color map. Linux vanilla26.3 lavapipe acceptance inspected real
+chest transfers, water/swiftness drinks and server effects, mud conversion, custom-effect water
+without conversion, long-drink cancellation, chest precedence and reconnect. No item/effect was
+awarded locally. Potion-specific names/effect tooltip lines and iOS/online/Hypixel remain open.

@@ -2343,3 +2343,8 @@ reason = "A button state name in the editor conversion contract, independent of 
 path = "crates/render-model/src/block_entity/java_profile.rs"
 literal = "elytra"
 reason = "PlayerSkin.Patch codec field name in native Java profile NBT, not an item identity decision."
+
+[[identifier_literal_exceptions]]
+path = "crates/assets/src/registry/java/items/defaults.rs"
+literal = "minecraft:water"
+reason = "Pinned Java26.3 PotionItem.useOn explicitly tests Potions.WATER with no custom effects for mud conversion. The native facts owner resolves its wire registry identity; this is target gameplay semantics, not pack-name inference."

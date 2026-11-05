@@ -1,4 +1,11 @@
 //! Maps pinned defaults at the application boundary; domain policy resolves server patches.
+pub(super) fn block_passes(
+    state: &client_world::java::WorldState,
+    hit: sim::java::selection::Hit,
+) -> Result<bool, &'static str> {
+    gameplay::java::item_use::block::at(state, hit, false)
+}
+
 pub(super) fn instant(state: &client_world::java::WorldState) -> Result<bool, &'static str> {
     let held = state.inventory.held();
     let defaults = held.and_then(|s| s.as_ref()).and_then(|s| {

@@ -219,23 +219,10 @@ pub fn prepare(
     })
 }
 
-/// Only guaranteed PASS paths permit air-use fallback. A specialized block/item
-/// override is not treated as base behavior just because its mesh is ordinary.
+/// Base-dispatch fixture entry; production supplies target facts through block::at.
+#[cfg(test)]
 pub fn block_passes(block: &str, held: &Slot, secondary: bool) -> Result<bool, &'static str> {
-    let rules =
-        assets::registry::java::use_rules::builtin().map_err(|_| "Invalid native use rules")?;
-    let block = rules
-        .block(block)
-        .ok_or("Unknown native block-use identity")?;
-    let Some(stack) = held else {
-        return Ok(false);
-    };
-    let item = rules
-        .item(&stack.item)
-        .ok_or("Unknown native item-use identity")?;
-    Ok((secondary || (block.item_default && block.empty_default))
-        && item.on_owner == "Item"
-        && component(stack, "minecraft:block_transformer").is_none())
+    super::block::passes(block, held, secondary, None)
 }
 
 #[cfg(test)]

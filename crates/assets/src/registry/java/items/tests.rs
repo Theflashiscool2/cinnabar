@@ -146,6 +146,15 @@ fn special_renderer_is_reported_rather_than_baked_as_missing_cube() {
 #[test]
 fn native_defaults_respect_removed_components_and_potion_wire_registry() {
     use serde_json::json;
+    // These valid native potions have no effects and therefore no optional color.
+    for id in 0..4 {
+        assert!(defaults::validate_potion(
+            &json!({"potion":id,"effects":[]})
+        ));
+        assert_eq!(defaults::potion_color(&json!({"potion":id})), None);
+    }
+    assert!(defaults::is_plain_water(&json!({"potion":0})).unwrap());
+    assert!(!defaults::is_plain_water(&json!({"potion":0,"effects":[{"id":0}]})).unwrap());
     assert_eq!(
         defaults::component("minecraft:diamond_sword", "minecraft:max_damage"),
         Some(&json!(1561))

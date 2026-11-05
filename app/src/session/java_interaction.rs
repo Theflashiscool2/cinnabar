@@ -355,12 +355,7 @@ fn advance_use(
     let plan = item::plan(state);
     let fallback = if let Some(Target::Block(hit)) = target {
         let rotation = state.player_motion.map(|m| [m.yaw, m.pitch]);
-        let allowed = state
-            .block_name(hit.state)
-            .zip(state.inventory.held())
-            .is_some_and(|(name, held)| {
-                gameplay::java::item_use::plan::block_passes(name, held, false) == Ok(true)
-            });
+        let allowed = item::block_passes(state, hit) == Ok(true);
         rotation
             .filter(|_| allowed)
             .zip(plan.as_ref().ok().copied())
