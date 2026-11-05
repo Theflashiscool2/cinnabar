@@ -6437,8290 +6437,9948 @@
     [
       "minecraft:air",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:granite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_granite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diorite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_diorite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:andesite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_andesite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobbled_deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:calcite",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_tuff",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_tuff",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_tuff_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_tuff_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_tuff_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tuff_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_tuff_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:potent_sulfur",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_sulfur",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_sulfur_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_sulfur_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_sulfur_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_sulfur",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_cinnabar",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_cinnabar_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_cinnabar_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_cinnabar_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cinnabar_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_cinnabar",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dripstone_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:grass_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dirt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:coarse_dirt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:podzol",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rooted_dirt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mud",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_nylium",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_nylium",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobblestone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_planks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_mosaic",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_propagule",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_sapling",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bedrock",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sand",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:suspicious_sand",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:suspicious_gravel",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_sand",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gravel",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:coal_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_coal_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_iron_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_copper_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gold_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_gold_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:redstone_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_redstone_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:emerald_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_emerald_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lapis_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_lapis_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_diamond_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_gold_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_quartz_ore",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ancient_debris",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:coal_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_iron_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_copper_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_gold_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:heavy_core",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:amethyst_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:budding_amethyst",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gold_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_chiseled_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_cut_copper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_cut_copper_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_cut_copper_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_roots",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:muddy_mangrove_roots",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_stem",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_stem",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_spruce_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_birch_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_jungle_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_acacia_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_cherry_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_dark_oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_pale_oak_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_mangrove_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_poplar_log",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_crimson_stem",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_warped_stem",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_spruce_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_birch_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_jungle_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_acacia_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_cherry_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_dark_oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_pale_oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_mangrove_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_poplar_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_crimson_hyphae",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_warped_hyphae",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stripped_bamboo_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_wood",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_hyphae",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_hyphae",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_poplar_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_poplar_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_poplar_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:azalea_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flowering_azalea_leaves",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sponge",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wet_sponge",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tinted_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lapis_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobweb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:short_grass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bush",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_shrub",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:azalea",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flowering_azalea",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_bush",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:firefly_bush",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:short_dry_grass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tall_dry_grass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:seagrass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sea_pickle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_wool",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_wool_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_wool_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dandelion",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_dandelion",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:open_eyeblossom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:closed_eyeblossom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poppy",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_orchid",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:allium",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:azure_bluet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_tulip",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_tulip",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_tulip",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_tulip",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxeye_daisy",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cornflower",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lily_of_the_valley",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wither_rose",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:torchflower",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pitcher_plant",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spore_blossom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_mushroom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_mushroom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:shelf_mushroom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_fungus",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_fungus",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_roots",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_roots",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_sprouts",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weeping_vines",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:twisting_vines",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sugar_cane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:kelp",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_petals",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wildflowers",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:leaf_litter",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:moss_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:moss_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_moss_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_hanging_moss",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_moss_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:hanging_roots",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:big_dripleaf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:small_dripleaf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_mosaic_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_stone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:petrified_oak_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobblestone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mud_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_red_sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purpur_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_prismarine_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_quartz",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_red_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_stone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_shelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bookshelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_bookshelf",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:decorated_pot",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_cobblestone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:obsidian",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:torch",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chorus_plant",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chorus_flower",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purpur_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purpur_pillar",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purpur_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spawner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:creaking_heart",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crafting_table",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:farmland",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:furnace",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ladder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobblestone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:snow",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ice",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:snow_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cactus",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cactus_flower",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:clay",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jukebox",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pumpkin",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:carved_pumpkin",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jack_o_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherrack",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:soul_sand",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:soul_soil",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:basalt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_basalt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_basalt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:soul_torch",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_torch",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glowstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_stone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_cobblestone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_mossy_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_cracked_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_chiseled_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:infested_deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cracked_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:packed_mud",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mud_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cracked_deepslate_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_tiles",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cracked_deepslate_tiles",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:reinforced_deepslate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_mushroom_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_mushroom_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mushroom_stem",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_bars",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_chain",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:melon",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:vine",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glow_lichen",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_clump",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:resin_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_resin_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mud_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mycelium",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lily_pad",
       "PlaceOnWaterBlockItem",
-      "PlaceOnWaterBlockItem"
+      "PlaceOnWaterBlockItem",
+      "Item"
     ],
     [
       "minecraft:nether_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cracked_nether_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_nether_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_brick_fence",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sculk",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sculk_vein",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sculk_catalyst",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sculk_shrieker",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:enchanting_table",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_portal_frame",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_stone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_stone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dragon_egg",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sandstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ender_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:emerald_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_mosaic_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:command_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:beacon",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobblestone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_cobblestone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_sandstone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_stone_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:granite_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mud_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:andesite_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_nether_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sandstone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_stone_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diorite_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blackstone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobbled_deepslate_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_deepslate_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_brick_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_tile_wall",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:anvil",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chipped_anvil",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:damaged_anvil",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_quartz_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz_pillar",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:barrier",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:hay_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_carpet",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:packed_ice",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dirt_path",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sunflower",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lilac",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rose_bush",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:peony",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tall_grass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:large_fern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_stained_glass",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_stained_glass_pane",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_prismarine",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_prismarine_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sea_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_red_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cut_red_sandstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_sandstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:repeating_command_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chain_command_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magma_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_wart_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_wart_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_nether_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bone_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:structure_void",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_shulker_box",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_glazed_terracotta",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_concrete",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_concrete_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_concrete_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_concrete_powder",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:turtle_egg",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sniffer_egg",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dried_ghast",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_tube_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_brain_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_bubble_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_fire_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_horn_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tube_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brain_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bubble_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fire_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:horn_coral_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tube_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brain_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bubble_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fire_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:horn_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_brain_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_bubble_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_fire_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_horn_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_tube_coral",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tube_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brain_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bubble_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fire_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:horn_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_tube_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_brain_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_bubble_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_fire_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dead_horn_coral_fan",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_ice",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:conduit",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_granite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_red_sandstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_stone_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_diorite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_cobblestone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_stone_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_sandstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_quartz_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:granite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:andesite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_nether_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_andesite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diorite_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobbled_deepslate_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_deepslate_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_tile_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_granite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_red_sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_stone_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_diorite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mossy_cobblestone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_stone_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_sandstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smooth_quartz_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:granite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:andesite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_nether_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_andesite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diorite_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cobbled_deepslate_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_deepslate_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:deepslate_tile_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:scaffolding",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:redstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:redstone_torch",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:redstone_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:repeater",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:comparator",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:piston",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sticky_piston",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:slime_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:honey_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:observer",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:hopper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dispenser",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dropper",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lectern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:target",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lever",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_lightning_rod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:daylight_detector",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sculk_sensor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:calibrated_sculk_sensor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tripwire_hook",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:trapped_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tnt",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:redstone_lamp",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:note_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_button",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_weighted_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:heavy_weighted_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_pressure_plate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_door",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_trapdoor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_fence_gate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:powered_rail",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:detector_rail",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rail",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:activator_rail",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:saddle",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:white_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:magenta_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:yellow_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:pink_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:purple_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:brown_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:red_harness",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_harness",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chest_minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:furnace_minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tnt_minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:hopper_minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:carrot_on_a_stick",
       "Item",
-      "FoodOnAStickItem"
+      "FoodOnAStickItem",
+      "Item"
     ],
     [
       "minecraft:warped_fungus_on_a_stick",
       "Item",
-      "FoodOnAStickItem"
+      "FoodOnAStickItem",
+      "Item"
     ],
     [
       "minecraft:phantom_membrane",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:elytra",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:oak_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:spruce_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:spruce_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:birch_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:birch_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:jungle_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:jungle_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:acacia_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:acacia_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:cherry_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:cherry_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:dark_oak_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:dark_oak_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:pale_oak_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:pale_oak_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:mangrove_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:mangrove_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:poplar_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:poplar_chest_boat",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:bamboo_raft",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:bamboo_chest_raft",
       "Item",
-      "BoatItem"
+      "BoatItem",
+      "Item"
     ],
     [
       "minecraft:structure_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jigsaw",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:test_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:test_instance_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:turtle_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:turtle_scute",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:armadillo_scute",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:wolf_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flint_and_steel",
       "FlintAndSteelItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bowl",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:apple",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bow",
       "Item",
-      "BowItem"
+      "BowItem",
+      "Item"
     ],
     [
       "minecraft:arrow",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:coal",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:charcoal",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:emerald",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:lapis_lazuli",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:quartz",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:amethyst_shard",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_iron",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_ingot",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_copper",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_ingot",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:raw_gold",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:gold_ingot",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_ingot",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_scrap",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wooden_sword",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:wooden_shovel",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wooden_pickaxe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:wooden_axe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wooden_hoe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_sword",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_shovel",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_pickaxe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_axe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_hoe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_sword",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:stone_shovel",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_pickaxe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:stone_axe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_hoe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_sword",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_shovel",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_pickaxe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_axe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_hoe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_sword",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_shovel",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_pickaxe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_axe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_hoe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_sword",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_shovel",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_pickaxe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_axe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_hoe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_sword",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_shovel",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_pickaxe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_axe",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_hoe",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:stick",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mushroom_stew",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:string",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:feather",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:gunpowder",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wheat_seeds",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wheat",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:bread",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:leather_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:leather_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:leather_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:leather_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chainmail_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:chainmail_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chainmail_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:chainmail_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_helmet",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_chestplate",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_leggings",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_boots",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flint",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:porkchop",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cooked_porkchop",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:painting",
       "HangingEntityItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_apple",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:enchanted_golden_apple",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oak_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spruce_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:birch_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:acacia_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cherry_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dark_oak_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pale_oak_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mangrove_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:poplar_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bamboo_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crimson_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warped_hanging_sign",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:water_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:lava_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:powder_snow_bucket",
       "SolidBucketItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:snowball",
       "Item",
-      "SnowballItem"
+      "SnowballItem",
+      "Item"
     ],
     [
       "minecraft:leather",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:milk_bucket",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pufferfish_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:salmon_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:cod_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:tropical_fish_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:axolotl_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:sulfur_cube_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:tadpole_bucket",
       "Item",
-      "BucketItem"
+      "BucketItem",
+      "Item"
     ],
     [
       "minecraft:brick",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:clay_ball",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dried_kelp_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:paper",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:book",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:slime_ball",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:egg",
       "Item",
-      "EggItem"
+      "EggItem",
+      "Item"
     ],
     [
       "minecraft:blue_egg",
       "Item",
-      "EggItem"
+      "EggItem",
+      "Item"
     ],
     [
       "minecraft:brown_egg",
       "Item",
-      "EggItem"
+      "EggItem",
+      "Item"
     ],
     [
       "minecraft:compass",
       "CompassItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:recovery_compass",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:white_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:orange_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:magenta_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:light_blue_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:yellow_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:lime_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:pink_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:gray_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:light_gray_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:cyan_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:purple_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:blue_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:brown_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:green_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:red_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:black_bundle",
       "Item",
-      "BundleItem"
+      "BundleItem",
+      "Item"
     ],
     [
       "minecraft:white_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_cushion",
       "CushionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fishing_rod",
       "Item",
-      "FishingRodItem"
+      "FishingRodItem",
+      "Item"
     ],
     [
       "minecraft:clock",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:spyglass",
       "Item",
-      "SpyglassItem"
+      "SpyglassItem",
+      "Item"
     ],
     [
       "minecraft:glowstone_dust",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cod",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:salmon",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:tropical_fish",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pufferfish",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cooked_cod",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cooked_salmon",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:ink_sac",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glow_ink_sac",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cocoa_beans",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:orange_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:magenta_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:light_blue_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:yellow_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:lime_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:pink_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:gray_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:light_gray_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:cyan_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:purple_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:blue_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:brown_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:green_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:red_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:black_dye",
       "Item",
-      "Item"
+      "Item",
+      "DyeItem"
     ],
     [
       "minecraft:bone_meal",
       "BoneMealItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bone",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:sugar",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cake",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:straw_bed",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cookie",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:crafter",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:filled_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ocean_monument_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:woodland_mansion_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:buried_trial_chambers_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:jungle_pyramid_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:swamp_hut_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:desert_village_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:plains_village_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:savanna_village_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:snowy_village_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:taiga_village_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:buried_treasure_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:buried_ancient_city_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:buried_mineshaft_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:desert_pyramid_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:abandoned_camp_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:warm_ocean_ruins_map",
       "MapItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:shears",
       "ShearsItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:melon_slice",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:dried_kelp",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pumpkin_seeds",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:melon_seeds",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:beef",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cooked_beef",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chicken",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cooked_chicken",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rotten_flesh",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:ender_pearl",
       "Item",
-      "EnderpearlItem"
+      "EnderpearlItem",
+      "Item"
     ],
     [
       "minecraft:blaze_rod",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:ghast_tear",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gold_nugget",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:nether_wart",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glass_bottle",
       "Item",
-      "BottleItem"
+      "BottleItem",
+      "Item"
     ],
     [
       "minecraft:potion",
       "PotionItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:spider_eye",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:fermented_spider_eye",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blaze_powder",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:magma_cream",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brewing_stand",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cauldron",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ender_eye",
       "EnderEyeItem",
-      "EnderEyeItem"
+      "EnderEyeItem",
+      "Item"
     ],
     [
       "minecraft:glistering_melon_slice",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:chicken_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:cow_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:pig_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:sheep_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:camel_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:donkey_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:horse_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:mule_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:cat_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:parrot_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:wolf_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:armadillo_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:bat_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:bee_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:fox_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:goat_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:llama_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:ocelot_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:panda_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:polar_bear_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:rabbit_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:axolotl_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:cod_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:dolphin_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:frog_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:glow_squid_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:nautilus_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:pufferfish_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:salmon_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:squid_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:tadpole_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:tropical_fish_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:turtle_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:allay_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:mooshroom_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:sniffer_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:sulfur_cube_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:copper_golem_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:iron_golem_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:snow_golem_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:trader_llama_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:villager_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:wandering_trader_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:bogged_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:camel_husk_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:drowned_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:husk_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:parched_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:skeleton_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:skeleton_horse_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:stray_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:wither_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:wither_skeleton_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zombie_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zombie_horse_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zombie_nautilus_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zombie_villager_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:cave_spider_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:spider_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:breeze_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:creaking_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:creeper_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:elder_guardian_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:guardian_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:phantom_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:silverfish_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:slime_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:warden_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:witch_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:evoker_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:pillager_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:ravager_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:vindicator_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:vex_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:blaze_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:ghast_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:happy_ghast_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:hoglin_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:magma_cube_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:piglin_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:piglin_brute_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:strider_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zoglin_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:zombified_piglin_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:ender_dragon_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:enderman_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:endermite_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:shulker_spawn_egg",
       "SpawnEggItem",
-      "SpawnEggItem"
+      "SpawnEggItem",
+      "Item"
     ],
     [
       "minecraft:experience_bottle",
       "Item",
-      "ExperienceBottleItem"
+      "ExperienceBottleItem",
+      "Item"
     ],
     [
       "minecraft:fire_charge",
       "FireChargeItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wind_charge",
       "Item",
-      "WindChargeItem"
+      "WindChargeItem",
+      "Item"
     ],
     [
       "minecraft:writable_book",
       "Item",
-      "WritableBookItem"
+      "WritableBookItem",
+      "Item"
     ],
     [
       "minecraft:written_book",
       "Item",
-      "WrittenBookItem"
+      "WrittenBookItem",
+      "Item"
     ],
     [
       "minecraft:breeze_rod",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:mace",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:item_frame",
       "HangingEntityItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glow_item_frame",
       "HangingEntityItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flower_pot",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:carrot",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:potato",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:baked_potato",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:poisonous_potato",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:map",
       "Item",
-      "EmptyMapItem"
+      "EmptyMapItem",
+      "Item"
     ],
     [
       "minecraft:golden_carrot",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:skeleton_skull",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wither_skeleton_skull",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:player_head",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:zombie_head",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:creeper_head",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dragon_head",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:piglin_head",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_star",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:pumpkin_pie",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:firework_rocket",
       "FireworkRocketItem",
-      "FireworkRocketItem"
+      "FireworkRocketItem",
+      "Item"
     ],
     [
       "minecraft:firework_star",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:enchanted_book",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:nether_brick",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:resin_brick",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_shard",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:prismarine_crystals",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rabbit",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cooked_rabbit",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rabbit_stew",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:rabbit_foot",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rabbit_hide",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:armor_stand",
       "ArmorStandItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_horse_armor",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_horse_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_horse_armor",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_horse_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_horse_armor",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:leather_horse_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lead",
       "LeadItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:name_tag",
       "Item",
-      "Item"
+      "Item",
+      "NameTagItem"
     ],
     [
       "minecraft:command_block_minecart",
       "MinecartItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mutton",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:cooked_mutton",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_banner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:end_crystal",
       "EndCrystalItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chorus_fruit",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:popped_chorus_fruit",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:torchflower_seeds",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pitcher_pod",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:beetroot",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:beetroot_seeds",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:beetroot_soup",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:dragon_breath",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:splash_potion",
       "PotionItem",
-      "SplashPotionItem"
+      "SplashPotionItem",
+      "Item"
     ],
     [
       "minecraft:spectral_arrow",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:tipped_arrow",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lingering_potion",
       "PotionItem",
-      "LingeringPotionItem"
+      "LingeringPotionItem",
+      "Item"
     ],
     [
       "minecraft:shield",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:wooden_spear",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stone_spear",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_spear",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_spear",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:golden_spear",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:diamond_spear",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:netherite_spear",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:totem_of_undying",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:shulker_shell",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:iron_nugget",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_nugget",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:knowledge_book",
       "Item",
-      "KnowledgeBookItem"
+      "KnowledgeBookItem",
+      "Item"
     ],
     [
       "minecraft:debug_stick",
       "DebugStickItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_13",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_cat",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_blocks",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_bounce",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_chirp",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_creator",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_creator_music_box",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_far",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_lava_chicken",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_mall",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_mellohi",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_stal",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_strad",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_ward",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_11",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_wait",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_otherside",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_relic",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_5",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_pigstep",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_precipice",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:music_disc_tears",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:disc_fragment_5",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:trident",
       "Item",
-      "TridentItem"
+      "TridentItem",
+      "Item"
     ],
     [
       "minecraft:nautilus_shell",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:iron_nautilus_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:golden_nautilus_armor",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:diamond_nautilus_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_nautilus_armor",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:copper_nautilus_armor",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:heart_of_the_sea",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:crossbow",
       "Item",
-      "CrossbowItem"
+      "CrossbowItem",
+      "Item"
     ],
     [
       "minecraft:suspicious_stew",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:loom",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flower_banner_pattern",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:creeper_banner_pattern",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:skull_banner_pattern",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:mojang_banner_pattern",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:globe_banner_pattern",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:piglin_banner_pattern",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:flow_banner_pattern",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:guster_banner_pattern",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:field_masoned_banner_pattern",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:bordure_indented_banner_pattern",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:goat_horn",
       "Item",
-      "InstrumentItem"
+      "InstrumentItem",
+      "Item"
     ],
     [
       "minecraft:composter",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:barrel",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smoker",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blast_furnace",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cartography_table",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:fletching_table",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:grindstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:smithing_table",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:stonecutter",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bell",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:soul_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_lantern",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sweet_berries",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:glow_berries",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:campfire",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:soul_campfire",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:shroomlight",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:honeycomb",
       "HoneycombItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bee_nest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:beehive",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:honey_bottle",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:honeycomb_block",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lodestone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:crying_obsidian",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blackstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blackstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blackstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gilded_blackstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:chiseled_polished_blackstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_brick_slab",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:polished_blackstone_brick_stairs",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cracked_polished_blackstone_bricks",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:respawn_anchor",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:white_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:orange_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:magenta_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_blue_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:yellow_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:lime_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pink_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:gray_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:light_gray_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:cyan_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:purple_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blue_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:brown_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:green_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:red_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:black_candle",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:small_amethyst_bud",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:medium_amethyst_bud",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:large_amethyst_bud",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:amethyst_cluster",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pointed_dripstone",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sulfur_spike",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ochre_froglight",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:verdant_froglight",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:pearlescent_froglight",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:frogspawn",
       "PlaceOnWaterBlockItem",
-      "PlaceOnWaterBlockItem"
+      "PlaceOnWaterBlockItem",
+      "Item"
     ],
     [
       "minecraft:echo_shard",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:brush",
       "BrushItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:netherite_upgrade_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:sentry_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:dune_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:coast_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wild_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:ward_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:eye_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:vex_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:tide_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:snout_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:rib_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:spire_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:wayfinder_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:shaper_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:silence_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:raiser_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:host_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:flow_armor_trim_smithing_template",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:bolt_armor_trim_smithing_template",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:angler_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:archer_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:arms_up_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:blade_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:brewer_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:burn_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:danger_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:explorer_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:flow_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:friend_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:guster_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:heart_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:heartbreak_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:howl_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:miner_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:mourner_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:plenty_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:prize_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:scrape_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:sheaf_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:shelter_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:skull_pottery_sherd",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:snort_pottery_sherd",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_grate",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_bulb",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_chest",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:exposed_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:weathered_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:oxidized_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_exposed_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_weathered_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:waxed_oxidized_copper_golem_statue",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:trial_spawner",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:trial_key",
+      "Item",
       "Item",
       "Item"
     ],
     [
       "minecraft:ominous_trial_key",
       "Item",
+      "Item",
       "Item"
     ],
     [
       "minecraft:vault",
       "BlockItem",
+      "Item",
       "Item"
     ],
     [
       "minecraft:ominous_bottle",
+      "Item",
       "Item",
       "Item"
     ]

@@ -923,7 +923,7 @@ fn old_stop_does_not_cancel_a_new_use_but_a_new_authoritative_stop_does() {
     assert!(c.pending().is_none());
     s.player_visual.observe_use(1).unwrap();
     c.maintain_use(&s, 102, false);
-    assert_eq!(c.server_use_requested(), Some(false));
+    assert_eq!(c.server_use_requested(), Some(super::Hand::Main));
     c.resume_server_use(&s, plan);
     assert!(c.using_item());
     assert!(
@@ -934,3 +934,243 @@ fn old_stop_does_not_cancel_a_new_use_but_a_new_authoritative_stop_does() {
     c.maintain_use(&s, 103, false);
     assert!(!c.using_item());
 }
+
+#[test]
+fn native_four_stage_hand_order_is_captured_bounded_and_active_offhand_survives_main_selection() {
+    use crate::java::item_use::plan::{Active, Effects, End, Plan, ResultKind};
+    let mut s = state();
+    let stack = |name: &str| {
+        Some(inventory::java::Stack {
+            item: name.into(),
+            count: 1,
+            added: Default::default(),
+            removed: Default::default(),
+        })
+    };
+    for (slot, item) in [
+        (0, stack("minecraft:iron_sword")),
+        (1, stack("minecraft:stone")),
+        (40, stack("minecraft:shield")),
+    ] {
+        s.inventory
+            .admit(
+                7,
+                1,
+                inventory::java::Update::PlayerSlot { slot, stack: item },
+            )
+            .unwrap();
+    }
+    let inventory = serde_json::to_value(&s.inventory).unwrap();
+    let pass = Plan {
+        send: true,
+        result: ResultKind::Pass,
+    };
+    let block = Plan {
+        send: true,
+        result: ResultKind::Consume(Some(Active {
+            ticks: 72000,
+            end: End::Complete,
+            effects: Effects {
+                can_sprint: false,
+                speed_multiplier: 0.2,
+            },
+        })),
+    };
+    let steps = vec![
+        UseStep::block(hit(), Hand::Main),
+        UseStep::air(
+            [30., -10.],
+            Hand::Main,
+            pass,
+            Hand::Main.held(&s.inventory).unwrap(),
+        )
+        .unwrap(),
+        UseStep::block(hit(), Hand::Off),
+        UseStep::air(
+            [30., -10.],
+            Hand::Off,
+            block,
+            Hand::Off.held(&s.inventory).unwrap(),
+        )
+        .unwrap(),
+    ];
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    c.use_chain(&s, press(), Ok(steps));
+    for (index, (hand, kind)) in [
+        (Hand::Main, Kind::UseOn),
+        (Hand::Main, Kind::UseAir),
+        (Hand::Off, Kind::UseOn),
+        (Hand::Off, Kind::UseAir),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let r = c.pending().unwrap();
+        assert_eq!((r.hand, r.kind, r.sequence), (hand, kind, index as i32 + 1));
+        if kind == Kind::UseAir {
+            assert_eq!(r.target, Target::Air([30., -10.]));
+        }
+        begin(&mut c, &s, Duration::from_secs(1));
+        assert_eq!(
+            c.pending().unwrap().sequence,
+            r.sequence,
+            "transport wait does not replan or advance sequences"
+        );
+        c.queued();
+    }
+    assert_eq!(c.using_hand(), Some(Hand::Off));
+    assert_eq!(c.use_ticks(), Some(0));
+    assert!(c.pending().is_none());
+    assert_eq!(
+        serde_json::to_value(&s.inventory).unwrap(),
+        inventory,
+        "sending use awards no item or equipment mutation"
+    );
+    s.inventory
+        .admit(7, 1, inventory::java::Update::Selected(1))
+        .unwrap();
+    c.prepare_selection(&s, 12);
+    assert!(
+        c.pending().is_none(),
+        "selection emits no release for offhand"
+    );
+    assert_eq!(
+        c.using_hand(),
+        Some(Hand::Off),
+        "main selection must not cancel offhand"
+    );
+    c.maintain_use(&s, 12, true);
+    assert_eq!(c.pending().unwrap().kind, Kind::ReleaseUse);
+    assert_eq!(c.pending().unwrap().sequence, 0);
+    assert!(c.using_item());
+    c.queued();
+    assert!(!c.using_item());
+}
+
+#[test]
+fn ordered_hand_chain_retires_on_authority_change_and_rejects_terminal_or_reversed_followups() {
+    use crate::java::item_use::plan::{Plan, ResultKind};
+    let s = state();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    c.use_chain(
+        &s,
+        press(),
+        Ok(vec![
+            UseStep::block(hit(), Hand::Off),
+            UseStep::block(hit(), Hand::Main),
+        ]),
+    );
+    assert!(c.pending().is_none());
+    assert!(c.blocked.as_ref().unwrap().contains("ordering"));
+    let empty = None;
+    let terminal = UseStep::air(
+        [0.; 2],
+        Hand::Main,
+        Plan {
+            send: true,
+            result: ResultKind::Unpredicted,
+        },
+        &empty,
+    )
+    .unwrap();
+    c.use_chain(
+        &s,
+        press(),
+        Ok(vec![terminal, UseStep::block(hit(), Hand::Off)]),
+    );
+    assert!(c.pending().is_none());
+    c.use_chain(
+        &s,
+        press(),
+        Ok(vec![
+            UseStep::block(hit(), Hand::Main),
+            UseStep::block(hit(), Hand::Off),
+        ]),
+    );
+    assert_eq!(c.pending().unwrap().sequence, 1);
+    c.queued();
+    assert_eq!(c.pending().unwrap().hand, Hand::Off);
+    c.begin_frame(
+        &s,
+        Duration::ZERO,
+        Some(InputAuthorityGeneration::INITIAL),
+        true,
+    );
+    assert!(c.pending().is_none());
+    assert!(c.use_steps.is_empty());
+}
+
+#[test]
+fn authoritative_offhand_start_resume_stop_and_item_replacement_are_not_mainhand_aliases() {
+    use crate::java::item_use::plan::{Active, Effects, End, Plan, ResultKind};
+    let mut s = state();
+    s.inventory
+        .admit(
+            7,
+            1,
+            inventory::java::Update::PlayerSlot {
+                slot: 40,
+                stack: Some(inventory::java::Stack {
+                    item: "minecraft:apple".into(),
+                    count: 2,
+                    added: Default::default(),
+                    removed: Default::default(),
+                }),
+            },
+        )
+        .unwrap();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    s.player_visual.observe_use(3).unwrap();
+    c.maintain_use(&s, 10, false);
+    assert_eq!(c.server_use_requested(), Some(Hand::Off));
+    assert!(c.using_item());
+    c.resume_server_use(
+        &s,
+        Plan {
+            send: true,
+            result: ResultKind::Consume(Some(Active {
+                ticks: 32,
+                end: End::Complete,
+                effects: Effects {
+                    can_sprint: false,
+                    speed_multiplier: 0.2,
+                },
+            })),
+        },
+    );
+    assert_eq!(c.using_hand(), Some(Hand::Off));
+    c.maintain_use(&s, 12, false);
+    assert_eq!(c.use_ticks(), Some(2));
+    s.player_visual.complete_use().unwrap();
+    c.maintain_use(&s, 13, false);
+    assert!(!c.using_item());
+    assert!(c.pending().is_none());
+    assert_eq!(
+        Hand::Off
+            .held(&s.inventory)
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .count,
+        2
+    );
+}
+
+#[test]
+fn selected_slot_change_still_orders_mainhand_release_ahead_of_selection() {
+    let mut s = state();
+    let mut c = Controller::default();
+    begin(&mut c, &s, Duration::ZERO);
+    s.player_visual.observe_use(1).unwrap();
+    c.prepare_selection(&s, 1);
+    assert_eq!(c.using_hand(), Some(Hand::Main));
+    assert_eq!(c.pending().unwrap().kind, Kind::ReleaseUse);
+    assert_eq!(c.pending().unwrap().sequence, 0);
+    c.queued();
+    assert!(!c.using_item());
+}
+
+mod entity_chain;

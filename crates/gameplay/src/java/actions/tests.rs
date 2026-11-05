@@ -433,12 +433,92 @@ fn captured_entity_use_stays_before_slot_change_with_exact_hit_and_sneak() {
         assert!(secondary);
         assert_eq!(lifetime, 9);
     }
-    c.entity_use_queued();
     c.consume_use(true);
     assert_eq!(c.front(&state), Some(Intent::Slot(2)));
-    assert_eq!(c.entity_uses_queued, 1);
     state.begin(8);
     c.capture(&state, &input(2, None), None);
     assert!(c.front(&state).is_none());
-    assert_eq!(c.entity_uses_queued, 0);
+}
+
+#[test]
+fn hotbar_barrier_pauses_repeats_without_releasing_the_ordered_use_button() {
+    let mut s = state();
+    s.inventory
+        .admit(7, 1, inventory::java::Update::Selected(0))
+        .unwrap();
+    let mut c = Controller::default();
+    c.scope = Some((7, 1));
+    c.append([Intent::Use(true), Intent::Slot(1)], None);
+    c.consume_use(true);
+    assert!(c.use_button_down());
+    assert!(!c.held_use().held, "repeat waits behind selection");
+    assert!(c.selection(&s).is_some());
+    c.selection_queued();
+    assert!(c.use_button_down());
+    assert!(!c.held_use().held, "socket receipt still pending");
+    c.retire();
+    assert!(
+        !c.use_button_down(),
+        "authority retirement still releases use"
+    );
+}
+
+#[test]
+fn correction_discards_old_clicks_and_mining_but_preserves_an_admitted_use_hold() {
+    use java_protocol::session::{Envelope, Event, facts::Teleport};
+    fn held(frame: u64) -> FinalizedInput {
+        let mut s = input(frame, Some(Action::Use)).snapshot().unwrap().clone();
+        s.phases[Action::Use as usize].pressed = false;
+        FinalizedInput::from_finalized(s)
+    }
+    let mut s = state();
+    let mut c = Controller::default();
+    c.capture(&s, &input(1, Some(Action::Use)), None);
+    c.consume_use(true);
+    c.append([Intent::Attack(true), Intent::Use(true)], None);
+    assert!(s.admit(Envelope {
+        generation: 7,
+        event: Event::Teleport {
+            dimension_epoch: 1,
+            sequence: 1,
+            correction: Teleport {
+                id: 1,
+                position: [32.5, -60., 0.],
+                velocity: [0.; 3],
+                yaw: 0.,
+                pitch: 0.,
+                relative: 0
+            }
+        }
+    }));
+    c.capture(&s, &held(2), None);
+    assert!(c.use_button_down(), "teleport is not a physical release");
+    assert!(!c.held_attack().held);
+    assert!(c.queue.is_empty());
+    assert!(c.front(&s).is_none());
+    s.correction_queued(1);
+    c.capture(&s, &held(3), None);
+    assert!(c.held_use().held);
+    assert!(c.queue.is_empty());
+    let mut released = held(4).snapshot().unwrap().clone();
+    released.phases[Action::Use as usize] = ActionPhase {
+        pressed: false,
+        held: false,
+        released: true,
+    };
+    c.capture(&s, &FinalizedInput::from_finalized(released), None);
+    assert_eq!(c.front(&s), Some(Intent::Use(false)));
+    c.consume_use(false);
+    assert!(!c.use_button_down());
+    c.capture(&s, &input(5, Some(Action::Use)), None);
+    c.consume_use(true);
+    let mut focus = held(6).snapshot().unwrap().clone();
+    focus.authority_released = true;
+    c.capture(&s, &FinalizedInput::from_finalized(focus), None);
+    assert!(!c.use_button_down());
+    c.capture(&s, &input(7, Some(Action::Use)), None);
+    c.consume_use(true);
+    s.begin(8);
+    c.capture(&s, &held(8), None);
+    assert!(!c.use_button_down());
 }

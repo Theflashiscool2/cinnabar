@@ -9,12 +9,33 @@ pub fn at(
     hit: sim::java::selection::Hit,
     secondary: bool,
 ) -> Result<bool, &'static str> {
+    at_hand(state, hit, secondary, super::plan::Hand::Main)
+}
+pub fn at_hand(
+    state: &client_world::java::WorldState,
+    hit: sim::java::selection::Hit,
+    secondary: bool,
+    hand: super::plan::Hand,
+) -> Result<bool, &'static str> {
+    // Minecraft bypasses block interaction only while secondary-use is active
+    // AND at least one hand is nonempty; bare-hand sneak still opens doors/chests.
+    let secondary = if secondary {
+        let main = super::plan::Hand::Main
+            .held(&state.inventory)
+            .ok_or("Native main hand is not known")?;
+        main.is_some()
+            || super::plan::Hand::Off
+                .held(&state.inventory)
+                .ok_or("Native offhand is not known")?
+                .is_some()
+    } else {
+        false
+    };
     let name = state
         .block_name(hit.state)
         .ok_or("Native use registry is not installed")?;
-    let held = state
-        .inventory
-        .held()
+    let held = hand
+        .held(&state.inventory)
         .ok_or("Native held item is not known")?;
     let target = assets::registry::java::mining::builtin()
         .ok()
@@ -53,7 +74,9 @@ pub fn passes(
         .block(block)
         .ok_or("Unknown native block-use identity")?;
     let Some(stack) = held else {
-        return Ok(false);
+        // Native empty-hand block dispatch may still consume (doors/chests/etc).
+        // Only a verified base block or secondary-use bypass can continue to offhand.
+        return Ok(secondary || (block.item_default && block.empty_default));
     };
     let item = rules
         .item(&stack.item)
@@ -88,6 +111,12 @@ mod tests {
             added: [("minecraft:potion_contents".into(), contents)].into(),
             removed: Default::default(),
         })
+    }
+    #[test]
+    fn known_empty_hands_only_pass_verified_base_block_dispatch() {
+        assert_eq!(passes("minecraft:stone", &None, false, None), Ok(true));
+        assert_eq!(passes("minecraft:chest", &None, false, None), Ok(false));
+        assert_eq!(passes("minecraft:oak_door", &None, false, None), Ok(false));
     }
     #[test]
     fn potion_dispatch_preserves_mud_conversion_and_drinking_precedence() {

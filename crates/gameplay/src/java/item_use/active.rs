@@ -1,26 +1,34 @@
 //! Local native-use lifetime. Only accepted UseItem requests start it; inventory and
 //! consumable results remain authoritative. Duration drives animation, never completion.
-use super::plan::{Active, Effects};
+use super::plan::{Active, Effects, Hand};
 use inventory::java::{Slot, Stack};
 
 pub struct Using {
+    hand: Hand,
     item: Stack,
     plan: Active,
     started: u64,
 }
 impl Using {
     pub fn start(item: Stack, plan: Active, tick: u64) -> Self {
+        Self::start_in(Hand::Main, item, plan, tick)
+    }
+    pub fn start_in(hand: Hand, item: Stack, plan: Active, tick: u64) -> Self {
         Self {
+            hand,
             item,
             plan,
             started: tick,
         }
     }
+    pub fn hand(&self) -> Hand {
+        self.hand
+    }
     pub fn matches(&self, held: Option<&Slot>) -> bool {
         held.and_then(Option::as_ref).is_some_and(|item| {
+            // LivingEntity.updatingUsingItem uses isSameItem, not component or
+            // count equality. Normal shield durability updates must not restart use.
             item.item == self.item.item
-                && item.added == self.item.added
-                && item.removed == self.item.removed
         })
     }
     pub fn elapsed(&self, tick: u64) -> u32 {
@@ -58,6 +66,12 @@ mod tests {
         assert!(using.matches(Some(&Some(item.clone()))));
         assert_eq!(using.elapsed(41), 31);
         assert_eq!(using.elapsed(42), 32);
+        item.added
+            .insert("minecraft:damage".into(), serde_json::json!(4));
+        assert!(
+            using.matches(Some(&Some(item.clone()))),
+            "native same-item wear does not stop active use"
+        );
         item.item = "minecraft:bread".into();
         assert!(!using.matches(Some(&Some(item))));
         assert!(!using.matches(Some(&None)));

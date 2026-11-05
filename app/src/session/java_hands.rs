@@ -158,7 +158,12 @@ pub(crate) fn update(
             continue;
         };
         // Verified FirstPersonHandsAndItemsRenderer.applyItemArmTransform at idle equip/swing.
-        let use_pose = if hand == 0 && interaction.0.using_item() {
+        let use_pose = if interaction.0.using_hand()
+            == Some(if hand == 0 {
+                gameplay::java::item_use::plan::Hand::Main
+            } else {
+                gameplay::java::item_use::plan::Hand::Off
+            }) {
             let consumable = stacks[hand].and_then(|s| {
                 if s.removed.contains("minecraft:consumable") {
                     None
@@ -181,7 +186,7 @@ pub(crate) fn update(
                     interaction.0.use_ticks().unwrap_or(0),
                     interaction.0.use_duration().unwrap_or(0),
                     0.,
-                    true,
+                    hand == 0,
                 )
             } else {
                 Mat4::IDENTITY

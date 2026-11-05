@@ -366,7 +366,10 @@ present. End-user in-app first-run Java provisioning remains unimplemented.
   tick-remainder regression prevents frame drift and transport-wait bursts. Focused
   protocol/session/gameplay tests, scoped clippy, architecture and the client build pass.
 - [ ] Complete survival/tool breaking, general item/offhand use, entity targeting, local effects
-  and inventory-dependent restrictions. Creative fixture evidence is not general
+  and inventory-dependent restrictions. Native Survival tool mining, basic both-hand block/entity/air
+  use, server-confirmed shielding/feeding, main/offhand item lifetimes and correction/menu/
+  dimension/reconnect cleanup now pass controlled Linux vanilla acceptance. Specialized
+  uses, target-equipment fallthrough and dynamic same-item use-component refresh remain open. Creative fixture evidence is not general
   interaction parity or a complete playable client.
 - [ ] Qualify the [native Java sidebar](docs/references/java-scoreboards.md):
   objective/score/display/reset packet decoding and session-owned projection feed

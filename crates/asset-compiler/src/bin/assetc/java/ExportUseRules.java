@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -38,7 +39,8 @@ public final class ExportUseRules {
   for(var item:BuiltInRegistries.ITEM) {
    var on=owner(item.getClass(),"useOn",UseOnContext.class);
    var air=owner(item.getClass(),"use",Level.class,Player.class,InteractionHand.class);
-   var row=new JsonArray();row.add(BuiltInRegistries.ITEM.getKey(item).toString());row.add(on.getSimpleName());row.add(air.getSimpleName());items.add(row);
+   var living=owner(item.getClass(),"interactLivingEntity",ItemStack.class,Player.class,LivingEntity.class,InteractionHand.class);
+   var row=new JsonArray();row.add(BuiltInRegistries.ITEM.getKey(item).toString());row.add(on.getSimpleName());row.add(air.getSimpleName());row.add(living.getSimpleName());items.add(row);
   }
   root.add("blocks",blocks);root.add("items",items);
   Files.writeString(Path.of(args[0]),new GsonBuilder().setPrettyPrinting().create().toJson(root)+"\n",StandardCharsets.UTF_8);

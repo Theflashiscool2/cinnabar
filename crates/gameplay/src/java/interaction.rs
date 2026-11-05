@@ -1,8 +1,11 @@
 //! Native block intent. Shared action sequences never predict terrain or stack changes.
+use super::item_use::plan::Hand;
 use client_world::java::WorldState;
 use semantic_input::{ActionPhase, identity::InputAuthorityGeneration};
 use sim::java::selection::Hit;
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
+mod chain;
+pub use chain::UseStep;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -11,15 +14,35 @@ pub enum Kind {
     FinishBreak,
     UseOn,
     UseAir,
+    UseEntity,
     ReleaseUse,
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
     Block(Hit),
     Air([f32; 2]),
+    Entity(EntityTarget),
+}
+/// Captured native entity identity and hit; a reused network ID is never equivalent.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EntityTarget {
+    pub network_id: i32,
+    pub identity: world::java::entities::Identity,
+    pub lifetime: u64,
+    pub location: [f64; 3],
+    pub secondary: bool,
+}
+impl EntityTarget {
+    pub fn current(self, state: &WorldState) -> bool {
+        state
+            .entities
+            .get(self.network_id)
+            .is_some_and(|e| e.identity == self.identity && e.transport_lifetime == self.lifetime)
+    }
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
+    pub hand: Hand,
     pub kind: Kind,
     pub dimension_epoch: u64,
     pub correction_sequence: u64,
@@ -47,20 +70,18 @@ pub struct Controller {
     mining: Option<Mining>,
     creative: bool,
     active_use: Option<super::item_use::active::Using>,
-    prepared_use: Option<(inventory::java::Stack, super::item_use::plan::Active)>,
+    prepared_use: Option<(Hand, inventory::java::Stack, super::item_use::plan::Active)>,
     use_tick: u64,
     use_revision: u64,
-    server_use: Option<bool>,
-    use_fallback: Option<(
-        [f32; 2],
-        super::item_use::plan::Plan,
-        inventory::java::Stack,
-    )>,
+    server_use: Option<Hand>,
+    use_steps: VecDeque<UseStep>,
+    use_entity: Option<EntityTarget>,
     /// Supplied by the sole native collision simulation, not an optimistic on-ground flag.
     pub contact: Option<(bool, bool)>,
     pub selected: Option<Hit>,
     pub last_queued: Option<Request>,
     pub queued_actions: u64,
+    pub entity_uses_queued: u64,
     pub blocked: Option<String>,
 }
 impl Controller {
@@ -100,7 +121,8 @@ impl Controller {
                 self.mining = None;
             }
             self.prepared_use = None;
-            self.use_fallback = None;
+            self.use_steps.clear();
+            self.use_entity = None;
             self.elapsed = Duration::ZERO;
             self.use_elapsed = Duration::ZERO;
             self.delay = 0;
@@ -120,16 +142,19 @@ impl Controller {
         if self.pending.is_some_and(|request| match request.kind {
             Kind::Break | Kind::FinishBreak => invalid_break,
             Kind::AbortBreak | Kind::ReleaseUse => false,
-            Kind::UseOn | Kind::UseAir => !can_use(state),
+            Kind::UseOn | Kind::UseAir | Kind::UseEntity => !can_use(state),
         }) || state.death.is_some()
             || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
         {
             self.pending = None;
+            self.use_steps.clear();
+            self.use_entity = None;
+            self.prepared_use = None;
             self.mining = None;
             self.elapsed = Duration::ZERO;
             self.use_elapsed = Duration::ZERO;
         }
-        if self.active_use.is_some() {
+        if self.using_item() {
             // Native using-item frames do not advance block breaking. The right-click
             // delay can expire, but cannot accumulate a burst of repeated uses.
             self.elapsed = Duration::ZERO;
@@ -147,11 +172,6 @@ impl Controller {
     }
     pub fn queued(&mut self) {
         if let Some(request) = self.pending.take() {
-            let fallback = if request.kind == Kind::UseOn {
-                self.use_fallback.take()
-            } else {
-                None
-            };
             self.last_queued = Some(request);
             self.queued_actions = self.queued_actions.saturating_add(1);
             // Backpressure paused this action; old elapsed time must not become fresh presses.
@@ -174,11 +194,19 @@ impl Controller {
                     self.mining = None;
                     self.elapsed = Duration::ZERO;
                 }
-                Kind::UseOn | Kind::UseAir => {
+                Kind::UseOn | Kind::UseAir | Kind::UseEntity => {
+                    if request.kind == Kind::UseEntity {
+                        self.entity_uses_queued = self.entity_uses_queued.saturating_add(1);
+                    }
                     self.use_elapsed = self.use_remainder;
                     if request.kind == Kind::UseAir {
-                        self.active_use = self.prepared_use.take().map(|(item, plan)| {
-                            super::item_use::active::Using::start(item, plan, self.use_tick)
+                        self.active_use = self.prepared_use.take().map(|(hand, item, plan)| {
+                            super::item_use::active::Using::start_in(
+                                hand,
+                                item,
+                                plan,
+                                self.use_tick,
+                            )
                         });
                     }
                 }
@@ -188,15 +216,7 @@ impl Controller {
                     self.prepared_use = None;
                 }
             }
-            if let Some((rotation, plan, item)) = fallback {
-                self.request_target(Target::Air(rotation), Kind::UseAir);
-                self.prepared_use = match plan.result {
-                    super::item_use::plan::ResultKind::Consume(Some(active)) => {
-                        Some((item, active))
-                    }
-                    _ => None,
-                };
-            }
+            self.advance_use_step(request.kind);
         }
     }
     /// Called before movement and by the between-frame owner. A physical release is
@@ -210,6 +230,8 @@ impl Controller {
         {
             self.active_use = None;
             self.prepared_use = None;
+            self.use_steps.clear();
+            self.use_entity = None;
             self.server_use = None;
             return;
         }
@@ -218,14 +240,26 @@ impl Controller {
             if state.player_visual.use_flags & 1 == 0 {
                 self.active_use = None;
                 self.server_use = None;
-            } else if self.active_use.is_none() {
-                self.server_use = Some(state.player_visual.use_flags & 2 != 0);
+            } else {
+                let hand = if state.player_visual.use_flags & 2 != 0 {
+                    Hand::Off
+                } else {
+                    Hand::Main
+                };
+                if self
+                    .active_use
+                    .as_ref()
+                    .is_none_or(|using| using.hand() != hand)
+                {
+                    self.active_use = None;
+                    self.server_use = Some(hand);
+                }
             }
         }
         if self
             .active_use
             .as_ref()
-            .is_some_and(|u| !u.matches(state.inventory.held()))
+            .is_some_and(|u| !u.matches(u.hand().held(&state.inventory)))
         {
             self.active_use = None;
         }
@@ -245,11 +279,14 @@ impl Controller {
     ) {
         if self.pending.is_some_and(|r| r.kind == Kind::UseOn) && plan.send {
             self.use_revision = state.player_visual.use_revision;
-            self.use_fallback = state
-                .inventory
-                .held()
-                .and_then(Option::as_ref)
-                .map(|s| (rotation, plan, s.clone()));
+            self.use_steps.clear();
+            self.use_entity = None;
+            if let Some(slot) = state.inventory.held() {
+                match UseStep::air(rotation, Hand::Main, plan, slot) {
+                    Ok(step) => self.use_steps.push_back(step),
+                    Err(error) => self.blocked = Some(error.into()),
+                }
+            }
         }
     }
     pub fn prepare_use(&mut self, state: &WorldState, plan: super::item_use::plan::Plan) {
@@ -260,30 +297,38 @@ impl Controller {
                     .inventory
                     .held()
                     .and_then(Option::as_ref)
-                    .map(|s| (s.clone(), active)),
+                    .map(|s| (Hand::Main, s.clone(), active)),
                 _ => None,
             };
         }
     }
-    pub fn server_use_requested(&self) -> Option<bool> {
+    pub fn server_use_requested(&self) -> Option<Hand> {
         self.server_use
     }
     pub fn resume_server_use(&mut self, state: &WorldState, plan: super::item_use::plan::Plan) {
-        if self.server_use == Some(false) {
-            if let (Some(item), super::item_use::plan::ResultKind::Consume(Some(active))) =
-                (state.inventory.held().and_then(Option::as_ref), plan.result)
-            {
-                self.active_use = Some(super::item_use::active::Using::start(
+        if let Some(hand) = self.server_use {
+            if let (Some(item), super::item_use::plan::ResultKind::Consume(Some(active))) = (
+                hand.held(&state.inventory).and_then(Option::as_ref),
+                plan.result,
+            ) {
+                self.active_use = Some(super::item_use::active::Using::start_in(
+                    hand,
                     item.clone(),
                     active,
                     self.use_tick,
                 ));
+                self.server_use = None;
             }
-            self.server_use = None;
         }
     }
+    pub fn using_hand(&self) -> Option<Hand> {
+        self.active_use
+            .as_ref()
+            .map(|u| u.hand())
+            .or(self.server_use)
+    }
     pub fn using_item(&self) -> bool {
-        self.active_use.is_some()
+        self.active_use.is_some() || self.server_use.is_some()
     }
     pub fn use_effects(&self) -> Option<super::item_use::plan::Effects> {
         self.active_use.as_ref().map(|u| u.effects())
@@ -301,10 +346,7 @@ impl Controller {
     /// Each accepted request remains buffered until queued, including taps shorter than a tick.
     pub fn advance(&mut self, state: &WorldState, attack: ActionPhase, hit: Option<Hit>) {
         self.selected = hit;
-        if self.active_use.is_some() {
-            return;
-        }
-        if self.active_use.is_some() || self.pending.is_some() {
+        if self.using_item() || self.pending.is_some() {
             return;
         }
         if !self.enabled
@@ -536,7 +578,7 @@ impl Controller {
         action: ActionPhase,
         target: Result<Option<Target>, &'static str>,
     ) {
-        if self.active_use.is_some() || self.pending.is_some() {
+        if self.using_item() || self.pending.is_some() {
             return;
         }
         if !self.enabled
@@ -570,6 +612,7 @@ impl Controller {
                     let kind = match target {
                         Target::Block(_) => Kind::UseOn,
                         Target::Air(_) => Kind::UseAir,
+                        Target::Entity(_) => Kind::UseEntity,
                     };
                     self.request_target(target, kind);
                 }
@@ -592,7 +635,7 @@ impl Controller {
         };
         // Native cancellation is unpredicted (constructor sequence0), unlike starts,
         // finishes and uses. It must not advance the prediction sequence counter.
-        let sequence = if matches!(kind, Kind::AbortBreak | Kind::ReleaseUse) {
+        let sequence = if matches!(kind, Kind::AbortBreak | Kind::ReleaseUse | Kind::UseEntity) {
             0
         } else {
             let Some(sequence) = self.sequence.checked_add(1) else {
@@ -603,6 +646,7 @@ impl Controller {
             sequence
         };
         self.pending = Some(Request {
+            hand: Hand::Main,
             kind,
             dimension_epoch: epoch,
             correction_sequence: self.correction,

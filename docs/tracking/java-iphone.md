@@ -30,8 +30,8 @@ owners; no second network, inventory, simulation or world authority is introduce
 | --- | --- | --- |
 | Item and held artwork | `assets/registry/java/items`, `app/session/java_render`, shared `SessionIcons`: native GUI model/tint/special factories integrated, with authoritative component patches and scoped workers. **Remaining:** active equipment poses, non-humanoid/head/trim layers, owner/world predicates, animation and full pack layering | Inspected Linux vanilla icons, component updates, chest transfers, unload/revisit and reconnect; idle held and remote humanoid equipment now inspected offline; full reload/iOS acceptance still pending |
 | Inventory/menu actions | `inventory/java`, `client-ui/ui_runtime/java_inventory`, `app/session/java_inventory`: finish outside/cursor drop, offhand swaps and required specialized menus; preserve state/incarnation fencing | Controlled accepted/rejected transfers, rapid menu replacement and authoritative counts |
-| Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: custom skins/non-idle poses, representative mobs/projectiles/NPCs, ranged/shield/use; ordinary remote armor/held and basic two-client damage/death/respawn now pass controlled offline evidence | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
-| Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; remaining placement/offhand precedence, specialized/continuous uses and Adventure predicates | Actual inputs, denied-action recovery and server state |
+| Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: custom skins/non-idle poses, representative mobs/projectiles/NPCs, ranged presentation and active poses; ordinary offhand shielding/use and remote armor/held and basic two-client damage/death/respawn now pass controlled offline evidence | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
+| Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; basic both-hand block/entity/air precedence and active-use lifetime now pass controlled vanilla; remaining specialized uses, dynamic same-item component refresh, target-slot fallthrough and Adventure predicates | Actual inputs, denied-action recovery and server state |
 | Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: chat/command/ack signing, suggestions and remaining rich text/HUD surfaces | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
 | Packs and transitions | Native session/configuration and resource ownership: transfer consent/destination, full Java pack offer/application/status, stale work retirement | Controlled reconfiguration/backend changes, reload and world/session cleanup |
 | iOS actions | Existing semantic/touch/menu/text paths: connect every implemented Java action, text input, safe-area and background release | Shared input fixtures now; actual device flow remains external acceptance |
@@ -128,8 +128,13 @@ local disk, while its actual verified Runtime/generator reproduced the pinned re
 
 ## Active item-use integration checkpoint (2026-11-05)
 
-The existing ordered native controller now starts supported main-hand consumables, bows
-and base blocking components. Exact target defaults/patches, hunger, ammo, cooldowns and
+The existing ordered native controller now starts supported main/offhand consumables, bows
+and base blocking components. A single bounded click chain follows native main-target/air,
+then off-target/air ordering; it preserves the captured hand, rotation and entity hit.
+Entity interaction uses the target version’s single hit-bearing packet, without a prediction
+sequence. Removed/reused entity identities retire the entire unsent chain, including air
+fallthrough. Generated living-method ownership, server food tags and native pig/riding
+precedence prevent feeding from incorrectly becoming eating. Exact target defaults/patches, hunger, ammo, cooldowns and
 use effects choose native local intent; the server alone changes inventory/effects. A
 pinned declaring-method report (1286 blocks/1658 items) permits guaranteed ordinary
 UseOn PASS -> UseItem fallback; block/item overrides are not guessed to pass. Its original
@@ -138,11 +143,21 @@ The report is source-bundled, with no extra player-side runtime export.
 
 One client timer follows the world/movement/interaction loan between frames. It advances
 cooldowns and effect durations even while collision/rendering waits. Native use slowdown
-and sprint restrictions feed the same movement simulation. Early release, slot changes
+and sprint restrictions feed the same movement simulation. Early release, main-hand slot changes
 and inventory focus queue native RELEASE_USE_ITEM (neutral hit, sequence0) before later
-movement/selection. Mining cannot bank time while using an item. Native living-use flags
+movement/selection. Mining cannot bank time while using an item. Offhand use survives main-hotbar changes and shield wear. Same-authority teleport corrections
+retire stale clicks/mining while preserving an admitted item hold; focus/death/session
+boundaries still release it. Native living-use flags
 and USE_ITEM_COMPLETE=9 are admitted with existing session/epoch protection. Local elapsed
-duration never invents server completion, item consumption or a transaction acknowledgement.
+duration never invents server completion, item consumption or a transaction acknowledgement. Controlled Linux vanilla acceptance now covers
+offhand food/placement and rejection, chest/secondary-use precedence, actual player-target
+shield use and a peer attack (server shield wear with unchanged health), offhand pig feeding
+(server breeding state and carrot count), menu/replacement cancellation, mirrored eating,
+teleport continuity, dimension changes, reconnect and main-hand food/bow regression.
+The native graphical build, gameplay Cargo test compilation, 67 focused source tests and
+architecture gate pass. Full Cargo/MCP execution remains incomplete. Cold hand-artwork
+readiness and active shield/remote poses, full target-equipment fallthrough and dynamic
+same-item use-component refresh remain gaps. These results do not qualify iOS or Hypixel.
 Native eating/drinking arm transforms use existing held geometry/GPU ownership.
 
 Controlled official26.3/protocol777, Linux Xvfb91/Mesa lavapipe: real chest pickup/place

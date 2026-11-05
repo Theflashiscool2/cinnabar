@@ -34,7 +34,11 @@ pub(super) fn pick(
     let mut nearest = block.map_or_else(|| distance(to), |b| distance(b.position));
     let mut selected = block
         .filter(|b| distance(b.position) < block_range)
-        .map(Target::Block);
+        .map(|hit| Target::Block {
+            hit,
+            secondary: context.1,
+            rotation: Some(context.0),
+        });
     if state.status.mode == Some(world::java::hud::GameMode::Spectator) {
         return None;
     }
@@ -111,32 +115,6 @@ pub(super) fn pick(
         }
     }
     selected
-}
-
-/// A pig's item-consuming interactions do not also dispatch an air use. The active-use
-/// and special-component prediction gaps remain explicit; only ordinary instant fallback
-/// is admitted by the existing item policy. Native players return PASS.
-pub(super) fn allows_instant_fallback(state: &client_world::java::WorldState, id: i32) -> bool {
-    if !state
-        .entities
-        .get(id)
-        .is_some_and(|e| e.visual.pig.is_some())
-    {
-        return true;
-    }
-    let Some(Some(stack)) = state.inventory.held() else {
-        return false;
-    };
-    let Some(id) = java_protocol::target::ITEM_TYPES
-        .iter()
-        .position(|name| *name == stack.item)
-    else {
-        return false;
-    };
-    !java_protocol::target::ITEM_USE_DEFAULTS[id].pig_interaction_may_consume
-        && !stack
-            .added
-            .contains_key(java_protocol::target::ITEM_COMPONENT_EQUIPPABLE)
 }
 
 fn distance_to(from: [f64; 3], to: [f64; 3]) -> f64 {
@@ -281,7 +259,10 @@ mod tests {
             face: selection::Face::North,
             inside: false,
         };
-        assert!(matches!(query(&s, 3., Some(block)), Some(Target::Block(_))));
+        assert!(matches!(
+            query(&s, 3., Some(block)),
+            Some(Target::Block { .. })
+        ));
         s.entities
             .update((7, 1), 99, |e| {
                 e.visual.pose = "crouching".into();

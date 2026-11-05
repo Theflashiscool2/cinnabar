@@ -82,8 +82,8 @@ impl Interaction {
     ) -> bool {
         self.0
             .maintain_use(state, state.inventory.cooldowns.client_tick(), release);
-        if !release && self.0.server_use_requested() == Some(false) {
-            match item::resume(state) {
+        if !release && let Some(hand) = self.0.server_use_requested() {
+            match item::resume(state, hand) {
                 Ok(plan) => self.0.resume_server_use(state, plan),
                 Err(error) => self.0.blocked = Some(error.into()),
             }
@@ -98,7 +98,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}) }})),"queued_actions":self.0.queued_actions,"mining":self.0.mining_progress().map(|(h,p)|serde_json::json!({"hit":hit(h),"progress":p})),"using_item":self.0.using_item(),"use_ticks":self.0.use_ticks(),"use_effects":self.0.use_effects().map(|e|serde_json::json!({"speed":e.speed_multiplier,"sprint":e.can_sprint})),"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"native_mining_main_hand_use_release_and_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.1.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"hand":format!("{:?}",r.hand),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) | RequestTarget::Entity(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}), RequestTarget::Entity(e) => serde_json::json!({"entity":e.network_id,"lifetime":e.lifetime,"location":e.location,"secondary":e.secondary}) }})),"queued_actions":self.0.queued_actions,"mining":self.0.mining_progress().map(|(h,p)|serde_json::json!({"hit":hit(h),"progress":p})),"using_item":self.0.using_item(),"using_hand":self.0.using_hand().map(|hand|format!("{hand:?}")),"use_ticks":self.0.use_ticks(),"use_effects":self.0.use_effects().map(|e|serde_json::json!({"speed":e.speed_multiplier,"sprint":e.can_sprint})),"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"native_mining_both_hand_block_entity_air_use_release_and_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.0.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -151,7 +151,7 @@ pub(crate) fn update(
     );
     let chosen = target.as_ref().ok().copied().flatten();
     let hit = chosen.and_then(|t| match t {
-        Target::Block(h) => Some(h),
+        Target::Block { hit, .. } => Some(hit),
         _ => None,
     });
     interaction.1.capture_target(state, &input.0, chosen);
@@ -232,72 +232,18 @@ pub(crate) fn update(
                     return;
                 }
                 let captured = interaction.1.target();
-                if pressed
-                    && let Some(Target::Entity {
-                        network_id,
-                        identity,
-                        lifetime,
-                        location,
-                        rotation,
-                        secondary,
-                    }) = captured
-                {
-                    if state
-                        .entities
-                        .get(network_id)
-                        .is_some_and(|e| e.identity == identity && e.transport_lifetime == lifetime)
-                    {
-                        match java.command(Command::UseEntity {
-                            dimension_epoch: identity.epoch,
-                            correction_sequence: state.motion_sequence(),
-                            lifetime,
-                            action: java_protocol::session::interaction::EntityUse {
-                                entity: network_id,
-                                hand: Hand::Main,
-                                location,
-                                secondary,
-                            },
-                        }) {
-                            Ok(()) => interaction.1.entity_use_queued(),
-                            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-                                interaction.0.blocked = Some(
-                                    "Java entity use is waiting for transport capacity".into(),
-                                );
-                                return;
-                            }
-                            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-                                interaction.0.blocked =
-                                    Some("Java entity use transport closed".into());
-                                return;
-                            }
-                        }
-                        let (phase, _) = interaction.1.consume_use(pressed);
-                        // Ordinary instant item fallback stays on the same click-time ray. Active
-                        // use/offhand prediction remains unsupported; never consume locally.
-                        if entity::allows_instant_fallback(state, network_id)
-                            && item::instant(state) == Ok(true)
-                        {
-                            advance_use(
-                                &mut interaction.0,
-                                state,
-                                phase,
-                                Some(Target::Air { rotation }),
-                            );
-                        } else {
-                            interaction.0.use_target(state, phase, Ok(None));
-                        }
-                        continue;
-                    }
-                    interaction.1.consume_use(pressed);
-                    continue;
-                }
                 let (phase, _) = interaction.1.consume_use(pressed);
                 advance_use(&mut interaction.0, state, phase, captured);
             }
             Some(Intent::Slot(_) | Intent::Cycle(_)) => {
+                // Resolve first: selecting the current slot is a native no-op,
+                // and must not release item use or abort ongoing mining.
+                let Some(selection) = interaction.1.selection(state) else {
+                    continue;
+                };
                 interaction
                     .0
-                    .maintain_use(state, state.inventory.cooldowns.client_tick(), true);
+                    .prepare_selection(state, state.inventory.cooldowns.client_tick());
                 if !send_pending(java, state, &mut interaction.0) {
                     return;
                 }
@@ -305,9 +251,6 @@ pub(crate) fn update(
                 {
                     return;
                 }
-                let Some(selection) = interaction.1.selection(state) else {
-                    continue;
-                };
                 match java.command(Command::Select {
                     dimension_epoch: selection.epoch,
                     sequence: selection.sequence,
@@ -352,38 +295,16 @@ fn advance_use(
         interaction.use_target(state, phase, Ok(None));
         return;
     }
-    let plan = item::plan(state);
-    let fallback = if let Some(Target::Block(hit)) = target {
-        let rotation = state.player_motion.map(|m| [m.yaw, m.pitch]);
-        let allowed = item::block_passes(state, hit) == Ok(true);
-        rotation
-            .filter(|_| allowed)
-            .zip(plan.as_ref().ok().copied())
-    } else {
-        None
-    };
-    let target = match target {
-        Some(Target::Block(hit)) => Ok(Some(RequestTarget::Block(hit))),
-        Some(Target::Air { rotation }) => plan
-            .as_ref()
-            .map(|p| p.send.then_some(RequestTarget::Air(rotation)))
-            .map_err(|e| *e),
-        // Presses were admitted by the entity branch above; a release has no entity packet.
-        Some(Target::Entity { .. }) => Ok(None),
-        None => Err("Native item use requires a loaded targeting snapshot"),
-    };
+    if !interaction.use_due(phase) {
+        return;
+    }
+    let steps = item::steps(state, target);
     if phase.pressed
-        && let Err(error) = target
+        && let Err(error) = steps
     {
-        bevy::log::warn!(target: "java_session", error, "Native item use rejected before transport");
+        bevy::log::warn!(target:"java_session",error,"Native item use rejected before transport");
     }
-    interaction.use_target(state, phase, target);
-    if let Ok(plan) = plan {
-        interaction.prepare_use(state, plan);
-    }
-    if let Some((rotation, plan)) = fallback {
-        interaction.prepare_use_fallback(state, rotation, plan);
-    }
+    interaction.use_chain(state, phase, steps);
 }
 
 /// Keeps the captured action unchanged until the bounded transport accepts it.
@@ -392,6 +313,9 @@ pub(super) fn send_pending(
     state: &client_world::java::WorldState,
     interaction: &mut gameplay::java::interaction::Controller,
 ) -> bool {
+    if !interaction.validate_use_entity(state) {
+        return true;
+    }
     let Some(request) = interaction.pending() else {
         return true;
     };
@@ -407,6 +331,17 @@ pub(super) fn send_pending(
         }
     }
     let command = match (request.kind, request.target) {
+        (Kind::UseEntity, RequestTarget::Entity(target)) => Command::UseEntity {
+            dimension_epoch: request.dimension_epoch,
+            correction_sequence: request.correction_sequence,
+            lifetime: target.lifetime,
+            action: java_protocol::session::interaction::EntityUse {
+                entity: target.network_id,
+                hand: protocol_hand(request.hand),
+                location: target.location,
+                secondary: target.secondary,
+            },
+        },
         (Kind::ReleaseUse, _) => Command::Interact {
             dimension_epoch: request.dimension_epoch,
             correction_sequence: request.correction_sequence,
@@ -416,7 +351,7 @@ pub(super) fn send_pending(
             dimension_epoch: request.dimension_epoch,
             correction_sequence: request.correction_sequence,
             action: java_protocol::session::interaction::UseItem {
-                hand: Hand::Main,
+                hand: protocol_hand(request.hand),
                 sequence: request.sequence,
                 rotation,
             },
@@ -438,7 +373,7 @@ pub(super) fn send_pending(
                     dimension_epoch: request.dimension_epoch,
                     correction_sequence: request.correction_sequence,
                     action: UseOn {
-                        hand: Hand::Main,
+                        hand: protocol_hand(request.hand),
                         position: hit.block,
                         face,
                         cursor: std::array::from_fn(|i| {
@@ -478,7 +413,7 @@ pub(super) fn send_pending(
     match java.command(command) {
         Ok(()) => {
             interaction.queued();
-            // The only follow-up is one guaranteed block PASS -> air request.
+            // One captured click has at most four ordered main/offhand target/air stages.
             return send_pending(java, state, interaction);
         }
         Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
@@ -489,6 +424,13 @@ pub(super) fn send_pending(
         }
     }
     false
+}
+
+fn protocol_hand(hand: gameplay::java::item_use::plan::Hand) -> Hand {
+    match hand {
+        gameplay::java::item_use::plan::Hand::Main => Hand::Main,
+        gameplay::java::item_use::plan::Hand::Off => Hand::Off,
+    }
 }
 
 /// Captures click-time native outline authority; hotbar selection needs no geometry fallback.

@@ -59,7 +59,7 @@ impl Authority {
         if !self.interaction.prepare_movement(
             &self.java,
             &self.world,
-            !self.interaction.1.held_use().held || self.world.inventory.opened.is_some(),
+            !self.interaction.1.use_button_down() || self.world.inventory.opened.is_some(),
         ) {
             return;
         }

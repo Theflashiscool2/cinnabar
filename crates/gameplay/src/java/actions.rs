@@ -24,7 +24,11 @@ pub struct Selection {
 }
 #[derive(Clone, Copy)]
 pub enum Target {
-    Block(Hit),
+    Block {
+        hit: Hit,
+        secondary: bool,
+        rotation: Option<[f32; 2]>,
+    },
     Air {
         rotation: [f32; 2],
     },
@@ -58,13 +62,20 @@ pub struct Controller {
     pub blocked: Option<&'static str>,
     pub selected: Option<Target>,
     pub entity_attacks_queued: u64,
-    pub entity_uses_queued: u64,
 }
 impl Controller {
     /// Captures a finalized frame once. Authority changes retire only unsent intent;
     /// write receipts remain ordered with server selection corrections in the inventory owner.
     pub fn capture(&mut self, state: &WorldState, input: &FinalizedInput, hit: Option<Hit>) {
-        self.capture_target(state, input, hit.map(Target::Block));
+        self.capture_target(
+            state,
+            input,
+            hit.map(|hit| Target::Block {
+                hit,
+                secondary: input.phase(Action::Sneak).held,
+                rotation: state.player_motion.map(|m| [m.yaw, m.pitch]),
+            }),
+        );
     }
     /// Keeps native block/entity choice with its physical input edge through backpressure.
     pub fn capture_target(
@@ -90,7 +101,17 @@ impl Controller {
             || state.awaiting_correction_ack()
             || state.death.is_some()
         {
+            // ClientPacketListener.handleMovePlayer retires block prediction and
+            // breaking, not an admitted held item use. Keep that level through a
+            // same-authority correction while discarding stale click targets.
+            let keep_use = self.use_held
+                && self.authority == authority
+                && snapshot.is_some_and(|s| !s.authority_released)
+                && input.phase(Action::Use).held
+                && state.death.is_none()
+                && state.vitals.as_ref().is_some_and(|v| v.health > 0.);
             self.retire();
+            self.use_held = keep_use;
         }
         self.authority = authority;
         self.correction = state.motion_sequence();
@@ -170,7 +191,14 @@ impl Controller {
     }
     #[cfg(test)]
     fn append(&mut self, values: impl IntoIterator<Item = Intent>, hit: Option<Hit>) {
-        self.append_target(values, hit.map(Target::Block));
+        self.append_target(
+            values,
+            hit.map(|hit| Target::Block {
+                hit,
+                secondary: false,
+                rotation: None,
+            }),
+        );
     }
     fn append_target(&mut self, values: impl IntoIterator<Item = Intent>, target: Option<Target>) {
         for value in values {
@@ -186,10 +214,6 @@ impl Controller {
     /// A successful channel write records intent only, never authoritative damage.
     pub fn entity_attack_queued(&mut self) {
         self.entity_attacks_queued = self.entity_attacks_queued.saturating_add(1);
-    }
-    /// A local write count, not evidence of the server accepting an interaction.
-    pub fn entity_use_queued(&mut self) {
-        self.entity_uses_queued = self.entity_uses_queued.saturating_add(1);
     }
     /// No later action can pass a selection until its ordered socket receipt is admitted.
     pub fn front(&mut self, state: &WorldState) -> Option<Intent> {
@@ -221,7 +245,7 @@ impl Controller {
                 released: !pressed,
             },
             consumed.target.and_then(|t| match t {
-                Target::Block(h) => Some(h),
+                Target::Block { hit, .. } => Some(hit),
                 Target::Entity { .. } | Target::Air { .. } => None,
             }),
         )
@@ -238,7 +262,7 @@ impl Controller {
                 released: !pressed,
             },
             consumed.target.and_then(|t| match t {
-                Target::Block(h) => Some(h),
+                Target::Block { hit, .. } => Some(hit),
                 Target::Entity { .. } | Target::Air { .. } => None,
             }),
         )
@@ -287,6 +311,11 @@ impl Controller {
             held: self.held && self.queue.is_empty() && self.waiting.is_none(),
             ..Default::default()
         }
+    }
+    /// Last ordered button state. A hotbar write barrier pauses repeated clicks,
+    /// but does not mean the user released an already active offhand item.
+    pub fn use_button_down(&self) -> bool {
+        self.use_held
     }
     pub fn held_use(&self) -> ActionPhase {
         ActionPhase {

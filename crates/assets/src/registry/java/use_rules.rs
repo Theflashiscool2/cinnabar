@@ -15,6 +15,7 @@ pub struct Block {
 pub struct Item {
     pub on_owner: String,
     pub air_owner: String,
+    pub living_owner: String,
 }
 #[derive(Debug)]
 pub struct Table {
@@ -26,7 +27,7 @@ struct Report {
     version: String,
     protocol: i32,
     blocks: Vec<(String, bool, bool)>,
-    items: Vec<(String, String, String)>,
+    items: Vec<(String, String, String, String)>,
 }
 impl Table {
     pub fn load(bytes: &[u8]) -> Result<Self, Error> {
@@ -67,16 +68,18 @@ impl Table {
                 return Err(Error("block identity"));
             }
         }
-        for (name, on_owner, air_owner) in report.items {
+        for (name, on_owner, air_owner, living_owner) in report.items {
             if !name.starts_with("minecraft:")
                 || on_owner.is_empty()
                 || air_owner.is_empty()
+                || living_owner.is_empty()
                 || items
                     .insert(
                         name,
                         Item {
                             on_owner,
                             air_owner,
+                            living_owner,
                         },
                     )
                     .is_some()
@@ -110,6 +113,12 @@ mod tests {
         assert_eq!(t.item("minecraft:bow").unwrap().air_owner, "BowItem");
         assert_eq!(t.item("minecraft:apple").unwrap().on_owner, "Item");
         assert_eq!(t.item("minecraft:potion").unwrap().on_owner, "PotionItem");
+        assert_eq!(t.item("minecraft:iron_sword").unwrap().living_owner, "Item");
+        assert_eq!(
+            t.item("minecraft:name_tag").unwrap().living_owner,
+            "NameTagItem"
+        );
+        assert_eq!(t.item("minecraft:red_dye").unwrap().living_owner, "DyeItem");
         assert!(t.item("fixture:item").is_none());
         assert!(Table::load(b"{}").is_err());
     }

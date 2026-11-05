@@ -4,10 +4,20 @@ use super::Defaults;
 use assets::registry::java::items::defaults;
 use inventory::java::{Slot, Stack, cooldown::Cooldowns};
 use serde_json::Value;
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Hand {
+    #[default]
     Main,
     Off,
+}
+impl Hand {
+    /// Unknown and known-empty remain distinct for either authoritative hand.
+    pub fn held(self, inventory: &inventory::java::State) -> Option<&Slot> {
+        match self {
+            Self::Main => inventory.held(),
+            Self::Off => inventory.slot(0, inventory::java::OFFHAND_MENU_SLOT),
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum End {
