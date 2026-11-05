@@ -13,6 +13,7 @@ pub(super) struct Projection {
     opened: Option<MenuView>,
     player_carried: Option<Slot>,
     identity: Option<inventory::java::pickup::MenuIdentity>,
+    text: tooltip::Cache,
 }
 
 /// Artwork and counts admitted for a native frame. Missing artwork never hides counts.
@@ -50,6 +51,16 @@ impl UiRuntime {
         {
             return false;
         }
+        if self
+            .session
+            .java_item_names
+            .as_ref()
+            .is_some_and(|old| std::sync::Arc::ptr_eq(old, &names))
+        {
+            return true;
+        }
+        self.session.java_inventory.text =
+            tooltip::Cache::build(&self.session.java_inventory, Some(&names));
         self.session.java_item_names = Some(names);
         true
     }
@@ -86,6 +97,7 @@ impl UiRuntime {
             self.session.java_inventory_error = None;
         }
         self.session.java_inventory = Projection {
+            text: Default::default(),
             key: Some(key),
             hotbar: std::array::from_fn(|i| world.inventory.slot(0, HOTBAR_START + i).cloned()),
             offhand: world.inventory.slot(0, OFFHAND_MENU_SLOT).cloned(),
@@ -110,6 +122,10 @@ impl UiRuntime {
                 })
             }),
         };
+        self.session.java_inventory.text = tooltip::Cache::build(
+            &self.session.java_inventory,
+            self.session.java_item_names.as_deref(),
+        );
         true
     }
     /// Only implemented layouts are offered; specialized station rules remain explicit.
@@ -146,16 +162,20 @@ impl UiRuntime {
     ) -> Option<ui_screens::containers::NativeInventory> {
         self.java_hud()?;
         let projection = &self.session.java_inventory;
-        let cells = |slots: &[Option<Slot>]| {
+        let cells = |slots: &[Option<Slot>], texts: &[String]| {
             slots
                 .iter()
-                .map(|s| cell(s, artwork, self.session.java_item_names.as_deref()))
+                .enumerate()
+                .map(|(i, s)| cell(s, artwork, texts.get(i).map_or("", String::as_str)))
                 .collect()
         };
         Some(ui_screens::containers::NativeInventory {
-            player: cells(&projection.player),
+            player: cells(&projection.player, &projection.text.player),
             container: projection.opened.as_ref().map_or_else(Vec::new, |m| {
-                cells(&m.slots[..m.slots.len().saturating_sub(36)])
+                cells(
+                    &m.slots[..m.slots.len().saturating_sub(36)],
+                    &projection.text.opened,
+                )
             }),
             cursor: cell(
                 &projection
@@ -163,7 +183,11 @@ impl UiRuntime {
                     .as_ref()
                     .map_or_else(|| projection.player_carried.clone(), |m| m.carried.clone()),
                 artwork,
-                self.session.java_item_names.as_deref(),
+                if projection.opened.is_some() {
+                    &projection.text.opened_carried
+                } else {
+                    &projection.text.player_carried
+                },
             ),
         })
     }
@@ -284,16 +308,15 @@ impl HudItem {
 #[cfg(test)]
 mod tests;
 
+mod tooltip;
+
 fn cell(
     slot: &Option<Slot>,
     artwork: &UiPresentationRuntime,
-    names: Option<&assets::registry::java::language::Language>,
+    hover: &str,
 ) -> ui_screens::containers::NativeCell {
     let visual = item(slot, artwork);
-    let name = slot
-        .as_ref()
-        .and_then(|s| s.as_ref())
-        .map_or_else(String::new, |stack| stack_name(stack, names));
+    let name = hover.to_owned();
     ui_screens::containers::NativeCell {
         known: visual.known,
         count: visual.count,
