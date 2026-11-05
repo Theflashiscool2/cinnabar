@@ -603,6 +603,15 @@ fn slot_index(
 ) -> Option<usize> {
     use ui_screens::container_actions::InventoryCellHit;
     Some(match (hit, slots) {
+        (InventoryCellHit::Armor(slot), None) if slot < 4 => 5 + usize::from(slot),
+        (InventoryCellHit::Craft(slot), None)
+            if (ui_screens::containers::PERSONAL_CRAFT_SLOT
+                ..ui_screens::containers::PERSONAL_CRAFT_SLOT + 4)
+                .contains(&slot) =>
+        {
+            1 + usize::from(slot - ui_screens::containers::PERSONAL_CRAFT_SLOT)
+        }
+        (InventoryCellHit::CraftOutput, None) => 0,
         (InventoryCellHit::Offhand, None) => OFFHAND_MENU_SLOT,
         (InventoryCellHit::Player(slot), None) if slot < 9 => 36 + usize::from(slot),
         (InventoryCellHit::Player(slot), None) if slot < 36 => usize::from(slot),

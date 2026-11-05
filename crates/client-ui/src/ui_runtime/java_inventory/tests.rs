@@ -617,3 +617,25 @@ fn native_server_menu_row_count_preserves_last_slot_and_player_aliases() {
         assert_eq!(world.inventory.slot(0, 36), Some(&stack(11)));
     }
 }
+
+#[test]
+fn personal_equipment_and_crafting_hit_contract_maps_only_into_the_player_menu() {
+    use ui_screens::container_actions::InventoryCellHit as Hit;
+    for (hit, expected) in [
+        (Hit::CraftOutput, 0),
+        (Hit::Craft(28), 1),
+        (Hit::Craft(29), 2),
+        (Hit::Craft(30), 3),
+        (Hit::Craft(31), 4),
+        (Hit::Armor(0), 5),
+        (Hit::Armor(1), 6),
+        (Hit::Armor(2), 7),
+        (Hit::Armor(3), 8),
+    ] {
+        assert_eq!(slot_index(hit, None), Some(expected));
+        assert_eq!(slot_index(hit, Some(27)), None);
+    }
+    for hit in [Hit::Armor(4), Hit::Craft(27), Hit::Craft(32)] {
+        assert_eq!(slot_index(hit, None), None);
+    }
+}

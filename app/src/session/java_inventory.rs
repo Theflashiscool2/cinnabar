@@ -126,10 +126,14 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
         | Intent::Throw { slot, .. } => slot,
         Intent::Close | Intent::QuickCraft { .. } | Intent::DropCursor { .. } => unreachable!(),
     };
-    let (revision, carried) = state.observe_storage_slot(id, slot)?;
-    if let Intent::Pickup { button, .. } = input.intent {
+    let (revision, carried) = state.observe_click_slot(id, slot)?;
+    if let Intent::Pickup { button, .. } = input.intent
+        && (id.container != 0 || slot >= 9)
+    {
         state.plan_pickup(id, slot, button, max_stack)?;
     }
+    // Reserved personal slots use the SAME observed click packet below. Only
+    // authoritative recipe/equipment/curse rules may move their stacks.
     // Throw applies only to a hovered slot with an empty cursor. Never misreport a cursor drop.
     if matches!(input.intent, Intent::Throw { .. }) && carried.is_some() {
         return Err("Place the carried stack before dropping a hovered item".into());

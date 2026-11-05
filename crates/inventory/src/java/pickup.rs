@@ -85,6 +85,22 @@ impl State {
                 .ok_or("Java carried stack is unknown")?,
         ))
     }
+    /// Native personal crafting/equipment clicks are executed by the server. Do not
+    /// apply ordinary storage merge rules to output, recipe inputs or armor slots.
+    pub fn observe_click_slot(
+        &self,
+        identity: MenuIdentity,
+        slot: usize,
+    ) -> Result<(i32, &Slot), String> {
+        if identity.container != 0 || slot >= 9 {
+            return self.observe_storage_slot(identity, slot);
+        }
+        if self.active_identity() != Some(identity) {
+            return Err("Java container lifetime is no longer current".into());
+        }
+        self.slot(0, slot).ok_or("Java personal slot is unknown")?;
+        self.observe_carried(identity)
+    }
     /// Validates a current ordinary storage slot without predicting any item movement.
     /// Server quick-move/swap/throw rules remain authoritative; unknown/specialized slots refuse.
     pub fn observe_storage_slot(

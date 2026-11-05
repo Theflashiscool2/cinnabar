@@ -165,3 +165,37 @@ fn local_selection_receipts_and_server_corrections_share_one_ordered_inventory()
     assert_eq!(state.selection_receipt, None);
     assert_eq!(state.selected, Some(0));
 }
+
+#[test]
+fn personal_reserved_clicks_are_observed_without_storage_predictions_or_cross_menu_reuse() {
+    let mut s = state();
+    let id = s.active_identity().unwrap();
+    assert!(s.observe_click_slot(id, 5).is_err());
+    apply(
+        &mut s,
+        Update::Content {
+            container: 0,
+            state: 17,
+            slots: vec![None; 46],
+            carried: item("minecraft:dirt", 4),
+        },
+    );
+    let before = serde_json::to_value(&s).unwrap();
+    for slot in 0..9 {
+        let (revision, carried) = s.observe_click_slot(id, slot).unwrap();
+        assert_eq!(revision, 17);
+        assert_eq!(carried, &item("minecraft:dirt", 4));
+        assert!(
+            s.plan_pickup(id, slot, pickup::Button::Left, |_| Ok(64))
+                .is_err()
+        );
+    }
+    assert_eq!(serde_json::to_value(&s).unwrap(), before);
+    assert!(s.observe_click_slot(id, 46).is_err());
+    open(&mut s, 4);
+    assert!(s.observe_click_slot(id, 5).is_err());
+    let foreign = s.active_identity().unwrap();
+    assert!(s.observe_click_slot(foreign, 5).is_err()); // unknown contents
+    s.begin(7, 3);
+    assert!(s.observe_click_slot(foreign, 5).is_err());
+}

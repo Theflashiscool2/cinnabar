@@ -31,7 +31,7 @@ use crate::{book_screen, furnace_book, recipe_book};
 use inventory::inventory_ledger::InventoryTarget;
 
 /// First UI inventory slot of the personal 2x2 and the workbench 3x3 grids.
-const PERSONAL_CRAFT_SLOT: u8 = 28;
+pub const PERSONAL_CRAFT_SLOT: u8 = 28;
 const WORKBENCH_CRAFT_SLOT: u8 = 32;
 mod held_stack;
 #[cfg(test)]

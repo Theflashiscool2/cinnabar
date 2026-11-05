@@ -183,3 +183,11 @@ instead of the optional effect-color map. Linux vanilla26.3 lavapipe acceptance 
 chest transfers, water/swiftness drinks and server effects, mud conversion, custom-effect water
 without conversion, long-drink cancellation, chest precedence and reconnect. No item/effect was
 awarded locally. Potion-specific names/effect tooltip lines and iOS/online/Hypixel remain open.
+
+Personal Java crafting inputs/output and armor cells now route existing shared UI hits into
+the same native observed-click transactions. Recipe, equipment and curse rules remain on the
+server; reserved slots never use ordinary storage merge prediction. Inspected Linux vanilla26.3
+acceptance passed actual chest acquisition, one log→four planks with three logs retained,
+helmet/chestplate equip and armorHUD8, rejected dirt→armor preserving eight, close/reopen and
+reconnect. Slot icons/HUD are accepted; the avatar preview still lacks Java equipment.
+Specialized workstations, recipe-book placement, armor dragging and iOS/Hypixel remain open.
