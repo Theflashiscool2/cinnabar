@@ -73,6 +73,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    ChatMessage {
+        dimension_epoch: u64,
+        sequence: u64,
+        text: String,
+    },
     ChatCommand {
         dimension_epoch: u64,
         sequence: u64,
@@ -181,6 +186,7 @@ struct Connection {
     events: mpsc::Sender<Envelope>,
     ingress: ingress::Ingress,
     configuration: Configuration,
+    chat: chat::State,
     profile: auth::Profile,
     server_session: uuid::Uuid,
     cookies: BTreeMap<String, Vec<u8>>,
@@ -260,6 +266,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         events,
         ingress: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
         configuration: Configuration::default(),
+        chat: Default::default(),
         profile,
         server_session: uuid::Uuid::nil(),
         cookies: BTreeMap::new(),

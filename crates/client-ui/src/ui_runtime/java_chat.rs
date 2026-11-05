@@ -36,7 +36,7 @@ impl UiRuntime {
         let age = tick.saturating_sub(message.received_tick);
         let received = now.saturating_sub(age.saturating_mul(50));
         if message.overlay {
-            // Gui.setOverlayMessage:60 ticks, alpha fades over the last20.
+            // Hud.setOverlayMessage:60 ticks, alpha fades over the last20.
             if age < 60 {
                 self.session.hud.set_timed_actionbar(
                     value,

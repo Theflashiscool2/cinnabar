@@ -64,6 +64,25 @@ impl Connection {
                 r.finish().map_err(packet_error)?;
                 continue;
             }
+            if matches!(
+                *name,
+                "ClientboundPlayerChatPacket"
+                    | "ClientboundDisguisedChatPacket"
+                    | "ClientboundDeleteChatPacket"
+            ) {
+                let message = self
+                    .chat
+                    .receive(name, &mut r, &self.configuration)
+                    .map_err(packet_error)?;
+                r.finish().map_err(packet_error)?;
+                if let Some(message) = message {
+                    self.emit(Event::SystemChat(message)).await?;
+                }
+                if let Some(bytes) = self.chat.acknowledgement() {
+                    self.send("ServerboundChatAckPacket", &bytes).await?;
+                }
+                continue;
+            }
             if let Some(message) = chat::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 self.emit(Event::SystemChat(message)).await?;
@@ -208,6 +227,7 @@ impl Connection {
                         .dimension_epoch
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
+                    self.chat.secure = world.secure_chat;
                     self.dead = false;
                     self.loaded_epoch = None;
                     self.cancelled_use.clear();
@@ -351,8 +371,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundDebugEntityValuePacket",
     "ClientboundDebugEventPacket",
     "ClientboundDebugSamplePacket",
-    "ClientboundDeleteChatPacket",
-    "ClientboundDisguisedChatPacket",
     "ClientboundEntityEventPacket",
     "ClientboundExplodePacket",
     "ClientboundAddTransientBlockPacket",

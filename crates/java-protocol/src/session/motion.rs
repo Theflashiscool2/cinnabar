@@ -6,7 +6,9 @@ impl Connection {
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         // Queued input from a retired level cannot be serialized before its replacement login.
         if !self.bootstrapped {
-            if let Command::ChatCommand { sequence, .. } = command {
+            if let Command::ChatCommand { sequence, .. } | Command::ChatMessage { sequence, .. } =
+                command
+            {
                 self.emit(Event::ChatCommandSent {
                     sequence,
                     written: false,
@@ -18,6 +20,31 @@ impl Connection {
         // Ping fences incoming game events, not already ordered outbound player intent.
         // It does not change epoch or correction authority; dropping that input loses actions.
         match command {
+            Command::ChatMessage {
+                dimension_epoch,
+                sequence,
+                text,
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && self.phase == Phase::Play
+                    && !self.chat.secure;
+                if written {
+                    use rand::RngCore;
+                    let timestamp = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_err(|_| ProtocolError::Invalid("Java chat clock before epoch"))?
+                        .as_millis();
+                    let timestamp = i64::try_from(timestamp)
+                        .map_err(|_| ProtocolError::Invalid("Java chat timestamp overflow"))?;
+                    let salt = rand::rngs::OsRng.next_u64() as i64;
+                    let bytes = self.chat.unsigned(&text, timestamp, salt)?;
+                    self.send("ServerboundChatPacket", &bytes).await?;
+                } else if self.chat.secure {
+                    self.emit(Event::SystemChat(chat::System{content:crate::nbt::Value::String("This server requires signed Java chat; player-session signing is not implemented. Slash commands remain available.".into()),overlay:false})).await?;
+                }
+                self.emit(Event::ChatCommandSent { sequence, written })
+                    .await?;
+            }
             Command::ChatCommand {
                 dimension_epoch,
                 sequence,

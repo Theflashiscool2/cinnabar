@@ -44,7 +44,7 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
     if let Some((sequence, written)) = state.chat.written {
         if ui.acknowledge_chat_send(state.generation(), sequence) && !written {
             ui.push_local_chat_line(
-                "Java command was not sent because the world changed.".into(),
+                "Java chat input was not sent; see the server or connection diagnostic.".into(),
                 now,
             );
         }
@@ -70,11 +70,20 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
     let Some(dimension) = state.terrain.dimension() else {
         return true;
     };
-    match java.command(Command::ChatCommand {
-        dimension_epoch: dimension.epoch,
-        sequence: request.sequence,
-        text: command.to_owned(),
-    }) {
+    let intent = if let Some(command) = command.strip_prefix('/') {
+        Command::ChatCommand {
+            dimension_epoch: dimension.epoch,
+            sequence: request.sequence,
+            text: command.to_owned(),
+        }
+    } else {
+        Command::ChatMessage {
+            dimension_epoch: dimension.epoch,
+            sequence: request.sequence,
+            text: command.to_owned(),
+        }
+    };
+    match java.command(intent) {
         Ok(()) => {
             ui.mark_chat_send_enqueued(request.session, request.sequence);
         }
@@ -90,26 +99,25 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
     true
 }
 fn prepare(message: &str) -> Result<&str, &'static str> {
-    let command=message.strip_prefix('/').ok_or("Java player chat signing and acknowledgements are not implemented; slash commands are available.")?;
     // Native ChatScreen length and SharedConstants.isAllowedChatCharacter, distinct
     // from the packet codec's larger well-framed string limit.
-    if message.encode_utf16().count() > 256
+    if message.encode_utf16().count() > java_protocol::session::chat::PLAYER_MAX_UTF16
         || message
             .chars()
             .any(|c| c < ' ' || c == '\u{7f}' || c == '§')
     {
-        return Err("Java command contains unsupported chat input or exceeds256 UTF-16 units.");
+        return Err("Java chat input contains unsupported characters or exceeds256 UTF-16 units.");
     }
-    Ok(command)
+    Ok(message)
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn command_input_never_invents_chat_signatures_or_rewrites_user_arguments() {
-        assert_eq!(prepare("/time query daytime"), Ok("time query daytime"));
-        assert_eq!(prepare("/lobby"), Ok("lobby"));
-        assert!(prepare("hello").is_err());
+        assert_eq!(prepare("/time query daytime"), Ok("/time query daytime"));
+        assert_eq!(prepare("/lobby"), Ok("/lobby"));
+        assert_eq!(prepare("hello"), Ok("hello"));
         assert!(prepare("/help\nstop").is_err());
         assert!(prepare(&format!("/{}", "x".repeat(255))).is_ok());
         assert!(prepare(&format!("/{}", "x".repeat(256))).is_err());

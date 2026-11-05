@@ -59,11 +59,13 @@ closes no gate and provides no new runtime or performance evidence.
 
 ## Native Java Edition support — experimental
 
-Native unsigned commands/system messages/actionbars now share the existing chat UI and
-connection owner. Normal-player vanilla trigger commands, translated replies, formatted
-system text, overlay expiry and reconnect pass controlled Linux/lavapipe acceptance.
-Player-chat signing/acknowledgements, signed command arguments, suggestions and advanced
-text formatting remain required implementation; this does not qualify iOS or Hypixel.
+Native unsigned player chat, commands/system messages/actionbars share the existing chat UI
+and connection owner. Two native clients exchanging ordinary messages, server announcements,
+normal-player trigger commands, draft cancellation and reconnect pass controlled Linux/lavapipe
+acceptance. Native signature cache/window/checksum framing is implemented; trusted player-key
+verification/signing, signed command arguments, suggestions and advanced text formatting remain
+required implementation. Signed content is withheld explicitly, not presented as verified.
+This does not qualify authenticated online, iOS or Hypixel.
 
 
 The native foundation targets the single Java release/protocol pinned in

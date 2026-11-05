@@ -844,3 +844,24 @@ MIT/Apache-2.0 (and the selected alternative licenses recorded by Cargo metadata
 notices must be preserved by packaging; see the repository third-party notices
 for the pinned codec reference. The MIT codec reference retains its upstream license. No Mojang code or server
 assets are redistributed.
+
+
+## Native Java chat transport (experimental)
+
+The shared chat editor routes slash commands and ordinary text through the existing
+Java connection actor, not the Bedrock sender. Unsigned player chat uses the pinned
+256 UTF-16-unit packet, current timestamp/salt, and native last-seen update. The server's
+secure-chat requirement prevents unsigned sends; no signature or player session is forged.
+A local socket-write receipt is not server acceptance.
+
+Incoming unsigned player messages and disguised/server messages use the received
+chat-type registry (or direct holder), sender/target/content parameters and translation
+components. Partial filters address UTF-16 units. One connection owns the signature
+cache, ordered global index and acknowledgement window; reconfiguration retires that
+state. Unknown signature references and malformed packets fail explicitly.
+
+Signed-message session-key verification and signing are still missing. Such incoming
+content is withheld with an explicit diagnostic and acknowledged as **not displayed**.
+This is a limitation, not secure-chat support. Signed command arguments, suggestions,
+advanced component styles and authenticated/iOS/Hypixel acceptance remain incomplete.
+Native codec/ring reference vectors are structural evidence, not gameplay qualification.

@@ -6,6 +6,7 @@ impl Connection {
     pub(super) async fn reconfigure(&mut self) -> Result<(), Error> {
         tracing::info!(target: "java_session", generation=self.generation, dimension_epoch=self.dimension_epoch, "Java server requested configuration handoff; retiring play authority");
         let started = std::time::Instant::now();
+        self.chat = Default::default();
         self.bootstrapped = false;
         self.terrain = None;
         self.dimensions.clear();

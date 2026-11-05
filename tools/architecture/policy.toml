@@ -1432,6 +1432,11 @@ path = "examples/mods/portal-view/src/lib.rs"
 literal = "minecraft:obsidian"
 reason = "The standalone guest example supplies a concrete named block for its retained frame."
 
+[[identifier_literal_exceptions]]
+path = "crates/java-protocol/src/session/chat/player.rs"
+literal = "target"
+reason = "Pinned26.3 ChatTypeDecoration.Parameter.TARGET serializes as target in server-provided chat-type registry NBT. This dispatch selects a bound component by protocol field, not a block/item/entity identity; native codec vectors verify the parameter order."
+
 [identifier_literals]
 owners = [
     "crates/asset-compiler/src/registry_policy/",
