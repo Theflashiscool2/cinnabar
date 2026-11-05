@@ -25,9 +25,9 @@ impl Connection {
                 sequence,
                 text,
             } => {
-                let written = dimension_epoch == self.dimension_epoch
+                let mut written = dimension_epoch == self.dimension_epoch
                     && self.phase == Phase::Play
-                    && !self.chat.secure;
+                    && self.chat.can_send();
                 if written {
                     use rand::RngCore;
                     let timestamp = std::time::SystemTime::now()
@@ -37,10 +37,21 @@ impl Connection {
                     let timestamp = i64::try_from(timestamp)
                         .map_err(|_| ProtocolError::Invalid("Java chat timestamp overflow"))?;
                     let salt = rand::rngs::OsRng.next_u64() as i64;
-                    let bytes = self.chat.unsigned(&text, timestamp, salt)?;
-                    self.send("ServerboundChatPacket", &bytes).await?;
+                    match self.chat.outgoing(&text, timestamp, salt) {
+                        Ok(bytes) => self.send("ServerboundChatPacket", &bytes).await?,
+                        Err(error) => {
+                            written = false;
+                            self.emit(Event::SystemChat(chat::System {
+                                content: crate::nbt::Value::String(format!(
+                                    "Java chat was not sent: {error}"
+                                )),
+                                overlay: false,
+                            }))
+                            .await?;
+                        }
+                    }
                 } else if self.chat.secure {
-                    self.emit(Event::SystemChat(chat::System{content:crate::nbt::Value::String("This server requires signed Java chat; player-session signing is not implemented. Slash commands remain available.".into()),overlay:false})).await?;
+                    self.emit(Event::SystemChat(chat::System{content:crate::nbt::Value::String("This server requires signed Java chat; an account-bound chat certificate is not ready or unavailable. Slash commands remain available.".into()),overlay:false})).await?;
                 }
                 self.emit(Event::ChatCommandSent { sequence, written })
                     .await?;

@@ -1,4 +1,5 @@
 //! Java OAuth/Xbox/Minecraft authentication. No borrowed application ID or Bedrock tokens.
+pub(crate) mod chat;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -115,8 +116,23 @@ impl Service for HttpService {
         body: Option<Value>,
         form: bool,
     ) -> Result<Value, Error> {
+        self.request_method(stage, url, bearer, body, form, false)
+            .await
+    }
+}
+impl HttpService {
+    /// Retains the same bounded, redacted HTTP boundary for native bodyless certificate POSTs.
+    async fn request_method(
+        &self,
+        stage: &'static str,
+        url: &str,
+        bearer: Option<&str>,
+        body: Option<Value>,
+        form: bool,
+        empty_post: bool,
+    ) -> Result<Value, Error> {
         tracing::info!(target: "java_auth", stage, "authentication request started");
-        let mut request = if body.is_some() {
+        let mut request = if body.is_some() || empty_post {
             self.0.post(url)
         } else {
             self.0.get(url)
@@ -157,7 +173,7 @@ impl Service for HttpService {
                 .and_then(|v| v.to_str().ok())
                 .and_then(|s| uuid::Uuid::parse_str(s).ok())
         });
-        let mut bytes = Vec::new();
+        let mut bytes = zeroize::Zeroizing::new(Vec::new());
         while let Some(chunk) = response
             .chunk()
             .await

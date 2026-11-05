@@ -4,20 +4,57 @@ impl Connection {
     pub(super) async fn play(&mut self) -> Result<(), Error> {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
         loop {
+            let now = auth::chat::now_millis_protocol()?;
+            if self.bootstrapped
+                && self.chat_preparation.is_none()
+                && self.chat.needs_preparation(now)
+                && now >= self.chat_retry_after
+                && let Some(account) = &self.chat_account
+            {
+                self.chat_retry_after =
+                    now.saturating_add(auth::chat::MINIMUM_REFRESH_INTERVAL_MILLIS);
+                self.chat_preparation = Some(Box::pin(auth::chat::prepare(
+                    std::sync::Arc::clone(account),
+                    self.chat.online(),
+                )));
+            }
+            if self.bootstrapped
+                && let Some(bytes) = self.chat_announcement.take()
+            {
+                self.send("ServerboundChatSessionUpdatePacket", &bytes)
+                    .await?;
+            }
             let awaiting_authority = self.pending_teleport.is_some()
                 || self.pending_rotation.is_some()
                 || self.pending_ping.is_some();
-            let packet = tokio::select! {
+            let preparing_chat = self.chat_preparation.is_some() && !self.chat.has_roots();
+            let (packet, chat_replay) = tokio::select! {
                 result = async {
+                    if !awaiting_authority && !preparing_chat && let Some(frame)=self.chat_pending.pop(){
+                        return Ok((frame,true));
+                    }
                     if !awaiting_authority && let Some(frame) = self.ingress.pop() {
-                        return Ok(frame);
+                        return Ok((frame,false));
                     }
                     tokio::time::timeout_at(deadline, self.stream.read()).await
                         .map_err(|_| Error::Timeout(Phase::Play))?
-                        .map(|bytes| ingress::Frame::new(bytes)).map_err(Error::from)
-                }, if !awaiting_authority || self.ingress.can_read() => {
+                        .map(|bytes| (ingress::Frame::new(bytes),false)).map_err(Error::from)
+                }, if (!awaiting_authority || self.ingress.can_read()) && (!preparing_chat || self.chat_pending.can_read()) => {
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                     result?
+                },
+                material=async {
+                    match self.chat_preparation.as_mut(){Some(future)=>future.await,None=>std::future::pending().await}
+                }=>{
+                    self.chat_preparation=None;
+                    match material {
+                        Ok(material)=>{
+                            self.chat_announcement=self.chat.install(material,auth::chat::now_millis_protocol()?)?;
+                            tracing::info!(target:"java_auth", signing_ready=self.chat.signing_ready(),"Java chat trust preparation completed");
+                        }
+                        Err(error)=>tracing::warn!(target:"java_auth",%error,"Java chat trust preparation unavailable; authenticated game connection retained"),
+                    }
+                    continue;
                 },
                 command = async {
                     match &mut self.commands {
@@ -62,6 +99,16 @@ impl Connection {
             };
             if self.common(name, &mut r, packet.keepalive_replied).await? {
                 r.finish().map_err(packet_error)?;
+                continue;
+            }
+            if !chat_replay
+                && preparing_chat
+                && matches!(
+                    *name,
+                    "ClientboundPlayerChatPacket" | "ClientboundDeleteChatPacket"
+                )
+            {
+                self.chat_pending.push(packet);
                 continue;
             }
             if matches!(
@@ -112,16 +159,28 @@ impl Connection {
                 self.emit(Event::Scoreboard(packet)).await?;
                 continue;
             }
-            if let Some(packet) = roster::decode(name, &mut r).map_err(packet_error)? {
+            if let Some(roster_update) = roster::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(
                         ProtocolError::Invalid("player list before Java world login").into(),
                     );
                 }
-                self.emit(Event::Roster(packet)).await?;
+                if chat_replay {
+                    self.chat.observe_roster(&roster_update);
+                    continue;
+                }
+                // Rendering roster admission stays immediate. Security replays the SAME
+                // packet order with queued chat once trust discovery completes.
+                if preparing_chat {
+                    self.chat_pending.push(packet);
+                } else {
+                    self.chat.observe_roster(&roster_update);
+                }
+                self.emit(Event::Roster(roster_update)).await?;
                 continue;
             }
+
             if let Some(packet) = inventory::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
@@ -227,7 +286,19 @@ impl Connection {
                         .dimension_epoch
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
-                    self.chat.secure = world.secure_chat;
+                    let old_online = self.chat.online();
+                    self.chat_announcement = self.chat.world_login(
+                        world.online_mode,
+                        world.secure_chat,
+                        auth::chat::now_millis_protocol()?,
+                    )?;
+                    self.chat_pending = ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED);
+                    if !world.online_mode {
+                        self.chat_preparation = None;
+                    }
+                    if world.online_mode && !old_online {
+                        self.chat_retry_after = 0;
+                    }
                     self.dead = false;
                     self.loaded_epoch = None;
                     self.cancelled_use.clear();

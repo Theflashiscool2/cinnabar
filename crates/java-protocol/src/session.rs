@@ -187,6 +187,15 @@ struct Connection {
     ingress: ingress::Ingress,
     configuration: Configuration,
     chat: chat::State,
+    chat_account: Option<std::sync::Arc<auth::Account>>,
+    chat_retry_after: i64,
+    chat_preparation: Option<
+        std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<auth::chat::Material, auth::Error>> + Send>,
+        >,
+    >,
+    chat_announcement: Option<Vec<u8>>,
+    chat_pending: ingress::Ingress,
     profile: auth::Profile,
     server_session: uuid::Uuid,
     cookies: BTreeMap<String, Vec<u8>>,
@@ -267,6 +276,11 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         ingress: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
         configuration: Configuration::default(),
         chat: Default::default(),
+        chat_account: None,
+        chat_retry_after: 0,
+        chat_preparation: None,
+        chat_announcement: None,
+        chat_pending: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
         profile,
         server_session: uuid::Uuid::nil(),
         cookies: BTreeMap::new(),
@@ -291,6 +305,9 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
     tokio::time::timeout(options.login_timeout, c.login(&options))
         .await
         .map_err(|_| Error::Timeout(c.phase))??;
+    if let Identity::Online(account) = options.identity {
+        c.chat_account = Some(std::sync::Arc::new(account));
+    }
     c.play().await
 }
 impl Connection {

@@ -2,6 +2,10 @@
 //! Session-key signing and signed-message verification remain explicit unsupported paths.
 #[path = "chat/player.rs"]
 mod player;
+#[path = "chat/security.rs"]
+pub(crate) mod security;
+#[path = "chat/signing.rs"]
+mod signing;
 #[path = "chat/window.rs"]
 mod window;
 use crate::{
@@ -100,8 +104,135 @@ pub(super) struct State {
     cache: window::Cache,
     next_index: i32,
     pub secure: bool,
+    roots: Option<security::Roots>,
+    local: Option<signing::Local>,
+    cached_certificate: Option<std::sync::Arc<crate::auth::chat::Certificate>>,
+    online: bool,
+    remotes: signing::Remotes,
 }
 impl State {
+    pub fn install(
+        &mut self,
+        material: crate::auth::chat::Material,
+        now: i64,
+    ) -> Result<Option<Vec<u8>>, Error> {
+        self.remotes.install_roots(&material.roots);
+        self.roots = Some(material.roots);
+        let mut changed = false;
+        if let Some(certificate) = material.certificate
+            && certificate.expires_at >= now
+        {
+            let same = self.cached_certificate.as_ref().is_some_and(|old| {
+                old.owner == certificate.owner
+                    && old.expires_at == certificate.expires_at
+                    && old.refreshed_after == certificate.refreshed_after
+                    && old.public_der == certificate.public_der
+                    && old.signature == certificate.signature
+            });
+            if same {
+                return Ok(None);
+            }
+            changed = true;
+            let certificate = std::sync::Arc::new(certificate);
+            self.cached_certificate = Some(std::sync::Arc::clone(&certificate));
+            if self.online {
+                self.local = Some(signing::Local::new(certificate));
+            }
+        }
+        if self.online && changed {
+            self.local
+                .as_ref()
+                .map(signing::Local::announcement)
+                .transpose()
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn observe_roster(&mut self, packet: &super::roster::Packet) {
+        self.remotes.observe(packet, self.roots.as_ref());
+    }
+    pub fn online(&self) -> bool {
+        self.online
+    }
+    pub fn needs_preparation(&self, now: i64) -> bool {
+        self.roots.is_none()
+            || self.online
+                && self
+                    .cached_certificate
+                    .as_ref()
+                    .is_none_or(|c| c.refreshed_after <= now || c.expires_at < now)
+    }
+    pub fn has_roots(&self) -> bool {
+        self.roots.is_some()
+    }
+    pub fn signing_ready(&self) -> bool {
+        self.local.is_some()
+    }
+    pub fn can_send(&self) -> bool {
+        !self.secure || self.local.is_some()
+    }
+    pub fn outgoing(&mut self, text: &str, timestamp: i64, salt: i64) -> Result<Vec<u8>, Error> {
+        if self.local.is_none() {
+            if self.secure {
+                return Err(Error::Invalid(
+                    "signed Java chat certificate is unavailable",
+                ));
+            }
+            return self.unsigned(text, timestamp, salt);
+        }
+        let mut out = Vec::new();
+        crate::codec::write_string(text, PLAYER_MAX_UTF16, &mut out)?;
+        let mut pending_window = self.window.clone();
+        let (update, last_seen) = pending_window.update_with_signatures();
+        let signature = self
+            .local
+            .as_mut()
+            .unwrap()
+            .sign(text, timestamp, salt, &last_seen)?;
+        out.extend(timestamp.to_be_bytes());
+        out.extend(salt.to_be_bytes());
+        out.push(1);
+        out.extend(signature);
+        out.extend(update);
+        self.window = pending_window;
+        Ok(out)
+    }
+    /// Native handleLogin retires chat counters/session even on an existing play connection.
+    pub fn world_login(
+        &mut self,
+        online: bool,
+        secure: bool,
+        now: i64,
+    ) -> Result<Option<Vec<u8>>, Error> {
+        let roots = self.roots.take();
+        let remotes = std::mem::take(&mut self.remotes);
+        let cached_certificate = self.cached_certificate.take();
+        *self = Self {
+            roots,
+            remotes,
+            cached_certificate,
+            online,
+            secure,
+            ..Default::default()
+        };
+        if online {
+            self.local = self
+                .cached_certificate
+                .as_ref()
+                .filter(|c| c.expires_at >= now)
+                .cloned()
+                .map(signing::Local::new);
+        }
+        self.local
+            .as_ref()
+            .map(signing::Local::announcement)
+            .transpose()
+    }
+    pub fn reconfigure(&mut self) -> Result<Option<Vec<u8>>, Error> {
+        self.remotes = Default::default();
+        self.world_login(false, false, 0)
+    }
     pub fn unsigned(&mut self, text: &str, timestamp: i64, salt: i64) -> Result<Vec<u8>, Error> {
         if text.encode_utf16().count() > PLAYER_MAX_UTF16 {
             return Err(Error::Invalid("Java chat exceeds256 UTF-16 units"));
@@ -137,11 +268,25 @@ impl State {
                     .checked_add(1)
                     .ok_or(Error::Invalid("Java chat index exhausted"))?;
                 self.cache.push(&message.last_seen, message.signature);
+                let verified = self.remotes.verify(
+                    &message,
+                    crate::auth::chat::now_millis_protocol()?,
+                    self.secure,
+                );
                 if let Some(signature) = message.signature {
-                    // Received bytes are not authenticated identity. Until session-key verification
-                    // is implemented, do not display or acknowledge signed content as seen.
-                    self.window.observe(signature, false);
-                    return Ok(Some(System{content:nbt::Value::String("A signed Java chat message could not be verified; session-key verification is not implemented.".into()),overlay:false}));
+                    if !verified {
+                        self.window.observe(signature, false);
+                        return Ok(Some(System{content:nbt::Value::String("A signed Java chat message could not be verified; its player certificate or signed chain is unavailable or invalid.".into()),overlay:false}));
+                    }
+                    self.window.observe(signature, message.content.is_some());
+                } else if !verified {
+                    return Ok(Some(System {
+                        content: nbt::Value::String(
+                            "Java player chat did not match the authenticated sender session."
+                                .into(),
+                        ),
+                        overlay: false,
+                    }));
                 }
                 message
                     .content
@@ -158,6 +303,12 @@ impl State {
     }
     pub fn acknowledgement(&mut self) -> Option<Vec<u8>> {
         if self.window.offset() <= 64 {
+            return None;
+        }
+        self.flush_acknowledgement()
+    }
+    pub fn flush_acknowledgement(&mut self) -> Option<Vec<u8>> {
+        if self.window.offset() <= 0 {
             return None;
         }
         let mut bytes = Vec::new();
@@ -349,5 +500,41 @@ mod player_tests {
             &[0, 0, 0, 0, 1],
             "no seen bits for undisplayed content"
         );
+    }
+}
+
+#[cfg(test)]
+#[path = "chat/security_tests.rs"]
+mod security_tests;
+
+impl super::Connection {
+    /// Native handleConfigurationStart flushes queued chat and then its remaining offset,
+    /// before changing packet phase. Unverifiable messages remain explicitly not displayed.
+    pub(super) async fn flush_chat_for_configuration(&mut self) -> Result<(), super::Error> {
+        while let Some(frame) = self.chat_pending.pop() {
+            let mut r = Reader(&frame.bytes);
+            let id = r.var()?;
+            let name = usize::try_from(id)
+                .ok()
+                .and_then(|id| crate::target::game::clientbound::NAMES.get(id))
+                .ok_or(Error::Invalid("queued Java chat packet id"))?;
+            if let Some(update) = super::roster::decode(name, &mut r)? {
+                r.finish()?;
+                self.chat.observe_roster(&update);
+            } else {
+                let message = self.chat.receive(name, &mut r, &self.configuration)?;
+                r.finish()?;
+                if let Some(message) = message {
+                    self.emit(super::Event::SystemChat(message)).await?;
+                }
+                if let Some(bytes) = self.chat.acknowledgement() {
+                    self.send("ServerboundChatAckPacket", &bytes).await?;
+                }
+            }
+        }
+        if let Some(bytes) = self.chat.flush_acknowledgement() {
+            self.send("ServerboundChatAckPacket", &bytes).await?;
+        }
+        Ok(())
     }
 }

@@ -848,20 +848,34 @@ assets are redistributed.
 
 ## Native Java chat transport (experimental)
 
-The shared chat editor routes slash commands and ordinary text through the existing
-Java connection actor, not the Bedrock sender. Unsigned player chat uses the pinned
-256 UTF-16-unit packet, current timestamp/salt, and native last-seen update. The server's
-secure-chat requirement prevents unsigned sends; no signature or player session is forged.
-A local socket-write receipt is not server acceptance.
+The shared editor routes slash commands and ordinary text through one Java connection
+actor. A local write receipt never establishes server acceptance. Unsigned chat remains
+available only where the server permits it; authentication never falls back to an offline
+identity. The controlled offline developer fixture requires no authentication services.
 
-Incoming unsigned player messages and disguised/server messages use the received
-chat-type registry (or direct holder), sender/target/content parameters and translation
-components. Partial filters address UTF-16 units. One connection owns the signature
-cache, ordered global index and acknowledgement window; reconfiguration retires that
-state. Unknown signature references and malformed packets fail explicitly.
+For a legitimate account, cancellable service discovery fetches public trust roots and,
+for online-mode worlds, the account's chat certificate through a bodyless authenticated
+POST. UUID-bound certificate proofs and message signatures are checked with the existing
+RSA implementation. Private keys are memory-only, never serialized or Debug formatted.
+The API refresh date and native one-hour throttle govern renewal; unchanged key material
+preserves the signing chain. A new online world gets a new local signing session.
 
-Signed-message session-key verification and signing are still missing. Such incoming
-content is withheld with an explicit diagnostic and acknowledged as **not displayed**.
-This is a limitation, not secure-chat support. Signed command arguments, suggestions,
-advanced component styles and authenticated/iOS/Hypixel acceptance remain incomplete.
-Native codec/ring reference vectors are structural evidence, not gameplay qualification.
+Initial trust preparation retains chat/security-roster frames in a bounded FIFO while
+world, presentation roster, corrections and network servicing continue. Established
+roots keep validating during renewal. Every play login resets native chat indexes,
+cache and acknowledgement window; remote validators follow the roster lifetime.
+Configuration replacement flushes queued chat and its actual remaining offset before
+changing phase. Reconnect/account cancellation retires the owned futures and keys.
+
+Received unsigned, verified signed and disguised messages use server chat-type decoration,
+translation components and UTF-16 filters. Invalid or unavailable signature authority is
+reported explicitly; withheld content is not acknowledged as displayed. The native
+20-entry window, 128-entry signature cache and checksum have independent reference vectors.
+
+Certificate/signing fixtures are synthetic authority tests, not authenticated vanilla or
+Hypixel qualification. Live service/certificate acceptance remains pending. Signed command
+arguments, suggestions, moderation/deletion presentation, trust badges and advanced component
+styles remain incomplete. The running connection uses a read-only credential snapshot;
+account refresh/rejoin is implemented, but live replacement of expired access credentials
+inside a very long running connection remains separate work. No new iOS acceptance follows
+from Linux checks or offline rendering.

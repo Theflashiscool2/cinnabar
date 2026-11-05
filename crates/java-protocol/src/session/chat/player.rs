@@ -5,15 +5,23 @@ use super::{
 };
 use crate::{ProtocolError as Error, nbt::Value, wire::Reader};
 use std::collections::BTreeMap;
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Player {
     pub global: i32,
+    pub sender: [u8; 16],
+    pub index: i32,
+    pub text: String,
+    pub timestamp: i64,
+    pub salt: i64,
+    unsigned: Option<Value>,
+    filter: Vec<u64>,
+    filter_kind: i32,
     pub signature: Option<Signature>,
     pub last_seen: Vec<Signature>,
     pub content: Option<Value>,
     pub bound: Bound,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct Bound {
     decoration: Value,
     sender: Value,
@@ -37,7 +45,7 @@ pub(super) fn player(
     registry: &[super::super::facts::RegistryEntry],
 ) -> Result<Player, Error> {
     let global = r.var()?;
-    let _sender = r.uuid()?;
+    let sender = r.uuid()?.into_bytes();
     let index = r.var()?;
     if global < 0 || index < 0 {
         return Err(Error::Invalid("negative Java player chat index"));
@@ -48,8 +56,8 @@ pub(super) fn player(
         None
     };
     let text = string(r, super::PLAYER_MAX_UTF16)?;
-    let _timestamp = r.i64()?;
-    let _salt = r.i64()?;
+    let timestamp = r.i64()?;
+    let salt = r.i64()?;
     let count = r.var()?;
     if !(0..=WINDOW as i32).contains(&count) {
         return Err(Error::Invalid("Java last-seen list length"));
@@ -62,8 +70,10 @@ pub(super) fn player(
     } else {
         None
     };
-    let content = match r.var()? {
-        0 => Some(unsigned.unwrap_or(Value::String(text))),
+    let filter_kind = r.var()?;
+    let mut filter = Vec::new();
+    let content = match filter_kind {
+        0 => Some(unsigned.clone().unwrap_or(Value::String(text.clone()))),
         1 => None,
         2 => {
             // BitSet is a big-endian long array; bits address Java UTF-16 code units.
@@ -74,6 +84,10 @@ pub(super) fn player(
             let mask = (0..count)
                 .map(|_| r.i64().map(|n| n as u64))
                 .collect::<Result<Vec<_>, _>>()?;
+            filter = mask.clone();
+            while filter.last() == Some(&0) {
+                filter.pop();
+            }
             let units: Vec<_> = text
                 .encode_utf16()
                 .enumerate()
@@ -94,6 +108,14 @@ pub(super) fn player(
     };
     Ok(Player {
         global,
+        sender,
+        index,
+        text,
+        timestamp,
+        salt,
+        unsigned,
+        filter,
+        filter_kind,
         signature: message_signature,
         last_seen,
         content,
@@ -201,4 +223,19 @@ pub(super) fn disguised(
 ) -> Result<System, Error> {
     let content = crate::nbt::read(r)?;
     bound(r, registry)?.decorate(content)
+}
+
+impl Player {
+    pub fn same_message(&self, other: &Self) -> bool {
+        self.sender == other.sender
+            && self.index == other.index
+            && self.signature == other.signature
+            && self.text == other.text
+            && self.timestamp == other.timestamp
+            && self.salt == other.salt
+            && self.last_seen == other.last_seen
+            && self.unsigned == other.unsigned
+            && self.filter == other.filter
+            && self.filter_kind == other.filter_kind
+    }
 }

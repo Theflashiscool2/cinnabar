@@ -10,6 +10,7 @@ struct Entry {
     signature: Signature,
     pending: bool,
 }
+#[derive(Clone)]
 pub(super) struct Window {
     entries: [Option<Entry>; WINDOW],
     tail: usize,
@@ -59,6 +60,10 @@ impl Window {
         std::mem::take(&mut self.offset)
     }
     pub fn update(&mut self) -> Vec<u8> {
+        self.update_with_signatures().0
+    }
+    pub fn update_with_signatures(&mut self) -> (Vec<u8>, Vec<Signature>) {
+        let mut signatures = Vec::new();
         let mut bytes = Vec::with_capacity(8);
         codec::write_varint(self.take_offset(), &mut bytes);
         let mut mask = 0u32;
@@ -66,6 +71,7 @@ impl Window {
         for i in 0..WINDOW {
             if let Some(entry) = &mut self.entries[(self.tail + i) % WINDOW] {
                 mask |= 1 << i;
+                signatures.push(entry.signature);
                 entry.pending = false;
                 let hash = entry.signature.iter().fold(1i32, |hash, byte| {
                     hash.wrapping_mul(31).wrapping_add(*byte as i8 as i32)
@@ -80,7 +86,7 @@ impl Window {
         } else {
             checksum as u8
         });
-        bytes
+        (bytes, signatures)
     }
 }
 pub(super) struct Cache([Option<Signature>; CACHE]);

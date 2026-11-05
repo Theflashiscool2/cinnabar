@@ -5268,8 +5268,10 @@ name = "java-protocol"
 version = "0.1.31"
 dependencies = [
  "aes 0.8.4",
+ "base64",
  "cesu8",
  "cfb8",
+ "chrono",
  "flate2",
  "hickory-resolver",
  "libc",

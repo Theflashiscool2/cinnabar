@@ -26,10 +26,13 @@ tokio = { workspace = true, features = ["net", "rt-multi-thread"] }
 tokio-util.workspace = true
 hickory-resolver = "0.25"
 rand = "0.8"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 aes = "0.8"
 cfb8 = "0.8"
 rsa = "0.9"
-sha1 = "0.10"
+sha1 = { version = "0.10", features = ["oid"] }
+sha2 = { workspace = true, features = ["oid"] }
 md-5 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 zeroize = { version = "1", features = ["derive"] }
