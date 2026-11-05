@@ -21,6 +21,23 @@ impl Head {
         data: Option<&world::NbtValue>,
     ) -> Result<Self, String> {
         let profile = Profile::from_block_entity(data)?;
+        Self::from_profile(
+            profile,
+            terrain.block_generation(position),
+            terrain.block_entity_revision(position),
+        )
+    }
+    pub fn item(value: &serde_json::Value) -> Result<Self, String> {
+        Self::from_profile(Profile::from_item(value)?, None, None)
+    }
+    pub fn default_texture(&self) -> &str {
+        &self.default
+    }
+    fn from_profile(
+        profile: Profile,
+        generation: Option<u64>,
+        receipt: Option<u64>,
+    ) -> Result<Self, String> {
         let default = if profile.present {
             let index = world::java::roster::default_skin_index(
                 profile.id.unwrap_or([0; 16]),
@@ -48,8 +65,8 @@ impl Head {
         };
         Ok(Self {
             reported_failure: false,
-            generation: terrain.block_generation(position),
-            receipt: terrain.block_entity_revision(position),
+            generation,
+            receipt,
             default: default.into(),
             texture,
             query,

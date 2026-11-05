@@ -25,6 +25,7 @@ impl UiRuntime {
             self.session.gameplay_hud.clear();
             self.session.java_inventory = Default::default();
             self.session.java_item_names = None;
+            self.clear_java_item_artwork();
             self.session.java_inventory_inputs.clear();
             self.session.inventory_open = false;
             self.session.screen.pointer.reset();
@@ -86,6 +87,7 @@ impl UiRuntime {
             self.session.java_sidebar = Default::default();
             self.session.java_inventory = Default::default();
             self.session.java_item_names = None;
+            self.clear_java_item_artwork();
             self.session.java_inventory_inputs.clear();
             self.session.inventory_open = false;
             self.session.screen.pointer.reset();

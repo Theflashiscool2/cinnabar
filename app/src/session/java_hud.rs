@@ -7,6 +7,8 @@ pub(crate) fn update(
     mut controller: Option<ResMut<SessionController>>,
     ui: Option<ResMut<UiRuntimeResource>>,
     presentation: Option<Res<super::java_render::Presentation>>,
+    mut heads: Local<super::java_items::Heads>,
+    time: Res<Time<bevy::time::Real>>,
 ) {
     let Some(mut ui) = ui else {
         return;
@@ -29,6 +31,22 @@ pub(crate) fn update(
             if let Some(controller) = controller.as_ref() {
                 ui.publish_java_sidebar(&controller.java_world);
                 ui.publish_java_inventory(&controller.java_world);
+                if let Some(items) = presentation
+                    .as_ref()
+                    .and_then(|p| p.items(snapshot.session, snapshot.epoch))
+                {
+                    ui.publish_java_item_catalog(
+                        snapshot.session,
+                        snapshot.epoch,
+                        items,
+                        &controller.java_world,
+                        heads.update(
+                            (snapshot.session, snapshot.epoch),
+                            &controller.java_world,
+                            time.elapsed(),
+                        ),
+                    );
+                }
             }
             if ui.java_sidebar_has_unsupported_text()
                 && let Some(java) = controller.as_mut().and_then(|c| c.java.as_mut())
@@ -36,6 +54,9 @@ pub(crate) fn update(
                 java.diagnostic_notice("java_sidebar_component_not_implemented");
             }
         }
-        None => ui.clear_java_hud(),
+        None => {
+            ui.clear_java_hud();
+            heads.clear();
+        }
     }
 }

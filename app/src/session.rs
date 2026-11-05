@@ -43,6 +43,7 @@ mod java_heads;
 pub(crate) mod java_hud;
 pub(crate) mod java_interaction;
 pub(crate) mod java_inventory;
+mod java_items;
 pub(crate) mod java_look;
 pub(crate) mod java_movement;
 pub(crate) mod java_piston;

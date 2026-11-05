@@ -1,0 +1,26 @@
+{
+  "repository": "https://github.com/horizon-rust/horizon",
+  "revision": "59d8cc38a2627f5b7aa0c96fc91b013df70c45fc",
+  "source_root": "crates/horizon-assets",
+  "license": "MIT; copyright 2026 Ludovic Marie and contributors",
+  "adaptations": [
+    "Independent crate/module root includes only item resource selection/baking, cuboid decoding and math. No core/world/network/runtime owner.",
+    "Manifest uses existing compatible Serde/serde_json majors, avoiding an unrelated workspace upgrade. Original selected source files are unchanged."
+  ],
+  "sha256": {
+    "src/bake.rs": "2cb52923dade1c4f39180ccfbdeef0814e8dc96565322baae0974a7b11c55d39",
+    "src/bake/transform.rs": "a95e658fef85b21bcb2f9f7512f98f98d57022d62c1199885b7133beae35a09d",
+    "src/item_bake.rs": "e6938c696a6d6a39bf35c1e451ceae963a27c306ebf33ff5682dc39bfbc0b08e",
+    "src/item_model.rs": "eb1d0c86738fb88a1ccef1a2c608bf25d6bca592695d187536a0beeab9704ee3",
+    "src/item_model/special.rs": "5e7043c2cfa3ef6ad4aef7a8bb1869f4ffb523522e71233e7c3416350c108de4",
+    "src/item_model/component_predicate.rs": "80b74a84256123d197c4f73b4f1bd4cf195d2f0ae868018ef2070160387905e7",
+    "src/item_model/foreign_tests.rs": "b269c8a6cf35639036809d9de6ef31cb99b201b88514066c5914e03ea5a38c9a",
+    "src/item_model/foreign.rs": "75e24d9560620b81bc8547dca76608db7d3031d355629e597601ba18a68df3b7",
+    "src/item_model/tests.rs": "427cac0a90ef146515f34828ce603b01fc5bdf15c40fc9178c2ed382de6e8196",
+    "src/json.rs": "1ddefc9e36138fd5e11458cad7bf22ff7f5148e288f7841e06fc4074eb297244",
+    "src/math.rs": "1d0547e6118c9cb35ef918a53ac92372728770971b530264d59984fd7368a0b3",
+    "src/model.rs": "698e1faac2a269bc24affd8d046936ae8cb2ca67f286ab1cf76f9e47bd9e752b",
+    "src/resolve.rs": "66c2af958e0a1aee79655038df909adda32fd980f8c626701896dc4555c6b6ab",
+    "src/obj.rs": "61a21597711b30b0a8594679d1d3b4a9a59362bc709fd322cb84919924ea3ff5"
+  }
+}

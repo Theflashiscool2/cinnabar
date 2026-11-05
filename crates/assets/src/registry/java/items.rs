@@ -1,0 +1,356 @@
+//! Native Java item definitions and cuboid/generated geometry, independent of inventory authority.
+use super::{
+    source::{Error, Identifier, Source},
+    textures::{Image, Sprite},
+};
+use java_item_model::{
+    item_bake::{self, SpriteLookup, SpriteMask},
+    item_model::{self, ClientItem, Context, DisplayContext, ItemModels, LayerContent, StackView},
+    model::CuboidModel,
+    resolve::ModelLibrary,
+};
+use serde_json::Value;
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
+pub mod defaults;
+mod raster;
+mod special;
+#[cfg(test)]
+mod tests;
+
+/// A stable artwork identity includes the entire authoritative patch and count-dependent selection.
+pub fn key(
+    item: &str,
+    count: u32,
+    added: &BTreeMap<String, Value>,
+    removed: &BTreeSet<String>,
+) -> String {
+    let bytes = serde_json::to_vec(&(item, count, added, removed)).expect("JSON component values");
+    format!("cinnabar-java:{:x}", Sha256::digest(bytes))
+}
+
+/// Render input copied from authoritative storage. It never mutates items or predicts transactions.
+#[derive(Clone, Debug)]
+pub struct Stack {
+    pub item: String,
+    pub count: u32,
+    pub added: BTreeMap<String, Value>,
+    pub removed: BTreeSet<String>,
+}
+impl Stack {
+    pub fn key(&self) -> String {
+        key(&self.item, self.count, &self.added, &self.removed)
+    }
+    fn view(&self) -> StackView {
+        let mut patch: BTreeMap<_, _> = self
+            .added
+            .iter()
+            .map(|(k, v)| (k.clone(), Some(v.clone())))
+            .collect();
+        for name in &self.removed {
+            patch.insert(name.clone(), None);
+        }
+        StackView {
+            item: self.item.clone(),
+            count: i32::try_from(self.count).unwrap_or(i32::MAX),
+            patch,
+            bundle_selected: -1,
+        }
+    }
+}
+
+/// One fully selected, transformed native material quad. Positions are relative to the GUI origin.
+#[derive(Clone)]
+pub struct Quad {
+    pub positions: [[f32; 3]; 4],
+    pub uv: [[f32; 2]; 4],
+    pub image: Arc<Image>,
+    pub color: [f32; 4],
+    pub block_light: bool,
+    pub cull_back: bool,
+    pub normal: Option<[f32; 3]>,
+}
+
+/// Host-resolved public skins or admitted local texture patches, keyed by the opaque profile.
+/// An absent download uses the target's UUID-selected default; it never rewrites a stack.
+#[derive(Clone, Default)]
+pub struct HeadTextures {
+    pub revision: u64,
+    pub textures: BTreeMap<String, HeadTexture>,
+}
+#[derive(Clone)]
+pub enum HeadTexture {
+    Pack(String),
+    Image(Arc<Image>),
+}
+pub fn profile_key(value: &Value) -> String {
+    format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(value).expect("JSON profile"))
+    )
+}
+
+/// Immutable resource generation. Shared by cancellable presentation workers, never a game tick owner.
+pub struct Catalog {
+    definitions: ItemModels,
+    models: ModelLibrary,
+    sprites: BTreeMap<String, Arc<Sprite>>,
+    missing_sprites: BTreeMap<String, String>,
+    missing_models: BTreeMap<String, String>,
+    grass: Image,
+    special: special::Resources,
+}
+impl SpriteLookup for Catalog {
+    fn mask(&self, name: &str) -> Option<SpriteMask> {
+        let sprite = self.sprites.get(name)?;
+        let first = sprite.frames.first()?;
+        Some(SpriteMask {
+            width: first.width as usize,
+            height: first.height as usize,
+            frames: sprite
+                .frames
+                .iter()
+                .map(|f| f.rgba.chunks_exact(4).map(|p| p[3] == 0).collect())
+                .collect(),
+        })
+    }
+}
+impl item_model::ItemEnv for Catalog {
+    fn potion_effect_color(&self, contents: &Value) -> Option<i32> {
+        defaults::potion_color(contents)
+    }
+    fn grass_color(&self, temperature: f64, downfall: f64) -> i32 {
+        let [r, g, b] = self
+            .grass
+            .climate_color(temperature as f32, downfall as f32)
+            .expect("validated item grass map");
+        (0xff000000u32 | u32::from(r) << 16 | u32::from(g) << 8 | u32::from(b)) as i32
+    }
+}
+impl Catalog {
+    /// Reads only resource paths, with Source budgets/cancellation. No archive is executed or extracted.
+    pub fn load(source: &mut dyn Source, items: &[&str]) -> Result<Self, Error> {
+        let mut definitions = ItemModels::default();
+        for &item in items {
+            if source.cancelled() {
+                return Err(invalid("cancelled item resource load"));
+            }
+            let id = Identifier::parse(item)?;
+            let bytes = source.read(&id.asset_path("items", "json"))?;
+            let definition = ClientItem::from_json(
+                std::str::from_utf8(&bytes).map_err(|_| invalid("item definition UTF-8"))?,
+            )
+            .map_err(model_error)?;
+            definitions.definitions.insert(item.to_owned(), definition);
+            definitions.prototypes.insert(
+                item.to_owned(),
+                defaults::components(item)
+                    .ok_or_else(|| invalid("missing native item component prototype"))?
+                    .clone(),
+            );
+        }
+        let mut cuboids = BTreeMap::new();
+        let mut pending = Vec::new();
+        for definition in definitions.definitions.values() {
+            definition.model.dependencies(&mut pending);
+        }
+        let mut visited = BTreeSet::new();
+        let mut missing_models = BTreeMap::new();
+        while let Some(name) = pending.pop() {
+            if source.cancelled() {
+                return Err(invalid("cancelled item model load"));
+            }
+            let id = Identifier::parse(&name)?;
+            let name = format!("{}:{}", id.namespace(), id.path());
+            if !visited.insert(name.clone()) || name == "minecraft:builtin/generated" {
+                continue;
+            }
+            let model = (|| {
+                let bytes = source.read(&id.asset_path("models", "json"))?;
+                CuboidModel::from_json(
+                    std::str::from_utf8(&bytes).map_err(|_| invalid("item model UTF-8"))?,
+                )
+                .map_err(model_error)
+            })();
+            match model {
+                Ok(model) => {
+                    pending.extend(model.referenced_models());
+                    cuboids.insert(name, model);
+                }
+                Err(error) => {
+                    missing_models.insert(name, error.to_string());
+                }
+            }
+        }
+        let names: Vec<_> = cuboids.keys().cloned().collect();
+        let models = ModelLibrary::with_item_generator(cuboids).map_err(model_error)?;
+        let mut materials = BTreeSet::new();
+        for name in names {
+            let Ok(resolved) = models.resolve(&name) else {
+                continue;
+            };
+            for material in resolved.textures.values() {
+                materials.insert(material.sprite.clone());
+            }
+        }
+        let mut sprites = BTreeMap::new();
+        let mut missing_sprites = BTreeMap::new();
+        let mut bytes = 0usize;
+        for name in materials {
+            if source.cancelled() {
+                return Err(invalid("cancelled item sprite load"));
+            }
+            match Sprite::load_entity(source, &Identifier::parse(&name)?) {
+                Ok(sprite) => {
+                    bytes = bytes
+                        .checked_add(sprite.frames.iter().map(|f| f.rgba.len()).sum::<usize>())
+                        .ok_or_else(|| invalid("item sprite size overflow"))?;
+                    if bytes > 64 * 1024 * 1024 {
+                        return Err(Error::Budget("item sprite generation (64 MiB)".into()));
+                    }
+                    sprites.insert(name, Arc::new(sprite));
+                }
+                Err(error) => {
+                    missing_sprites.insert(name, error.to_string());
+                }
+            }
+        }
+        let grass = Image::decode(&source.read("assets/minecraft/textures/colormap/grass.png")?)?;
+        grass.climate_color(0.5, 1.)?;
+        let special = special::Resources::load(source, &definitions)?;
+        Ok(Self {
+            definitions,
+            models,
+            sprites,
+            missing_sprites,
+            missing_models,
+            grass,
+            special,
+        })
+    }
+    /// Model factories are supplied by the same hash-verified offline exporter used for world entities.
+    pub fn with_entity_models(mut self, models: Arc<crate::entity::java::Models>) -> Self {
+        self.special.models = Some(models);
+        self
+    }
+    /// Resolves a GUI stack through its real item model tree; missing/special layers remain explicit.
+    pub fn geometry(&self, stack: &Stack) -> Result<Vec<Quad>, Error> {
+        self.geometry_with_heads(stack, &HeadTextures::default())
+    }
+    pub fn geometry_with_heads(
+        &self,
+        stack: &Stack,
+        heads: &HeadTextures,
+    ) -> Result<Vec<Quad>, Error> {
+        let view = stack.view();
+        let context = Context {
+            display: DisplayContext::Gui,
+            owner: None,
+            level: None,
+            seed: 0,
+        };
+        let components = self.definitions.components(&view);
+        if components
+            .get("minecraft:potion_contents")
+            .is_some_and(|v| !defaults::validate_potion(v))
+        {
+            return Err(invalid("unknown native potion/effect reference"));
+        }
+        let selected = self.definitions.resolve(&view, &context, self);
+        let mut quads = Vec::new();
+        for layer in selected.layers {
+            let (name, special) = match layer.content {
+                LayerContent::Model { model } => (model, None),
+                LayerContent::Missing => {
+                    return Err(invalid("item definition or model is missing"));
+                }
+                LayerContent::Special {
+                    base,
+                    model,
+                    argument,
+                } => (base, Some(self.special.geometry(&model, &argument, heads)?)),
+            };
+            if let Some(error) = self.missing_models.get(&name) {
+                return Err(Error::Model(format!("{name}: {error}")));
+            }
+            // The dependency's baker has a missing-model fallback; admission forbids using it here.
+            self.models.resolve(&name).map_err(model_error)?;
+            let baked =
+                item_bake::bake_item_model(&self.models, self, &name).map_err(model_error)?;
+            let matrix = baked.layer_matrix(DisplayContext::Gui, &layer.transform);
+            if let Some(special) = special {
+                let normal_matrix =
+                    glam::Mat3::from_mat4(glam::Mat4::from_cols_array_2d(&matrix.0))
+                        .inverse()
+                        .transpose();
+                for mut q in special {
+                    q.positions = q.positions.map(|p| transform(&matrix, p));
+                    q.normal = q.normal.map(|n| {
+                        (normal_matrix * glam::Vec3::from_array(n))
+                            .normalize_or_zero()
+                            .to_array()
+                    });
+                    q.block_light = baked.uses_block_light;
+                    quads.push(q);
+                }
+                continue;
+            }
+            for q in &baked.quads {
+                let sprite = self.sprites.get(&q.material.sprite).ok_or_else(|| {
+                    Error::Model(format!(
+                        "native item sprite {}: {}",
+                        q.material.sprite,
+                        self.missing_sprites
+                            .get(&q.material.sprite)
+                            .map(String::as_str)
+                            .unwrap_or("not present")
+                    ))
+                })?;
+                let image = Arc::new(sprite.frames[sprite.timeline[0]].clone());
+                let positions = q.positions.map(|p| transform(&matrix, p));
+                if positions.iter().flatten().any(|v| !v.is_finite()) {
+                    return Err(invalid("nonfinite item geometry"));
+                }
+                let tint = usize::try_from(q.tint_index)
+                    .ok()
+                    .and_then(|i| layer.tints.get(i))
+                    .copied()
+                    .unwrap_or(-1) as u32;
+                quads.push(Quad {
+                    positions,
+                    uv: q.uv,
+                    image,
+                    color: [
+                        ((tint >> 16) & 255) as f32 / 255.,
+                        ((tint >> 8) & 255) as f32 / 255.,
+                        (tint & 255) as f32 / 255.,
+                        ((tint >> 24) & 255) as f32 / 255.,
+                    ],
+                    block_light: baked.uses_block_light,
+                    cull_back: true,
+                    normal: None,
+                });
+            }
+        }
+        Ok(quads)
+    }
+    pub fn icon(&self, stack: &Stack) -> Result<Image, Error> {
+        Ok(raster::render(&self.geometry(stack)?))
+    }
+    pub fn icon_with_heads(&self, stack: &Stack, heads: &HeadTextures) -> Result<Image, Error> {
+        Ok(raster::render(&self.geometry_with_heads(stack, heads)?))
+    }
+}
+fn transform(matrix: &java_item_model::math::Mat4, p: [f32; 3]) -> [f32; 3] {
+    let m = &matrix.0;
+    std::array::from_fn(|i| m[0][i] * p[0] + m[1][i] * p[1] + m[2][i] * p[2] + m[3][i])
+}
+fn invalid(message: &str) -> Error {
+    Error::Model(message.into())
+}
+fn model_error(error: java_item_model::DecodeError) -> Error {
+    invalid(&error.to_string())
+}

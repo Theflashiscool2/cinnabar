@@ -67,6 +67,9 @@ The app renders an experimental native terrain slice through the existing render
 Dry-land movement has narrow Linux offline fixture coverage; the complete playable
 loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
+Native Java inventory artwork now resolves actual item definitions and default components on a
+scoped worker into the shared GPU atlas. First-person/equipment and dynamic context remain
+incomplete; see [item artwork](docs/references/java-item-artwork.md).
 All pinned item component types now have bounded readers and a batch wire corpus.
 A play dispatch census records remaining interactive/session gates; neither check
 proves complete item behavior or live server compatibility. Automatic bounded join

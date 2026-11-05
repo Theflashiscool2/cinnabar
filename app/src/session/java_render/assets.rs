@@ -56,6 +56,52 @@ fn load_fluids(
 pub(super) fn root() -> Result<PathBuf, String> {
     launcher::install_layout::discover_java_assets().map_err(|error| error.to_string())
 }
+/// Item resources have their own worker and never gate terrain readiness or PlayerLoaded.
+pub(super) fn load_items(
+    cancel: Arc<AtomicBool>,
+) -> Result<Arc<assets::registry::java::items::Catalog>, String> {
+    use java_protocol::target;
+    let root = root()?;
+    let jar = Jar::open(
+        &root.join("client.jar"),
+        target::CLIENT_ASSETS_SHA256,
+        target::CLIENT_ASSETS_BYTES,
+    )
+    .map_err(|e| e.to_string())?;
+    let mut source = CancelSource { jar, cancel };
+    let catalog = assets::registry::java::items::Catalog::load(&mut source, target::ITEM_TYPES)
+        .map_err(|e| e.to_string())?;
+    Ok(Arc::new(catalog.with_entity_models(load_models(&root)?)))
+}
+
+#[cfg(test)]
+mod item_tests {
+    use super::*;
+    #[test]
+    fn application_item_loader_connects_special_factories() {
+        if std::env::var_os("CINNABAR_JAVA_ASSETS").is_none() {
+            eprintln!("missing fixture: CINNABAR_JAVA_ASSETS with verified native runtime inputs");
+            return;
+        }
+        let catalog = load_items(Arc::new(AtomicBool::new(false))).unwrap();
+        for item in [
+            "minecraft:chest",
+            "minecraft:white_banner",
+            "minecraft:player_head",
+            "minecraft:conduit",
+            "minecraft:decorated_pot",
+            "minecraft:copper_golem_statue",
+        ] {
+            let stack = assets::registry::java::items::Stack {
+                item: item.into(),
+                count: 1,
+                added: Default::default(),
+                removed: Default::default(),
+            };
+            assert!(!catalog.geometry(&stack).unwrap().is_empty(), "{item}");
+        }
+    }
+}
 /// Revalidates runtime inputs and decodes only newly requested models on the asset worker.
 pub(super) fn extend(
     previous: Arc<Graphics>,

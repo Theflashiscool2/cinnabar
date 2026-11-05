@@ -12,6 +12,93 @@ pub struct Profile {
     pub texture_patch: Option<Box<str>>,
 }
 impl Profile {
+    /// Adapts the wire item component and persistent codec to the same head descriptor.
+    /// Texture properties stay opaque here; only the shell may resolve public resources.
+    pub fn from_item(value: &serde_json::Value) -> Result<Self, &'static str> {
+        if value.is_null() {
+            return Ok(Self::default());
+        }
+        if let Some(name) = value.as_str() {
+            return Ok(Self {
+                present: true,
+                name: Some(name.into()),
+                ..Default::default()
+            });
+        }
+        let object = value
+            .as_object()
+            .ok_or("Java item profile object expected")?;
+        let mut profile = world::NbtCompound::default();
+        for (field, key) in [
+            ("name", "name"),
+            ("texture", "texture"),
+            ("body", "texture"),
+        ] {
+            if let Some(v) = object.get(field).filter(|v| !v.is_null()) {
+                profile.insert(
+                    key,
+                    NbtValue::String(
+                        v.as_str()
+                            .ok_or("Java item profile string expected")?
+                            .into(),
+                    ),
+                );
+            }
+        }
+        if let Some(id) = object.get("id").filter(|v| !v.is_null()) {
+            let words = if let Some(text) = id.as_str() {
+                let text = text.replace('-', "");
+                if text.len() != 32 || !text.bytes().all(|c| c.is_ascii_hexdigit()) {
+                    return Err("Java item profile UUID invalid");
+                }
+                (0..4)
+                    .map(|i| {
+                        u32::from_str_radix(&text[i * 8..i * 8 + 8], 16)
+                            .map(|n| n as i32)
+                            .map_err(|_| "Java item profile UUID invalid")
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                id.as_array()
+                    .filter(|a| a.len() == 4)
+                    .ok_or("Java item profile UUID invalid")?
+                    .iter()
+                    .map(|v| {
+                        v.as_i64()
+                            .and_then(|n| i32::try_from(n).ok())
+                            .ok_or("Java item profile UUID invalid")
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+            };
+            profile.insert("id", NbtValue::IntArray(words.into()));
+        }
+        if let Some(v) = object.get("properties").filter(|v| !v.is_null()) {
+            let mut properties = Vec::new();
+            for p in v
+                .as_array()
+                .ok_or("Java item profile properties list expected")?
+            {
+                let mut property = world::NbtCompound::default();
+                for key in ["name", "value", "signature"] {
+                    if let Some(v) = p.get(key).filter(|v| !v.is_null()) {
+                        property.insert(
+                            key,
+                            NbtValue::String(
+                                v.as_str()
+                                    .ok_or("Java item profile property string expected")?
+                                    .into(),
+                            ),
+                        );
+                    }
+                }
+                properties.push(NbtValue::Compound(property));
+            }
+            profile.insert("properties", NbtValue::List(properties.into()));
+        }
+        let mut root = world::NbtCompound::default();
+        root.insert("profile", NbtValue::Compound(profile));
+        Self::from_block_entity(Some(&NbtValue::Compound(root)))
+    }
     /// Reads ResolvableProfile.CODEC's list-shaped properties without interpreting their
     /// contents as local paths. Resource identifiers are validated by the asset owner.
     pub fn from_block_entity(data: Option<&NbtValue>) -> Result<Self, &'static str> {
@@ -97,6 +184,31 @@ impl Profile {
 mod tests {
     use super::*;
     use world::NbtCompound;
+    #[test]
+    fn item_wire_and_persistent_profiles_share_identity_and_patches() {
+        use serde_json::json;
+        let wire=Profile::from_item(&json!({"id":"00112233-4455-6677-8899-aabbccddeeff","name":"Head","properties":[{"name":"textures","value":"opaque","signature":null}],"body":"minecraft:entity/player/wide/alex"})).unwrap();
+        let saved=Profile::from_item(&json!({"id":[1122867,1146447479,-2003195205,-857870593],"name":"Head","properties":[{"name":"textures","value":"opaque"}],"texture":"minecraft:entity/player/wide/alex"})).unwrap();
+        assert_eq!(wire, saved);
+        assert!(wire.present && wire.has_properties);
+        assert_eq!(wire.textures.as_deref(), Some("opaque"));
+        assert!(!Profile::from_item(&json!(null)).unwrap().present);
+        assert_eq!(
+            Profile::from_item(&json!("NameOnly"))
+                .unwrap()
+                .name
+                .as_deref(),
+            Some("NameOnly")
+        );
+        for bad in [
+            json!({"id":"bad"}),
+            json!({"id":[0]}),
+            json!({"properties":[{"name":"textures"}]}),
+            json!({"body":42}),
+        ] {
+            assert!(Profile::from_item(&bad).is_err());
+        }
+    }
     fn wrapped(profile: NbtCompound) -> NbtValue {
         let mut root = NbtCompound::default();
         root.insert("profile", NbtValue::Compound(profile));

@@ -508,6 +508,7 @@ dependencies = [
  "flate2",
  "fontdue",
  "glam",
+ "java-item-model",
  "lewton",
  "png",
  "protocol-ids",
@@ -5251,6 +5252,15 @@ dependencies = [
  "tokio",
  "tokio-util",
  "uuid",
+]
+
+[[package]]
+name = "java-item-model"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

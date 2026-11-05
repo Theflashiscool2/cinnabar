@@ -108,3 +108,23 @@ fn convert(packet: wire::Packet, incarnation: u64) -> Result<Update, &'static st
 
 #[cfg(test)]
 mod tests;
+
+impl WorldState {
+    /// Resource IDs from the authoritative configuration registry, scoped to this native world.
+    pub fn registry_asset(&self, registry: &str, index: u64) -> Option<&str> {
+        let entry = self
+            .bootstrap
+            .as_ref()?
+            .configuration
+            .registries
+            .get(registry)?
+            .get(usize::try_from(index).ok()?)?;
+        let java_protocol::nbt::Value::Compound(fields) = &entry.value else {
+            return None;
+        };
+        let java_protocol::nbt::Value::String(asset) = fields.get("asset_id")? else {
+            return None;
+        };
+        Some(asset)
+    }
+}

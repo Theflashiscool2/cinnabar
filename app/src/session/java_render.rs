@@ -25,6 +25,11 @@ use world::java::Dimension;
 pub(crate) struct Presentation {
     interaction: Option<Arc<::assets::registry::java::interaction::Table>>,
     physics: Option<Arc<::assets::registry::java::physics::Table>>,
+    items: Option<Arc<::assets::registry::java::items::Catalog>>,
+    items_pending: Option<
+        crossbeam_channel::Receiver<Result<Arc<::assets::registry::java::items::Catalog>, String>>,
+    >,
+    items_error: Option<String>,
     item_names: Option<Arc<::assets::registry::java::language::Language>>,
     dimension: Option<Dimension>,
     pending: Option<crossbeam_channel::Receiver<Result<assets::Prepared, String>>>,
@@ -51,6 +56,9 @@ impl Default for Presentation {
             interaction: None,
             physics: None,
             item_names: None,
+            items: None,
+            items_pending: None,
+            items_error: None,
             dimension: None,
             pending: None,
             cancel: Arc::new(AtomicBool::new(false)),
@@ -160,11 +168,22 @@ impl Presentation {
                 "waiting_light": s.metrics.waiting_light,
             })),
             "error": self.failure,
+            "item_artwork": {"ready":self.items.is_some(),"pending":self.items_pending.is_some(),"error":self.items_error},
             "movement_scope": "experimental_ground_and_upright_fluid_travel",
             "playable": false,
         })
     }
 
+    pub(crate) fn items(
+        &self,
+        session: u64,
+        epoch: u64,
+    ) -> Option<Arc<::assets::registry::java::items::Catalog>> {
+        let d = self.dimension.as_ref()?;
+        ((d.session, d.epoch) == (session, epoch))
+            .then(|| self.items.clone())
+            .flatten()
+    }
     pub(crate) fn item_names(
         &self,
         session: u64,
@@ -331,6 +350,34 @@ pub(crate) fn update(
                 p.stream = chunk_pipeline::java::Stream::new(&state.terrain, prepared.graphics);
             }
             Err(error) => p.failure = Some(format!("Java terrain preparation: {error}")),
+        }
+    }
+    if p.stream.is_some()
+        && p.items.is_none()
+        && p.items_pending.is_none()
+        && p.items_error.is_none()
+    {
+        let (send, receive) = crossbeam_channel::bounded(1);
+        let cancel = p.cancel.clone();
+        match std::thread::Builder::new()
+            .name("java-item-resources".into())
+            .spawn(move || {
+                let _ = send.send(assets::load_items(cancel));
+            }) {
+            Ok(_) => p.items_pending = Some(receive),
+            Err(error) => p.items_error = Some(format!("Native item resource worker: {error}")),
+        }
+    }
+    if let Some(receive) = &p.items_pending
+        && let Ok(result) = receive.try_recv()
+    {
+        p.items_pending = None;
+        match result {
+            Ok(items) => p.items = Some(items),
+            Err(error) => {
+                bevy::log::warn!(target:"java_session", %error,"Java item artwork preparation failed");
+                p.items_error = Some(error);
+            }
         }
     }
     p.frame += 1;

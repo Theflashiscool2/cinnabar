@@ -10,6 +10,7 @@ platform-specific = ["macos", "windows"]
 reads = [
     "crates/java-protocol/data/target.json",
     "crates/java-protocol/data/entity-facts.json",
+    "crates/java-protocol/data/item-types.json",
     "assets/bedrock-target.json",
     "assets/cinnangles-five-bold-source.json",
     "assets/cinnangles-five-source.json",
@@ -34,6 +35,7 @@ reads = [
 test-support = []
 
 [dependencies]
+java-item-model = { path = "../../third_party/java-item-model" }
 fontdue = { version = "0.9.3", default-features = false, features = ["std"] }
 protocol-ids = { path = "../protocol-ids" }
 env-compat = { path = "../env-compat" }

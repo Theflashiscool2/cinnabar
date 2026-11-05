@@ -8,6 +8,7 @@ publish = false
 [package.metadata.cinnabar]
 platform-specific = ["macos"]
 reads = [
+    "crates/java-protocol/data/target.json",
     "assets/cinnangles-sans-source.json",
     "crates/mod-api/wit/extension.wit",
     "crates/protocol/fixtures/*",

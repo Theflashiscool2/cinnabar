@@ -1,4 +1,5 @@
 //! Native inventory values reach the shared HUD without a Bedrock registry or ledger.
+pub(super) mod artwork;
 use super::{UiRuntime, presentation::UiPresentationRuntime};
 use inventory::java::{HOTBAR_START, OFFHAND_MENU_SLOT, Slot};
 use ui::IconRef;
@@ -192,36 +193,22 @@ fn item(slot: &Option<Slot>, artwork: &UiPresentationRuntime) -> HudItem {
             ..Default::default()
         };
     };
-    // The shared default atlas is keyed by names, not either edition's numeric IDs.
-    // Custom Java models need their own resolver; don't misrepresent an overridden model.
-    let ordinary = !stack.removed.contains("minecraft:item_model")
-        && stack
-            .added
-            .get("minecraft:item_model")
-            .is_none_or(|model| model.as_str() == Some(stack.item.as_str()));
-    let icon = ordinary
-        .then(|| artwork.item_icon(&stack.item, 0))
-        .flatten();
-    let durability = stack
-        .added
-        .get("minecraft:max_damage")
+    let native_key =
+        assets::registry::java::items::key(&stack.item, stack.count, &stack.added, &stack.removed);
+    let icon = artwork.item_icon(&native_key, 0);
+    let durability = component(stack, "minecraft:max_damage")
         .and_then(|v| v.as_u64())
         .filter(|max| *max > 0)
         .and_then(|max| {
-            stack
-                .added
-                .get("minecraft:damage")
+            component(stack, "minecraft:damage")
                 .and_then(|v| v.as_u64())
+                .filter(|damage| *damage > 0)
                 .map(|damage| (max.saturating_sub(damage) as f64 / max as f64).clamp(0.0, 1.0))
         });
-    let glint = stack
-        .added
-        .get("minecraft:enchantment_glint_override")
+    let glint = component(stack, "minecraft:enchantment_glint_override")
         .and_then(|v| v.as_bool())
         .unwrap_or_else(|| {
-            stack
-                .added
-                .get("minecraft:enchantments")
+            component(stack, "minecraft:enchantments")
                 .is_some_and(|v| v.as_object().is_some_and(|v| !v.is_empty()))
         });
     HudItem {
@@ -231,6 +218,16 @@ fn item(slot: &Option<Slot>, artwork: &UiPresentationRuntime) -> HudItem {
         durability,
     }
 }
+fn component<'a>(stack: &'a inventory::java::Stack, name: &str) -> Option<&'a serde_json::Value> {
+    if stack.removed.contains(name) {
+        return None;
+    }
+    stack
+        .added
+        .get(name)
+        .or_else(|| assets::registry::java::items::defaults::component(&stack.item, name))
+}
+
 impl HudItems {
     /// Values/indices are compared without allocating or fabricating an item ID.
     pub(crate) fn matches(

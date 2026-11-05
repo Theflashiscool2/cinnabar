@@ -53,14 +53,14 @@
   },
   "entity_models_report": {
     "path": "models.json",
-    "bytes": 501965,
-    "sha256": "0af87171b9b926132eb0dafa0e78393140e99654a7ce4fc733593184a7528a6d",
+    "bytes": 761789,
+    "sha256": "40b87fb44eb12654bee8f9b64ad09de01eed4ff5988040abee3aaaa5cee7cebe",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "entity_facts_report": {
     "path": "data/entity-facts.json",
-    "bytes": 91958,
-    "sha256": "f8005d6c684b3bec969b912bed448a3fffb9d3b3889ef05f2d6778ddf9758b89",
+    "bytes": 1360701,
+    "sha256": "9dc900d282f4deac01dc9cd14bdc00f8c10b2531ec2481b8ab197f322cf79c26",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "metadata_schema": {

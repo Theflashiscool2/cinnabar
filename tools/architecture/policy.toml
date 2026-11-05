@@ -68,6 +68,13 @@ path = "crates/protocol/vendor/"
 ownership_record = "crates/protocol/vendor/UPSTREAM.md"
 owner = "protocol"
 
+# Pinned, unchanged MIT item resource decoder/baker. Only the native asset owner
+# consumes it; transitive graphics/network boundaries still inspect its manifest.
+[[vendored]]
+path = "third_party/java-item-model/"
+ownership_record = "third_party/java-item-model/UPSTREAM.json"
+owner = "assets"
+
 [[crates]]
 name = "bridge"
 path = "crates/bridge"
@@ -1446,6 +1453,9 @@ owners = [
     "crates/assets/src/registry/java/gateway.rs",
     # Pinned native piston renderer identities; registry-backed model-plan fixtures.
     "crates/assets/src/registry/java/piston.rs",
+    # Native special-item factory/material identities, verified by the exporter
+    # and real-archive component/geometry fixtures; not Bedrock item heuristics.
+    "crates/assets/src/registry/java/items/special.rs",
     "crates/json-ui/src/vanilla.rs",
 ]
 vocabularies = [

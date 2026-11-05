@@ -131,6 +131,79 @@ public final class ExportEntities {
         entries.values().forEach(out::add);
         return out;
     }
+    static void itemShapes(JsonObject models) throws Exception {
+        var roots = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
+        for (String name : List.of("chest#main", "double_chest_left#main", "double_chest_right#main",
+                "shulker_box#main", "shield#main", "trident#main", "standing_banner#main",
+                "standing_banner#flag", "wall_banner#main", "wall_banner#flag", "skeleton_skull#main",
+                "wither_skeleton_skull#main", "player_head#main", "zombie_head#main", "creeper_head#main",
+                "dragon_skull#main", "piglin_head#main", "bell#main", "book#main")) {
+            var layer = roots.entrySet().stream().filter(e -> e.getKey().toString().equals("minecraft:" + name))
+                    .findFirst().orElseThrow(() -> new IllegalStateException("missing native item model " + name));
+            models.add("item/" + name.replace('#', '/'), part(layer.getValue().bakeRoot(), "root"));
+        }
+    }
+    static JsonElement canonical(JsonElement value) {
+        if (value.isJsonObject()) {
+            JsonObject result = new JsonObject();
+            var keys = new TreeSet<>(value.getAsJsonObject().keySet());
+            for (String key : keys) result.add(key, canonical(value.getAsJsonObject().get(key)));
+            return result;
+        }
+        if (value.isJsonArray()) {
+            JsonArray result = new JsonArray();
+            for (JsonElement entry : value.getAsJsonArray()) result.add(canonical(entry));
+            return result;
+        }
+        return value;
+    }
+    static JsonObject itemDefaults(net.minecraft.core.HolderLookup.Provider lookup) {
+        var ops = net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE, lookup);
+        JsonObject result = new JsonObject();
+        for (var item : BuiltInRegistries.ITEM) {
+            var values = net.minecraft.core.component.DataComponentMap.CODEC.encodeStart(ops, item.components()).getOrThrow();
+            result.add(BuiltInRegistries.ITEM.getKey(item).toString(), canonical(values));
+        }
+        return result;
+    }
+    static JsonObject potionColors() {
+        JsonObject colors = new JsonObject();
+        for (var potion : BuiltInRegistries.POTION) {
+            var color = net.minecraft.world.item.alchemy.PotionContents.getColorOptional(potion.getEffects());
+            colors.add(BuiltInRegistries.POTION.getKey(potion).toString(), color.isPresent() ? new JsonPrimitive(color.getAsInt()) : JsonNull.INSTANCE);
+        }
+        return colors;
+    }
+    static JsonObject effectColors() {
+        JsonObject colors = new JsonObject();
+        for (var effect : BuiltInRegistries.MOB_EFFECT) colors.addProperty(BuiltInRegistries.MOB_EFFECT.getKey(effect).toString(), effect.getColor());
+        return colors;
+    }
+    static JsonArray potionIds() {
+        JsonArray ids = new JsonArray();
+        for (var potion : BuiltInRegistries.POTION) ids.add(BuiltInRegistries.POTION.getKey(potion).toString());
+        return ids;
+    }
+    static JsonArray effectIds() {
+        JsonArray ids = new JsonArray();
+        for (var effect : BuiltInRegistries.MOB_EFFECT) ids.add(BuiltInRegistries.MOB_EFFECT.getKey(effect).toString());
+        return ids;
+    }
+    static JsonObject potionEffects() {
+        JsonObject values = new JsonObject();
+        for (var potion : BuiltInRegistries.POTION) {
+            JsonArray effects = new JsonArray();
+            for (var effect : potion.getEffects()) {
+                JsonObject value = new JsonObject();
+                value.addProperty("id", BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value()).toString());
+                value.addProperty("amplifier", effect.getAmplifier());
+                value.addProperty("show_particles", effect.isVisible());
+                effects.add(value);
+            }
+            values.add(BuiltInRegistries.POTION.getKey(potion).toString(), effects);
+        }
+        return values;
+    }
     public static void main(String[] args) throws Exception {
         if (args.length != 2) throw new IllegalArgumentException("expected models and entity-facts output paths");
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
@@ -150,6 +223,7 @@ public final class ExportEntities {
         models.add("conduit_eye", part(net.minecraft.client.renderer.blockentity.ConduitRenderer.createEyeLayer().bakeRoot(), "root"));
         models.add("pot_base", part(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.createBaseLayer().bakeRoot(), "root"));
         models.add("pot_sides", part(net.minecraft.client.renderer.blockentity.DecoratedPotRenderer.createSidesLayer().bakeRoot(), "root"));
+        itemShapes(models);
         Files.writeString(Path.of(args[0]), JSON.toJson(models)+"\n");
         JsonObject facts = new JsonObject();
         JsonArray types = new JsonArray();
@@ -191,6 +265,14 @@ public final class ExportEntities {
         }
         facts.add("player_model_parts", clothing);
         facts.add("piston_blocks", pistonBlocks());
+        var itemLookup = net.minecraft.data.registries.VanillaRegistries.createWorldLookup();
+        for (var pending : BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(itemLookup)) pending.apply();
+        facts.add("item_render_defaults", itemDefaults(itemLookup));
+        facts.add("potion_colors", potionColors());
+        facts.add("effect_colors", effectColors());
+        facts.add("potion_ids", potionIds());
+        facts.add("effect_ids", effectIds());
+        facts.add("potion_effects", potionEffects());
         Files.writeString(Path.of(args[1]), JSON.toJson(facts)+"\n");
     }
 }

@@ -689,3 +689,17 @@ MIT reference (`horizon-core/src/geometry/sweep.rs` and `position/iter.rs`).
 Copyright and the full license remain in
 `assets/licenses/Native-Java-Reference-MIT.txt`. Version-matched native probes
 independently check visitation order; Cinnabar owns scoped terrain and effects.
+
+## Native Java item resource library and special-item poses
+
+`third_party/java-item-model` contains selected MIT-licensed resource decoding,
+selection and baking files from `horizon-rust/horizon` at
+`59d8cc38a2627f5b7aa0c96fc91b013df70c45fc`. Its full copyright/license and exact
+file hashes are preserved in `LICENSE` and `UPSTREAM.json` in that directory.
+`crates/assets/src/registry/java/items/special.rs` adapts special-item submission
+and pose algorithms from `Vasysik/horizon-android` at
+`5b8e6d0b6453e57fb23eb7bbb365bbc7edd5b9b2`,
+`crates/horizon-client/src/item_render/special.rs`. Its MIT notice is retained in
+`assets/licenses/Native-Java-Reference-MIT.txt`. Cinnabar owns the authoritative
+inventory, asynchronous resource integration, atlas/GPU publication and UI. See
+[the resource boundary and remaining limits](docs/references/java-item-artwork.md).
