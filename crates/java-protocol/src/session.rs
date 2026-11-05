@@ -73,6 +73,11 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    CommandSuggestions {
+        dimension_epoch: u64,
+        id: i32,
+        input: String,
+    },
     ChatMessage {
         dimension_epoch: u64,
         sequence: u64,

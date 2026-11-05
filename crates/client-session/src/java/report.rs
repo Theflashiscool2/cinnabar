@@ -99,6 +99,7 @@ impl Report {
                 }
                 "inventory"
             }
+            Event::CommandSuggestions(_) => "command_suggestions",
             Event::SystemChat(_) => "system_chat",
             Event::ChatCommandSent { written: true, .. } => "command_write_receipt",
             Event::ChatCommandSent { written: false, .. } => "command_input_retired",

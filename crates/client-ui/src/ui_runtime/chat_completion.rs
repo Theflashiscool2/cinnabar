@@ -149,12 +149,35 @@ impl UiRuntime {
         {
             return start;
         }
+        if let Some(range) = &self.session.java_completion.range {
+            return range.start;
+        }
         let head = &self.session.chat_editor.as_str()[..self.session.chat_editor.cursor_byte()];
         ChatAutocompleteCatalog::replacement_start(head)
     }
 
     /// Replaces the active token, including any text up to its existing closing quote.
     fn replace_chat_token(&mut self, value: &str) {
+        if let Some(range) = self.session.java_completion.range.clone() {
+            let text = self.session.chat_editor.as_str();
+            if range.end > text.len()
+                || range.start + value.len() + text.len() - range.end > MAX_CHAT_INPUT_BYTES
+            {
+                return;
+            }
+            let next = format!("{}{value}{}", &text[..range.start], &text[range.end..]);
+            let end = range.start + value.len();
+            self.session.chat_editor.clear();
+            self.session
+                .chat_editor
+                .insert(&next)
+                .expect("replacement length checked");
+            self.session.chat_editor.place_cursor(end);
+            self.note_chat_editor_change();
+            self.session.java_completion.range = Some(range.start..end);
+            return;
+        }
+
         let text = self.session.chat_editor.as_str();
         let cursor = self.session.chat_editor.cursor_byte();
         let head = &text[..cursor];

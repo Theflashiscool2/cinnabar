@@ -16,6 +16,7 @@ pub struct State {
     pub overlay: Option<Message>,
     /// The UI permits one write in flight, so this cannot overwrite an unconsumed receipt.
     pub written: Option<(u64, bool)>,
+    pub suggestions: Option<Suggestions>,
     sequence: u64,
 }
 impl State {
@@ -70,5 +71,28 @@ mod tests {
         assert_eq!(state.messages.len(), 100);
         assert_eq!(state.messages.front().unwrap().sequence, 6);
         assert_eq!(state.overlay.unwrap().received_tick, 219);
+    }
+}
+
+/// One latest server completion response; the editor correlates it with its active input.
+#[derive(Debug)]
+pub struct Suggestions {
+    pub id: i32,
+    pub start: i32,
+    pub length: i32,
+    pub entries: Vec<(String, Option<NbtValue>)>,
+}
+impl From<java_protocol::session::chat::suggestions::Packet> for Suggestions {
+    fn from(packet: java_protocol::session::chat::suggestions::Packet) -> Self {
+        Self {
+            id: packet.id,
+            start: packet.start,
+            length: packet.length,
+            entries: packet
+                .entries
+                .into_iter()
+                .map(|e| (e.text, e.tooltip.map(super::nbt::convert)))
+                .collect(),
+        }
     }
 }

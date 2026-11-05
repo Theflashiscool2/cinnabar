@@ -565,6 +565,11 @@ pub(super) fn snapshot(world: &World) -> Value {
             })
             .collect::<Vec<_>>()
     }));
+    snapshot["chat_editor"] = json!(world.get_resource::<UiRuntimeResource>().map(|ui| {
+        json!({"focused":ui.chat_focused(),"input":ui.chat_editor().as_str(),
+            "cursor_byte":ui.chat_editor().cursor_byte(),"suggestions":ui.chat_suggestions(),
+            "selected":ui.chat_selected_suggestion(),"usage":ui.chat_usage_hint()})
+    }));
     snapshot["vision"] = world
         .get_resource::<client_presentation::camera::VisionEffects>()
         .map(|vision| {

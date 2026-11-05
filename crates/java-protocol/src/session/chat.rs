@@ -1,11 +1,12 @@
-//! Version-pinned commands, unsigned player chat, received components and acknowledgements.
-//! Session-key signing and signed-message verification remain explicit unsupported paths.
+//! Version-pinned player chat, commands, signatures and acknowledgements.
 #[path = "chat/player.rs"]
 mod player;
 #[path = "chat/security.rs"]
 pub(crate) mod security;
 #[path = "chat/signing.rs"]
 mod signing;
+#[path = "chat/suggestions.rs"]
+pub mod suggestions;
 #[path = "chat/window.rs"]
 mod window;
 use crate::{
@@ -100,6 +101,7 @@ mod tests {
 /// Connection-local receive cache and acknowledgement window; never shared between accounts.
 #[derive(Default)]
 pub(super) struct State {
+    pub suggestions: suggestions::Pending,
     window: window::Window,
     cache: window::Cache,
     next_index: i32,

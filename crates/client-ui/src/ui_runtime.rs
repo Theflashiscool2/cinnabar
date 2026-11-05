@@ -11,6 +11,7 @@ pub mod credits;
 pub mod data_driven;
 mod death;
 pub mod emotes;
+mod java_completion;
 pub mod presentation_snapshot;
 
 mod error;
@@ -572,6 +573,8 @@ impl UiRuntime {
         self.chat_history.clear_navigation();
         self.session.chat_autocomplete.clear();
         self.session.chat_usage_hint = None;
+        self.session.java_completion.pending = None;
+        self.session.java_completion.range = None;
         self.session.pending_chat_autocomplete_request = None;
         UiAuthorityTransition {
             consumes_text: false,
@@ -705,6 +708,7 @@ impl UiRuntime {
     }
 
     fn note_chat_editor_change(&mut self) {
+        self.session.java_completion.range = None;
         self.session.chat_usage_hint = None;
         self.session.chat_tab_cycling = false;
         self.session.chat_tab_start = None;

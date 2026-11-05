@@ -127,6 +127,7 @@ impl WorldState {
             return false;
         }
         match envelope.event {
+            Event::CommandSuggestions(packet) => self.chat.suggestions = Some(packet.into()),
             Event::SystemChat(message) => self
                 .chat
                 .receive(message, self.inventory.cooldowns.client_tick()),

@@ -4,6 +4,7 @@ use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    CommandSuggestions(chat::suggestions::Packet),
     SystemChat(chat::System),
     /// Local socket-write receipt, never a server command-success acknowledgement.
     ChatCommandSent {

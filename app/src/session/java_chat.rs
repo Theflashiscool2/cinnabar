@@ -41,6 +41,23 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
         return ui.java_hud().is_some();
     };
     let state = &controller.java_world;
+    if let Some(dimension) = state.terrain.dimension() {
+        if let Some((id, input)) = ui.java_completion_request(dimension.epoch) {
+            match java.command(Command::CommandSuggestions {
+                dimension_epoch: dimension.epoch,
+                id,
+                input,
+            }) {
+                Ok(()) => ui.mark_java_completion_sent(id),
+                Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {}
+                Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {}
+            }
+        }
+        if let Some(response) = &state.chat.suggestions {
+            ui.publish_java_completion(dimension.epoch, response);
+        }
+    }
+
     if let Some((sequence, written)) = state.chat.written {
         if ui.acknowledge_chat_send(state.generation(), sequence) && !written {
             ui.push_local_chat_line(

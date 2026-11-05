@@ -9,6 +9,7 @@ fn spawn(entities: &mut Entities, name: &str, position: [f64; 3]) {
         .spawn(
             (7, 1),
             Spawn {
+                transport_lifetime: 0,
                 network_id: 10,
                 uuid: [1; 16],
                 kind: "minecraft:player".into(),

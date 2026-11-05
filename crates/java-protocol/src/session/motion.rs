@@ -20,6 +20,21 @@ impl Connection {
         // Ping fences incoming game events, not already ordered outbound player intent.
         // It does not change epoch or correction authority; dropping that input loses actions.
         match command {
+            Command::CommandSuggestions {
+                dimension_epoch,
+                id,
+                input,
+            } => {
+                if dimension_epoch == self.dimension_epoch && self.phase == Phase::Play {
+                    self.send(
+                        "ServerboundCommandSuggestionPacket",
+                        &chat::suggestions::request(id, &input)?,
+                    )
+                    .await?;
+                    self.chat.suggestions.begin(id);
+                }
+            }
+
             Command::ChatMessage {
                 dimension_epoch,
                 sequence,

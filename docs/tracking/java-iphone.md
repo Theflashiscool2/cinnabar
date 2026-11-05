@@ -14,7 +14,7 @@ exist. The official iOS host/Metal renderer/touch controls and packaging are reu
 | 4 Controlled online server | Native encryption/session auth retained | Agent online-live acceptance pending | Account and authorized online infrastructure |
 | 5 Hypixel lobby | Owner Mac lobby reached; protocol777 preserved | Repeated backend handoff and iPhone lobby qualification | Legitimate account/user-directed test |
 | 6 World/players/items/server UI | Native rendering/roster/inventory/sidebar; Linux offline evidence | Native ordinary/special inventory icons now inspected in Linux vanilla; idle held items and remote humanoid armor/equipment now inspected offline; dynamic context, custom skins/non-idle poses and full server UI remain incomplete | Independent implementation available |
-| 7 Touch gameplay/menus/chat | Existing touch and semantic actions retained | Full touch action/menu/text acceptance, signed chat integration | Device for acceptance; implementation independent |
+| 7 Touch gameplay/menus/chat | Existing touch and semantic actions retained | Full touch action/menu/text and authenticated signed-chat acceptance | Device for acceptance; implementation independent |
 | 8 Play complete Bed Wars | Some movement, inventory, block interaction and melee exist | Controlled native shop/mine/place/use/two-client combat/death/respawn/world/reconnect loop passed; complete real Bed Wars rules/shop/varied combat and mode acceptance remain incomplete | Public matchmaking stays user-directed |
 | 9 Reconnect/restart | Controlled offline reconnect evidence; secure persistence implemented | Authenticated/iPhone restart and backend cleanup acceptance | Account/device for acceptance |
 
@@ -32,7 +32,7 @@ owners; no second network, inventory, simulation or world authority is introduce
 | Inventory/menu actions | `inventory/java`, `client-ui/ui_runtime/java_inventory`, `app/session/java_inventory`: finish outside/cursor drop, offhand swaps and required specialized menus; preserve state/incarnation fencing | Controlled accepted/rejected transfers, rapid menu replacement and authoritative counts |
 | Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: custom skins/non-idle poses, representative mobs/projectiles/NPCs, ranged presentation and active poses; ordinary offhand shielding/use and remote armor/held and basic two-client damage/death/respawn now pass controlled offline evidence | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
 | Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; basic both-hand block/entity/air precedence and active-use lifetime now pass controlled vanilla; remaining specialized uses, dynamic same-item component refresh, target-slot fallthrough and Adventure predicates | Actual inputs, denied-action recovery and server state |
-| Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: unsigned player conversations, disguised announcements, command/system/actionbar routing pass controlled vanilla; native cache/window/checksum framing is integrated. Account-bound certificate preparation and signature/chain verification are connected with synthetic fixtures; authenticated service acceptance remains pending. Signed command arguments, suggestions, deletion presentation, trust badges and remaining rich text/HUD surfaces remain incomplete | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
+| Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: unsigned player conversations, disguised announcements, command/system/actionbar routing pass controlled vanilla; native cache/window/checksum framing is integrated. Account-bound certificate preparation and signature/chain verification are connected with synthetic fixtures; authenticated service acceptance remains pending. Server-backed command suggestions now reach the shared editor with native UTF-16 ranges and correlated responses. Signed command arguments, local command-tree parsing, suggestion tooltips/large catalogs, deletion presentation, trust badges and remaining rich text/HUD surfaces remain incomplete | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
 | Packs and transitions | Native session/configuration and resource ownership: transfer consent/destination, full Java pack offer/application/status, stale work retirement | Controlled reconfiguration/backend changes, reload and world/session cleanup |
 | iOS actions | Existing semantic/touch/menu/text paths: connect every implemented Java action, text input, safe-area and background release | Shared input fixtures now; actual device flow remains external acceptance |
 | Bed Wars then Duels | Integrate the above through lobby, shop/build/combat/death and return; track modes separately | Controlled implementation fixtures plus user-directed real mode acceptance |
@@ -238,8 +238,16 @@ System components use the target language table, ordered/positional arguments an
 bounded named styles; native heterogeneous NBT argument wrappers are preserved. Actual
 formatted system text and action-bar display/expiry were inspected on Linux/lavapipe.
 The native100-message history and separate coalesced overlay do not create another UI owner.
-Player chat is explicitly unavailable rather than routed into Bedrock or sent with invented
-signatures/acknowledgements. Signed arguments, suggestions, underlined error context, full
-font/pack fidelity and online/iOS/Hypixel qualification remain open. Shared HUD regressions,
+Player conversations and account-bound certificate/signature transport are integrated; the
+controlled conversation fixtures are unsigned offline evidence. Commands now request native
+server completions through the same connection. The shared editor applies the server's
+UTF-16 replacement range, correlates edits/worlds, and supports Tab cycling and pointer
+selection. Controlled vanilla verified root/argument suggestions, trigger scores13/17,
+chat continuity and reconnect; four Linux/lavapipe screenshots were inspected. The first
+capture preceded atmosphere readiness and does not qualify sky rendering or performance.
+Signed command arguments, local command-tree parsing, suggestion tooltips and catalogs
+exceeding the existing editor's256-entry/64KiB budget remain incomplete; oversized lists
+show a diagnostic. Underlined error context, full font/pack fidelity and authenticated,
+iOS/Hypixel qualification remain open. Shared HUD regressions,
 focused native-codec/text/input checks, production compilation and architecture pass; full
 Cargo/MCP execution remains incomplete.

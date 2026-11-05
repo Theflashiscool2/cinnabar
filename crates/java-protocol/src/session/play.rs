@@ -130,6 +130,14 @@ impl Connection {
                 }
                 continue;
             }
+            if *name == "ClientboundCommandSuggestionsPacket" {
+                let response = chat::suggestions::decode(&mut r).map_err(packet_error)?;
+                r.finish().map_err(packet_error)?;
+                if self.chat.suggestions.accept(response.id) {
+                    self.emit(Event::CommandSuggestions(response)).await?;
+                }
+                continue;
+            }
             if let Some(message) = chat::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 self.emit(Event::SystemChat(message)).await?;
@@ -433,7 +441,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundBossEventPacket",
     "ClientboundChangeDifficultyPacket",
     "ClientboundClearTitlesPacket",
-    "ClientboundCommandSuggestionsPacket",
     "ClientboundCommandsPacket",
     "ClientboundCustomChatCompletionsPacket",
     "ClientboundDamageEventPacket",
