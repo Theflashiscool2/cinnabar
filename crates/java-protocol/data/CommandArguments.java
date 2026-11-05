@@ -20,7 +20,11 @@ public class CommandArguments {
    else if(name.endsWith("TimeArgument$Info"))shape="int";
    else if(name.contains("Resource")&&name.endsWith("Argument$Info"))shape="registry";
    else throw new IllegalStateException(name);
-   out.addProperty("properties",shape);result.add(out);
+   out.addProperty("properties",shape);
+   if(shape.equals("string")){
+    var modes=new JsonArray();for(var mode:com.mojang.brigadier.arguments.StringArgumentType.StringType.values())modes.add(mode.name());out.add("modes",modes);
+   }
+   result.add(out);
   }
   java.nio.file.Files.writeString(java.nio.file.Path.of(args[0]),new GsonBuilder().setPrettyPrinting().create().toJson(result));
  }

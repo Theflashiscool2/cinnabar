@@ -3,7 +3,7 @@
 //! Only parsers implemented exactly here may select a signature range. Other commands
 //! remain server-parsed; unsupported signable prefixes never advance a signing chain.
 use super::{Kind, Properties, Tree};
-use crate::ProtocolError as Error;
+use crate::{ProtocolError as Error, target::command_string_mode as string_mode};
 #[derive(Clone)]
 struct Parsed {
     cursor: usize,
@@ -173,9 +173,11 @@ fn argument_end(
             Ok(Some(input.len()))
         }
         "brigadier:string" => match properties {
-            Properties::String(0) => Ok(Some(cursor + unquoted(rest))),
-            Properties::String(1) => Ok(read_string(rest).map(|(_, end)| cursor + end)),
-            Properties::String(2) => Ok(Some(input.len())),
+            Properties::String(string_mode::SINGLE_WORD) => Ok(Some(cursor + unquoted(rest))),
+            Properties::String(string_mode::QUOTABLE_PHRASE) => {
+                Ok(read_string(rest).map(|(_, end)| cursor + end))
+            }
+            Properties::String(string_mode::GREEDY_PHRASE) => Ok(Some(input.len())),
             _ => Err(Error::Invalid("Java command string property")),
         },
         "minecraft:entity" | "minecraft:game_profile" => {

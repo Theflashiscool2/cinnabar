@@ -70,7 +70,13 @@ impl Tree {
                     let properties = match shape {
                         "none" => Properties::None,
                         "byte" => Properties::Byte(r.byte()?),
-                        "string" => Properties::String(r.var()?),
+                        "string" => {
+                            let mode = r.var()?;
+                            if !target::command_string_mode::ALL.contains(&mode) {
+                                return Err(Error::Invalid("Java command string mode"));
+                            }
+                            Properties::String(mode)
+                        }
                         "int" => Properties::Minimum(r.i32()?),
                         "registry" => Properties::Registry(r.string(32767)?),
                         "float" | "double" | "integer" | "long" => {

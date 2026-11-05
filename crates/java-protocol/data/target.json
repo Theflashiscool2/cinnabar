@@ -195,7 +195,7 @@
   },
   "command_argument_schema": {
     "path": "data/command-arguments.json",
-    "sha256": "4533fc3e5ff57bac1ab784fefaa4e37eea714fbf5e375667be93e2da84a89dc6",
+    "sha256": "1a0f07b9c776f84abcc36589f225b3e38b4daf8d009712fdc4a613e412e4e172",
     "generator": "data/CommandArguments.java against verified pinned server libraries",
     "registry": "BuiltInRegistries.COMMAND_ARGUMENT_TYPE"
   }

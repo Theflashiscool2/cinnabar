@@ -119,3 +119,24 @@ fn native_all_parser_properties_and_custom_provider_fields_keep_alignment() {
         matches!(&long.kind,Kind::Argument {properties:Properties::Number {lower:Some(low),upper:Some(high)},..} if low == &(-9007199254740993i64).to_be_bytes() && high == &(9007199254740993i64).to_be_bytes())
     );
 }
+
+#[test]
+fn string_mode_outside_the_native_enum_is_rejected_at_packet_admission() {
+    let hex = include_str!("../../../../data/command-properties-fixture.hex").trim();
+    let mut bytes: Vec<_> = hex
+        .as_bytes()
+        .chunks_exact(2)
+        .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
+        .collect();
+    let needle = b"\x05arg_5\x05\x01";
+    let position = bytes
+        .windows(needle.len())
+        .position(|w| w == needle)
+        .unwrap()
+        + needle.len()
+        - 1;
+    // Native StringArgumentSerializer.readEnum rejects3 (and -1/MAX_INT),
+    // independently checked against the verified pinned jar.
+    bytes[position] = 3;
+    assert!(Tree::decode(&mut Reader(&bytes)).is_err());
+}

@@ -39,7 +39,12 @@
     "name": "brigadier:string",
     "argument_class": "com.mojang.brigadier.arguments.StringArgumentType",
     "signable": false,
-    "properties": "string"
+    "properties": "string",
+    "modes": [
+      "SINGLE_WORD",
+      "QUOTABLE_PHRASE",
+      "GREEDY_PHRASE"
+    ]
   },
   {
     "id": 6,
