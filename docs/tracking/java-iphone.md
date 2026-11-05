@@ -191,3 +191,14 @@ acceptance passed actual chest acquisition, one log→four planks with three log
 helmet/chestplate equip and armorHUD8, rejected dirt→armor preserving eight, close/reopen and
 reconnect. Slot icons/HUD are accepted; the avatar preview still lacks Java equipment.
 Specialized workstations, recipe-book placement, armor dragging and iOS/Hypixel remain open.
+
+The c04 implementation additionally passes a connected controlled offline flow with two actual
+native clients: named chest acquisition→mine→place crafted plank→held eating→sword melee,
+server damage/knockback→combat death→real Respawn→dimension switch→return/reconnect. Server
+positions, health/counts and inspected screenshots support it. A keep_inventory fixture protected
+items during death and was restored false; loot drops are unqualified. Slow MCP observations
+missed the exact first apple count and overshot a chase; retained failures were resolved with
+held-to-full count checks and ordinary attacks in a physical arena. This is not Hypixel/iOS
+acceptance. Remote equipment is visibly absent (equipment packet remains deferred); title
+component color is flattened, and Nether sky/clouds remain visually unqualified. These gaps
+are not concealed by the working flow. Full Cargo/MCP suite remains incomplete.
