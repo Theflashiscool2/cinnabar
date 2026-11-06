@@ -88,6 +88,36 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
         }
         *code += "];\n";
     }
+    for (key, name) in [
+        ("villager_types", "VILLAGER_TYPES"),
+        ("villager_professions", "VILLAGER_PROFESSIONS"),
+        ("villager_levels", "VILLAGER_LEVELS"),
+    ] {
+        let values: Vec<&str> = facts[key]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(
+            !values.is_empty()
+                && values
+                    .iter()
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len()
+                    == values.len()
+        );
+        *code += &format!("pub const {name}: &[&str] = &{values:?};\n");
+    }
+    for (key, name) in [
+        ("villager_default_type", "VILLAGER_DEFAULT_TYPE"),
+        ("villager_default_profession", "VILLAGER_DEFAULT_PROFESSION"),
+    ] {
+        *code += &format!(
+            "pub const {name}: &str = {:?};\n",
+            facts[key].as_str().unwrap()
+        );
+    }
     *code += &format!(
         "pub const PIG_DEFAULT_VARIANT: &str = {:?};\n",
         facts["pig_default_variant"].as_str().unwrap()

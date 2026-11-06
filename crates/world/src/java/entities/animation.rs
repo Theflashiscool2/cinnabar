@@ -35,6 +35,29 @@ pub const PLAYER_PARTS: [&str; 6] = [
     "root/left_leg",
 ];
 impl Sample {
+    /// Pinned VillagerModel.setupAnim: head and crossed-arm biped legs, in radians.
+    pub fn villager_rotations(self, unhappy: bool) -> [[f32; 3]; 3] {
+        let phase = self.walk_position * 0.6662;
+        let leg = |phase| super::super::player::trig(phase)[1] as f32 * 1.4 * self.walk_speed * 0.5;
+        let head = if unhappy {
+            [
+                0.4,
+                wrap(self.head_yaw - self.body_yaw).to_radians(),
+                0.3 * super::super::player::trig(0.45 * self.age_in_ticks)[0] as f32,
+            ]
+        } else {
+            [
+                self.pose.pitch.to_radians(),
+                wrap(self.head_yaw - self.body_yaw).to_radians(),
+                0.,
+            ]
+        };
+        [
+            head,
+            [leg(phase), 0., 0.],
+            [leg(phase + std::f32::consts::PI), 0., 0.],
+        ]
+    }
     /// Quadruped model rotations, in radians: head, right/left hind, right/left front.
     pub fn rotations(self) -> [[f32; 3]; 5] {
         let phase = self.walk_position * 0.6662;
@@ -57,6 +80,7 @@ impl Sample {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BodyKind {
     Pig,
+    Villager,
     Player,
 }
 #[derive(Clone, Debug)]
@@ -162,7 +186,7 @@ impl Presentation {
             player::body_with_swing(self, dx, dz, swinging);
             return;
         }
-        // BodyRotationControl's native thresholds and getMaxHeadYRot for an unmounted pig.
+        // BodyRotationControl's native thresholds and getMaxHeadYRot for the supported unmounted mobs.
         const MAX_HEAD: f32 = 75.;
         let rotate = |angle: f32, toward: f32, limit: f32| {
             toward - wrap(toward - angle).clamp(-limit, limit)
@@ -201,3 +225,58 @@ impl Presentation {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod villager_tests {
+    use super::*;
+    #[test]
+    fn native_adult_and_baby_model_pose_vectors() {
+        // Independently evaluated through pinned VillagerModel/BabyVillagerModel.setupAnim.
+        for (input, expected) in [
+            (
+                [35., -20., 2.3, 0.75, 19., 0.],
+                [
+                    [-0.34906584, 0.61086524, 0.],
+                    [0.020229157, 0., 0.],
+                    [-0.020229157, 0., 0.],
+                ],
+            ),
+            (
+                [-175., 60., 91.25, 1., 123.5, 1.],
+                [
+                    [0.4, -3.054326, -0.24809055],
+                    [-0.3172431, 0., 0.],
+                    [0.3172431, 0., 0.],
+                ],
+            ),
+            (
+                [179., -10., -3.25, 0.3, 2., 1.],
+                [
+                    [0.4, 3.1241393, 0.23499198],
+                    [-0.117588855, 0., 0.],
+                    [0.11760553, 0., 0.],
+                ],
+            ),
+        ] {
+            let sample = Sample {
+                pose: Pose {
+                    pitch: input[1],
+                    ..Default::default()
+                },
+                body_yaw: 0.,
+                head_yaw: input[0],
+                walk_position: input[2],
+                walk_speed: input[3],
+                age_in_ticks: input[4],
+            };
+            for (got, want) in sample
+                .villager_rotations(input[5] != 0.)
+                .into_iter()
+                .flatten()
+                .zip(expected.into_iter().flatten())
+            {
+                assert!((got - want).abs() < 0.0000005, "got {got}, expected {want}");
+            }
+        }
+    }
+}

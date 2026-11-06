@@ -2,6 +2,7 @@
 mod assets;
 mod equipment;
 mod ground;
+mod villager;
 use super::{SessionController, java_render};
 use bevy::prelude::*;
 use client_presentation::{
@@ -36,6 +37,7 @@ pub(crate) struct Presentation {
     assets: Option<assets::Prepared>,
     equipment: Option<equipment::State>,
     poses: BTreeMap<Identity, Pose>,
+    villagers: BTreeMap<(Identity, bool), villager::Pose>,
     ground_births: BTreeMap<Identity, u64>,
     published_items: usize,
     item_pending: usize,
@@ -47,6 +49,7 @@ pub(crate) struct Presentation {
     glow_pending: usize,
     custom_skin_pending: usize,
     published_players: usize,
+    published_villagers: usize,
     log_after_tick: u64,
     logged_counts: Option<[usize; 5]>,
     elapsed: std::time::Duration,
@@ -61,6 +64,7 @@ impl Default for Presentation {
             assets: None,
             equipment: None,
             poses: BTreeMap::new(),
+            villagers: BTreeMap::new(),
             ground_births: BTreeMap::new(),
             published_items: 0,
             item_pending: 0,
@@ -72,6 +76,7 @@ impl Default for Presentation {
             glow_pending: 0,
             custom_skin_pending: 0,
             published_players: 0,
+            published_villagers: 0,
             log_after_tick: 0,
             logged_counts: None,
             elapsed: std::time::Duration::ZERO,
@@ -98,7 +103,7 @@ impl Presentation {
     }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len(),"error":self.failure,"presentation":"native_pig_and_player_interpolation","published_players":self.published_players,"published_items":self.published_items,"item_pending":self.item_pending,"item_motion":"server_positions","custom_skin_pending":self.custom_skin_pending,"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.elapsed.as_nanos()/simulation_clock::TICK_DURATION.as_nanos(),"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
+        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len()+self.villagers.len(),"error":self.failure,"presentation":"native_living_interpolation","published_players":self.published_players,"published_villagers":self.published_villagers,"published_items":self.published_items,"item_pending":self.item_pending,"item_motion":"server_positions","custom_skin_pending":self.custom_skin_pending,"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.elapsed.as_nanos()/simulation_clock::TICK_DURATION.as_nanos(),"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
     }
 }
 pub(crate) mod publish;

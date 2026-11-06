@@ -25,6 +25,7 @@ pub(super) struct Prepared {
     pub textures: BTreeMap<String, ActorArtworkLocation>,
     pub player_textures: BTreeMap<String, ActorArtworkLocation>,
     pub artwork: ActorArtworkPages,
+    pub villager_hats: BTreeMap<String, super::villager::Hat>,
 }
 enum Texture {
     Pig(String),
@@ -86,6 +87,15 @@ fn inner(
         let id = Identifier::parse(skin.texture)?;
         let path = format!("assets/{}/{}", id.namespace(), id.path());
         requests.push((Texture::Player(skin.texture.to_owned()), path));
+    }
+    let mut villager_hats = BTreeMap::new();
+    for path in jar.entries("assets/minecraft/textures/entity/villager/")? {
+        if !path.ends_with(".png") {
+            continue;
+        }
+        let metadata = jar.optional_json(&format!("{path}.mcmeta"))?;
+        villager_hats.insert(path.clone(), super::villager::Hat::read(metadata.as_ref())?);
+        requests.push((Texture::Player(path.clone()), path));
     }
     let mut groups = BTreeMap::<(u16, u16), Vec<(Texture, Image)>>::new();
     for (name, path) in requests {
@@ -163,5 +173,6 @@ fn inner(
         textures,
         player_textures,
         artwork,
+        villager_hats,
     })
 }

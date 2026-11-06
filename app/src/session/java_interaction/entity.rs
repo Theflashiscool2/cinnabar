@@ -1,4 +1,4 @@
-//! Selects supported player/pig hitboxes from completed native simulation steps.
+//! Selects supported native living hitboxes from completed native simulation steps.
 use gameplay::java::actions::Target;
 use sim::java::{entity_selection, selection, travel};
 
@@ -49,7 +49,7 @@ pub(super) fn pick(
     for e in state.entities.iter() {
         let player = e.visual.player.is_some();
         let pig = e.visual.pig.is_some();
-        if (!player && !pig)
+        if (!player && !pig && e.visual.villager.is_none())
             || e.visual.incomplete.is_some()
             || e.visual.health.is_some_and(|h| h <= 0.)
             || e.visual.scale != 1.
@@ -302,6 +302,69 @@ mod tests {
             )
             .is_none()
         );
+    }
+    #[test]
+    fn villager_pick_uses_native_hitbox_and_retires_with_entity() {
+        let mut s = state();
+        s.entities.remove((7, 1), &[99]).unwrap();
+        s.entities
+            .spawn(
+                (7, 1),
+                entities::Spawn {
+                    transport_lifetime: 20,
+                    network_id: 99,
+                    uuid: [3; 16],
+                    kind: java_protocol::target::ENTITY_VILLAGER.into(),
+                    motion: Motion {
+                        position: [0., 0., 3.],
+                        ..Default::default()
+                    },
+                    head_yaw: 0.,
+                    object_data: 0,
+                    visual: entities::visual::Visual {
+                        villager: Some(entities::visual::VillagerAppearance {
+                            variant: "minecraft:plains".into(),
+                            profession: "minecraft:farmer".into(),
+                            level: 1,
+                            unhappy_ticks: 0,
+                            finalized: false,
+                        }),
+                        ..Default::default()
+                    },
+                    interpolation_interval: Some(3),
+                },
+            )
+            .unwrap();
+        let selected = |s: &client_world::java::WorldState| {
+            pick(
+                s,
+                [0., 1.5, 0.],
+                [0., 1.5, 5.],
+                3.,
+                4.5,
+                None,
+                ([0., 0.], false),
+            )
+        };
+        let Some(Target::Entity {
+            network_id,
+            location,
+            ..
+        }) = selected(&s)
+        else {
+            panic!("native villager must be selectable")
+        };
+        assert_eq!(network_id, 99);
+        assert!((location[2] + 0.30000001192092896).abs() < 1e-10);
+        s.entities
+            .update((7, 1), 99, |e| {
+                e.visual.baby = true;
+                Ok(())
+            })
+            .unwrap();
+        assert!(selected(&s).is_none());
+        s.entities.remove((7, 1), &[99]).unwrap();
+        assert!(selected(&s).is_none());
     }
     #[test]
     fn pig_hit_point_uses_native_dimensions_baby_height_and_click_context() {

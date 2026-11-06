@@ -6,7 +6,36 @@ use java_protocol::{
     target,
 };
 use std::sync::Arc;
-use world::java::entities::visual::{MetadataGap, PigAppearance, PigModel, Visual};
+use world::java::entities::visual::{
+    MetadataGap, PigAppearance, PigModel, VillagerAppearance, Visual,
+};
+
+pub(super) fn default_villager() -> VillagerAppearance {
+    VillagerAppearance {
+        variant: target::VILLAGER_DEFAULT_TYPE.into(),
+        profession: target::VILLAGER_DEFAULT_PROFESSION.into(),
+        level: 1,
+        unhappy_ticks: 0,
+        finalized: false,
+    }
+}
+fn villager_value(values: [i32; 3], current: &mut VillagerAppearance) -> Result<(), &'static str> {
+    let lookup = |values: &'static [&'static str], id| {
+        usize::try_from(id)
+            .ok()
+            .and_then(|id| values.get(id))
+            .copied()
+    };
+    current.variant = lookup(target::VILLAGER_TYPES, values[0])
+        .ok_or("unknown native villager type")?
+        .into();
+    current.profession = lookup(target::VILLAGER_PROFESSIONS, values[1])
+        .ok_or("unknown native villager profession")?
+        .into();
+    // Pinned VillagerData constructor uses Math.max(1, level), with no upper clamp.
+    current.level = values[2].max(1);
+    Ok(())
+}
 
 pub(super) fn default_pig(state: &WorldState) -> Result<Arc<PigAppearance>, &'static str> {
     let entries = state
@@ -161,6 +190,23 @@ fn apply(
                     cape: parts & target::PLAYER_MODEL_PART_CAPE != 0,
                 };
             }
+            ("DATA_VILLAGER_DATA", Value::Villager(values)) => {
+                villager_value(
+                    values,
+                    visual
+                        .villager
+                        .as_mut()
+                        .ok_or("villager data on another native entity")?,
+                )?;
+            }
+            ("DATA_UNHAPPY_COUNTER", Value::Int(ticks)) if visual.villager.is_some() => {
+                visual.villager.as_mut().unwrap().unhappy_ticks = ticks;
+            }
+            ("DATA_VILLAGER_DATA_FINALIZED", Value::Bool(finalized))
+                if visual.villager.is_some() =>
+            {
+                visual.villager.as_mut().unwrap().finalized = finalized;
+            }
             ("DATA_VARIANT_ID", Value::Int(id)) if visual.pig.is_some() => {
                 visual.pig = Some(variant(state, id)?)
             }
@@ -187,6 +233,7 @@ fn schema(kind: &str) -> Option<&'static [target::MetadataSpec]> {
         target::ENTITY_PIG => target::METADATA_PIG,
         target::ENTITY_PLAYER => target::METADATA_PLAYER,
         target::ENTITY_ITEM => target::METADATA_ITEM,
+        target::ENTITY_VILLAGER => target::METADATA_VILLAGER,
         _ => return None,
     })
 }

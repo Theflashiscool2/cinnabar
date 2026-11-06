@@ -13,6 +13,15 @@ pub struct PigAppearance {
     pub adult_texture: Arc<str>,
     pub baby_texture: Arc<str>,
 }
+/// Exact built-in villager identity and synchronized presentation facts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VillagerAppearance {
+    pub variant: Arc<str>,
+    pub profession: Arc<str>,
+    pub level: i32,
+    pub unhappy_ticks: i32,
+    pub finalized: bool,
+}
 #[derive(Clone, Debug, Default)]
 pub struct MetadataGap {
     pub index: u8,
@@ -41,6 +50,7 @@ pub struct Visual {
     pub baby: bool,
     pub health: Option<f32>,
     pub pig: Option<Arc<PigAppearance>>,
+    pub villager: Option<VillagerAppearance>,
     pub player: Option<Arc<super::super::roster::Profile>>,
     pub player_layers: PlayerLayers,
     /// Avatar.DATA_PLAYER_MAIN_HAND; native constructor defaults to RIGHT.
@@ -63,6 +73,7 @@ impl Default for Visual {
             baby: false,
             health: None,
             pig: None,
+            villager: None,
             player: None,
             player_layers: PlayerLayers::default(),
             left_handed: false,

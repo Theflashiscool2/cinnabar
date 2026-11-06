@@ -78,12 +78,14 @@ pub(super) fn admit(
             } else {
                 None
             };
+            let villager =
+                (s.kind == java_protocol::target::ENTITY_VILLAGER).then(metadata::default_villager);
             let player = if s.kind == java_protocol::target::ENTITY_PLAYER {
                 state.players.get(&s.uuid).map(|p| Arc::clone(&p.profile))
             } else {
                 None
             };
-            let interpolated = pig.is_some() || player.is_some();
+            let interpolated = pig.is_some() || player.is_some() || villager.is_some();
             let previous = state.entities.get(s.id).map(|e| e.identity);
             let admitted = state.entities.spawn(
                 scope,
@@ -102,6 +104,7 @@ pub(super) fn admit(
                     object_data: s.data,
                     visual: domain::visual::Visual {
                         pig,
+                        villager,
                         player,
                         ..Default::default()
                     },

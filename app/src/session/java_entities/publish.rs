@@ -69,6 +69,7 @@ pub(crate) fn update(
     p.glow_pending = 0;
     p.custom_skin_pending = 0;
     p.published_players = 0;
+    p.published_villagers = 0;
     p.published_items = 0;
     p.item_pending = 0;
     if p.assets.is_none() && p.pending.is_none() && p.failure.is_none() {
@@ -220,6 +221,32 @@ pub(crate) fn update(
                 continue;
             };
             let sampled = motion.sample(fraction);
+            if let Some(appearance) = &e.visual.villager {
+                let Some(light) = light(&state.terrain, sampled.pose.position) else {
+                    p.unknown_light += 1;
+                    continue;
+                };
+                retained.insert(e.identity);
+                if let Err(error) = villager::append(
+                    &mut batch,
+                    e,
+                    appearance,
+                    sampled,
+                    assets,
+                    &mut p.villagers,
+                    ground::Frame {
+                        scope,
+                        serial: p.serial,
+                        age: 0.,
+                        light,
+                    },
+                ) {
+                    p.failure = Some(error);
+                    break;
+                }
+                p.published_villagers += 1;
+                continue;
+            }
             let (model_name, texture, textures) = if let Some(profile) = &e.visual.player {
                 if profile
                     .properties
@@ -425,12 +452,15 @@ pub(crate) fn update(
             p.published_players += usize::from(is_player);
         }
         p.poses.retain(|id, _| retained.contains(id));
+        p.villagers.retain(|(id, _), _| retained.contains(id));
         p.ground_births.retain(|id, _| ground_retained.contains(id));
     }
     if let Some(error) = &p.failure {
         batch = empty();
         p.published_players = 0;
+        p.published_villagers = 0;
         p.poses.clear();
+        p.villagers.clear();
         if let Some(mut menu) = menu {
             menu.set_java_diagnostic(format!("Java entities incomplete: {error}. Check the pinned models.json and client.jar in the packaged Java asset directory."));
         }

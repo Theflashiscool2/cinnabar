@@ -1923,8 +1923,171 @@
         "index": 8,
         "serializer": 7
       }
+    ],
+    "villager": [
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SHARED_FLAGS_ID",
+        "index": 0,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_AIR_SUPPLY_ID",
+        "index": 1,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME",
+        "index": 2,
+        "serializer": 6
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME_VISIBLE",
+        "index": 3,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SILENT",
+        "index": 4,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_NO_GRAVITY",
+        "index": 5,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_POSE",
+        "index": 6,
+        "serializer": 20
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_TICKS_FROZEN",
+        "index": 7,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_LIVING_ENTITY_FLAGS",
+        "index": 8,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_HEALTH_ID",
+        "index": 9,
+        "serializer": 3
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_PARTICLES",
+        "index": 10,
+        "serializer": 17
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_AMBIENCE_ID",
+        "index": 11,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_ARROW_COUNT_ID",
+        "index": 12,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_STINGER_COUNT_ID",
+        "index": 13,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "SLEEPING_POS_ID",
+        "index": 14,
+        "serializer": 11
+      },
+      {
+        "owner": "net.minecraft.world.entity.Mob",
+        "name": "DATA_MOB_FLAGS_ID",
+        "index": 15,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.AgeableMob",
+        "name": "DATA_BABY_ID",
+        "index": 16,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.AgeableMob",
+        "name": "AGE_LOCKED",
+        "index": 17,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.npc.villager.AbstractVillager",
+        "name": "DATA_UNHAPPY_COUNTER",
+        "index": 18,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.npc.villager.Villager",
+        "name": "DATA_VILLAGER_DATA",
+        "index": 19,
+        "serializer": 18
+      },
+      {
+        "owner": "net.minecraft.world.entity.npc.villager.Villager",
+        "name": "DATA_VILLAGER_DATA_FINALIZED",
+        "index": 20,
+        "serializer": 8
+      }
     ]
   },
+  "villager_types": [
+    "minecraft:desert",
+    "minecraft:jungle",
+    "minecraft:plains",
+    "minecraft:savanna",
+    "minecraft:snow",
+    "minecraft:swamp",
+    "minecraft:taiga"
+  ],
+  "villager_professions": [
+    "minecraft:none",
+    "minecraft:armorer",
+    "minecraft:butcher",
+    "minecraft:cartographer",
+    "minecraft:cleric",
+    "minecraft:farmer",
+    "minecraft:fisherman",
+    "minecraft:fletcher",
+    "minecraft:leatherworker",
+    "minecraft:librarian",
+    "minecraft:mason",
+    "minecraft:nitwit",
+    "minecraft:shepherd",
+    "minecraft:toolsmith",
+    "minecraft:weaponsmith"
+  ],
+  "villager_levels": [
+    "minecraft:stone",
+    "minecraft:iron",
+    "minecraft:gold",
+    "minecraft:emerald",
+    "minecraft:diamond"
+  ],
+  "villager_default_type": "minecraft:plains",
+  "villager_default_profession": "minecraft:none",
   "poses": [
     "standing",
     "fall_flying",

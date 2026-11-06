@@ -113,6 +113,11 @@ impl Entities {
             .collect::<std::collections::BTreeSet<_>>();
         for entity in self.entries.values_mut() {
             entity.visual.swing.tick();
+            if let Some(villager) = &mut entity.visual.villager {
+                if villager.unhappy_ticks > 0 {
+                    villager.unhappy_ticks -= 1;
+                }
+            }
             super::dynamics::tick_effects(&mut entity.visual.effects);
             if let Some(presentation) = &mut entity.presentation {
                 presentation.tick_with_swing(
@@ -253,6 +258,8 @@ impl Entities {
                     interval,
                     if spawn.visual.player.is_some() {
                         animation::BodyKind::Player
+                    } else if spawn.visual.villager.is_some() {
+                        animation::BodyKind::Villager
                     } else {
                         animation::BodyKind::Pig
                     },

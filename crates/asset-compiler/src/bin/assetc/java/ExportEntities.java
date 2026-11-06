@@ -223,6 +223,17 @@ public final class ExportEntities {
         models.add("baby_pig", part(BabyPigModel.createBodyLayer(CubeDeformation.NONE).bakeRoot(), "root"));
         models.add("player_wide", part(LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64).bakeRoot(), "root"));
         models.add("player_slim", part(LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, true), 64, 64).bakeRoot(), "root"));
+        var nativeLayers = net.minecraft.client.model.geom.LayerDefinitions.createRoots();
+        for (var entry : List.of(
+            Map.entry("villager", net.minecraft.client.model.geom.ModelLayers.VILLAGER),
+            Map.entry("villager_no_hat", net.minecraft.client.model.geom.ModelLayers.VILLAGER_NO_HAT),
+            Map.entry("baby_villager", net.minecraft.client.model.geom.ModelLayers.VILLAGER_BABY),
+            Map.entry("baby_villager_no_hat", net.minecraft.client.model.geom.ModelLayers.VILLAGER_BABY_NO_HAT)
+        )) {
+            var layer = nativeLayers.get(entry.getValue());
+            if (layer == null) throw new IllegalStateException("missing native villager layer " + entry.getValue());
+            models.add(entry.getKey(), part(layer.bakeRoot(), "root"));
+        }
         models.add("statue_standing", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createBodyLayer().bakeRoot(), "root"));
         models.add("statue_running", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createRunningPoseBodyLayer().bakeRoot(), "root"));
         models.add("statue_sitting", part(net.minecraft.client.model.animal.golem.CopperGolemModel.createSittingPoseBodyLayer().bakeRoot(), "root"));
@@ -251,7 +262,32 @@ public final class ExportEntities {
         metadata.add("pig", metadata(net.minecraft.world.entity.animal.pig.Pig.class));
         metadata.add("player", metadata(net.minecraft.world.entity.player.Player.class));
         metadata.add("item", metadata(net.minecraft.world.entity.item.ItemEntity.class));
+        metadata.add("villager", metadata(net.minecraft.world.entity.npc.villager.Villager.class));
         facts.add("metadata", metadata);
+        JsonArray villagerTypes = new JsonArray();
+        for (var type : BuiltInRegistries.VILLAGER_TYPE) {
+            if (BuiltInRegistries.VILLAGER_TYPE.getId(type) != villagerTypes.size()) throw new IllegalStateException("noncontiguous villager types");
+            villagerTypes.add(BuiltInRegistries.VILLAGER_TYPE.getKey(type).toString());
+        }
+        facts.add("villager_types", villagerTypes);
+        JsonArray professions = new JsonArray();
+        for (var profession : BuiltInRegistries.VILLAGER_PROFESSION) {
+            if (BuiltInRegistries.VILLAGER_PROFESSION.getId(profession) != professions.size()) throw new IllegalStateException("noncontiguous villager professions");
+            professions.add(BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession).toString());
+        }
+        facts.add("villager_professions", professions);
+        var levelsField = net.minecraft.client.renderer.entity.layers.VillagerProfessionLayer.class.getDeclaredField("LEVEL_LOCATIONS");
+        levelsField.setAccessible(true);
+        var levels = (java.util.Map<?, ?>) levelsField.get(null);
+        JsonArray levelNames = new JsonArray();
+        for (int i = 1; i <= levels.size(); ++i) {
+            Object id = levels.get(i);
+            if (id == null) throw new IllegalStateException("noncontiguous villager levels");
+            levelNames.add(id.toString());
+        }
+        facts.add("villager_levels", levelNames);
+        facts.addProperty("villager_default_type", net.minecraft.world.entity.npc.villager.VillagerData.DEFAULT_TYPE.identifier().toString());
+        facts.addProperty("villager_default_profession", BuiltInRegistries.VILLAGER_PROFESSION.getDefaultKey().toString());
         JsonArray poses = new JsonArray();
         for (Pose pose : Pose.values()) poses.add(pose.name().toLowerCase(Locale.ROOT));
         facts.add("poses", poses);
