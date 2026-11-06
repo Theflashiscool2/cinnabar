@@ -118,7 +118,7 @@ bindings! {
         Some(PhysicalControl::KeyboardUsage(0x28)), false, None;
     Command => "key.command", None, Some(DeviceRow::Extra(2, Some(PhysicalControl::KeyboardUsage(0x38)))), None,
         None, false, None;
-    Drop => "key.drop", None, Some(DeviceRow::Extra(3, Some(PhysicalControl::KeyboardUsage(0x14)))), Some(DeviceRow::Extra(2, Some(PhysicalControl::GamepadButton(12)))),
+    Drop => "key.drop", Some(Action::Drop), Some(DeviceRow::Extra(3, Some(PhysicalControl::KeyboardUsage(0x14)))), Some(DeviceRow::Extra(2, Some(PhysicalControl::GamepadButton(12)))),
         None, false, None;
     PickItem => "key.pickItem", Some(Action::PickItem), Some(DeviceRow::Extra(4, Some(PhysicalControl::MouseButton(3)))), Some(DeviceRow::Extra(3, None)),
         None, false, None;

@@ -318,6 +318,7 @@ impl SettingsOptions {
                 });
             }
         }
+        ControlSettings::derive_drop_stack_chords(&mut bindings);
         for binding in &mut bindings {
             binding.chord.control = self.swap_gamepad_control(binding.chord.control);
         }
@@ -656,6 +657,101 @@ mod tests {
             (0x85, "Numpad ,"),
         ] {
             assert_eq!(key_name(PhysicalControl::KeyboardUsage(usage)), expected);
+        }
+    }
+    #[test]
+    fn native_world_drop_binding_reaches_finalized_gameplay_input() {
+        let mut router = semantic_input::SemanticInputRouter::default();
+        router
+            .replace_bindings(SettingsOptions::default().controls().unwrap())
+            .unwrap();
+        router
+            .route(semantic_input::DeviceFrame {
+                keyboard_mouse: Some(semantic_input::KeyboardMouseFrame {
+                    activity_sequence: 1,
+                    keys: vec![0x14],
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        let snapshot = router.finalize().unwrap();
+        assert!(
+            SettingsOptions::default()
+                .controls()
+                .unwrap()
+                .bindings()
+                .iter()
+                .any(|binding| {
+                    binding.action.binding_name() == "drop"
+                        && snapshot.phases[binding.action as usize].pressed
+                }),
+            "the player's Drop control never reached native gameplay"
+        );
+    }
+
+    #[test]
+    fn native_world_drop_remap_unbind_and_whole_stack_chord_follow_saved_control() {
+        let mut settings = SettingsOptions::default();
+        let row = BindingId::Drop.row(false).unwrap();
+        assert!(settings.remap(row, PhysicalControl::KeyboardUsage(0x15)));
+        for (key, control, expected) in [
+            (0x14, false, None),
+            (0x15, false, Some(Action::Drop)),
+            (0x15, true, Some(Action::DropStack)),
+        ] {
+            let mut router = semantic_input::SemanticInputRouter::default();
+            router
+                .replace_bindings(settings.controls().unwrap())
+                .unwrap();
+            router
+                .route(semantic_input::DeviceFrame {
+                    keyboard_mouse: Some(semantic_input::KeyboardMouseFrame {
+                        activity_sequence: 1,
+                        keys: vec![key],
+                        modifiers: semantic_input::ModifierChord {
+                            control,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .unwrap();
+            let snapshot = router.finalize().unwrap();
+            let dropped = [Action::Drop, Action::DropStack]
+                .into_iter()
+                .filter(|action| snapshot.phases[*action as usize].pressed)
+                .collect::<Vec<_>>();
+            assert_eq!(dropped, expected.into_iter().collect::<Vec<_>>());
+        }
+        assert!(settings.unbind_key(row));
+        assert!(
+            !settings
+                .controls()
+                .unwrap()
+                .bindings()
+                .iter()
+                .any(|binding| {
+                    matches!(binding.action, Action::Drop | Action::DropStack)
+                        && matches!(binding.chord.control, PhysicalControl::KeyboardUsage(_))
+                })
+        );
+        for (id, action) in [
+            (semantic_input::touch::DROP, Action::Drop),
+            (semantic_input::touch::DROP_STACK, Action::DropStack),
+        ] {
+            assert!(
+                settings
+                    .controls()
+                    .unwrap()
+                    .bindings()
+                    .iter()
+                    .any(|binding| {
+                        binding.action == action
+                            && binding.chord.control == PhysicalControl::TouchControl(id)
+                    })
+            );
         }
     }
 }

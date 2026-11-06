@@ -114,6 +114,7 @@ async fn reused_menu_id_retires_queued_clicks_and_close_receipts_are_not_server_
                     .await
                     .unwrap(),
                 Event::Inventory {
+                    wire_revision: _,
                     incarnation,
                     packet: Packet::Open { .. },
                     ..
@@ -153,6 +154,7 @@ async fn reused_menu_id_retires_queued_clicks_and_close_receipts_are_not_server_
                     }
                 }
                 Event::Inventory {
+                    wire_revision: _,
                     incarnation,
                     packet: Packet::Content { container: 7, .. },
                     ..
@@ -254,6 +256,7 @@ async fn quick_craft_phases_are_contiguous_before_the_next_queued_close() {
                     .await
                     .unwrap(),
                 Event::Inventory {
+                    wire_revision: _,
                     incarnation,
                     packet: Packet::Content { .. },
                     ..
@@ -545,6 +548,7 @@ async fn native_grouped_cooldowns_decode_signed_removal_and_preserve_following_p
         while let Some(e) = rx.recv().await {
             match e.event {
                 Event::Inventory {
+                    wire_revision: _,
                     dimension_epoch: 1,
                     packet: Packet::Cooldown { group, ticks },
                     ..

@@ -60,6 +60,15 @@ pub enum Packet {
         value: i16,
     },
 }
+impl Packet {
+    /// Local ordering fence, independent of the server's container state ID.
+    pub fn changes_items(&self) -> bool {
+        matches!(
+            self,
+            Self::Content { .. } | Self::Slot { .. } | Self::PlayerSlot { .. } | Self::Cursor(_)
+        )
+    }
+}
 pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
         "ClientboundCooldownPacket" => Packet::Cooldown {

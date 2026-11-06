@@ -157,6 +157,8 @@ impl Default for TouchControlLayout {
                 crate::touch::DEBUG_OVERLAY,
                 crate::touch::PLAYER_LIST,
                 crate::touch::DISMISS_UTILITIES,
+                crate::touch::DROP,
+                crate::touch::DROP_STACK,
             ]
             .map(|hit_id| TouchControl {
                 hit_id,

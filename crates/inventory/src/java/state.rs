@@ -9,10 +9,14 @@ impl State {
         }
         let storage = std::mem::take(&mut self.storage);
         let selected = self.selected;
+        let projections = std::mem::take(&mut self.drop_predictions);
+        let wire_revision = self.wire_revision;
         let cooldowns = std::mem::take(&mut self.cooldowns);
         self.begin(session, epoch);
         self.storage = storage;
         self.selected = selected;
+        self.drop_predictions = projections;
+        self.wire_revision = wire_revision;
         self.cooldowns = cooldowns;
     }
     /// A replacement player has no admitted inventory, even when the server keeps metadata.
@@ -45,7 +49,7 @@ impl State {
         if self.error.is_some() {
             return None;
         }
-        self.storage.get(self.selected?)?.value()
+        self.player_slot_view(self.selected?)
     }
     pub fn accepts(&self, session: u64, epoch: u64) -> bool {
         (self.session, self.epoch) == (session, epoch) && self.player.is_some()
@@ -90,7 +94,7 @@ impl State {
     pub fn slot(&self, id: i32, index: usize) -> Option<&Slot> {
         match self.menu(id)?.slots.get(index)? {
             Binding::Owned(value) => value.value(),
-            Binding::Player(index) => self.storage.get(*index)?.value(),
+            Binding::Player(index) => self.player_slot_view(*index),
         }
     }
     fn set_slot(&mut self, id: i32, index: usize, stack: Slot) {
@@ -99,6 +103,7 @@ impl State {
             Binding::Owned(_) => None,
         };
         if let Some(storage) = storage {
+            self.drop_predictions.remove(&storage);
             self.storage[storage] = Cell::Known(stack);
         } else {
             self.menu_mut(id).unwrap().slots[index] = Binding::Owned(Cell::Known(stack));
@@ -124,6 +129,7 @@ impl State {
                 if slot >= self.storage.len() {
                     return Err("Java player inventory slot is out of range".into());
                 }
+                self.drop_predictions.remove(&slot);
                 self.storage[slot] = Cell::Known(stack);
             }
             Update::Content {

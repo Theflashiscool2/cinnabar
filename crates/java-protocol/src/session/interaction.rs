@@ -2,6 +2,7 @@
 use crate::{ProtocolError as Error, codec::write_varint, target};
 
 pub(crate) mod cancel;
+pub(crate) mod drop;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -10,6 +11,8 @@ pub enum Action {
     Abort,
     Finish,
     ReleaseUse,
+    DropItem,
+    DropStack,
 }
 impl Action {
     /// Native startAttack has a Punch edge; completion/cancellation/release do not.
@@ -34,6 +37,19 @@ pub struct Dig {
     pub sequence: i32,
 }
 impl Dig {
+    /// Native world drops use ZERO, DOWN and the unpredicted constructor, without a punch.
+    pub const fn drop_item(whole_stack: bool) -> Self {
+        Self {
+            action: if whole_stack {
+                Action::DropStack
+            } else {
+                Action::DropItem
+            },
+            position: [0; 3],
+            face: Face::Down,
+            sequence: 0,
+        }
+    }
     /// Native MultiPlayerGameMode.releaseUsingItem uses the unpredicted constructor.
     pub const fn release_use() -> Self {
         Self {
@@ -171,6 +187,8 @@ pub fn encode(dig: Dig) -> Result<Vec<u8>, Error> {
         Action::Abort => target::PLAYER_ACTION_CANCEL_DIGGING,
         Action::Finish => target::PLAYER_ACTION_FINISH_DIGGING,
         Action::ReleaseUse => target::PLAYER_ACTION_RELEASE_USE_ITEM,
+        Action::DropItem => target::PLAYER_ACTION_DROP_ITEM,
+        Action::DropStack => target::PLAYER_ACTION_DROP_ITEM_STACK,
     };
     let mut bytes = Vec::with_capacity(15);
     write_varint(i32::from(action), &mut bytes);
@@ -440,5 +458,19 @@ mod use_lifecycle_tests {
         ] {
             assert!(!action.punches());
         }
+    }
+    #[test]
+    fn world_drop_matches_native_unpredicted_vectors_without_punch() {
+        // Verified26.3 DROP_ITEM/DROP_ALL_ITEMS ordinals, ZERO, DOWN, sequence0.
+        assert_eq!(
+            encode(Dig::drop_item(false)).unwrap(),
+            [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            encode(Dig::drop_item(true)).unwrap(),
+            [4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert!(!Dig::drop_item(false).action.punches());
+        assert!(!Dig::drop_item(true).action.punches());
     }
 }

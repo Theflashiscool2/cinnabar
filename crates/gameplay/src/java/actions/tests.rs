@@ -522,3 +522,55 @@ fn correction_discards_old_clicks_and_mining_but_preserves_an_admitted_use_hold(
     c.capture(&s, &held(8), None);
     assert!(!c.use_button_down());
 }
+
+#[test]
+fn drops_wait_for_selection_receipts_and_do_not_mutate_inventory() {
+    let mut state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, None), None);
+    c.append(
+        [
+            Intent::Slot(1),
+            Intent::Drop { whole_stack: false },
+            Intent::Slot(2),
+            Intent::Drop { whole_stack: true },
+        ],
+        None,
+    );
+    let selection = c.selection(&state).unwrap();
+    assert_eq!(selection.slot, 1);
+    c.selection_queued();
+    assert_eq!(c.front(&state), None);
+    state.inventory.selection_sent(7, 1, selection.sequence, 1);
+    assert_eq!(c.front(&state), Some(Intent::Drop { whole_stack: false }));
+    assert_eq!(c.front(&state), Some(Intent::Drop { whole_stack: false }));
+    let before_drop = state.inventory.revision;
+    c.drop_queued(false);
+    assert_eq!(state.inventory.revision, before_drop);
+    let selection = c.selection(&state).unwrap();
+    assert_eq!(selection.slot, 2);
+    c.selection_queued();
+    assert_eq!(c.front(&state), None);
+    state.inventory.selection_sent(7, 1, selection.sequence, 2);
+    assert_eq!(c.front(&state), Some(Intent::Drop { whole_stack: true }));
+    let before_drop = state.inventory.revision;
+    c.drop_queued(true);
+    assert_eq!(c.front(&state), None);
+    assert_eq!(state.inventory.revision, before_drop);
+    assert!(!c.held_attack().held);
+}
+
+#[test]
+fn drop_edges_capture_once_and_retire_with_input_authority() {
+    let state = state();
+    let mut c = Controller::default();
+    c.capture(&state, &input(1, Some(Action::Drop)), None);
+    assert_eq!(c.front(&state), Some(Intent::Drop { whole_stack: false }));
+    c.drop_queued(false);
+    c.capture(&state, &input(1, Some(Action::Drop)), None);
+    assert_eq!(c.front(&state), None);
+    c.capture(&state, &input(2, Some(Action::DropStack)), None);
+    assert_eq!(c.front(&state), Some(Intent::Drop { whole_stack: true }));
+    c.capture(&state, &FinalizedInput::default(), None);
+    assert_eq!(c.front(&state), None);
+}

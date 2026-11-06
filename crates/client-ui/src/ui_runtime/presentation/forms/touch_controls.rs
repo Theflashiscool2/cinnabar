@@ -39,6 +39,8 @@ const UTILITY_ACTIONS: &[(&str, u16)] = &[
     ("emote", touch::EMOTE),
     ("debug_overlay", touch::DEBUG_OVERLAY),
     ("player_list", touch::PLAYER_LIST),
+    ("drop", touch::DROP),
+    ("drop_stack", touch::DROP_STACK),
     ("dismiss_utilities", touch::DISMISS_UTILITIES),
 ];
 
@@ -53,6 +55,7 @@ pub(in super::super) struct TouchControls {
     pub(super) saved: launcher::menu::settings_options::touch_layout::TouchLayout,
     base: Option<EngineFrame>,
     base_viewport: Option<([f32; 2], f32, ui::SafeArea)>,
+    base_java: bool,
     catalog: Option<Arc<Catalog>>,
     screen: CachedScreen,
     /// The overlay and the HUD as the last build painted them, which touches resolve against;
@@ -215,6 +218,10 @@ impl UiPresentationRuntime {
             Scalar::Bool(runtime.player_list_held()),
         );
         data.set_global("#touch_never_active", Scalar::Bool(false));
+        data.set_global(
+            "#touch_java_controls",
+            Scalar::Bool(runtime.java_hud().is_some()),
+        );
         for &(name, id) in CONTROLS {
             let held = state
                 .contacts
@@ -250,7 +257,8 @@ impl UiPresentationRuntime {
         let px = metrics.scale.get() * FONT_DESIGN_PIXEL_TEXELS as f32;
         let screen = &mut state.screen;
         let viewport_key = (content, px, self.safe_area);
-        if state.base_viewport != Some(viewport_key) {
+        let java = runtime.java_hud().is_some();
+        if state.base_viewport != Some(viewport_key) || state.base_java != java {
             let rollback = (paint.nodes.len(), *paint.next);
             let base_view = ViewState::default();
             let mut base_data = DataSource::new();
@@ -269,6 +277,7 @@ impl UiPresentationRuntime {
             paint.nodes.truncate(rollback.0);
             *paint.next = rollback.1;
             state.base_viewport = Some(viewport_key);
+            state.base_java = java;
         }
         utilities::place_controls(state, &mut view, content, px);
         if state.utilities_open {
@@ -414,7 +423,7 @@ mod tests {
         presentation.toggle_touch_utilities();
         presentation
             .append_touch_controls(
-                &UiRuntime::new(1),
+                &super::layout_tests::java_runtime(),
                 &mut Vec::new(),
                 &mut 0,
                 TextMetrics::for_viewport([854, 480], ui::DpiScale::new(1.).unwrap(), None),

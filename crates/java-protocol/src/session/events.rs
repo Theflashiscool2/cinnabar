@@ -31,8 +31,18 @@ pub enum Event {
         closed: bool,
         written: bool,
     },
+    /// Local socket-write receipt. The display may predict; storage remains server-owned.
+    DropWritten {
+        dimension_epoch: u64,
+        sequence: u64,
+        wire_revision: u64,
+        slot: u8,
+        whole_stack: bool,
+        written: bool,
+    },
     Inventory {
         dimension_epoch: u64,
+        wire_revision: u64,
         incarnation: u64,
         packet: inventory::Packet,
     },

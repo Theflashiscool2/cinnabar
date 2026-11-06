@@ -117,6 +117,15 @@ pub enum Command {
         sequence: u64,
         slot: u8,
     },
+    /// World drop with a last-observed inventory fence; no server success ack exists.
+    Drop {
+        dimension_epoch: u64,
+        sequence: u64,
+        wire_revision: u64,
+        slot: u8,
+        whole_stack: bool,
+        correction_sequence: u64,
+    },
     Interact {
         dimension_epoch: u64,
         correction_sequence: u64,
@@ -215,6 +224,7 @@ struct Connection {
     loaded_epoch: Option<u64>,
     cancelled_use: interaction::cancel::Pending,
     menu_lifetime: inventory::lifetime::Lifetime,
+    drop_fence: interaction::drop::Fence,
     entity_lifetimes: entities::lifetime::Lifetimes,
     pending_teleport: Option<(i32, u64)>,
     pending_rotation: Option<u64>,
@@ -296,6 +306,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
         dimensions: Vec::new(),
         dimension_epoch: 0,
         menu_lifetime: Default::default(),
+        drop_fence: Default::default(),
         entity_lifetimes: Default::default(),
         commands: options.commands.take(),
         dead: false,

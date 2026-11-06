@@ -8,6 +8,7 @@ fn cooldown_facts_are_scoped_without_invalidating_inventory_clicks() {
     let event = |generation, dimension_epoch, ticks| Envelope {
         generation,
         event: Event::Inventory {
+            wire_revision: 0,
             dimension_epoch,
             incarnation: 0,
             packet: wire::Packet::Cooldown {
@@ -46,6 +47,7 @@ fn item_components_survive_authoritative_inventory_admission_and_replacement() {
     let update = |generation, item| Envelope {
         generation,
         event: Event::Inventory {
+            wire_revision: 0,
             incarnation: 0,
             dimension_epoch: epoch,
             packet: wire::Packet::PlayerSlot {
@@ -89,6 +91,7 @@ fn inventory_requires_current_session_dimension_and_valid_identity() {
     let message = |generation, dimension_epoch| Envelope {
         generation,
         event: Event::Inventory {
+            wire_revision: 0,
             incarnation: 0,
             dimension_epoch,
             packet: wire::Packet::Selected(2),
@@ -126,6 +129,7 @@ fn native_opening_identity_and_local_close_receipts_do_not_invent_server_item_ch
     assert!(state.admit(Envelope {
         generation: 7,
         event: Event::Inventory {
+            wire_revision: 0,
             dimension_epoch: epoch,
             incarnation: 44,
             packet: wire::Packet::Open {
@@ -175,4 +179,55 @@ fn native_opening_identity_and_local_close_receipts_do_not_invent_server_item_ch
     }));
     assert!(state.inventory.opened.is_none());
     assert_eq!(state.inventory.authority_revision, authority);
+}
+
+#[test]
+fn world_drop_receipts_follow_scope_wire_order_and_authoritative_replacement() {
+    let mut s = crate::java::tests_support::state();
+    let epoch = s.terrain.dimension().unwrap().epoch;
+    let item = wire::Stack {
+        item: 55,
+        count: 5,
+        added: Default::default(),
+        removed: Default::default(),
+    };
+    let update = |generation, epoch, revision| Envelope {
+        generation,
+        event: Event::Inventory {
+            dimension_epoch: epoch,
+            wire_revision: revision,
+            incarnation: 0,
+            packet: wire::Packet::PlayerSlot {
+                slot: 0,
+                stack: Some(item.clone()),
+            },
+        },
+    };
+    assert!(s.admit(update(7, epoch, 1)));
+    let receipt = |generation, epoch, sequence, revision, written| Envelope {
+        generation,
+        event: Event::DropWritten {
+            dimension_epoch: epoch,
+            sequence,
+            wire_revision: revision,
+            slot: 0,
+            whole_stack: false,
+            written,
+        },
+    };
+    let count = |s: &WorldState| s.inventory.held().unwrap().as_ref().unwrap().count;
+    assert!(s.admit(receipt(7, epoch, 1, 1, true)));
+    assert_eq!(count(&s), 4);
+    assert!(!s.admit(receipt(6, epoch, 2, 1, true)));
+    assert!(!s.admit(receipt(7, epoch + 1, 2, 1, true)));
+    assert!(!s.admit(receipt(7, epoch, 1, 1, true)));
+    assert_eq!(count(&s), 4);
+    assert!(!s.admit(update(6, epoch, 9)));
+    assert_eq!(s.inventory.wire_revision, 1);
+    assert!(s.admit(update(7, epoch, 2)));
+    assert_eq!(count(&s), 5);
+    assert!(s.admit(receipt(7, epoch, 2, 1, true)));
+    assert_eq!(count(&s), 5);
+    assert!(s.admit(receipt(7, epoch, 3, 2, false)));
+    assert_eq!(count(&s), 5);
 }

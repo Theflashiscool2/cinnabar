@@ -235,6 +235,46 @@ pub(crate) fn update(
                 let (phase, _) = interaction.1.consume_use(pressed);
                 advance_use(&mut interaction.0, state, phase, captured);
             }
+            Some(Intent::Drop { whole_stack }) => {
+                if state.status.mode != Some(world::java::hud::GameMode::Spectator) {
+                    let Some(dimension) = state.terrain.dimension() else {
+                        return;
+                    };
+                    let Some(sequence) = interaction.1.drop_sequence() else {
+                        return;
+                    };
+                    let Some(slot) = state
+                        .inventory
+                        .selected
+                        .and_then(|slot| u8::try_from(slot).ok())
+                    else {
+                        return;
+                    };
+                    if state.inventory.held().is_none() {
+                        return;
+                    }
+                    match java.command(Command::Drop {
+                        dimension_epoch: dimension.epoch,
+                        correction_sequence: state.motion_sequence(),
+                        sequence,
+                        wire_revision: state.inventory.wire_revision,
+                        slot,
+                        whole_stack,
+                    }) {
+                        Ok(()) => {}
+                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                            interaction.0.blocked =
+                                Some("Java drop is waiting for transport capacity".into());
+                            return;
+                        }
+                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                            interaction.0.blocked = Some("Java drop transport closed".into());
+                            return;
+                        }
+                    }
+                }
+                interaction.1.drop_queued(whole_stack);
+            }
             Some(Intent::Slot(_) | Intent::Cycle(_)) => {
                 // Resolve first: selecting the current slot is a native no-op,
                 // and must not release item use or abort ongoing mining.

@@ -331,6 +331,32 @@
                 "$text": "Emotes",
                 "$active": "#touch_never_active"
               }
+            },
+            {
+              "drop@cinnabar_touch.utility_menu_item": {
+                "$control": "cinnabar.touch.drop",
+                "$text": "Drop item",
+                "$active": "#touch_never_active",
+                "bindings": [
+                  {
+                    "binding_name": "#touch_java_controls",
+                    "binding_name_override": "#visible"
+                  }
+                ]
+              }
+            },
+            {
+              "drop_stack@cinnabar_touch.utility_menu_item": {
+                "$control": "cinnabar.touch.drop_stack",
+                "$text": "Drop stack",
+                "$active": "#touch_never_active",
+                "bindings": [
+                  {
+                    "binding_name": "#touch_java_controls",
+                    "binding_name_override": "#visible"
+                  }
+                ]
+              }
             }
           ],
           "draggable": "both"

@@ -43,6 +43,8 @@ pub enum Action {
     /// Vanilla's "Open Notification": opens what the showing toast offers.
     InteractWithToast,
     PickItem,
+    Drop,
+    DropStack,
 }
 
 impl Action {
@@ -88,10 +90,12 @@ impl Action {
             Self::Freelook => "freelook",
             Self::InteractWithToast => "interact-with-toast",
             Self::PickItem => "pick-item",
+            Self::Drop => "drop",
+            Self::DropStack => "drop-stack",
         }
     }
 
-    pub const COUNT: usize = 39;
+    pub const COUNT: usize = 41;
 
     pub(crate) const ALL: [Self; Self::COUNT] = [
         Self::MoveForward,
@@ -133,6 +137,8 @@ impl Action {
         Self::Freelook,
         Self::InteractWithToast,
         Self::PickItem,
+        Self::Drop,
+        Self::DropStack,
     ];
 
     pub(crate) const fn is_ui_preview(self) -> bool {
@@ -156,6 +162,8 @@ impl Action {
             self,
             Self::CyclePerspective
                 | Self::PickItem
+                | Self::Drop
+                | Self::DropStack
                 | Self::InteractWithToast
                 | Self::Menu
                 | Self::Back

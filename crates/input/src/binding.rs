@@ -166,6 +166,36 @@ impl ControlSettings {
         Ok(settings)
     }
 
+    /// Derives Control+Drop from the current desktop bindings, retiring a prior remap's chord.
+    /// Touch and gamepad assignments remain independent.
+    pub fn derive_drop_stack_chords(bindings: &mut Vec<ActionBinding>) {
+        let desktop = |control| {
+            matches!(
+                control,
+                PhysicalControl::KeyboardUsage(_) | PhysicalControl::MouseButton(_)
+            )
+        };
+        bindings.retain(|binding| {
+            binding.action != Action::DropStack || !desktop(binding.chord.control)
+        });
+        let stack = bindings
+            .iter()
+            .filter(|binding| binding.action == Action::Drop && desktop(binding.chord.control))
+            .map(|binding| ActionBinding {
+                action: Action::DropStack,
+                chord: InputChord {
+                    modifiers: crate::ModifierChord {
+                        control: true,
+                        ..binding.chord.modifiers
+                    },
+                    ..binding.chord
+                },
+                ..*binding
+            })
+            .collect::<Vec<_>>();
+        bindings.extend(stack);
+    }
+
     pub fn bindings(&self) -> &[ActionBinding] {
         &self.bindings
     }
@@ -288,6 +318,7 @@ fn default_bindings() -> Vec<ActionBinding> {
         (CyclePerspective, 0x3e),
         (PlayerList, 0x2b),
         (Freelook, 0x09),
+        (Drop, 0x14),
         (InteractWithToast, 0x11),
         (Menu, 0x29),
         (Hotbar1, 0x1e),
@@ -302,6 +333,7 @@ fn default_bindings() -> Vec<ActionBinding> {
     ] {
         bind(&mut bindings, action, Gameplay, KeyboardUsage(code));
     }
+    bind(&mut bindings, Drop, Gameplay, GamepadButton(12));
     bind(&mut bindings, Attack, Gameplay, MouseButton(1));
     bind(&mut bindings, Use, Gameplay, MouseButton(2));
     bind(&mut bindings, PickItem, Gameplay, MouseButton(3));
@@ -400,6 +432,8 @@ fn default_bindings() -> Vec<ActionBinding> {
         (Hotbar7, touch::HOTBAR_7, Gameplay),
         (Hotbar8, touch::HOTBAR_8, Gameplay),
         (Hotbar9, touch::HOTBAR_9, Gameplay),
+        (Drop, touch::DROP, Gameplay),
+        (DropStack, touch::DROP_STACK, Gameplay),
         (HotbarPrevious, touch::HOTBAR_PREVIOUS, Gameplay),
         (HotbarNext, touch::HOTBAR_NEXT, Gameplay),
         (UiUp, touch::UI_UP, UiFocused),
@@ -417,5 +451,6 @@ fn default_bindings() -> Vec<ActionBinding> {
     ] {
         bind(&mut bindings, action, context, TouchControl(hit_id));
     }
+    ControlSettings::derive_drop_stack_chords(&mut bindings);
     bindings
 }

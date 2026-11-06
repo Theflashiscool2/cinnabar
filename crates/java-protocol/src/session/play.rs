@@ -213,9 +213,13 @@ impl Connection {
                     .menu_lifetime
                     .observe(&packet)
                     .map_err(ProtocolError::Invalid)?;
+                self.drop_fence
+                    .observe(&packet)
+                    .map_err(ProtocolError::Invalid)?;
                 self.emit(Event::Inventory {
                     dimension_epoch: self.dimension_epoch,
                     incarnation,
+                    wire_revision: self.drop_fence.revision,
                     packet,
                 })
                 .await?;
@@ -225,6 +229,9 @@ impl Connection {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("status before Java world login").into());
+                }
+                if let hud::Packet::GameMode(mode) = &packet {
+                    self.drop_fence.mode(*mode);
                 }
                 self.emit(Event::Hud(packet)).await?;
                 continue;
@@ -304,6 +311,8 @@ impl Connection {
                     world
                         .validate_identity(self.dimensions.len())
                         .map_err(packet_error)?;
+                    self.drop_fence
+                        .mode(hud::GameMode::from_id(i32::from(world.spawn.game_mode)));
                     self.terrain = Some(self.terrain_context(&world.spawn)?);
                     self.dimension_epoch = self
                         .dimension_epoch
@@ -401,6 +410,8 @@ impl Connection {
                     if keep & !3 != 0 {
                         return Err(ProtocolError::Invalid("Java respawn keep flags").into());
                     }
+                    self.drop_fence
+                        .mode(hud::GameMode::from_id(i32::from(spawn.game_mode)));
                     self.terrain = Some(self.terrain_context(&spawn)?);
                     self.dimension_epoch = self
                         .dimension_epoch

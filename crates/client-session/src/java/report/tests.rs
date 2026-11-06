@@ -35,6 +35,7 @@ fn report_groups_multiple_gaps_and_never_serializes_payloads() {
     let mut added = BTreeMap::new();
     added.insert("minecraft:custom_name", json!("PRIVATE_USERNAME"));
     report.observe(&event(Event::Inventory {
+        wire_revision: 0,
         dimension_epoch: 1,
         incarnation: 0,
         packet: inventory::Packet::Cursor(Some(inventory::Stack {

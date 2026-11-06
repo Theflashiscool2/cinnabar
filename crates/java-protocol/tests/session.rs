@@ -283,6 +283,7 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                     inventory.push("local selection");
                 }
                 Event::Inventory {
+                    wire_revision: _,
                     dimension_epoch,
                     incarnation,
                     packet,

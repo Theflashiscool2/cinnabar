@@ -178,6 +178,7 @@ impl Connection {
                     &i16::from(slot).to_be_bytes(),
                 )
                 .await?;
+                self.drop_fence.selected = slot;
                 self.emit(Event::SelectionSent {
                     dimension_epoch,
                     sequence,
@@ -229,6 +230,39 @@ impl Connection {
                 tracing::debug!(target: "java_session", entity, lifetime, dimension_epoch, "Native entity attack written; awaiting server authority");
             }
             Command::Attack { .. } => {}
+            Command::Drop {
+                dimension_epoch,
+                correction_sequence,
+                sequence,
+                wire_revision,
+                slot,
+                whole_stack,
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && correction_sequence == self.correction_sequence
+                    && self.pending_teleport.is_none()
+                    && self.pending_rotation.is_none()
+                    && self.loaded_epoch == Some(dimension_epoch)
+                    && !self.dead
+                    && self.menu_lifetime.accepts(0, 0)
+                    && self.drop_fence.accepts(wire_revision, slot);
+                if written {
+                    self.send(
+                        "ServerboundPlayerActionPacket",
+                        &interaction::encode(interaction::Dig::drop_item(whole_stack))?,
+                    )
+                    .await?;
+                }
+                self.emit(Event::DropWritten {
+                    dimension_epoch,
+                    sequence,
+                    wire_revision,
+                    slot,
+                    whole_stack,
+                    written,
+                })
+                .await?;
+            }
             Command::Interact {
                 dimension_epoch,
                 action,

@@ -257,3 +257,31 @@ show a diagnostic. Underlined error context, full font/pack fidelity and authent
 iOS/Hypixel qualification remain open. Shared HUD regressions,
 focused native-codec/text/input checks, production compilation and architecture pass; full
 Cargo/MCP execution remains incomplete.
+
+## World-drop integration — 2026-11-06
+
+Q, Control+Q, configured remaps and Java touch utility choices now enter the same
+ordered action owner as hotbar/use/attack. The socket checks inventory/selection,
+world/correction, menu, readiness, death and spectator fences before writing.
+Native successful world drops normally have no slot echo: the inventory owner
+keeps a bounded provisional display separately from its last server snapshot,
+updates it only after a local socket-write receipt, and replaces affected views
+on authoritative updates. A receipt never means server acceptance.
+
+Linux Xvfb/lavapipe + official offline vanilla26.3/protocol777 acceptance inspected
+single/whole drops, slot ordering, chat focus, spectator guard, authoritative count
+corrections and reconnect. Server NBT independently confirmed item counts. Native
+merging turned the original ground stacks1+6 into7; the incorrect separate-6 fixture
+assertion is retained, and an isolated real Control+Q test confirmed entity6/empty slot.
+Evidence: `/workspace/recovery/java-world-drop/ACCEPTANCE.json`, associated PNGs,
+`server-evidence.log` and `server-followup-evidence.log`. Native executable SHA256:
+`e55688fa832829b5a9bdef65011e640a1e2fdb38c52be7aab87060dfd391e3b5`;
+compiled c5d70506a + the exact30-path frozen source manifest in that record.
+Focused checks passed:19 inventory,16 action-ordering,5 world admission,
+11 interaction/fence and6 synthetic encrypted container transport tests.
+Prior affected touch/input/settings evidence is retained separately. The full MCP
+suite remains resource-incomplete; no new online, iOS or Hypixel acceptance or IPA.
+
+Ground item visuals remain a real implementation gap: native ITEM_STACK metadata
+and the shared world-item resource publication must be connected next. An admitted
+drop/inventory count is not evidence that its item entity rendered.

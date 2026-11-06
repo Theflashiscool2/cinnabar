@@ -15,6 +15,7 @@ pub enum Intent {
     Cycle(i32),
     Attack(bool),
     Use(bool),
+    Drop { whole_stack: bool },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Selection {
@@ -160,6 +161,11 @@ impl Controller {
                 .filter(|&a| input.phase(a).pressed)
                 .filter_map(|a| intent(a, true));
             self.append_target(choices, target);
+            for action in [Action::Drop, Action::DropStack] {
+                if input.phase(action).pressed {
+                    self.append_target(intent(action, true), target);
+                }
+            }
             let attack = input.phase(Action::Attack);
             if attack.pressed {
                 self.append_target([Intent::Attack(true)], target);
@@ -267,6 +273,15 @@ impl Controller {
             }),
         )
     }
+    /// Retires a drop only after transport admission; item counts remain server-owned.
+    pub fn drop_sequence(&self) -> Option<u64> {
+        self.next_sequence.checked_add(1)
+    }
+    pub fn drop_queued(&mut self, whole_stack: bool) {
+        self.next_sequence = self.drop_sequence().expect("admitted drop sequence");
+        let consumed = self.queue.pop_front().expect("observed drop edge");
+        debug_assert_eq!(consumed.intent, Intent::Drop { whole_stack });
+    }
     /// Computes against admitted selection, including server corrections between writes.
     pub fn selection(&mut self, state: &WorldState) -> Option<Selection> {
         if self.pending.is_some() {
@@ -277,7 +292,7 @@ impl Controller {
             Intent::Cycle(delta) => {
                 (state.inventory.selected? as i32 + delta).rem_euclid(HOTBAR_SIZE as i32) as usize
             }
-            Intent::Attack(_) | Intent::Use(_) => return None,
+            Intent::Attack(_) | Intent::Use(_) | Intent::Drop { .. } => return None,
         };
         if slot >= HOTBAR_SIZE {
             self.overflow();
@@ -341,6 +356,8 @@ fn intent(action: Action, pressed: bool) -> Option<Intent> {
         return Some(Intent::Slot(slot));
     }
     match action {
+        Action::Drop => Some(Intent::Drop { whole_stack: false }),
+        Action::DropStack => Some(Intent::Drop { whole_stack: true }),
         Action::HotbarPrevious => Some(Intent::Cycle(-1)),
         Action::HotbarNext => Some(Intent::Cycle(1)),
         _ => None,

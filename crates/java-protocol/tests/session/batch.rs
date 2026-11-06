@@ -43,6 +43,7 @@ async fn all_component_types_survive_ordered_inventory_delivery_and_keepalive() 
         while let Some(event) = rx.recv().await {
             match event.event {
                 Event::Inventory {
+                    wire_revision: _,
                     dimension_epoch,
                     incarnation,
                     packet:
@@ -195,7 +196,13 @@ async fn malformed_item_reports_packet_context_without_emitting_inventory() {
             cancel.clone(),
         ));
         while let Some(event) = rx.recv().await {
-            assert!(!matches!(event.event, Event::Inventory { .. }));
+            assert!(!matches!(
+                event.event,
+                Event::Inventory {
+                    wire_revision: _,
+                    ..
+                }
+            ));
         }
         let error = client.await.unwrap().unwrap_err();
         assert!(matches!(

@@ -112,14 +112,20 @@ pub struct State {
     pub selected: Option<usize>,
     /// Last local selection serialized by the socket; server selections remain ordered facts.
     pub selection_receipt: Option<u64>,
+    pub wire_revision: u64,
+    pub drop_receipt: Option<u64>,
+    pub drop_notice: Option<&'static str>,
+    drop_predictions: BTreeMap<usize, Slot>,
     storage: Vec<Cell>,
     pub player: Option<Menu>,
     pub opened: Option<Menu>,
     pub error: Option<String>,
 }
 pub mod cooldown;
+mod drop;
 pub mod pickup;
 mod state;
+pub use drop::DropReceipt;
 
 fn player_storage_slot(menu_slot: usize) -> Option<usize> {
     match menu_slot {

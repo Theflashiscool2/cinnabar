@@ -323,3 +323,52 @@ fn held_utility_choice_paints_pressed_feedback() {
         );
     }
 }
+
+pub(super) fn java_runtime() -> UiRuntime {
+    let mut runtime = UiRuntime::new(7);
+    assert!(runtime.publish_java_hud(world::java::hud::Snapshot {
+        session: 7,
+        epoch: 1,
+        mode: Some(world::java::hud::GameMode::Survival),
+        hardcore: false,
+        selected_slot: Some(0),
+        health: Some(20.),
+        maximum_health: Some(20.),
+        food: Some(20),
+        saturation: Some(5.),
+        armor: Some(0.),
+        experience: None,
+    }));
+    runtime
+}
+
+#[test]
+fn native_drop_touch_choices_reach_painted_regions_and_retire_on_edition_change() {
+    let mut p = crate::test_support::mini_engine_presentation();
+    p.enable_touch_controls(true);
+    p.toggle_touch_utilities();
+    let mut runtime = java_runtime();
+    let size = [854, 480];
+    paint_touch(&mut p, &runtime, size);
+    for id in [touch::DROP, touch::DROP_STACK] {
+        assert_eq!(hit_center(&p, id, size).hit_id, id);
+    }
+    // Same viewport, a different edition: cached native controls must disappear.
+    runtime.clear_java_hud();
+    paint_touch(&mut p, &runtime, size);
+    let frame = p.screens.touch.frame.as_ref().unwrap();
+    assert!(!frame.hits.iter().any(|hit| matches!(
+        control_id(hit.pressed.as_deref()),
+        Some(touch::DROP | touch::DROP_STACK)
+    )));
+    assert_eq!(
+        hit_center(&p, touch::PLAYER_LIST, size).hit_id,
+        touch::PLAYER_LIST
+    );
+    let runtime = java_runtime();
+    paint_touch(&mut p, &runtime, size);
+    assert_eq!(
+        hit_center(&p, touch::DROP_STACK, size).hit_id,
+        touch::DROP_STACK
+    );
+}

@@ -129,7 +129,21 @@ fn unbinding_does_not_enable_an_unrelated_suppressed_default() {
     let loaded = SettingsOptions::decode(&serde_json::to_vec(&settings).unwrap()).unwrap();
     assert_eq!(loaded.named_key_control(BindingId::Drop), None);
     assert_eq!(loaded.named_key_control(BindingId::InteractWithToast), None);
-    assert_eq!(loaded.controls().unwrap(), original);
+    // Drop is now semantic: unbinding retires its desktop edges, while every other
+    // binding (including touch/gamepad drops and the suppressed toast) stays unchanged.
+    let expected: Vec<_> = original
+        .bindings()
+        .iter()
+        .copied()
+        .filter(|binding| {
+            !matches!(binding.action, Action::Drop | Action::DropStack)
+                || !matches!(
+                    binding.chord.control,
+                    PhysicalControl::KeyboardUsage(_) | PhysicalControl::MouseButton(_)
+                )
+        })
+        .collect();
+    assert_eq!(loaded.controls().unwrap().bindings(), expected.as_slice());
 }
 
 #[test]

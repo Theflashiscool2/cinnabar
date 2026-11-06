@@ -106,6 +106,8 @@ impl Report {
             Event::ChatCommandSent { written: true, .. } => "command_write_receipt",
             Event::ChatCommandSent { written: false, .. } => "command_input_retired",
             Event::SelectionSent { .. } => "selection_sent",
+            Event::DropWritten { written: true, .. } => "drop_write_receipt",
+            Event::DropWritten { written: false, .. } => "drop_input_retired",
             Event::InventorySent { written: true, .. } => "inventory_write_receipt",
             Event::InventorySent { written: false, .. } => "inventory_input_retired",
             Event::BlockAck { .. } => "block_ack",

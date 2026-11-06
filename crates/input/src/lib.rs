@@ -75,6 +75,8 @@ pub mod touch {
     pub const DEBUG_OVERLAY: u16 = 38;
     pub const PLAYER_LIST: u16 = 39;
     pub const DISMISS_UTILITIES: u16 = 40;
+    pub const DROP: u16 = 41;
+    pub const DROP_STACK: u16 = 42;
     /// Mod-registered buttons, one per presented slot. They complete as taps in the app and
     /// never enter the gameplay router's layout.
     pub const MOD_BUTTONS: std::ops::Range<u16> = 64..80;

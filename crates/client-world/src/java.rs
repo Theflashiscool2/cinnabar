@@ -173,11 +173,38 @@ impl WorldState {
                         written,
                     });
             }
+            Event::DropWritten {
+                dimension_epoch,
+                sequence,
+                wire_revision,
+                slot,
+                whole_stack,
+                written,
+            } => {
+                return self.inventory.drop_written(
+                    self.generation,
+                    dimension_epoch,
+                    ::inventory::java::DropReceipt {
+                        sequence,
+                        wire_revision,
+                        slot: usize::from(slot),
+                        whole_stack,
+                        written,
+                    },
+                );
+            }
             Event::Inventory {
                 dimension_epoch,
                 incarnation,
+                wire_revision,
                 packet,
-            } => return inventory::admit(self, dimension_epoch, incarnation, packet),
+            } => {
+                if !self.inventory.accepts(self.generation, dimension_epoch) {
+                    return false;
+                }
+                self.inventory.wire_revision = wire_revision;
+                return inventory::admit(self, dimension_epoch, incarnation, packet);
+            }
             Event::BlockAck {
                 dimension_epoch,
                 sequence,
