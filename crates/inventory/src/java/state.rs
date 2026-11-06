@@ -44,7 +44,8 @@ impl State {
             ..Self::default()
         };
     }
-    /// Outer None is unknown; Some(None) is an authoritative empty main hand.
+    /// Outer None is unknown; Some(None) is an empty display view. Provisional drops
+    /// are separate from the last-server storage and never establish server acceptance.
     pub fn held(&self) -> Option<&Slot> {
         if self.error.is_some() {
             return None;

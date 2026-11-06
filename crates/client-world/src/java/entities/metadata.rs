@@ -100,7 +100,9 @@ pub(super) fn admit(
     let identity = entity.identity;
     let left_handed = entity.visual.left_handed;
     let mut visual = entity.visual.clone();
-    apply(state, &mut visual, schema, packet)?;
+    if let Some(item) = apply(state, &mut visual, schema, packet)? {
+        state.equipment.set_ground(identity, item)?;
+    }
     if left_handed != visual.left_handed {
         state.equipment.appearance_changed(identity);
     }
@@ -114,13 +116,14 @@ fn apply(
     visual: &mut Visual,
     schema: &[target::MetadataSpec],
     packet: Packet,
-) -> Result<(), &'static str> {
+) -> Result<Option<inventory::java::Slot>, &'static str> {
+    let mut item = None;
     if let Some(gap) = packet.unsupported {
         visual.incomplete = Some(MetadataGap {
             index: gap.index,
             serializer: gap.serializer.into(),
         });
-        return Ok(());
+        return Ok(None);
     }
     for entry in packet.entries {
         let Some(spec) = schema.iter().find(|spec| spec.index == entry.index) else {
@@ -130,6 +133,9 @@ fn apply(
             return Err("Java entity metadata serializer mismatch");
         }
         match (spec.name, entry.value) {
+            ("DATA_ITEM", Value::Item(stack)) => {
+                item = Some(super::super::inventory::stack(stack)?)
+            }
             ("DATA_SHARED_FLAGS_ID", Value::Byte(flags)) => visual.flags = flags,
             ("DATA_LIVING_ENTITY_FLAGS", Value::Byte(flags)) => visual.observe_use(flags)?,
             ("DATA_POSE", Value::Int(pose)) => {
@@ -167,7 +173,7 @@ fn apply(
             _ => {}
         }
     }
-    Ok(())
+    Ok(item)
 }
 
 pub(super) fn appearances(state: &WorldState) -> Result<Vec<Arc<PigAppearance>>, &'static str> {

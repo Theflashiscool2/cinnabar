@@ -5,6 +5,7 @@ use serde::Serialize;
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub enum Value {
     Byte(u8),
+    Item(Option<super::super::inventory::Stack>),
     Int(i32),
     Long(i64),
     Float(f32),
@@ -58,6 +59,7 @@ pub(super) fn decode(r: &mut Reader<'_>) -> Result<Packet, Error> {
             .ok_or(Error::Invalid("unknown metadata serializer"))?;
         let value = match name {
             "BYTE" => Value::Byte(r.byte()?),
+            "ITEM_STACK" => Value::Item(super::super::inventory::stack(r)?),
             "INT"
             | "BLOCK_STATE"
             | "OPTIONAL_BLOCK_STATE"
@@ -115,7 +117,7 @@ pub(super) fn decode(r: &mut Reader<'_>) -> Result<Packet, Error> {
                 }
                 Value::Empty
             }
-            // Registry-dependent item components, particles, profiles and inline painting holders
+            // Particles, profiles and inline painting holders
             // need their own codecs. This known passive packet is retained as incomplete evidence.
             _ => {
                 return Ok(deferred(r, id, index, name));
@@ -173,10 +175,46 @@ mod tests {
     }
     #[test]
     fn unsupported_complex_metadata_is_explicit_and_never_admits_a_prefix() {
-        let mut r = Reader(&[42, 0, 0, 32, 8, 7, 1, 255]);
+        let particles = target::METADATA_SERIALIZERS
+            .iter()
+            .position(|n| *n == "PARTICLES")
+            .unwrap() as u8;
+        let bytes = [42, 0, 0, 32, 8, particles, 1, 255];
+        let mut r = Reader(&bytes);
         let packet = decode(&mut r).unwrap();
         assert!(packet.entries.is_empty());
-        assert_eq!(packet.unsupported.unwrap().serializer, "ITEM_STACK");
+        assert_eq!(packet.unsupported.unwrap().serializer, "PARTICLES");
         r.finish().unwrap();
+        // Previously deferred ITEM_STACK is implemented; malformed/truncated data must fail.
+        assert!(decode(&mut Reader(&[42, 0, 0, 32, 8, 7, 1, 255])).is_err());
+    }
+    #[test]
+    fn native_ground_stack_codec_vector_is_complete_and_empty_is_distinct() {
+        // GroundReference, verified26.3 server ClientboundSetEntityDataPacket codec:
+        // entity42, ItemEntity.DATA_ITEM8/ITEM_STACK7, dirt55 count5, empty patch, terminator.
+        let mut reader = Reader(&[0x2a, 8, 7, 5, 0x37, 0, 0, 0xff]);
+        let packet = decode(&mut reader).unwrap();
+        reader.finish().unwrap();
+        assert!(packet.unsupported.is_none());
+        assert_eq!(packet.entries.len(), 1);
+        let Value::Item(Some(item)) = &packet.entries[0].value else {
+            panic!("missing ground stack")
+        };
+        assert_eq!(
+            (
+                packet.id,
+                packet.entries[0].index,
+                packet.entries[0].serializer,
+                item.item,
+                item.count
+            ),
+            (42, 8, 7, 55, 5)
+        );
+        assert!(item.added.is_empty() && item.removed.is_empty());
+        let mut empty = Reader(&[42, 8, 7, 0, 255]);
+        let packet = decode(&mut empty).unwrap();
+        empty.finish().unwrap();
+        assert_eq!(packet.entries[0].value, Value::Item(None));
+        assert!(decode(&mut Reader(&[42, 8, 7, 5, 55, 0])).is_err());
     }
 }

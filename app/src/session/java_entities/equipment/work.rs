@@ -1,5 +1,6 @@
 //! CPU resource/material preparation on a single worker, with latest-request publication fence.
 use super::*;
+mod item;
 use ::assets::registry::java::{
     equipment,
     items::{self, HeadTextures, View},
@@ -173,40 +174,14 @@ fn prepare(
                     }
                 }
                 Piece::Hand(hand) => {
-                    let bytes = usize::from(hand.atlas.width) * usize::from(hand.atlas.height) * 4;
-                    for (i, geometry) in hand.groups.iter().enumerate() {
-                        charge(&mut pixels, bytes, render_model::MAX_ACTOR_GPU_PIXEL_BYTES)?;
-                        charge(
-                            &mut vertices,
-                            geometry.vertices.len()
-                                * std::mem::size_of::<render_model::ActorRigVertex>(),
-                            render_model::MAX_ACTOR_CATALOG_VERTEX_BYTES,
-                        )?;
-                        let mut geometry = geometry.clone();
-                        geometry.id = java_equipment_rig_id(
-                            65536
-                                + u32::try_from(output.geometries.len())
-                                    .map_err(|e| e.to_string())?,
-                        )
-                        .ok_or("native equipment rig budget exhausted")?;
-                        let rig = geometry.id;
-                        output.geometries.push(geometry);
-                        rasters.push(EquipmentRaster {
-                            width: hand.atlas.width,
-                            height: hand.atlas.height,
-                            rgba8: hand.atlas.rgba8[i * bytes..(i + 1) * bytes].into(),
-                        });
-                        indices.push((player.id, draws.len()));
-                        draws.push(Draw {
-                            model: None,
-                            rig,
-                            hand: Some(left),
-                            bounds: hand.bounds,
-                            artwork: placeholder(),
-                            alpha: hand.alpha_modes[i],
-                            glint,
-                        });
+                    item::Writer {
+                        output: &mut output,
+                        rasters: &mut rasters,
+                        indices: &mut indices,
+                        pixels: &mut pixels,
+                        vertices: &mut vertices,
                     }
+                    .append(player.id, &mut draws, hand, Some(left), glint)?;
                 }
             }
             if draws.len() >= usize::from(render_model::ACTOR_LAYER_SKIN_BASE) {
@@ -217,6 +192,71 @@ fn prepare(
             player.id,
             Entry {
                 signature: player.signature,
+                ground: false,
+                seed: 0,
+                draws,
+            },
+        );
+    }
+    for ground in &request.grounds {
+        {
+            let w = shared.0.lock().unwrap();
+            if w.closed || w.desired != Some(request.revision) {
+                return Err("stale native world item work".into());
+            }
+        }
+        let s = stack(&ground.stack);
+        let key = format!("ground:{}", s.key());
+        used.insert(key.clone());
+        let piece = cache.entry(key).or_insert_with(|| {
+            catalog
+                .geometry_in(&s, &HeadTextures::default(), View::Ground)
+                .map_err(|e| e.to_string())
+                .and_then(|quads| {
+                    java_item::prepare_with_ids(quads, |i| java_equipment_rig_id(65536 + i as u32))
+                })
+                .map(|p| p.map(Piece::Hand))
+        });
+        let mut draws = Vec::new();
+        match piece {
+            Ok(Some(Piece::Hand(mesh))) => item::Writer {
+                output: &mut output,
+                rasters: &mut rasters,
+                indices: &mut indices,
+                pixels: &mut pixels,
+                vertices: &mut vertices,
+            }
+            .append(
+                ground.id,
+                &mut draws,
+                mesh,
+                None,
+                items::glint(&s.item, &s.added, &s.removed),
+            )?,
+            Ok(None) => {}
+            Ok(Some(Piece::Armor(_))) => return Err("invalid native ground cache context".into()),
+            Err(e) => {
+                note(&mut output.errors, format!("{} ground: {e}", s.item));
+                continue;
+            }
+        }
+        let id = java_protocol::target::ITEM_TYPES
+            .iter()
+            .position(|name| *name == s.item)
+            .ok_or("unknown native ground item")? as i32;
+        let damage = equipment::component(&s, "minecraft:damage")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0) as i32;
+        output.entries.insert(
+            ground.id,
+            Entry {
+                signature: Signature {
+                    revision: ground.revision,
+                    slim: false,
+                    left: false,
+                },
+                ground: true,
+                seed: i64::from(id.wrapping_add(damage)),
                 draws,
             },
         );

@@ -385,3 +385,50 @@ fn native_first_person_selects_real_models_instead_of_gui_sprites() {
             .any(|q| q.image.rgba != expected.rgba)
     );
 }
+
+#[test]
+fn ground_models_use_their_own_display_transform_instead_of_gui_or_hand() {
+    let mut files = BTreeMap::new();
+    files.insert(
+        "assets/minecraft/items/stone.json".into(),
+        serde_json::to_vec(&serde_json::json!({"model":leaf("drop")})).unwrap(),
+    );
+    files.insert("assets/minecraft/models/item/drop.json".into(), br#"{
+        "parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/drop"},
+        "display":{"ground":{"translation":[0,4,0],"scale":[0.25,0.25,0.25]},"gui":{"scale":[1,1,1]}}
+    }"#.to_vec());
+    files.insert(
+        "assets/minecraft/models/item/generated.json".into(),
+        br#"{"parent":"minecraft:builtin/generated"}"#.to_vec(),
+    );
+    files.insert(
+        "assets/minecraft/textures/item/drop.png".into(),
+        png(2, [255; 4]),
+    );
+    files.insert(
+        "assets/minecraft/textures/colormap/grass.png".into(),
+        png(256, [10, 20, 30, 255]),
+    );
+    let catalog = Catalog::load(&mut Memory(files), &["minecraft:stone"]).unwrap();
+    let extent = |view| {
+        let quads = catalog
+            .geometry_in(&stack(), &HeadTextures::default(), view)
+            .unwrap();
+        assert!(!quads.is_empty());
+        let mut min = [f32::INFINITY; 3];
+        let mut max = [f32::NEG_INFINITY; 3];
+        for p in quads.iter().flat_map(|q| q.positions) {
+            for axis in 0..3 {
+                min[axis] = min[axis].min(p[axis]);
+                max[axis] = max[axis].max(p[axis]);
+            }
+        }
+        (min, max)
+    };
+    let (min, max) = extent(View::Ground);
+    // Native model translation is in sixteenths; the generated face is centered on the origin.
+    assert!((min[0] + 0.125).abs() < 1e-6 && (max[0] - 0.125).abs() < 1e-6);
+    assert!((min[1] - 0.125).abs() < 1e-6 && (max[1] - 0.375).abs() < 1e-6);
+    let (min, max) = extent(View::Gui);
+    assert!((max[0] - min[0] - 1.).abs() < 1e-6);
+}

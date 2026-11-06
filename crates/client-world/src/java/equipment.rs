@@ -1,4 +1,4 @@
-//! Entity equipment authority. Reuses inventory's stack model; this is not a
+//! Entity item appearances (equipment and ground stacks). Reuses inventory's stack model; this is not a
 //! second transactional inventory. Keys are admitted entity incarnations.
 use inventory::java::Slot;
 use std::collections::BTreeMap;
@@ -9,8 +9,14 @@ pub struct Equipment {
     pub slots: [Slot; 8],
     pub revision: u64,
 }
+#[derive(Clone, Debug)]
+pub struct Ground {
+    pub stack: Slot,
+    pub revision: u64,
+}
 #[derive(Debug, Default)]
 pub struct State {
+    ground: BTreeMap<Identity, Ground>,
     entries: BTreeMap<Identity, Equipment>,
     revision: u64,
 }
@@ -21,6 +27,34 @@ impl State {
     pub fn get(&self, identity: Identity) -> Option<&Equipment> {
         self.entries.get(&identity)
     }
+    pub fn ground(&self, identity: Identity) -> Option<&Ground> {
+        self.ground.get(&identity)
+    }
+    pub(super) fn set_ground(
+        &mut self,
+        identity: Identity,
+        stack: Slot,
+    ) -> Result<(), &'static str> {
+        if self
+            .ground
+            .get(&identity)
+            .is_some_and(|old| old.stack == stack)
+        {
+            return Ok(());
+        }
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .ok_or("Java ground item revision exhausted")?;
+        self.ground.insert(
+            identity,
+            Ground {
+                stack,
+                revision: self.revision,
+            },
+        );
+        Ok(())
+    }
     pub(super) fn appearance_changed(&mut self, identity: Identity) {
         if self.entries.contains_key(&identity) {
             self.revision = self.revision.saturating_add(1);
@@ -28,10 +62,13 @@ impl State {
     }
     pub(super) fn clear(&mut self) {
         self.entries.clear();
+        self.ground.clear();
         self.revision = self.revision.saturating_add(1);
     }
     pub(super) fn remove(&mut self, identity: Identity) {
-        if self.entries.remove(&identity).is_some() {
+        let equipment = self.entries.remove(&identity).is_some();
+        let ground = self.ground.remove(&identity).is_some();
+        if equipment || ground {
             self.revision = self.revision.saturating_add(1);
         }
     }

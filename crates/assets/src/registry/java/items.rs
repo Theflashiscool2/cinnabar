@@ -85,6 +85,7 @@ pub struct HeadTextures {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum View {
     Gui,
+    Ground,
     FirstPersonRight,
     FirstPersonLeft,
     ThirdPersonRight,
@@ -94,6 +95,7 @@ impl View {
     fn display(self) -> DisplayContext {
         match self {
             Self::Gui => DisplayContext::Gui,
+            Self::Ground => DisplayContext::Ground,
             Self::FirstPersonRight => DisplayContext::FirstPersonRightHand,
             Self::FirstPersonLeft => DisplayContext::FirstPersonLeftHand,
             Self::ThirdPersonRight => DisplayContext::ThirdPersonRightHand,

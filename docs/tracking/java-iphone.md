@@ -122,7 +122,7 @@ replacement/removal/reconnect cleanup was inspected. Backpressured targets are r
 before START/FINISH, and unsent starts do not emit misleading aborts. Special-model crack
 surfaces, swing/audio, offhand precedence and Adventure can-break
 predicates remain implementation gaps. This is not Bed Wars, Duels, online or iOS
-qualification. Full Cargo/MCP suite remains incomplete; the exporter command build exhausted
+qualification. Full application suite remains incomplete; the exporter command build exhausted
 local disk, while its actual verified Runtime/generator reproduced the pinned report.
 
 
@@ -155,7 +155,7 @@ shield use and a peer attack (server shield wear with unchanged health), offhand
 (server breeding state and carrot count), menu/replacement cancellation, mirrored eating,
 teleport continuity, dimension changes, reconnect and main-hand food/bow regression.
 The native graphical build, gameplay Cargo test compilation, 67 focused source tests and
-architecture gate pass. Full Cargo/MCP execution remains incomplete. Cold hand-artwork
+architecture gate pass. Full application suite remains incomplete. Cold hand-artwork
 readiness and active shield/remote poses, full target-equipment fallthrough and dynamic
 same-item use-component refresh remain gaps. These results do not qualify iOS or Hypixel.
 Native eating/drinking arm transforms use existing held geometry/GPU ownership.
@@ -285,3 +285,14 @@ suite remains resource-incomplete; no new online, iOS or Hypixel acceptance or I
 Ground item visuals remain a real implementation gap: native ITEM_STACK metadata
 and the shared world-item resource publication must be connected next. An admitted
 drop/inventory count is not evidence that its item entity rendered.
+
+
+Native dropped items now decode through the existing bounded item codec, retain scoped entity
+appearance and render Ground-context geometry through the same atlas/rig publisher as remote
+player equipment. Linux Xvfb/lavapipe official vanilla26.3 acceptance inspected real Q/Control-Q
+items, count updates, server-authoritative pickup, remote gear coexistence/removal, tracking
+unload/revisit, dimension replacement and reconnect. Server NBT independently confirmed stacks
+and persisted item identity. Positions follow server snapshots; local item physics and pickup
+animation remain incomplete. Full MCP tool tests pass16; this does not mean all application tests
+ran. A real shared-pack reload attempt failed material validation against resident Java chunks;
+that resource-ownership defect remains open. No new online, iOS or Hypixel acceptance.

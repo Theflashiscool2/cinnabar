@@ -69,6 +69,8 @@ pub(crate) fn update(
     p.glow_pending = 0;
     p.custom_skin_pending = 0;
     p.published_players = 0;
+    p.published_items = 0;
+    p.item_pending = 0;
     if p.assets.is_none() && p.pending.is_none() && p.failure.is_none() {
         let appearances = match state.pig_appearances() {
             Ok(v) => v,
@@ -140,7 +142,64 @@ pub(crate) fn update(
             }
         };
         let mut retained = BTreeSet::new();
+        let mut ground_retained = BTreeSet::new();
         for e in state.entities.iter() {
+            if e.kind.as_ref() == java_protocol::target::ENTITY_ITEM {
+                ground_retained.insert(e.identity);
+                let birth = *p.ground_births.entry(e.identity).or_insert(p.ticks);
+                if e.visual.invisible() {
+                    continue;
+                }
+                if e.visual.incomplete.is_some() {
+                    p.unsupported += 1;
+                    continue;
+                }
+                let Some(item) = state.equipment.ground(e.identity) else {
+                    p.item_pending += 1;
+                    continue;
+                };
+                let Some(stack) = &item.stack else {
+                    continue;
+                };
+                let Some(entry) = p
+                    .equipment
+                    .as_ref()
+                    .and_then(|w| w.ground_entry(e.identity, item.revision))
+                else {
+                    p.item_pending += 1;
+                    continue;
+                };
+                let Some(light) = light(&state.terrain, e.motion.position) else {
+                    p.unknown_light += 1;
+                    continue;
+                };
+                if e.visual.glowing() {
+                    p.glow_pending += 1;
+                }
+                match ground::append(
+                    &mut batch,
+                    e,
+                    entry,
+                    stack.count,
+                    ground::Frame {
+                        scope,
+                        serial: p.serial,
+                        age: p.ticks.saturating_sub(birth) as f32 + fraction,
+                        light,
+                    },
+                ) {
+                    Ok(draws) if draws > 0 => {
+                        p.published += 1;
+                        p.published_items += 1;
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        p.failure = Some(error);
+                        break;
+                    }
+                }
+                continue;
+            }
             if e.visual.invisible() {
                 continue;
             }
@@ -358,6 +417,7 @@ pub(crate) fn update(
             p.published_players += usize::from(is_player);
         }
         p.poses.retain(|id, _| retained.contains(id));
+        p.ground_births.retain(|id, _| ground_retained.contains(id));
     }
     if let Some(error) = &p.failure {
         batch = empty();
