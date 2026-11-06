@@ -69,8 +69,11 @@ impl State {
     }
     /// Current carried state for native outside-screen pickup. No local drop is installed.
     pub fn observe_carried(&self, identity: MenuIdentity) -> Result<(i32, &Slot), String> {
-        if self.active_identity() != Some(identity) || self.error.is_some() {
+        if self.active_identity() != Some(identity) {
             return Err("Java container lifetime is no longer current".into());
+        }
+        if let Some(error) = &self.error {
+            return Err(format!("Java inventory authority invalid: {error}"));
         }
         let menu = self
             .menu(identity.container)
@@ -108,8 +111,11 @@ impl State {
         identity: MenuIdentity,
         slot: usize,
     ) -> Result<(i32, &Slot), String> {
-        if self.active_identity() != Some(identity) || self.error.is_some() {
+        if self.active_identity() != Some(identity) {
             return Err("Java container lifetime is no longer current".into());
+        }
+        if let Some(error) = &self.error {
+            return Err(format!("Java inventory authority invalid: {error}"));
         }
         let menu = self.menu(identity.container).unwrap();
         if (menu.container == 0 && !(9..=OFFHAND_MENU_SLOT).contains(&slot))

@@ -68,7 +68,17 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
                 | java_protocol::session::Event::Terrain { .. }
                 | java_protocol::session::Event::Scoreboard(_)
         );
+        let previous_inventory_error =
+            matches!(event.event, java_protocol::session::Event::Inventory { .. })
+                .then(|| controller.java_world.inventory.error.clone());
         let admitted = controller.java_world.admit(event);
+        if let Some(previous) = previous_inventory_error
+            && controller.java_world.inventory.error != previous
+            && let Some(error) = &controller.java_world.inventory.error
+        {
+            bevy::log::warn!(target: "java_session", %error, "Native Java inventory authority rejected an update");
+            java.diagnostic_notice("java_inventory_authority_invalid");
+        }
         if admitted && let Some(address) = transfer {
             controller.connecting = true;
             menu.following_java_transfer(&address);

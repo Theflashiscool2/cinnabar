@@ -249,3 +249,32 @@ fn unsupported_merchant_retains_real_slot_authority_but_never_admits_storage_cli
     assert!(s.opened.is_none());
     assert_eq!(s.held(), Some(&item("minecraft:dirt", 5)));
 }
+
+#[test]
+fn invalid_authority_reports_original_failure_without_accepting_a_click() {
+    let mut s = state();
+    let id = s.active_identity().unwrap();
+    let error = s
+        .admit(
+            7,
+            2,
+            Update::Content {
+                container: 0,
+                state: 0,
+                slots: vec![],
+                carried: None,
+            },
+        )
+        .unwrap_err();
+    let observed = s.observe_storage_slot(id, 36).unwrap_err();
+    assert_eq!(
+        observed,
+        format!("Java inventory authority invalid: {error}")
+    );
+    assert!(s.held().is_none());
+    let stale = pickup::MenuIdentity { epoch: 1, ..id };
+    assert_eq!(
+        s.observe_storage_slot(stale, 36).unwrap_err(),
+        "Java container lifetime is no longer current"
+    );
+}

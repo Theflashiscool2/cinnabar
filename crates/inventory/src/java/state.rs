@@ -143,7 +143,11 @@ impl State {
                     return Ok(false);
                 };
                 if slots.len() != menu.slots.len() {
-                    return Err("Java container content length disagrees with its layout".into());
+                    return Err(format!(
+                        "Java container {container} content length disagrees with its layout: expected {}, received {}",
+                        menu.slots.len(),
+                        slots.len()
+                    ));
                 }
                 if state < 0 {
                     return Err("negative Java container state".into());
