@@ -143,6 +143,7 @@ fn prepare(
                     format!("{}: armor trim layer not yet implemented", s.item),
                 );
             }
+            let start = draws.len();
             let glint = items::glint(&s.item, &s.added, &s.removed);
             match piece {
                 Piece::Armor(armor) => {
@@ -163,6 +164,7 @@ fn prepare(
                         indices.push((player.id, draws.len()));
                         rasters.push(raster);
                         draws.push(Draw {
+                            source: None,
                             model: Some(model.clone()),
                             rig: model.geometry.id,
                             hand: None,
@@ -183,6 +185,12 @@ fn prepare(
                     }
                     .append(player.id, &mut draws, hand, Some(left), glint)?;
                 }
+            }
+            for draw in &mut draws[start..] {
+                draw.source = Some(SlotSource {
+                    slot: slot as u8,
+                    item: Arc::from(s.item.as_str()),
+                });
             }
             if draws.len() >= usize::from(render_model::ACTOR_LAYER_SKIN_BASE) {
                 return Err("native player equipment layer budget exhausted".into());

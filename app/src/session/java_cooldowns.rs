@@ -31,6 +31,7 @@ impl Clock {
         world.inventory.cooldowns.advance(u64::from(ticks));
         for _ in 0..ticks {
             world.player_dynamics.tick_effects();
+            world.player_visual.swing.tick();
         }
     }
 }
@@ -63,18 +64,31 @@ mod tests {
                 flags: 0,
             },
         );
+        world.player_visual.swing.start(
+            false,
+            world::java::entities::animation::swing::Kind::Whack,
+            6,
+            6,
+        );
         let start = Instant::now();
         let mut clock = Clock::default();
         clock.service(&mut world, start);
         clock.service(&mut world, start + Duration::from_millis(125));
         assert_eq!(world.inventory.cooldowns.client_tick(), 2);
+        assert!(
+            (world.player_visual.swing.sample(1.).unwrap().progress - 1. / 6.).abs() < 0.000001
+        );
         assert_eq!(world.player_dynamics.effects["minecraft:haste"].duration, 3);
         clock.service(&mut world, start + Duration::from_millis(125));
         assert_eq!(world.inventory.cooldowns.client_tick(), 2);
         clock.service(&mut world, start + Duration::from_millis(150));
         assert_eq!(world.inventory.cooldowns.client_tick(), 3);
+        assert!(
+            (world.player_visual.swing.sample(1.).unwrap().progress - 1. / 3.).abs() < 0.000001
+        );
         world.begin(8);
         world.inventory.begin(8, 1);
+        assert!(world.player_visual.swing.sample(1.).is_none());
         clock.service(&mut world, start + Duration::from_secs(5));
         assert_eq!(
             world.inventory.cooldowns.client_tick(),

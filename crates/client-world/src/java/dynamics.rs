@@ -50,10 +50,24 @@ pub(super) fn admit(
             effect,
             value,
         } => {
-            // Remote effect presentation remains a separate gap; never apply another entity's
-            // effects to local breaking/movement merely because it shares this dimension.
             if entity != own_id {
-                return Ok(false);
+                return state
+                    .entities
+                    .update((state.generation(), epoch), entity, |e| {
+                        if let Some(value) = value {
+                            e.visual.effects.insert(
+                                effect.into(),
+                                domain::Effect {
+                                    amplifier: value.amplifier,
+                                    duration: value.duration,
+                                    flags: value.flags,
+                                },
+                            );
+                        } else {
+                            e.visual.effects.remove(effect);
+                        }
+                        Ok(())
+                    });
             }
             if let Some(value) = value {
                 state.player_dynamics.effects.insert(

@@ -1,6 +1,6 @@
 //! Admits native entity facts without publishing packet-library types to presentation.
 use super::WorldState;
-mod metadata;
+pub(super) mod metadata;
 use java_protocol::session::{entities as wire, facts::Relative as Flag};
 use std::sync::Arc;
 use world::java::{
@@ -24,6 +24,35 @@ pub(super) fn admit(
         .world
         .entity_id;
     match packet {
+        wire::Packet::Swing {
+            lifetime,
+            id,
+            offhand,
+            kind,
+            duration,
+        } => {
+            use domain::animation::swing::{Kind, modified_duration};
+            if id == own {
+                let modified = modified_duration(&state.player_dynamics.effects, duration);
+                state
+                    .player_visual
+                    .swing
+                    .start(offhand, Kind::from_id(kind), duration, modified);
+                return Ok(true);
+            }
+            if state.entities.get(id).is_none_or(|e| {
+                lifetime == 0 || e.transport_lifetime != lifetime || !metadata::living(&e.kind)
+            }) {
+                return Ok(false);
+            }
+            state.entities.update(scope, id, |e| {
+                let modified = modified_duration(&e.visual.effects, duration);
+                e.visual
+                    .swing
+                    .start(offhand, Kind::from_id(kind), duration, modified);
+                Ok(())
+            })
+        }
         wire::Packet::Equipment(packet) => super::equipment::admit(state, scope, packet),
         wire::Packet::Metadata(packet) => metadata::admit(state, scope, own, packet),
         wire::Packet::FinishUsing { id } => {

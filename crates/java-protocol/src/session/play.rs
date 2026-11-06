@@ -514,7 +514,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundSoundEntityPacket",
     "ClientboundSoundPacket",
     "ClientboundStopSoundPacket",
-    "ClientboundSwingAnimationPacket",
     "ClientboundTabListPacket",
     "ClientboundTagQueryPacket",
     "ClientboundTakeItemEntityPacket",

@@ -1,6 +1,7 @@
 //! Native pig and unarmed player presentation with separate body controllers.
 //! These sampled transforms never replace the entity's authoritative movement or collision.
 mod player;
+pub mod swing;
 
 use super::{
     PositionStep,
@@ -123,6 +124,16 @@ impl Presentation {
     }
     /// One standard world tick. Mounted/controlled entity simulation is intentionally separate.
     pub fn tick(&mut self, baby: bool, alive: bool, passenger: bool, carrying: bool) {
+        self.tick_with_swing(baby, alive, passenger, carrying, false);
+    }
+    pub fn tick_with_swing(
+        &mut self,
+        baby: bool,
+        alive: bool,
+        passenger: bool,
+        carrying: bool,
+        swinging: bool,
+    ) {
         self.old_head = self.head;
         self.old_body = self.body;
         self.track.tick();
@@ -148,7 +159,7 @@ impl Presentation {
             self.walk = Walk::default();
         }
         if self.kind == BodyKind::Player {
-            player::body(self, dx, dz);
+            player::body_with_swing(self, dx, dz, swinging);
             return;
         }
         // BodyRotationControl's native thresholds and getMaxHeadYRot for an unmounted pig.

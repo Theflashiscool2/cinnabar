@@ -490,3 +490,5 @@ fn equipment_is_atomic_incarnation_scoped_and_separate_from_personal_inventory()
 }
 
 mod ground;
+
+mod swing;

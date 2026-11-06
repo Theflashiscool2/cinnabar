@@ -31,6 +31,8 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
+    pub swing: super::animation::swing::State,
+    pub effects: std::collections::BTreeMap<String, super::super::dynamics::Effect>,
     /// LivingEntity use/offhand/spin bits, admitted only from native authoritative updates.
     pub use_flags: u8,
     pub use_revision: u64,
@@ -52,6 +54,8 @@ impl Default for Visual {
         // native defaults, not claims that an omitted required variant was received.
         Self {
             flags: 0,
+            swing: Default::default(),
+            effects: Default::default(),
             use_flags: 0,
             use_revision: 0,
             scale: 1.,

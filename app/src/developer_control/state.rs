@@ -487,6 +487,7 @@ pub(super) fn snapshot(world: &World) -> Value {
                 "network_id":e.network_id,"incarnation":e.identity.incarnation,"kind":e.kind.as_ref(),
                 "position":e.motion.position,"rotation":[e.motion.yaw,e.motion.pitch],
                 "teleport_revision":e.teleport_revision,"path_steps":e.path.len(),
+                "swing":e.visual.swing.sample(1.).map(|s|json!({"offhand":s.offhand,"kind":format!("{:?}",s.kind),"progress":s.progress})),
                 "completed_visual_pose":e.presentation.as_ref().map(|p| { let s=p.sample(1.);json!({"position":s.pose.position,"yaw":s.pose.yaw,"body_yaw":s.body_yaw,"head_yaw":s.head_yaw,"walk_position":s.walk_position,"walk_speed":s.walk_speed,"pending_steps":p.track.pending_steps()}) }),
             })).collect::<Vec<_>>(),
         });

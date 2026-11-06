@@ -90,13 +90,18 @@ pub struct PlayerDynamics {
 impl PlayerDynamics {
     /// Effect durations advance on the native simulation cadence, never on render frames.
     pub fn tick_effects(&mut self) {
-        self.effects.retain(|_, effect| {
-            if effect.duration > 0 {
-                effect.duration -= 1;
-            }
-            effect.duration != 0
-        });
+        tick_effects(&mut self.effects);
     }
+}
+
+/// Advances the same native expiry rules for a local simulation or remote visual timeline.
+pub fn tick_effects(effects: &mut BTreeMap<String, Effect>) {
+    effects.retain(|_, effect| {
+        if effect.duration > 0 {
+            effect.duration -= 1;
+        }
+        effect.duration != 0
+    });
 }
 
 #[cfg(test)]

@@ -81,20 +81,15 @@ pub(super) fn admit(
     let Some(entity) = state.entities.get(packet.id) else {
         return state.entities.update(scope, packet.id, |_| Ok(()));
     };
-    let schema = match entity.kind.as_ref() {
-        target::ENTITY_PIG => target::METADATA_PIG,
-        target::ENTITY_PLAYER => target::METADATA_PLAYER,
-        target::ENTITY_ITEM => target::METADATA_ITEM,
-        // Other entity schemas have not been admitted; do not guess their inherited indexes.
-        _ => {
-            return state.entities.update(scope, packet.id, |e| {
-                e.visual.incomplete = Some(MetadataGap {
-                    index: 0,
-                    serializer: "unimplemented entity metadata schema".into(),
-                });
-                Ok(())
+    let Some(schema) = schema(&entity.kind) else {
+        // Unknown schemas remain explicit; do not guess their inherited indexes.
+        return state.entities.update(scope, packet.id, |e| {
+            e.visual.incomplete = Some(MetadataGap {
+                index: 0,
+                serializer: "unimplemented entity metadata schema".into(),
             });
-        }
+            Ok(())
+        });
     };
     let id = packet.id;
     let identity = entity.identity;
@@ -185,4 +180,21 @@ pub(super) fn appearances(state: &WorldState) -> Result<Vec<Arc<PigAppearance>>,
         .iter()
         .map(pig)
         .collect()
+}
+
+fn schema(kind: &str) -> Option<&'static [target::MetadataSpec]> {
+    Some(match kind {
+        target::ENTITY_PIG => target::METADATA_PIG,
+        target::ENTITY_PLAYER => target::METADATA_PLAYER,
+        target::ENTITY_ITEM => target::METADATA_ITEM,
+        _ => return None,
+    })
+}
+/// Only identified native living schemas may consume living animation/effect facts.
+pub(in crate::java) fn living(kind: &str) -> bool {
+    schema(kind).is_some_and(|schema| {
+        schema
+            .iter()
+            .any(|spec| spec.name == "DATA_LIVING_ENTITY_FLAGS")
+    })
 }

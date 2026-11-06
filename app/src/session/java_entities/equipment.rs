@@ -24,7 +24,30 @@ pub(super) struct Ground {
     revision: u64,
     stack: inventory::java::Stack,
 }
+pub(super) struct SlotSource {
+    pub slot: u8,
+    pub item: Arc<str>,
+}
+impl SlotSource {
+    fn matches(&self, gear: &client_world::java::equipment::Equipment) -> bool {
+        gear.slots
+            .get(usize::from(self.slot))
+            .and_then(Option::as_ref)
+            .is_some_and(|stack| stack.item.as_str() == self.item.as_ref())
+    }
+}
+impl Signature {
+    /// Keep the last committed graphics while an ordinary same-body update is prepared.
+    fn usable(self, next: Self, failed: bool) -> bool {
+        self == next
+            || (!failed
+                && self.revision < next.revision
+                && self.slim == next.slim
+                && self.left == next.left)
+    }
+}
 pub(super) struct Draw {
+    pub source: Option<SlotSource>,
     pub model: Option<Arc<render_model::actor::java_geometry::Model>>,
     pub rig: render_model::EntityRigId,
     pub hand: Option<bool>,
@@ -182,7 +205,7 @@ impl State {
             .as_ref()?
             .entries
             .get(&e.identity)
-            .filter(|v| v.signature == signature(e, gear))
+            .filter(|v| !v.ground && v.signature.usable(signature(e, gear), self.error.is_some()))
     }
     pub fn ground_entry(&self, id: Identity, revision: u64) -> Option<&Entry> {
         self.installed
@@ -194,5 +217,54 @@ impl State {
     pub fn diagnostic(&self) -> serde_json::Value {
         let w = self.shared.0.lock().unwrap();
         serde_json::json!({"revision":w.desired,"pending":w.request.is_some(),"players":self.installed.as_ref().map_or(0,|o|o.entries.values().filter(|e|!e.ground).count()),"ground_items":self.installed.as_ref().map_or(0,|o|o.entries.values().filter(|e|e.ground).count()),"draws":self.installed.as_ref().map_or(0,|o|o.entries.values().map(|e|e.draws.len()).sum::<usize>()),"error":self.error,"resource_errors":self.installed.as_ref().map(|o|&o.errors)})
+    }
+}
+
+#[cfg(test)]
+mod continuity_tests {
+    use super::*;
+    #[test]
+    fn committed_same_body_resources_survive_a_pending_revision_without_crossing_fences() {
+        let old = Signature {
+            revision: 1,
+            slim: false,
+            left: false,
+        };
+        let next = Signature { revision: 2, ..old };
+        assert!(old.usable(next, false));
+        assert!(!old.usable(next, true));
+        assert!(!next.usable(old, false));
+        assert!(!old.usable(Signature { slim: true, ..next }, false));
+        assert!(!old.usable(Signature { left: true, ..next }, false));
+        assert!(old.usable(old, true));
+    }
+    #[test]
+    fn retained_draws_retire_removed_or_replaced_authoritative_slots_immediately() {
+        let source = SlotSource {
+            slot: 0,
+            item: "minecraft:diamond_sword".into(),
+        };
+        let mut gear = client_world::java::equipment::Equipment::default();
+        assert!(!source.matches(&gear));
+        gear.slots[0] = Some(inventory::java::Stack {
+            item: "minecraft:diamond_sword".into(),
+            count: 1,
+            added: Default::default(),
+            removed: Default::default(),
+        });
+        assert!(source.matches(&gear));
+        gear.slots[0]
+            .as_mut()
+            .unwrap()
+            .added
+            .insert("minecraft:damage".into(), serde_json::json!(2));
+        assert!(
+            source.matches(&gear),
+            "durability must not blank the last committed equipment"
+        );
+        gear.slots[0].as_mut().unwrap().item = "minecraft:shield".into();
+        assert!(!source.matches(&gear));
+        gear.slots[0] = None;
+        assert!(!source.matches(&gear));
     }
 }

@@ -6,12 +6,21 @@ use render_model::{ActorGlint, HandItemAlphaMode, equipment::java_item};
 pub(in crate::session::java_entities) fn append(
     batch: &mut ActorPresentationBatch,
     entry: &Entry,
+    gear: &client_world::java::equipment::Equipment,
     body: &ActorRigSubmission,
     body_model: &render_model::actor::java_geometry::Model,
     posture: world::java::entities::animation::PlayerPosture,
     seconds: f32,
 ) -> Result<(), String> {
     for (index, draw) in entry.draws.iter().enumerate() {
+        // Removal/different-item facts take effect before asynchronous replacement artwork.
+        if !draw
+            .source
+            .as_ref()
+            .is_some_and(|source| source.matches(gear))
+        {
+            continue;
+        }
         let (bones, bounds) = if let Some(model) = &draw.model {
             let mut rotations = Vec::new();
             let mut offsets = Vec::new();

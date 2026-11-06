@@ -10,6 +10,9 @@ pub struct Lifetimes {
 impl Lifetimes {
     pub fn observe(&mut self, packet: &mut Packet) -> Result<(), &'static str> {
         match packet {
+            Packet::Swing { lifetime, id, .. } => {
+                *lifetime = self.active.get(id).copied().unwrap_or(0);
+            }
             Packet::Equipment(packet) => {
                 packet.lifetime = self.active.get(&packet.id).copied().unwrap_or(0);
             }
@@ -71,5 +74,51 @@ mod tests {
         owner.observe(&mut spawn()).unwrap();
         assert!(!owner.accepts(4, 2));
         assert!(owner.accepts(4, 3));
+    }
+}
+
+#[cfg(test)]
+mod swing_tests {
+    use super::*;
+    #[test]
+    fn swing_receipts_are_stamped_with_current_socket_lifetime() {
+        let mut owner = Lifetimes::default();
+        let mut entity = Packet::Spawn(super::super::Spawn {
+            lifetime: 0,
+            id: 42,
+            uuid: [1; 16],
+            kind: "minecraft:player",
+            position: [0.; 3],
+            velocity: [0.; 3],
+            pitch: 0.,
+            yaw: 0.,
+            head_yaw: 0.,
+            data: 0,
+        });
+        owner.observe(&mut entity).unwrap();
+        let mut swing = Packet::Swing {
+            lifetime: 0,
+            id: 42,
+            offhand: false,
+            kind: 1,
+            duration: 6,
+        };
+        owner.observe(&mut swing).unwrap();
+        let Packet::Swing {
+            lifetime: first, ..
+        } = swing
+        else {
+            panic!()
+        };
+        assert!(owner.accepts(42, first));
+        owner.observe(&mut Packet::Remove(vec![42])).unwrap();
+        owner.observe(&mut entity).unwrap();
+        assert!(!owner.accepts(42, first));
+        owner.observe(&mut swing).unwrap();
+        let Packet::Swing { lifetime: next, .. } = swing else {
+            panic!()
+        };
+        assert!(owner.accepts(42, next));
+        assert_ne!(first, next);
     }
 }

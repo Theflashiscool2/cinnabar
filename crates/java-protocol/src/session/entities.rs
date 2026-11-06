@@ -46,6 +46,13 @@ pub enum Position {
 pub enum Packet {
     Spawn(Spawn),
     Equipment(equipment::Packet),
+    Swing {
+        lifetime: u64,
+        id: i32,
+        offhand: bool,
+        kind: i32,
+        duration: i32,
+    },
     Metadata(metadata::Packet),
     /// EntityEvent.USE_ITEM_COMPLETE=9 from the pinned26.3 archive; other events
     /// retain their explicit optional-observation path rather than pretending support.
@@ -94,6 +101,14 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
         return equipment::decode(r).map(|packet| Some(Packet::Equipment(packet)));
     }
     Ok(Some(match name {
+        "ClientboundSwingAnimationPacket" => Packet::Swing {
+            lifetime: 0,
+            id: r.var()?,
+            // InteractionHand and SwingAnimationType use native ZERO enum fallback.
+            offhand: r.var()? == 1,
+            kind: r.var()?,
+            duration: r.var()?,
+        },
         "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
         "ClientboundEntityEventPacket" => {
             let mut probe = Reader(r.0);

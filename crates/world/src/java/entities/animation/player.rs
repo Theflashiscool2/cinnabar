@@ -2,7 +2,11 @@
 use super::{Presentation, Sample, wrap};
 use crate::java::player::trig;
 
+#[cfg(test)]
 pub(super) fn body(presentation: &mut Presentation, dx: f64, dz: f64) {
+    body_with_swing(presentation, dx, dz, false);
+}
+pub(super) fn body_with_swing(presentation: &mut Presentation, dx: f64, dz: f64, swinging: bool) {
     let yaw = presentation.track.current.yaw;
     let mut target = presentation.body;
     if (dx * dx + dz * dz) as f32 > 0.0025000002 {
@@ -14,7 +18,7 @@ pub(super) fn body(presentation: &mut Presentation, dx: f64, dz: f64) {
             direction
         };
     }
-    turn(presentation, target);
+    turn(presentation, if swinging { yaw } else { target });
 }
 
 fn turn(presentation: &mut Presentation, target: f32) {
@@ -79,6 +83,34 @@ impl Sample {
             // AvatarRenderer.getRenderOffset: scale * -2 / 16 (unit-scale player).
             render_offset_y: if crouching { -0.125 } else { 0. },
         }
+    }
+
+    /// Native attack stage, preserving idle held items, crouch and final arm bobbing.
+    pub fn player_posture_with_swing(
+        self,
+        crouching: bool,
+        right_item: bool,
+        left_item: bool,
+        swing: Option<super::swing::Sample>,
+        left_handed: bool,
+    ) -> super::PlayerPosture {
+        let mut p = self.player_posture_with_items(crouching, right_item, left_item);
+        let Some(swing) = swing else {
+            return p;
+        };
+        let bob_x = trig(self.age_in_ticks * 0.067)[0] as f32 * 0.05;
+        let bob_z = trig(self.age_in_ticks * 0.09)[1] as f32 * 0.05 + 0.05;
+        let crouch = if crouching { 0.4 } else { 0. };
+        p.rotations[2][0] -= bob_x + crouch;
+        p.rotations[3][0] -= -bob_x + crouch;
+        p.rotations[2][2] -= bob_z;
+        p.rotations[3][2] += bob_z;
+        p.attack(swing, left_handed);
+        p.rotations[2][0] += bob_x + crouch;
+        p.rotations[3][0] += -bob_x + crouch;
+        p.rotations[2][2] += bob_z;
+        p.rotations[3][2] -= bob_z;
+        p
     }
 
     /// Native empty-hand standing pose: head, right/left arm, right/left leg.

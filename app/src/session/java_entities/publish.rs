@@ -278,8 +278,15 @@ pub(crate) fn update(
             } else {
                 held
             };
-            let posture =
-                is_player.then(|| sampled.player_posture_with_items(crouching, right, left));
+            let posture = is_player.then(|| {
+                sampled.player_posture_with_swing(
+                    crouching,
+                    right,
+                    left,
+                    e.visual.swing.sample(fraction),
+                    e.visual.left_handed,
+                )
+            });
             let angles = if let Some(posture) = posture {
                 posture.rotations
             } else {
@@ -404,6 +411,7 @@ pub(crate) fn update(
                 if let Err(error) = equipment::append(
                     &mut batch,
                     entry,
+                    gear,
                     &body,
                     model,
                     posture,

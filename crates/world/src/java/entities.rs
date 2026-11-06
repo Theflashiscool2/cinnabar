@@ -112,14 +112,17 @@ impl Entities {
             })
             .collect::<std::collections::BTreeSet<_>>();
         for entity in self.entries.values_mut() {
+            entity.visual.swing.tick();
+            super::dynamics::tick_effects(&mut entity.visual.effects);
             if let Some(presentation) = &mut entity.presentation {
-                presentation.tick(
+                presentation.tick_with_swing(
                     entity.visual.baby,
                     entity.visual.health.is_none_or(|h| h > 0.),
                     riders.contains(&entity.identity),
                     self.passengers
                         .get(&entity.network_id)
                         .is_some_and(|p| !p.members.is_empty()),
+                    entity.visual.swing.turning_body(),
                 );
             }
         }

@@ -38,6 +38,7 @@ impl Writer<'_> {
             });
             self.indices.push((id, draws.len()));
             draws.push(Draw {
+                source: None,
                 model: None,
                 rig,
                 hand: attachment,

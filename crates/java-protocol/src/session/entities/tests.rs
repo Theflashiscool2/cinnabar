@@ -166,3 +166,43 @@ fn use_complete_is_fixed_int_entity_and_native_event_nine_only() {
         "other events retain their observation path unchanged"
     );
 }
+
+#[test]
+fn native_swing_vectors_and_truncation_preserve_hand_type_and_duration() {
+    // Exact ClientboundSwingAnimationPacket.STREAM_CODEC vectors from verified26.3.
+    for kind in 0..=2 {
+        for hand in 0..=1 {
+            let bytes = [42, hand, kind, 6];
+            let Packet::Swing {
+                id,
+                offhand,
+                kind: decoded,
+                duration,
+                ..
+            } = packet("ClientboundSwingAnimationPacket", &bytes).unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(
+                (id, offhand, decoded, duration),
+                (42, hand == 1, i32::from(kind), 6)
+            );
+            for end in 0..bytes.len() {
+                assert!(packet("ClientboundSwingAnimationPacket", &bytes[..end]).is_err());
+            }
+        }
+    }
+    // Native enum lookup falls back to MAIN_HAND; signed duration is a plain wire VAR_INT.
+    let Packet::Swing {
+        offhand, duration, ..
+    } = packet(
+        "ClientboundSwingAnimationPacket",
+        &[42, 2, 1, 255, 255, 255, 255, 15],
+    )
+    .unwrap()
+    else {
+        panic!()
+    };
+    assert!(!offhand);
+    assert_eq!(duration, -1);
+}
