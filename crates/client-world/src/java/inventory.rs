@@ -31,6 +31,15 @@ pub(super) fn admit(
     if !state.inventory.accepts(state.generation(), epoch) {
         return false;
     }
+    if let wire::Packet::MerchantOffers(summary) = &packet {
+        // This catalog has no transaction consumer yet. Only a current merchant opening
+        // may observe it; the UI queues an ordinary scoped close, never a trading click.
+        return state.inventory.opened.as_ref().is_some_and(|menu| {
+            menu.container == summary.container
+                && menu.incarnation == incarnation
+                && menu.kind == "MERCHANT"
+        });
+    }
     let update = match convert(packet, incarnation) {
         Ok(update) => update,
         Err(error) => {
@@ -45,6 +54,9 @@ pub(super) fn admit(
 }
 fn convert(packet: wire::Packet, incarnation: u64) -> Result<Update, &'static str> {
     Ok(match packet {
+        wire::Packet::MerchantOffers(_) => {
+            return Err("Native merchant catalog has no transaction consumer");
+        }
         wire::Packet::Cooldown { group, ticks } => Update::Cooldown { group, ticks },
         wire::Packet::Content {
             container,

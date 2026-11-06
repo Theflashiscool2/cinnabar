@@ -2053,6 +2053,524 @@
       }
     ]
   },
+  "particles": [
+    {
+      "name": "minecraft:angry_villager",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:block",
+      "options": "net.minecraft.core.particles.BlockParticleOption"
+    },
+    {
+      "name": "minecraft:block_marker",
+      "options": "net.minecraft.core.particles.BlockParticleOption"
+    },
+    {
+      "name": "minecraft:bubble",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sulfur_bubbles",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:noxious_gas",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:noxious_gas_cloud",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:geyser",
+      "options": "net.minecraft.core.particles.GeyserParticleOptions"
+    },
+    {
+      "name": "minecraft:geyser_base",
+      "options": "net.minecraft.core.particles.GeyserBaseParticleOptions"
+    },
+    {
+      "name": "minecraft:geyser_poof",
+      "options": "net.minecraft.core.particles.GeyserBaseParticleOptions"
+    },
+    {
+      "name": "minecraft:geyser_plume",
+      "options": "net.minecraft.core.particles.GeyserParticleOptions"
+    },
+    {
+      "name": "minecraft:cloud",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:copper_fire_flame",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:crit",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:damage_indicator",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dragon_breath",
+      "options": "net.minecraft.core.particles.PowerParticleOption"
+    },
+    {
+      "name": "minecraft:dripping_lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:landing_lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dripping_water",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_water",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dust",
+      "options": "net.minecraft.core.particles.DustParticleOptions"
+    },
+    {
+      "name": "minecraft:dust_color_transition",
+      "options": "net.minecraft.core.particles.DustColorTransitionOptions"
+    },
+    {
+      "name": "minecraft:effect",
+      "options": "net.minecraft.core.particles.SpellParticleOption"
+    },
+    {
+      "name": "minecraft:elder_guardian",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:enchanted_hit",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:enchant",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:end_rod",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:entity_effect",
+      "options": "net.minecraft.core.particles.ColorParticleOption"
+    },
+    {
+      "name": "minecraft:explosion_emitter",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:explosion",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:gust",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:small_gust",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:gust_emitter_large",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:gust_emitter_small",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sonic_boom",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_dust",
+      "options": "net.minecraft.core.particles.BlockParticleOption"
+    },
+    {
+      "name": "minecraft:firework",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:fishing",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:flame",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:infested",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:cherry_leaves",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:pale_oak_leaves",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:red_poplar_leaves",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:orange_poplar_leaves",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:yellow_poplar_leaves",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:tinted_leaves",
+      "options": "net.minecraft.core.particles.ColorParticleOption"
+    },
+    {
+      "name": "minecraft:sculk_soul",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sculk_charge",
+      "options": "net.minecraft.core.particles.SculkChargeParticleOptions"
+    },
+    {
+      "name": "minecraft:sculk_charge_pop",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:soul_fire_flame",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:soul",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:flash",
+      "options": "net.minecraft.core.particles.ColorParticleOption"
+    },
+    {
+      "name": "minecraft:happy_villager",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:composter",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:heart",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:instant_effect",
+      "options": "net.minecraft.core.particles.SpellParticleOption"
+    },
+    {
+      "name": "minecraft:item",
+      "options": "net.minecraft.core.particles.ItemParticleOption"
+    },
+    {
+      "name": "minecraft:vibration",
+      "options": "net.minecraft.core.particles.VibrationParticleOption"
+    },
+    {
+      "name": "minecraft:trail",
+      "options": "net.minecraft.core.particles.TrailParticleOption"
+    },
+    {
+      "name": "minecraft:pause_mob_growth",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:reset_mob_growth",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:item_slime",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:item_cobweb",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:item_snowball",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:large_smoke",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:mycelium",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:note",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:poof",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:portal",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:rain",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:smoke",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:white_smoke",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sneeze",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:spit",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:squid_ink",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sweep_attack",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:totem_of_undying",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:underwater",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:splash",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:witch",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:bubble_pop",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:current_down",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:bubble_column_up",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:nautilus",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dolphin",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:campfire_cosy_smoke",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:campfire_signal_smoke",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dripping_honey",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_honey",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:landing_honey",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_nectar",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_spore_blossom",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:ash",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:crimson_spore",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:warped_spore",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:spore_blossom_air",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dripping_obsidian_tear",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_obsidian_tear",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:landing_obsidian_tear",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:reverse_portal",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:white_ash",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:small_flame",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:snowflake",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dripping_dripstone_lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_dripstone_lava",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dripping_dripstone_water",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:falling_dripstone_water",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:glow_squid_ink",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:glow",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:wax_on",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:wax_off",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:electric_spark",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:scrape",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:shriek",
+      "options": "net.minecraft.core.particles.ShriekParticleOption"
+    },
+    {
+      "name": "minecraft:egg_crack",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dust_plume",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:trial_spawner_detection",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:trial_spawner_detection_ominous",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:vault_connection",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:dust_pillar",
+      "options": "net.minecraft.core.particles.BlockParticleOption"
+    },
+    {
+      "name": "minecraft:ominous_spawning",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:raid_omen",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:trial_omen",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:block_crumble",
+      "options": "net.minecraft.core.particles.BlockParticleOption"
+    },
+    {
+      "name": "minecraft:firefly",
+      "options": "simple"
+    },
+    {
+      "name": "minecraft:sulfur_cube_goo",
+      "options": "simple"
+    }
+  ],
+  "position_source_types": [
+    "minecraft:block",
+    "minecraft:entity"
+  ],
   "villager_types": [
     "minecraft:desert",
     "minecraft:jungle",

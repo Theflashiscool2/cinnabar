@@ -23,6 +23,25 @@ public final class ExportEntities {
         f.setAccessible(true);
         return f.get(object);
     }
+    static JsonArray particles() throws Exception {
+        var types = new IdentityHashMap<Object, String>();
+        for (Field f : net.minecraft.core.particles.ParticleTypes.class.getDeclaredFields()) {
+            if (!Modifier.isStatic(f.getModifiers()) || !net.minecraft.core.particles.ParticleType.class.isAssignableFrom(f.getType())) continue;
+            Object type = f.get(null);
+            String options = type instanceof net.minecraft.core.particles.SimpleParticleType ? "simple"
+                : ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0].getTypeName();
+            types.put(type, options);
+        }
+        JsonArray result = new JsonArray();
+        for (var type : BuiltInRegistries.PARTICLE_TYPE) {
+            if (BuiltInRegistries.PARTICLE_TYPE.getId(type) != result.size() || !types.containsKey(type)) throw new IllegalStateException("unknown native particle schema");
+            JsonObject entry = new JsonObject();
+            entry.addProperty("name", BuiltInRegistries.PARTICLE_TYPE.getKey(type).toString());
+            entry.addProperty("options", types.get(type));
+            result.add(entry);
+        }
+        return result;
+    }
     static JsonArray floats(float... values) {
         JsonArray a = new JsonArray();
         for (float n : values) {
@@ -264,6 +283,13 @@ public final class ExportEntities {
         metadata.add("item", metadata(net.minecraft.world.entity.item.ItemEntity.class));
         metadata.add("villager", metadata(net.minecraft.world.entity.npc.villager.Villager.class));
         facts.add("metadata", metadata);
+        facts.add("particles", particles());
+        JsonArray positionSources = new JsonArray();
+        for (var source : BuiltInRegistries.POSITION_SOURCE_TYPE) {
+            if (BuiltInRegistries.POSITION_SOURCE_TYPE.getId(source) != positionSources.size()) throw new IllegalStateException("noncontiguous position sources");
+            positionSources.add(BuiltInRegistries.POSITION_SOURCE_TYPE.getKey(source).toString());
+        }
+        facts.add("position_source_types", positionSources);
         JsonArray villagerTypes = new JsonArray();
         for (var type : BuiltInRegistries.VILLAGER_TYPE) {
             if (BuiltInRegistries.VILLAGER_TYPE.getId(type) != villagerTypes.size()) throw new IllegalStateException("noncontiguous villager types");

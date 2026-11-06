@@ -199,3 +199,53 @@ fn personal_reserved_clicks_are_observed_without_storage_predictions_or_cross_me
     s.begin(7, 3);
     assert!(s.observe_click_slot(foreign, 5).is_err());
 }
+
+#[test]
+fn unsupported_merchant_retains_real_slot_authority_but_never_admits_storage_clicks() {
+    let mut s = state();
+    apply(
+        &mut s,
+        Update::Open {
+            incarnation: 1,
+            container: 7,
+            kind: "MERCHANT".into(),
+            title: Value::Null,
+        },
+    );
+    assert_eq!(s.opened.as_ref().unwrap().len(), 39);
+    let id = s.opened_identity().unwrap();
+    let mut slots = vec![None; 39];
+    slots[0] = item("minecraft:emerald", 2);
+    slots[2] = item("minecraft:bread", 3);
+    slots[30] = item("minecraft:dirt", 5);
+    apply(
+        &mut s,
+        Update::Content {
+            container: 7,
+            state: 4,
+            slots,
+            carried: item("minecraft:stone", 1),
+        },
+    );
+    assert_eq!(s.held(), Some(&item("minecraft:dirt", 5)));
+    assert!(s.observe_click_slot(id, 2).is_err());
+    assert!(s.observe_storage_slot(id, 30).is_err());
+    assert!(s.observe_carried(id).is_err());
+    assert!(!s.record_receipt(pickup::Receipt {
+        identity: pickup::MenuIdentity {
+            incarnation: 0,
+            ..id
+        },
+        sequence: 1,
+        closed: true,
+        written: true
+    }));
+    assert!(s.record_receipt(pickup::Receipt {
+        identity: id,
+        sequence: 2,
+        closed: true,
+        written: true
+    }));
+    assert!(s.opened.is_none());
+    assert_eq!(s.held(), Some(&item("minecraft:dirt", 5)));
+}

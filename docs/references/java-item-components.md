@@ -53,17 +53,22 @@ fields have exhaustive coverage.
 | Explicit gate | Required implementation |
 | --- | --- |
 | `ClientboundMountScreenOpenPacket` | Mount inventory layout and lifecycle |
-| `ClientboundMerchantOffersPacket` | Authoritative offers and merchant UI |
 | `ClientboundMoveVehiclePacket` | Vehicle corrections and movement |
 | `ClientboundOpenBookPacket` | Book presentation/input |
 | `ClientboundOpenSignEditorPacket` | Native Java editor wire/UI lifecycle |
 | `ClientboundPongResponsePacket` | Play latency-response handling |
 | `ClientboundPlaceGhostRecipePacket` | Recipe preview/slot-display schema |
-| `ClientboundPlayerChatPacket` | Signed player-message and acknowledgment state |
-| `ClientboundStartConfigurationPacket` | Configuration transition, world teardown and fresh bootstrap |
 | `ClientboundTestInstanceBlockStatus` | Developer test-block response schema |
 | `ClientboundTransferPacket` | Transfer destination/session policy and handoff |
 | `ClientboundShowDialogGamePacket` | Interactive server dialogs |
+
+MerchantOffers now has a pinned native-codec-verified reader. The unsupported
+trading screen queues a normal lifetime-scoped close and retains inventory/input
+fences; no trade clicks or chest layout are substituted. This prevents the former
+disconnect, not an implementation of trading. Ordinary chest-style menus retain
+their authoritative transaction path. Actual Hypixel shop kinds need live evidence.
+Player chat and same-connection reconfiguration have handlers and their separately
+tracked acceptance limits; they are not explicit dispatch gates.
 
 Conditional gates include required server packs, configuration consent/dialogs and
 experimental features. The test checks the explicit set so a schema/dispatch change
@@ -84,7 +89,8 @@ If an attempt remains stuck, cancel it to save the report. Hard process crashes
 still require the existing crash log; this reporter does not run after process death.
 
 The report groups deferred packet names/counts, unsupported entity serializers,
-observed item-component names, reached phases, the last 32 event types and static
+observed item-component names, canonical menu kinds/slot-count ranges, entity kinds,
+world-login/respawn counts, reached phases, the last32 event types and static
 local admission/presentation notices. It excludes packet bodies, item text, player
 names/UUIDs, server addresses, cookies and credentials. Terminal classification is
 best-effort: only known protocol packet/component identities and a category enter

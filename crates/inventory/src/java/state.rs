@@ -194,7 +194,9 @@ impl State {
                 }
                 self.incarnation = incarnation;
                 self.opened = None;
-                let Some(start) = generic_storage_slots(&kind) else {
+                let Some(start) =
+                    generic_storage_slots(&kind).or_else(|| (kind == "MERCHANT").then_some(3))
+                else {
                     return Err(format!("Native Java menu {kind} is not implemented"));
                 };
                 self.opened = Some(Menu {

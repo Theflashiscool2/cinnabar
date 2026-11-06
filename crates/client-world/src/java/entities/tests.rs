@@ -494,3 +494,52 @@ mod ground;
 mod swing;
 
 mod villager;
+
+#[test]
+fn player_potion_aura_metadata_keeps_body_layers_and_identity_visible() {
+    use java_protocol::{session::roster, target};
+    let mut s = state();
+    assert!(s.admit(Envelope {
+        generation: 7,
+        event: Event::Roster(roster::Packet::Update(vec![roster::Update {
+            uuid: [1; 16],
+            profile: Some(roster::Profile {
+                name: "AuraPlayer".into(),
+                properties: vec![]
+            }),
+            ..Default::default()
+        }]))
+    }));
+    let wire::Packet::Spawn(mut p) = spawn() else {
+        panic!()
+    };
+    p.kind = target::ENTITY_PLAYER;
+    assert!(s.admit(event(1, wire::Packet::Spawn(p))));
+    let identity = s.entities.get(99).unwrap().identity;
+    let particle = target::PARTICLES
+        .iter()
+        .position(|p| p.name == "minecraft:entity_effect")
+        .unwrap() as i32;
+    let effects = target::METADATA_PLAYER
+        .iter()
+        .find(|m| m.name == "DATA_EFFECT_PARTICLES")
+        .unwrap();
+    let layers = target::METADATA_PLAYER
+        .iter()
+        .find(|m| m.name == "DATA_PLAYER_MODE_CUSTOMISATION")
+        .unwrap();
+    let mut bytes = vec![99, 0, 0, 0, effects.index];
+    java_protocol::codec::write_varint(effects.serializer as i32, &mut bytes);
+    bytes.push(1);
+    java_protocol::codec::write_varint(particle, &mut bytes);
+    bytes.extend(0xff88cc55u32.to_be_bytes());
+    bytes.extend([layers.index, layers.serializer as u8, 0x42, 255]);
+    assert!(s.admit(event(1, decoded("ClientboundSetEntityDataPacket", &bytes))));
+    let e = s.entities.get(99).unwrap();
+    assert_eq!(e.identity, identity);
+    assert!(e.visual.incomplete.is_none());
+    assert!(e.presentation.is_some());
+    assert!(!e.visual.invisible());
+    assert!(e.visual.player_layers.hat);
+    assert!(e.visual.player_layers.jacket);
+}

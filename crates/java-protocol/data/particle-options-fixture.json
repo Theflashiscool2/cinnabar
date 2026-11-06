@@ -1,0 +1,642 @@
+[
+  {
+    "name": "minecraft:angry_villager",
+    "options": "simple",
+    "hex": "00"
+  },
+  {
+    "name": "minecraft:block",
+    "options": "net.minecraft.core.particles.BlockParticleOption",
+    "hex": "0101"
+  },
+  {
+    "name": "minecraft:block_marker",
+    "options": "net.minecraft.core.particles.BlockParticleOption",
+    "hex": "0201"
+  },
+  {
+    "name": "minecraft:bubble",
+    "options": "simple",
+    "hex": "03"
+  },
+  {
+    "name": "minecraft:sulfur_bubbles",
+    "options": "simple",
+    "hex": "04"
+  },
+  {
+    "name": "minecraft:noxious_gas",
+    "options": "simple",
+    "hex": "05"
+  },
+  {
+    "name": "minecraft:noxious_gas_cloud",
+    "options": "simple",
+    "hex": "06"
+  },
+  {
+    "name": "minecraft:geyser",
+    "options": "net.minecraft.core.particles.GeyserParticleOptions",
+    "hex": "0700000003"
+  },
+  {
+    "name": "minecraft:geyser_base",
+    "options": "net.minecraft.core.particles.GeyserBaseParticleOptions",
+    "hex": "08000000033f400000"
+  },
+  {
+    "name": "minecraft:geyser_poof",
+    "options": "net.minecraft.core.particles.GeyserBaseParticleOptions",
+    "hex": "09000000033f400000"
+  },
+  {
+    "name": "minecraft:geyser_plume",
+    "options": "net.minecraft.core.particles.GeyserParticleOptions",
+    "hex": "0a00000003"
+  },
+  {
+    "name": "minecraft:cloud",
+    "options": "simple",
+    "hex": "0b"
+  },
+  {
+    "name": "minecraft:copper_fire_flame",
+    "options": "simple",
+    "hex": "0c"
+  },
+  {
+    "name": "minecraft:crit",
+    "options": "simple",
+    "hex": "0d"
+  },
+  {
+    "name": "minecraft:damage_indicator",
+    "options": "simple",
+    "hex": "0e"
+  },
+  {
+    "name": "minecraft:dragon_breath",
+    "options": "net.minecraft.core.particles.PowerParticleOption",
+    "hex": "0f3f400000"
+  },
+  {
+    "name": "minecraft:dripping_lava",
+    "options": "simple",
+    "hex": "10"
+  },
+  {
+    "name": "minecraft:falling_lava",
+    "options": "simple",
+    "hex": "11"
+  },
+  {
+    "name": "minecraft:landing_lava",
+    "options": "simple",
+    "hex": "12"
+  },
+  {
+    "name": "minecraft:dripping_water",
+    "options": "simple",
+    "hex": "13"
+  },
+  {
+    "name": "minecraft:falling_water",
+    "options": "simple",
+    "hex": "14"
+  },
+  {
+    "name": "minecraft:dust",
+    "options": "net.minecraft.core.particles.DustParticleOptions",
+    "hex": "150088cc553fa00000"
+  },
+  {
+    "name": "minecraft:dust_color_transition",
+    "options": "net.minecraft.core.particles.DustColorTransitionOptions",
+    "hex": "160088cc55001234563fa00000"
+  },
+  {
+    "name": "minecraft:effect",
+    "options": "net.minecraft.core.particles.SpellParticleOption",
+    "hex": "170088cc553f400000"
+  },
+  {
+    "name": "minecraft:elder_guardian",
+    "options": "simple",
+    "hex": "18"
+  },
+  {
+    "name": "minecraft:enchanted_hit",
+    "options": "simple",
+    "hex": "19"
+  },
+  {
+    "name": "minecraft:enchant",
+    "options": "simple",
+    "hex": "1a"
+  },
+  {
+    "name": "minecraft:end_rod",
+    "options": "simple",
+    "hex": "1b"
+  },
+  {
+    "name": "minecraft:entity_effect",
+    "options": "net.minecraft.core.particles.ColorParticleOption",
+    "hex": "1cff88cc55"
+  },
+  {
+    "name": "minecraft:explosion_emitter",
+    "options": "simple",
+    "hex": "1d"
+  },
+  {
+    "name": "minecraft:explosion",
+    "options": "simple",
+    "hex": "1e"
+  },
+  {
+    "name": "minecraft:gust",
+    "options": "simple",
+    "hex": "1f"
+  },
+  {
+    "name": "minecraft:small_gust",
+    "options": "simple",
+    "hex": "20"
+  },
+  {
+    "name": "minecraft:gust_emitter_large",
+    "options": "simple",
+    "hex": "21"
+  },
+  {
+    "name": "minecraft:gust_emitter_small",
+    "options": "simple",
+    "hex": "22"
+  },
+  {
+    "name": "minecraft:sonic_boom",
+    "options": "simple",
+    "hex": "23"
+  },
+  {
+    "name": "minecraft:falling_dust",
+    "options": "net.minecraft.core.particles.BlockParticleOption",
+    "hex": "2401"
+  },
+  {
+    "name": "minecraft:firework",
+    "options": "simple",
+    "hex": "25"
+  },
+  {
+    "name": "minecraft:fishing",
+    "options": "simple",
+    "hex": "26"
+  },
+  {
+    "name": "minecraft:flame",
+    "options": "simple",
+    "hex": "27"
+  },
+  {
+    "name": "minecraft:infested",
+    "options": "simple",
+    "hex": "28"
+  },
+  {
+    "name": "minecraft:cherry_leaves",
+    "options": "simple",
+    "hex": "29"
+  },
+  {
+    "name": "minecraft:pale_oak_leaves",
+    "options": "simple",
+    "hex": "2a"
+  },
+  {
+    "name": "minecraft:red_poplar_leaves",
+    "options": "simple",
+    "hex": "2b"
+  },
+  {
+    "name": "minecraft:orange_poplar_leaves",
+    "options": "simple",
+    "hex": "2c"
+  },
+  {
+    "name": "minecraft:yellow_poplar_leaves",
+    "options": "simple",
+    "hex": "2d"
+  },
+  {
+    "name": "minecraft:tinted_leaves",
+    "options": "net.minecraft.core.particles.ColorParticleOption",
+    "hex": "2eff88cc55"
+  },
+  {
+    "name": "minecraft:sculk_soul",
+    "options": "simple",
+    "hex": "2f"
+  },
+  {
+    "name": "minecraft:sculk_charge",
+    "options": "net.minecraft.core.particles.SculkChargeParticleOptions",
+    "hex": "303f400000"
+  },
+  {
+    "name": "minecraft:sculk_charge_pop",
+    "options": "simple",
+    "hex": "31"
+  },
+  {
+    "name": "minecraft:soul_fire_flame",
+    "options": "simple",
+    "hex": "32"
+  },
+  {
+    "name": "minecraft:soul",
+    "options": "simple",
+    "hex": "33"
+  },
+  {
+    "name": "minecraft:flash",
+    "options": "net.minecraft.core.particles.ColorParticleOption",
+    "hex": "34ff88cc55"
+  },
+  {
+    "name": "minecraft:happy_villager",
+    "options": "simple",
+    "hex": "35"
+  },
+  {
+    "name": "minecraft:composter",
+    "options": "simple",
+    "hex": "36"
+  },
+  {
+    "name": "minecraft:heart",
+    "options": "simple",
+    "hex": "37"
+  },
+  {
+    "name": "minecraft:instant_effect",
+    "options": "net.minecraft.core.particles.SpellParticleOption",
+    "hex": "380088cc553f400000"
+  },
+  {
+    "name": "minecraft:item",
+    "options": "net.minecraft.core.particles.ItemParticleOption",
+    "hex": "3901030000"
+  },
+  {
+    "name": "minecraft:vibration",
+    "options": "net.minecraft.core.particles.VibrationParticleOption",
+    "hex": "3a00000000000001e2400c"
+  },
+  {
+    "name": "minecraft:trail",
+    "options": "net.minecraft.core.particles.TrailParticleOption",
+    "hex": "3b3ff4000000000000c00c0000000000003fc00000000000000088cc550c"
+  },
+  {
+    "name": "minecraft:pause_mob_growth",
+    "options": "simple",
+    "hex": "3c"
+  },
+  {
+    "name": "minecraft:reset_mob_growth",
+    "options": "simple",
+    "hex": "3d"
+  },
+  {
+    "name": "minecraft:item_slime",
+    "options": "simple",
+    "hex": "3e"
+  },
+  {
+    "name": "minecraft:item_cobweb",
+    "options": "simple",
+    "hex": "3f"
+  },
+  {
+    "name": "minecraft:item_snowball",
+    "options": "simple",
+    "hex": "40"
+  },
+  {
+    "name": "minecraft:large_smoke",
+    "options": "simple",
+    "hex": "41"
+  },
+  {
+    "name": "minecraft:lava",
+    "options": "simple",
+    "hex": "42"
+  },
+  {
+    "name": "minecraft:mycelium",
+    "options": "simple",
+    "hex": "43"
+  },
+  {
+    "name": "minecraft:note",
+    "options": "simple",
+    "hex": "44"
+  },
+  {
+    "name": "minecraft:poof",
+    "options": "simple",
+    "hex": "45"
+  },
+  {
+    "name": "minecraft:portal",
+    "options": "simple",
+    "hex": "46"
+  },
+  {
+    "name": "minecraft:rain",
+    "options": "simple",
+    "hex": "47"
+  },
+  {
+    "name": "minecraft:smoke",
+    "options": "simple",
+    "hex": "48"
+  },
+  {
+    "name": "minecraft:white_smoke",
+    "options": "simple",
+    "hex": "49"
+  },
+  {
+    "name": "minecraft:sneeze",
+    "options": "simple",
+    "hex": "4a"
+  },
+  {
+    "name": "minecraft:spit",
+    "options": "simple",
+    "hex": "4b"
+  },
+  {
+    "name": "minecraft:squid_ink",
+    "options": "simple",
+    "hex": "4c"
+  },
+  {
+    "name": "minecraft:sweep_attack",
+    "options": "simple",
+    "hex": "4d"
+  },
+  {
+    "name": "minecraft:totem_of_undying",
+    "options": "simple",
+    "hex": "4e"
+  },
+  {
+    "name": "minecraft:underwater",
+    "options": "simple",
+    "hex": "4f"
+  },
+  {
+    "name": "minecraft:splash",
+    "options": "simple",
+    "hex": "50"
+  },
+  {
+    "name": "minecraft:witch",
+    "options": "simple",
+    "hex": "51"
+  },
+  {
+    "name": "minecraft:bubble_pop",
+    "options": "simple",
+    "hex": "52"
+  },
+  {
+    "name": "minecraft:current_down",
+    "options": "simple",
+    "hex": "53"
+  },
+  {
+    "name": "minecraft:bubble_column_up",
+    "options": "simple",
+    "hex": "54"
+  },
+  {
+    "name": "minecraft:nautilus",
+    "options": "simple",
+    "hex": "55"
+  },
+  {
+    "name": "minecraft:dolphin",
+    "options": "simple",
+    "hex": "56"
+  },
+  {
+    "name": "minecraft:campfire_cosy_smoke",
+    "options": "simple",
+    "hex": "57"
+  },
+  {
+    "name": "minecraft:campfire_signal_smoke",
+    "options": "simple",
+    "hex": "58"
+  },
+  {
+    "name": "minecraft:dripping_honey",
+    "options": "simple",
+    "hex": "59"
+  },
+  {
+    "name": "minecraft:falling_honey",
+    "options": "simple",
+    "hex": "5a"
+  },
+  {
+    "name": "minecraft:landing_honey",
+    "options": "simple",
+    "hex": "5b"
+  },
+  {
+    "name": "minecraft:falling_nectar",
+    "options": "simple",
+    "hex": "5c"
+  },
+  {
+    "name": "minecraft:falling_spore_blossom",
+    "options": "simple",
+    "hex": "5d"
+  },
+  {
+    "name": "minecraft:ash",
+    "options": "simple",
+    "hex": "5e"
+  },
+  {
+    "name": "minecraft:crimson_spore",
+    "options": "simple",
+    "hex": "5f"
+  },
+  {
+    "name": "minecraft:warped_spore",
+    "options": "simple",
+    "hex": "60"
+  },
+  {
+    "name": "minecraft:spore_blossom_air",
+    "options": "simple",
+    "hex": "61"
+  },
+  {
+    "name": "minecraft:dripping_obsidian_tear",
+    "options": "simple",
+    "hex": "62"
+  },
+  {
+    "name": "minecraft:falling_obsidian_tear",
+    "options": "simple",
+    "hex": "63"
+  },
+  {
+    "name": "minecraft:landing_obsidian_tear",
+    "options": "simple",
+    "hex": "64"
+  },
+  {
+    "name": "minecraft:reverse_portal",
+    "options": "simple",
+    "hex": "65"
+  },
+  {
+    "name": "minecraft:white_ash",
+    "options": "simple",
+    "hex": "66"
+  },
+  {
+    "name": "minecraft:small_flame",
+    "options": "simple",
+    "hex": "67"
+  },
+  {
+    "name": "minecraft:snowflake",
+    "options": "simple",
+    "hex": "68"
+  },
+  {
+    "name": "minecraft:dripping_dripstone_lava",
+    "options": "simple",
+    "hex": "69"
+  },
+  {
+    "name": "minecraft:falling_dripstone_lava",
+    "options": "simple",
+    "hex": "6a"
+  },
+  {
+    "name": "minecraft:dripping_dripstone_water",
+    "options": "simple",
+    "hex": "6b"
+  },
+  {
+    "name": "minecraft:falling_dripstone_water",
+    "options": "simple",
+    "hex": "6c"
+  },
+  {
+    "name": "minecraft:glow_squid_ink",
+    "options": "simple",
+    "hex": "6d"
+  },
+  {
+    "name": "minecraft:glow",
+    "options": "simple",
+    "hex": "6e"
+  },
+  {
+    "name": "minecraft:wax_on",
+    "options": "simple",
+    "hex": "6f"
+  },
+  {
+    "name": "minecraft:wax_off",
+    "options": "simple",
+    "hex": "70"
+  },
+  {
+    "name": "minecraft:electric_spark",
+    "options": "simple",
+    "hex": "71"
+  },
+  {
+    "name": "minecraft:scrape",
+    "options": "simple",
+    "hex": "72"
+  },
+  {
+    "name": "minecraft:shriek",
+    "options": "net.minecraft.core.particles.ShriekParticleOption",
+    "hex": "730c"
+  },
+  {
+    "name": "minecraft:egg_crack",
+    "options": "simple",
+    "hex": "74"
+  },
+  {
+    "name": "minecraft:dust_plume",
+    "options": "simple",
+    "hex": "75"
+  },
+  {
+    "name": "minecraft:trial_spawner_detection",
+    "options": "simple",
+    "hex": "76"
+  },
+  {
+    "name": "minecraft:trial_spawner_detection_ominous",
+    "options": "simple",
+    "hex": "77"
+  },
+  {
+    "name": "minecraft:vault_connection",
+    "options": "simple",
+    "hex": "78"
+  },
+  {
+    "name": "minecraft:dust_pillar",
+    "options": "net.minecraft.core.particles.BlockParticleOption",
+    "hex": "7901"
+  },
+  {
+    "name": "minecraft:ominous_spawning",
+    "options": "simple",
+    "hex": "7a"
+  },
+  {
+    "name": "minecraft:raid_omen",
+    "options": "simple",
+    "hex": "7b"
+  },
+  {
+    "name": "minecraft:trial_omen",
+    "options": "simple",
+    "hex": "7c"
+  },
+  {
+    "name": "minecraft:block_crumble",
+    "options": "net.minecraft.core.particles.BlockParticleOption",
+    "hex": "7d01"
+  },
+  {
+    "name": "minecraft:firefly",
+    "options": "simple",
+    "hex": "7e"
+  },
+  {
+    "name": "minecraft:sulfur_cube_goo",
+    "options": "simple",
+    "hex": "7f"
+  }
+]

@@ -18,6 +18,17 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
         let Some(input) = ui.next_java_inventory_input() else {
             break;
         };
+        if matches!(input.intent, Intent::Close)
+            && controller
+                .java_world
+                .inventory
+                .opened
+                .as_ref()
+                .is_some_and(|m| m.kind == "MERCHANT")
+        {
+            bevy::log::warn!(target:"java_session", "Native merchant trading is not implemented; closing this menu without disconnecting");
+            java.diagnostic_notice("java_merchant_menu_closed_unsupported");
+        }
         let result = prepare(input, &controller.java_world.inventory);
         let command = match result {
             Ok((command, missing)) => {

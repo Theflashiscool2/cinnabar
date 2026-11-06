@@ -18,6 +18,12 @@ const FILE: &str = "java-join-latest.json";
 pub(super) struct Report {
     directory: Option<PathBuf>,
     completed: bool,
+    menus: BTreeMap<&'static str, u64>,
+    menu_slots: BTreeMap<&'static str, [usize; 2]>,
+    active_menu: Option<(u64, u64, i32, &'static str)>,
+    entity_spawns: BTreeMap<&'static str, u64>,
+    world_logins: u64,
+    respawns: u64,
     events: u64,
     phases: Vec<&'static str>,
     recent: VecDeque<&'static str>,
@@ -50,6 +56,9 @@ impl Report {
                     Configuration => "configuration",
                     Play => "play",
                 };
+                if matches!(phase, "configuration") {
+                    self.active_menu = None;
+                }
                 // Record which phases were reached, not an unbounded transition history.
                 if !self.phases.contains(&phase) {
                     self.phases.push(phase);
@@ -81,7 +90,55 @@ impl Report {
                 }
                 "entity_metadata"
             }
-            Event::Inventory { packet, .. } => {
+            Event::Entities {
+                packet: entities::Packet::Spawn(entity),
+                ..
+            } => {
+                let kind = target::ENTITY_TYPES
+                    .iter()
+                    .copied()
+                    .find(|kind| *kind == entity.kind)
+                    .unwrap_or("unknown_entity");
+                let count = self.entity_spawns.entry(kind).or_default();
+                *count = count.saturating_add(1);
+                "entity_spawn"
+            }
+            Event::Inventory {
+                packet,
+                dimension_epoch,
+                incarnation,
+                ..
+            } => {
+                match packet {
+                    inventory::Packet::Open {
+                        container, kind, ..
+                    } => {
+                        let kind = target::CONTAINER_TYPES
+                            .iter()
+                            .copied()
+                            .find(|k| k == kind)
+                            .unwrap_or("unknown_menu");
+                        let n = self.menus.entry(kind).or_default();
+                        *n = n.saturating_add(1);
+                        self.active_menu = Some((*dimension_epoch, *incarnation, *container, kind));
+                    }
+                    inventory::Packet::Close(id)
+                        if self.active_menu.is_some_and(|m| m.2 == *id) =>
+                    {
+                        self.active_menu = None
+                    }
+                    _ => {}
+                }
+                if let inventory::Packet::Content {
+                    container, slots, ..
+                } = packet
+                    && let Some((epoch, opening, id, kind)) = self.active_menu
+                    && (epoch, opening, id) == (*dimension_epoch, *incarnation, *container)
+                {
+                    let range = self.menu_slots.entry(kind).or_insert([slots.len(); 2]);
+                    range[0] = range[0].min(slots.len());
+                    range[1] = range[1].max(slots.len());
+                }
                 match packet {
                     inventory::Packet::Content { slots, carried, .. } => {
                         for stack in slots.iter().chain(std::iter::once(carried)).flatten() {
@@ -108,17 +165,44 @@ impl Report {
             Event::SelectionSent { .. } => "selection_sent",
             Event::DropWritten { written: true, .. } => "drop_write_receipt",
             Event::DropWritten { written: false, .. } => "drop_input_retired",
+            Event::InventorySent {
+                dimension_epoch,
+                incarnation,
+                container,
+                closed: true,
+                written: true,
+                ..
+            } => {
+                if self.active_menu.is_some_and(|m| {
+                    (m.0, m.1, m.2) == (*dimension_epoch, *incarnation, *container)
+                }) {
+                    self.active_menu = None;
+                }
+                "inventory_write_receipt"
+            }
             Event::InventorySent { written: true, .. } => "inventory_write_receipt",
             Event::InventorySent { written: false, .. } => "inventory_input_retired",
             Event::BlockAck { .. } => "block_ack",
             Event::Roster(_) => "roster",
             Event::Hud(_) => "hud",
-            Event::Bootstrap(_) => "bootstrap",
-            Event::WorldLogin(_) => "world_login",
+            Event::Bootstrap(_) => {
+                self.active_menu = None;
+                self.world_logins = self.world_logins.saturating_add(1);
+                "bootstrap"
+            }
+            Event::WorldLogin(_) => {
+                self.active_menu = None;
+                self.world_logins = self.world_logins.saturating_add(1);
+                "world_login"
+            }
             Event::Scoreboard(_) => "scoreboard",
             Event::Tags(_) => "tags",
             Event::Teleport { .. } => "teleport",
-            Event::Respawn { .. } => "respawn",
+            Event::Respawn { .. } => {
+                self.active_menu = None;
+                self.respawns = self.respawns.saturating_add(1);
+                "respawn"
+            }
             Event::Rotation { .. } => "rotation",
             Event::Dynamics { .. } => "dynamics",
             Event::Entities { .. } => "entities",
@@ -171,9 +255,11 @@ impl Report {
             })
         };
         json!({"format":1,"client_version":env!("CARGO_PKG_VERSION"),"java_version":target::GAME_VERSION,
-            "protocol":target::PROTOCOL,"outcome":outcome,"terminal":{"category":kind,"packet":packet,"component":component},
+            "protocol":target::PROTOCOL,"source_commit":option_env!("CINNABAR_BUILD_COMMIT"),"outcome":outcome,"terminal":{"category":kind,"packet":packet,"component":component},
             "error_details":"See the corresponding error in client.log; raw error text is omitted here for privacy.",
             "phases_reached":self.phases,"observed_events":self.events,"recent_event_types":self.recent,
+            "server_menu_openings":self.menus,"server_menu_slot_ranges":self.menu_slots,
+            "entity_spawn_types":self.entity_spawns,"world_logins":self.world_logins,"respawns":self.respawns,
             "deferred_packets":self.deferred,"unsupported_entity_serializers":self.metadata,
             "observed_item_components":self.components,"local_notices":self.notices,"discarded_notices":self.discarded_notices,
             "limits":"Observed events only. Deferred does not mean implemented. Fatal errors stop decoding; unseen packets cannot be diagnosed."})

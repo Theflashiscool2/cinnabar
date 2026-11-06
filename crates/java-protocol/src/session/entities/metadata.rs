@@ -18,6 +18,8 @@ pub enum Value {
     Villager([i32; 3]),
     GlobalPosition(Option<(String, i64)>),
     Empty,
+    /// Validated optional aura payload count; particle visuals have a separate consumer.
+    Particles(usize),
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Entry {
@@ -107,17 +109,18 @@ pub(super) fn decode(r: &mut Reader<'_>) -> Result<Packet, Error> {
             } else {
                 None
             }),
-            "PARTICLES" => {
-                let count = r.var()?;
-                if count < 0 {
-                    return Err(Error::Invalid("negative metadata particle count"));
-                }
-                if count != 0 {
-                    return Ok(deferred(r, id, index, name));
-                }
-                Value::Empty
+            "PARTICLE" => {
+                super::particles::read(r)?;
+                Value::Particles(1)
             }
-            // Particles, profiles and inline painting holders
+            "PARTICLES" => {
+                let count = r.count(r.0.len())?;
+                for _ in 0..count {
+                    super::particles::read(r)?;
+                }
+                Value::Particles(count)
+            }
+            // Profiles and inline painting holders
             // need their own codecs. This known passive packet is retained as incomplete evidence.
             _ => {
                 return Ok(deferred(r, id, index, name));
@@ -181,10 +184,10 @@ mod tests {
             .unwrap() as u8;
         let bytes = [42, 0, 0, 32, 8, particles, 1, 255];
         let mut r = Reader(&bytes);
-        let packet = decode(&mut r).unwrap();
-        assert!(packet.entries.is_empty());
-        assert_eq!(packet.unsupported.unwrap().serializer, "PARTICLES");
-        r.finish().unwrap();
+        assert!(
+            decode(&mut r).is_err(),
+            "truncated particles must not admit a prefix"
+        );
         // Previously deferred ITEM_STACK is implemented; malformed/truncated data must fail.
         assert!(decode(&mut Reader(&[42, 0, 0, 32, 8, 7, 1, 255])).is_err());
     }

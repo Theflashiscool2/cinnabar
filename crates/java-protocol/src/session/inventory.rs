@@ -2,6 +2,7 @@
 mod components;
 pub mod hash_ops;
 pub mod lifetime;
+pub mod merchant;
 pub mod outbound;
 mod prediction;
 use crate::{ProtocolError as Error, nbt, target, wire::Reader};
@@ -54,6 +55,7 @@ pub enum Packet {
         title: nbt::Value,
     },
     Close(i32),
+    MerchantOffers(merchant::Summary),
     Property {
         container: i32,
         property: i16,
@@ -71,6 +73,7 @@ impl Packet {
 }
 pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
     Ok(Some(match name {
+        "ClientboundMerchantOffersPacket" => Packet::MerchantOffers(merchant::read(r)?),
         "ClientboundCooldownPacket" => Packet::Cooldown {
             group: super::dynamics::identifier(r.string(32767)?)?,
             ticks: r.var()?,
@@ -161,6 +164,28 @@ fn stack_components(
     if target::ITEM_TYPES.get(item as usize).is_none() {
         return Err(Error::Invalid("unknown native item"));
     }
+    let (added, removed) = component_patch(r, depth)?;
+    Ok(Stack {
+        item,
+        count,
+        added,
+        removed,
+    })
+}
+
+/// ItemStackTemplate streams item, signed count, then the same component patch as stacks.
+/// Particle templates are validated only; they never reach inventory authority.
+pub(in crate::session) fn particle_template(r: &mut Reader<'_>) -> Result<(), Error> {
+    let item = nonnegative(r)? as usize;
+    target::ITEM_TYPES
+        .get(item)
+        .ok_or(Error::Invalid("unknown native particle item"))?;
+    r.var()?;
+    component_patch(r, 0)?;
+    Ok(())
+}
+type ComponentPatch = (BTreeMap<&'static str, Value>, BTreeSet<&'static str>);
+fn component_patch(r: &mut Reader<'_>, depth: usize) -> Result<ComponentPatch, Error> {
     let added_count = r.count(target::ITEM_COMPONENTS.len())?;
     let removed_count = r.count(target::ITEM_COMPONENTS.len())?;
     if added_count + removed_count > target::ITEM_COMPONENTS.len() {
@@ -186,12 +211,7 @@ fn stack_components(
             return Err(Error::Invalid("duplicate removed item component"));
         }
     }
-    Ok(Stack {
-        item,
-        count,
-        added,
-        removed,
-    })
+    Ok((added, removed))
 }
 
 #[cfg(test)]

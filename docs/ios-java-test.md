@@ -71,8 +71,8 @@ gh workflow run ios.yml --ref feature/native-java-foundation -R Theflashiscool2/
 Inspect that run's actual `headSha`, and download its
 `cinnabar-ios-unsigned` artifact. It contains no game assets; use the same injection
 and verification commands on the downloaded IPA. Do not assume a queued or green
-workflow proves simulator/device launch. The current cloud environment could not
-query the runner API because its network policy denied `api.github.com`.
+workflow proves simulator/device launch. A visible workflow definition does not establish an available runner: inspect the
+actual run status and artifact before claiming an Apple build.
 
 ## Controlled authenticated acceptance
 

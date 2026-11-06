@@ -639,3 +639,71 @@ fn personal_equipment_and_crafting_hit_contract_maps_only_into_the_player_menu()
         assert_eq!(slot_index(hit, None), None);
     }
 }
+
+#[test]
+fn merchant_refusal_queues_one_scoped_close_and_never_displays_a_chest() {
+    use inventory::java::Update;
+    let mut world = client_world::java::WorldState::default();
+    world.begin(7);
+    world.inventory.begin(7, 1);
+    let mut ui = UiRuntime::new(7);
+    assert!(ui.publish_java_hud(hud(7, 1)));
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Open {
+                incarnation: 1,
+                container: 7,
+                kind: "MERCHANT".into(),
+                title: serde_json::json!({"String":"Trader"}),
+            },
+        )
+        .unwrap();
+    assert!(ui.publish_java_inventory(&world));
+    assert!(
+        ui.inventory_open(),
+        "world input stays gated until the close receipt"
+    );
+    assert!(ui.java_container_slots().is_none());
+    let close = ui.next_java_inventory_input().unwrap();
+    assert_eq!(
+        (close.identity.container, close.identity.incarnation),
+        (7, 1)
+    );
+    assert!(matches!(close.intent, Intent::Close));
+    assert!(ui.publish_java_inventory(&world));
+    assert_eq!(ui.session.java_inventory_inputs.len(), 1);
+    // A replacement ordinary shop retires the pending refusal instead of closing the new menu.
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Open {
+                incarnation: 2,
+                container: 7,
+                kind: "GENERIC_9X3".into(),
+                title: serde_json::Value::Null,
+            },
+        )
+        .unwrap();
+    world
+        .inventory
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 7,
+                state: 1,
+                slots: vec![None; 63],
+                carried: None,
+            },
+        )
+        .unwrap();
+    assert!(ui.publish_java_inventory(&world));
+    assert!(ui.inventory_open());
+    assert_eq!(ui.java_container_slots(), Some(Some(27)));
+    assert!(ui.next_java_inventory_input().is_none());
+}

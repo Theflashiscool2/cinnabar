@@ -4,6 +4,7 @@ use serde::Serialize;
 pub mod equipment;
 pub mod lifetime;
 pub mod metadata;
+mod particles;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Spawn {

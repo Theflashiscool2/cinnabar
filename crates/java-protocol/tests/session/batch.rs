@@ -150,7 +150,6 @@ async fn census_all_play_packet_dispatch_gates() {
     // These demand additional session/UI behavior; keep them explicit instead of faking success.
     let expected = [
         "ClientboundMountScreenOpenPacket",
-        "ClientboundMerchantOffersPacket",
         "ClientboundMoveVehiclePacket",
         "ClientboundOpenBookPacket",
         "ClientboundOpenSignEditorPacket",

@@ -126,6 +126,20 @@ impl UiRuntime {
             &self.session.java_inventory,
             self.session.java_item_names.as_deref(),
         );
+        if self
+            .session
+            .java_inventory
+            .opened
+            .as_ref()
+            .is_some_and(|menu| menu.kind == "MERCHANT")
+        {
+            // Retain native slots/cursor authority, but never offer this specialized layout
+            // as a chest or send trading clicks. Close through the existing ordered owner.
+            // Keep the menu input gate until its scoped close receipt retires it.
+            if old_menu != new_menu {
+                self.queue_java_inventory(Intent::Close);
+            }
+        }
         true
     }
     /// Only implemented layouts are offered; specialized station rules remain explicit.

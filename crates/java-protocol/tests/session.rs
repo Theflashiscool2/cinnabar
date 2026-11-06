@@ -691,3 +691,6 @@ mod reconfiguration;
 
 #[path = "session/entity_use.rs"]
 mod entity_use;
+
+#[path = "session/merchant.rs"]
+mod merchant;

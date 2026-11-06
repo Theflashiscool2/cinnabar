@@ -247,3 +247,50 @@ fn unknown_server_names_and_repeated_local_notices_cannot_grow_the_report() {
             .contains("private-untrusted")
     );
 }
+
+#[test]
+fn shop_diagnostics_use_canonical_menu_kinds_and_reject_retired_content_without_payloads() {
+    let mut r = Report::default();
+    let open = |epoch, incarnation, kind| {
+        event(Event::Inventory {
+            dimension_epoch: epoch,
+            incarnation,
+            wire_revision: 0,
+            packet: inventory::Packet::Open {
+                container: 7,
+                kind,
+                title: java_protocol::nbt::Value::String("PRIVATE_SHOP_NAME".into()),
+            },
+        })
+    };
+    let contents = |epoch, incarnation, n| {
+        event(Event::Inventory {
+            dimension_epoch: epoch,
+            incarnation,
+            wire_revision: 0,
+            packet: inventory::Packet::Content {
+                container: 7,
+                state: 1,
+                slots: vec![None; n],
+                carried: None,
+            },
+        })
+    };
+    r.observe(&open(1, 1, "GENERIC_9X3"));
+    r.observe(&contents(1, 1, 63));
+    r.observe(&open(2, 2, "GENERIC_9X6"));
+    r.observe(&contents(1, 1, 63));
+    r.observe(&contents(2, 2, 90));
+    r.observe(&event(Event::Phase(Phase::Configuration)));
+    r.observe(&contents(2, 2, 100));
+    let d = r.document("cancelled_or_retired", None);
+    assert_eq!(
+        d["server_menu_openings"],
+        json!({"GENERIC_9X3":1,"GENERIC_9X6":1})
+    );
+    assert_eq!(
+        d["server_menu_slot_ranges"],
+        json!({"GENERIC_9X3":[63,63],"GENERIC_9X6":[90,90]})
+    );
+    assert!(!d.to_string().contains("PRIVATE"));
+}

@@ -88,7 +88,17 @@ pub fn generate(code: &mut String, target: &serde_json::Value, entity_names: &[S
         }
         *code += "];\n";
     }
+    *code += "#[derive(Clone, Copy, Debug)]\npub struct ParticleSpec {pub name: &'static str, pub options: &'static str}\npub const PARTICLES: &[ParticleSpec] = &[\n";
+    for particle in facts["particles"].as_array().unwrap() {
+        *code += &format!(
+            "ParticleSpec {{name:{:?}, options:{:?}}},\n",
+            particle["name"].as_str().unwrap(),
+            particle["options"].as_str().unwrap()
+        );
+    }
+    *code += "];\n";
     for (key, name) in [
+        ("position_source_types", "POSITION_SOURCE_TYPES"),
         ("villager_types", "VILLAGER_TYPES"),
         ("villager_professions", "VILLAGER_PROFESSIONS"),
         ("villager_levels", "VILLAGER_LEVELS"),

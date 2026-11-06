@@ -6,7 +6,7 @@ use session::inventory::{
     outbound::{self, HashedStack, Pickup},
 };
 use std::collections::BTreeMap;
-fn incoming(name: &str, body: &[u8]) -> Vec<u8> {
+pub(super) fn incoming(name: &str, body: &[u8]) -> Vec<u8> {
     let id = java_protocol::target::game::clientbound::NAMES
         .iter()
         .position(|v| *v == name)
@@ -16,7 +16,7 @@ fn incoming(name: &str, body: &[u8]) -> Vec<u8> {
     packet.extend(body);
     packet
 }
-fn outgoing(name: &str, body: &[u8]) -> Vec<u8> {
+pub(super) fn outgoing(name: &str, body: &[u8]) -> Vec<u8> {
     let id = java_protocol::target::game::serverbound::NAMES
         .iter()
         .position(|v| *v == name)
@@ -26,7 +26,7 @@ fn outgoing(name: &str, body: &[u8]) -> Vec<u8> {
     packet.extend(body);
     packet
 }
-fn open() -> Vec<u8> {
+pub(super) fn open() -> Vec<u8> {
     let kind = java_protocol::target::CONTAINER_TYPES
         .iter()
         .position(|v| *v == "GENERIC_9X3")
