@@ -39,16 +39,25 @@ version="$(version_of)"
 
 # Use the selected Xcode when it matches; respect an explicit DEVELOPER_DIR.
 # Otherwise look for a side-by-side install, as CI images name them.
+# Consume all output before parsing: Xcode can abort on a pipe closed by head.
+xcode_output="$(xcodebuild -version)"
+xcode_first_line="${xcode_output%%$'\n'*}"
 shopt -s nullglob
-installed=(/Applications/Xcode_"$xcode".app /Applications/Xcode_"$xcode".*.app)
+installed=()
+for candidate in /Applications/Xcode_"$xcode".app /Applications/Xcode_"$xcode".*.app; do
+    # nullglob removes unmatched patterns, but not the literal unversioned path.
+    [[ ! -d "$candidate/Contents/Developer" ]] || installed+=("$candidate")
+done
 shopt -u nullglob
 if [[ -z "${DEVELOPER_DIR:-}" ]] && \
-    [[ "$(xcodebuild -version | head -n 1)" != "Xcode $xcode"* ]] && \
+    [[ "$xcode_first_line" != "Xcode $xcode" && "$xcode_first_line" != "Xcode $xcode".* ]] && \
     ((${#installed[@]})); then
     DEVELOPER_DIR="$(printf '%s\n' "${installed[@]}" | sort -V | tail -n 1)/Contents/Developer"
     export DEVELOPER_DIR
+    xcode_output="$(xcodebuild -version)"
+    xcode_first_line="${xcode_output%%$'\n'*}"
 fi
-xcode_version="$(xcodebuild -version | awk 'NR == 1 && $1 == "Xcode" {print $2}')"
+xcode_version="${xcode_first_line#Xcode }"
 sdk_version="$(xcrun --sdk iphoneos --show-sdk-version)"
 for actual in "$xcode_version" "$sdk_version"; do
     [[ "$actual" == "$xcode" || "$actual" == "$xcode".* ]] || {

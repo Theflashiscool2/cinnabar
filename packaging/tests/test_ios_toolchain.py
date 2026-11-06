@@ -9,13 +9,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ToolchainTests(unittest.TestCase):
-    def run_preflight(self, xcode, sdk, developer=None):
+    def run_preflight(self, xcode, sdk, developer=None, verbose=False):
         with tempfile.TemporaryDirectory() as directory:
             bin_dir = Path(directory)
             scripts = {
                 "uname": "printf 'Darwin\\n'",
                 "xcodebuild": "printf 'Xcode %s\\nBuild version fixture\\n' \"$FIXTURE_XCODE\"",
-                "xcrun": '''case "$*" in
+                "xcrun": '''if [ "${DEVELOPER_DIR:-}" != "$FIXTURE_DEVELOPER" ]; then
+                    echo 'preflight selected an uninstalled Xcode directory' >&2
+                    exit 94
+                fi
+                case "$*" in
                     *--show-sdk-version) printf '%s\\n' "$FIXTURE_SDK" ;;
                     *--show-sdk-path) printf '/fixture/SDK\\n' ;;
                     *) exit 91 ;;
@@ -23,12 +27,18 @@ class ToolchainTests(unittest.TestCase):
                 "go": "exit 92",
                 "cargo": "exit 93",
             }
+            if verbose:
+                scripts["xcodebuild"] = """exec python3 -c 'import os,sys
+sys.stdout.write("Xcode " + os.environ["FIXTURE_XCODE"] + "\\n")
+sys.stdout.flush()
+for _ in range(16384): sys.stdout.write("Build version fixture\\n")
+'"""
             for name, body in scripts.items():
                 path = bin_dir / name
                 path.write_text("#!/bin/sh\n" + body + "\n")
                 path.chmod(0o755)
             env = dict(os.environ, PATH=str(bin_dir) + os.pathsep + os.environ["PATH"],
-                       FIXTURE_XCODE=xcode, FIXTURE_SDK=sdk)
+                       FIXTURE_XCODE=xcode, FIXTURE_SDK=sdk, FIXTURE_DEVELOPER=developer or "")
             env.pop("DEVELOPER_DIR", None)
             if developer:
                 env["DEVELOPER_DIR"] = developer
@@ -40,6 +50,11 @@ class ToolchainTests(unittest.TestCase):
             result = self.run_preflight(version, version, "/fixture/SelectedXcode")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(f"Xcode {version}; iPhoneOS SDK {version}; deployment target 17.0", result.stdout)
+
+    def test_version_output_is_fully_consumed_without_broken_pipe(self):
+        result = self.run_preflight("27.1", "27.1", verbose=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
 
     def test_wrong_xcode_or_sdk_fails_with_both_observed_versions(self):
         for xcode, sdk in [("26.4", "26.4"), ("27.1", "26.4"), ("27.2", "27.2"), ("27.10", "27.10")]:
