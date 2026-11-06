@@ -85,7 +85,12 @@ async fn replacement(encrypted: bool) {
                             })
                             .await
                             .unwrap();
-                        commands.send(session::Command::Respawn).await.unwrap();
+                        commands
+                            .send(session::Command::Respawn {
+                                dimension_epoch: dimension_epoch - 1,
+                            })
+                            .await
+                            .unwrap();
                     }
                     commands
                         .send(session::Command::AcceptTeleport {

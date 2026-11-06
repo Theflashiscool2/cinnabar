@@ -636,8 +636,13 @@ fn drive_intents(
 ) {
     menu.send_respawn_request(|| {
         if let Some(java) = &session.controller.java {
+            let Some(dimension) = session.controller.java_world.terrain.dimension() else {
+                return false;
+            };
             return java
-                .command(java_protocol::session::Command::Respawn)
+                .command(java_protocol::session::Command::Respawn {
+                    dimension_epoch: dimension.epoch,
+                })
                 .is_ok();
         }
         let Some(runtime_id) = session

@@ -58,6 +58,10 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         let Some(event) = poll_event(java, &mut controller.java_world) else {
             break;
         };
+        let transfer = match &event.event {
+            java_protocol::session::Event::ServerTransfer { address } => Some(address.clone()),
+            _ => None,
+        };
         let display = !matches!(
             event.event,
             java_protocol::session::Event::DeferredPlay { .. }
@@ -65,6 +69,10 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
                 | java_protocol::session::Event::Scoreboard(_)
         );
         let admitted = controller.java_world.admit(event);
+        if admitted && let Some(address) = transfer {
+            controller.connecting = true;
+            menu.following_java_transfer(&address);
+        }
         if !admitted {
             java.diagnostic_notice("world_event_not_admitted");
         }

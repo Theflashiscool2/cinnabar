@@ -27,6 +27,7 @@ pub(in crate::ui_runtime::presentation) struct SemanticHud {
     chat_rows: Vec<u64>,
     chat_options: Option<(f64, char, char, bool)>,
     sidebar_key: Option<(u64, u64, bool)>,
+    sidebar_java_scope: Option<(u64, u64)>,
     bosses: Vec<BossBarView>,
     world_text: components::WorldTextInput,
     #[cfg(test)]
@@ -82,9 +83,13 @@ impl SemanticHud {
             settings,
             reset || language_changed,
         );
-        if reset || self.sidebar_key != Some(sidebar_key) {
+        // A socket transfer keeps the session but replaces the world. The UI
+        // projection's revision may restart at the same value after clearing.
+        let java_scope = runtime.session.java_hud.map(|hud| (hud.session, hud.epoch));
+        if reset || self.sidebar_key != Some(sidebar_key) || self.sidebar_java_scope != java_scope {
             self.model.sidebar = sidebar.map(sidebar_model);
             self.sidebar_key = Some(sidebar_key);
+            self.sidebar_java_scope = java_scope;
             changes.sidebar = true;
         }
         if reset

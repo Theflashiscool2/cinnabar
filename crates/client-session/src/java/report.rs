@@ -48,6 +48,7 @@ impl Report {
     pub fn observe(&mut self, envelope: &Envelope) {
         self.events = self.events.saturating_add(1);
         let name = match &envelope.event {
+            Event::ServerTransfer { .. } => "server_transfer",
             Event::Phase(phase) => {
                 use java_protocol::session::Phase::*;
                 let phase = match phase {

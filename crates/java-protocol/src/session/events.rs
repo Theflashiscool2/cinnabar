@@ -54,6 +54,10 @@ pub enum Event {
     Hud(hud::Packet),
     Scoreboard(scoreboard::Packet),
     Phase(Phase),
+    /// Validated server-directed destination; cookies and credentials never leave the task.
+    ServerTransfer {
+        address: String,
+    },
     Bootstrap(Box<Bootstrap>),
     /// A further play login replaces the level while retaining this connection's registries.
     WorldLogin(Box<facts::World>),

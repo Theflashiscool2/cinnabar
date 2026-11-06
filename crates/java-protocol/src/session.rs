@@ -18,6 +18,7 @@ mod play;
 pub mod roster;
 pub mod scoreboard;
 mod terrain;
+mod transfer;
 use crate::{
     ProtocolError,
     address::{self, Address},
@@ -62,6 +63,8 @@ pub enum Error {
     Disconnect(String),
     #[error("Java {0} is not supported by this connection foundation")]
     Unsupported(&'static str),
+    #[error("Java server requested a connection transfer")]
+    Transfer(Address),
     #[error("Java session consumer closed")]
     ConsumerClosed,
 }
@@ -157,7 +160,9 @@ pub enum Command {
         sequence: u64,
         frame: movement::Frame,
     },
-    Respawn,
+    Respawn {
+        dimension_epoch: u64,
+    },
     AcceptRotation {
         dimension_epoch: u64,
         sequence: u64,
@@ -237,6 +242,8 @@ struct Connection {
     ping_sequence: u64,
     correction_sequence: u64,
 }
+/// Maximum server-directed socket replacements in one user-initiated session.
+pub const MAX_SERVER_TRANSFERS: usize = 8;
 /// Runs until cancelled, disconnected, or a required behavior is unsupported. Cancelling drops
 /// every in-flight read/write and its socket. Login deadlines do not limit the play lifetime.
 pub async fn run(
@@ -267,70 +274,122 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
             }
         }
     };
-    events
-        .send(Envelope {
-            generation: options.generation,
-            event: Event::Phase(Phase::Connecting),
+    let account = match options.identity {
+        Identity::Online(account) => Some(std::sync::Arc::new(account)),
+        Identity::OfflineFixture { .. } => None,
+    };
+    let mut cookies = BTreeMap::new();
+    let mut dimension_epoch = 0;
+    let mut ping_sequence = 0;
+    let mut correction_sequence = 0;
+    let mut transfers = 0;
+    loop {
+        if account
+            .as_ref()
+            .is_some_and(|a| !a.valid_at(auth::unix_now()))
+        {
+            return Err(auth::Error::Expired.into());
+        }
+        events
+            .send(Envelope {
+                generation: options.generation,
+                event: Event::Phase(Phase::Connecting),
+            })
+            .await
+            .map_err(|_| Error::ConsumerClosed)?;
+        let socket = tokio::time::timeout(options.connect_timeout, async {
+            let sockets = address::resolve(&options.address).await?;
+            if account.is_none() && sockets.iter().any(|s| !s.ip().is_loopback()) {
+                return Err(std::io::Error::other(
+                    "offline fixture identity is restricted to loopback",
+                ));
+            }
+            TcpStream::connect(sockets.as_slice()).await
         })
         .await
-        .map_err(|_| Error::ConsumerClosed)?;
-    let socket = tokio::time::timeout(options.connect_timeout, async {
-        let sockets = address::resolve(&options.address).await?;
-        if matches!(options.identity, Identity::OfflineFixture { .. })
-            && sockets.iter().any(|s| !s.ip().is_loopback())
+        .map_err(|_| Error::Timeout(Phase::Connecting))??;
+        socket.set_nodelay(true)?;
+        let mut c = Connection {
+            stream: Stream::new(socket),
+            phase: Phase::Login,
+            generation: options.generation,
+            events: events.clone(),
+            ingress: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
+            configuration: Configuration::default(),
+            chat: Default::default(),
+            chat_account: account.clone(),
+            chat_retry_after: 0,
+            chat_preparation: None,
+            chat_announcement: None,
+            chat_pending: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
+            profile: profile.clone(),
+            server_session: uuid::Uuid::nil(),
+            cookies: std::mem::take(&mut cookies),
+            configuration_bytes: 0,
+            configuration_timeout: options.login_timeout,
+            bootstrapped: false,
+            terrain: None,
+            dimensions: Vec::new(),
+            dimension_epoch,
+            menu_lifetime: Default::default(),
+            drop_fence: Default::default(),
+            entity_lifetimes: Default::default(),
+            commands: options.commands.take(),
+            dead: false,
+            loaded_epoch: None,
+            cancelled_use: Default::default(),
+            pending_teleport: None,
+            pending_rotation: None,
+            pending_ping: None,
+            ping_sequence,
+            correction_sequence,
+        };
+        let result = match tokio::time::timeout(
+            options.login_timeout,
+            c.login(&options.address, transfers > 0),
+        )
+        .await
         {
-            return Err(std::io::Error::other(
-                "offline fixture identity is restricted to loopback",
+            Err(_) => Err(Error::Timeout(c.phase)),
+            Ok(Err(error)) => Err(error),
+            Ok(Ok(())) => c.play().await,
+        };
+        let destination = match result {
+            Err(Error::Transfer(destination)) => destination,
+            result => return result,
+        };
+        transfers += 1;
+        if transfers > MAX_SERVER_TRANSFERS {
+            return Err(Error::Unsupported(
+                "server transfer chain exceeds connection budget",
             ));
         }
-        TcpStream::connect(sockets.as_slice()).await
-    })
-    .await
-    .map_err(|_| Error::Timeout(Phase::Connecting))??;
-    socket.set_nodelay(true)?;
-    let mut c = Connection {
-        stream: Stream::new(socket),
-        phase: Phase::Login,
-        generation: options.generation,
-        events,
-        ingress: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
-        configuration: Configuration::default(),
-        chat: Default::default(),
-        chat_account: None,
-        chat_retry_after: 0,
-        chat_preparation: None,
-        chat_announcement: None,
-        chat_pending: ingress::Ingress::new(crate::stream::MAX_UNCOMPRESSED),
-        profile,
-        server_session: uuid::Uuid::nil(),
-        cookies: BTreeMap::new(),
-        configuration_bytes: 0,
-        configuration_timeout: options.login_timeout,
-        bootstrapped: false,
-        terrain: None,
-        dimensions: Vec::new(),
-        dimension_epoch: 0,
-        menu_lifetime: Default::default(),
-        drop_fence: Default::default(),
-        entity_lifetimes: Default::default(),
-        commands: options.commands.take(),
-        dead: false,
-        loaded_epoch: None,
-        cancelled_use: Default::default(),
-        pending_teleport: None,
-        pending_rotation: None,
-        pending_ping: None,
-        ping_sequence: 0,
-        correction_sequence: 0,
-    };
-    tokio::time::timeout(options.login_timeout, c.login(&options))
-        .await
-        .map_err(|_| Error::Timeout(c.phase))??;
-    if let Identity::Online(account) = options.identity {
-        c.chat_account = Some(std::sync::Arc::new(account));
+        cookies = std::mem::take(&mut c.cookies);
+        options.commands = c.commands.take();
+        dimension_epoch = c.dimension_epoch;
+        ping_sequence = c.ping_sequence;
+        correction_sequence = c.correction_sequence;
+        // Drop the old encrypted/compressed socket and all pending work before DNS/connect.
+        // Account supervision and the bounded input receiver remain owned by this one task.
+        drop(c);
+        for event in [
+            Event::Phase(Phase::Configuration),
+            Event::ServerTransfer {
+                address: transfer::display(&destination),
+            },
+        ] {
+            events
+                .send(Envelope {
+                    generation: options.generation,
+                    event,
+                })
+                .await
+                .map_err(|_| Error::ConsumerClosed)?;
+        }
+        options.address = destination;
     }
-    c.play().await
 }
+
 impl Connection {
     async fn emit(&mut self, event: Event) -> Result<(), Error> {
         let envelope = Envelope {
@@ -366,7 +425,7 @@ impl Connection {
                     }
                     // Never decode ahead across a protocol-state/codec boundary. The queued
                     // frame must first be consumed by its actual state owner.
-                    frame.boundary = matches!(name, Some("ClientboundFinishConfigurationPacket" | "ClientboundStartConfigurationPacket"));
+                    frame.boundary = matches!(name, Some("ClientboundFinishConfigurationPacket" | "ClientboundStartConfigurationPacket" | "ClientboundTransferPacket"));
                     self.ingress.push(frame);
                 }
             }

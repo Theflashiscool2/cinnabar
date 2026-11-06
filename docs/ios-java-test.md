@@ -133,3 +133,28 @@ transaction. Keep controlled online, iOS simulator/device, Hypixel lobby and act
 game-mode results separate. Hypixel status text is advisory; only normal legitimate
 joining establishes whether this exact implemented version is accepted. Do not
 change its handshake number, automate matchmaking/purchases, or fake chat signatures.
+
+## User-directed iPhone server-transition test
+
+After installing the verified **assets IPA**, check the displayed build identifier
+against the verifier output. Keep the existing account; no new application registration
+is needed. This route is physical-device acceptance, separate from controlled Linux tests:
+
+1. Select the Java account and join the Hypixel lobby. Check players, held items,
+   sidebar and touch movement/look. Do not treat successful discovery as joining.
+2. Use the NPC/game menu normally and select the intended game. After the backend
+   transition, check that the destination replaces the old world, sidebar and menu;
+   touch input must remain usable. Network transfers and same-socket world changes
+   are different protocol paths; record which destination/action failed.
+3. Make one normal shop purchase. Check the server-confirmed price, item count and
+   empty cursor, then equip, place and break where permitted by the game.
+4. Exercise normal combat/death/Respawn where available. A saved-dead join must expose
+   Respawn rather than wait indefinitely for terrain. Reconnect and restart to check
+   the selected account and destination state remain correct.
+
+If any step stalls or fails, take a screenshot and note the action and time. Use the
+normal Disconnect action if possible so the automatic join report is flushed; preserve
+`client.log` and `java-join-latest.json` from Files → Cinnabar → data → logs before
+another attempt replaces the latest report. Never share credential caches, cookies or
+tokens. A controlled fixture proves neither the actual Hypixel shop type nor Bed Wars/
+Duels completion. Merchant trading remains deferred unless a real trace requires it.

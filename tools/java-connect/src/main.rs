@@ -131,7 +131,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 event=session.next()=>match event{
                     Some(event)=>{
                         if (matches!(event.event,java_protocol::session::Event::Death{..}) || matches!(&event.event,java_protocol::session::Event::Vitals(v) if v.health <= 0.)) && args.iter().any(|s|s=="--respawn-on-death") {
-                            session.command(java_protocol::session::Command::Respawn)?;
+                            if let Some(dimension) = state.terrain.dimension() {
+                                session.command(java_protocol::session::Command::Respawn { dimension_epoch: dimension.epoch })?;
+                            }
                         }
                         let log=match &event.event {
                             java_protocol::session::Event::DeferredPlay{..}|java_protocol::session::Event::Terrain{..}=>None,

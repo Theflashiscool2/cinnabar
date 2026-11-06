@@ -26,11 +26,18 @@ async fn through_configuration(
     listener: TcpListener,
     encrypted: bool,
 ) -> Stream<tokio::net::TcpStream> {
+    through_configuration_intent(listener, encrypted, 2).await
+}
+async fn through_configuration_intent(
+    listener: TcpListener,
+    encrypted: bool,
+    intent: u8,
+) -> Stream<tokio::net::TcpStream> {
     let (socket, _) = listener.accept().await.unwrap();
     let mut wire = Stream::new(socket);
     let handshake = wire.read().await.unwrap();
     assert_eq!(&handshake[..3], &[0, 0x89, 0x06]);
-    assert_eq!(handshake.last(), Some(&2));
+    assert_eq!(handshake.last(), Some(&intent));
     let start = wire.read().await.unwrap();
     assert_eq!(&start[..9], b"\0\x07Fixture");
     if encrypted {
@@ -570,7 +577,10 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                 Event::Death { player_id, message } => {
                     assert_eq!(player_id, 42);
                     assert_eq!(message, java_protocol::nbt::Value::String("test".into()));
-                    commands.send(session::Command::Respawn).await.unwrap();
+                    commands
+                        .send(session::Command::Respawn { dimension_epoch: 1 })
+                        .await
+                        .unwrap();
                 }
                 Event::Respawn {
                     keep_attribute_modifiers,
@@ -694,3 +704,6 @@ mod entity_use;
 
 #[path = "session/merchant.rs"]
 mod merchant;
+
+#[path = "session/transfer.rs"]
+mod transfer;

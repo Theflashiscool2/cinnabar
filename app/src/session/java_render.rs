@@ -279,6 +279,21 @@ pub(crate) fn update(
     let Some(dimension) = p.dimension.clone() else {
         return;
     };
+    if !p.opened
+        && menu.is_connecting()
+        && controller
+            .java_world
+            .vitals
+            .as_ref()
+            .is_some_and(|vitals| vitals.health <= 0.)
+    {
+        // A player saved while dead can receive health=0 before any terrain.
+        // Leave the connection screen once; never hide the death menu on later frames.
+        // Expose the ordinary death/Respawn UI without claiming terrain readiness,
+        // sending PlayerLoaded, or enabling living-player movement.
+        menu.show_world();
+        controller.connecting = false;
+    }
     let state = &mut controller.java_world;
     if let Some(position) = &state.player_motion
         && p.teleport != Some(state.player_pose_revision)

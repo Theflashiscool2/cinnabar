@@ -175,6 +175,20 @@ mod tests {
     use super::*;
     use launcher::menu::ServerEdition;
     #[test]
+    fn native_transfer_updates_java_retry_without_enqueuing_a_second_session() {
+        let mut menu = MenuRuntime::new(true, 2, "Fixture".into());
+        menu.queue_java_join("one.invalid:25565".into(), None);
+        let _ = menu.take_join_intent().unwrap();
+        menu.following_java_transfer("two.invalid:25566");
+        assert_eq!(menu.presence_address(), Some("two.invalid:25566"));
+        assert_eq!(
+            menu.retry_target.as_ref().unwrap().edition,
+            ServerEdition::Java
+        );
+        assert!(menu.take_join_intent().is_none());
+    }
+
+    #[test]
     fn java_route_never_waits_for_bedrock_sign_in_and_retry_retains_edition() {
         let mut menu = MenuRuntime::new(true, 2, "Fixture".into());
         menu.request_edition_connect("127.0.0.1".into(), ServerEdition::Java);

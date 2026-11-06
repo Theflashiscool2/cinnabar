@@ -59,8 +59,14 @@ fields have exhaustive coverage.
 | `ClientboundPongResponsePacket` | Play latency-response handling |
 | `ClientboundPlaceGhostRecipePacket` | Recipe preview/slot-display schema |
 | `ClientboundTestInstanceBlockStatus` | Developer test-block response schema |
-| `ClientboundTransferPacket` | Transfer destination/session policy and handoff |
 | `ClientboundShowDialogGamePacket` | Interactive server dialogs |
+
+Transfer packets now drive a bounded native socket handoff rather than a dispatch gate.
+Both play/configuration transfers retain the captured account and bounded cookies,
+use the actual transfer login intent, retire the old socket before connecting, and
+keep epoch/correction identities monotonic. Offline fixture targets remain loopback-only;
+eight handoffs bound one user-initiated journey. This does not qualify proprietary
+backend behavior or every server network.
 
 MerchantOffers now has a pinned native-codec-verified reader. The unsupported
 trading screen queues a normal lifetime-scoped close and retains inventory/input

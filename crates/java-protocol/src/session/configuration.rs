@@ -201,23 +201,10 @@ impl Connection {
                 self.cookie(&key).await?;
             }
             "ClientboundStoreCookiePacket" => {
-                let key = r.string(32767)?;
-                let value = r.bytes(5120)?;
-                let retained: usize = self
-                    .cookies
-                    .iter()
-                    .filter(|(k, _)| *k != &key)
-                    .map(|(k, v)| k.len() + v.len())
-                    .sum();
-                if retained + key.len() + value.len() > 65536 {
-                    return Err(ProtocolError::Invalid("cookie budget").into());
-                }
-                self.cookies.insert(key, value);
+                self.store_cookie(r)?;
             }
             "ClientboundTransferPacket" => {
-                return Err(Error::Unsupported(
-                    "server transfer; select the destination explicitly",
-                ));
+                return Err(Error::Transfer(transfer::destination(r)?));
             }
             "ClientboundResourcePackPushPacket" => {
                 let id = r.uuid()?;

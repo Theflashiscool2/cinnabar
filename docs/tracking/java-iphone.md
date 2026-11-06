@@ -30,8 +30,20 @@ transport without a second GUI. The shop is an authored vanilla datapack; it is
 not Hypixel behavior. New join reports record bounded canonical menu kinds/slot
 ranges and entity kinds to identify real server shop/transition gaps. A cold
 capture timed out; warm screenshots were inspected. Full Bed Wars/Duels, updated
-authenticated joining and iPhone acceptance remain open. Build31.13 is a packaging
+authenticated joining and iPhone acceptance remain open. The configured iOS build is a packaging
 candidate until an actual Apple build produces an IPA.
+
+Native socket transfers additionally pass inspected Linux offline two-server acceptance:
+normal chest-menu selection triggers vanilla's real Transfer packet, retaining one native
+session/profile while replacing the connection, world, HUD, actors and inventory. A
+saved-dead destination exposes the ordinary Respawn UI before terrain exists; real
+Respawn restores health20, terrain and movement. Healthy repeat transfers and return/
+reconnect restore the original paid inventory/sidebar without leaking destination state.
+The retained HUD cache now includes the Java world epoch, and respawn commands carry
+that epoch. Encrypted fixtures cover cookies and stale commands; legitimate authenticated
+transfer, physical-iPhone and actual Hypixel backend qualification remain pending. Eight
+address handoffs bound one user-initiated journey; this is not an unlimited network-server
+qualification. Required Java resource-pack application remains incomplete.
 
 ## Implementation queue (independent of external acceptance)
 
@@ -45,7 +57,7 @@ owners; no second network, inventory, simulation or world authority is introduce
 | Entities and combat/lifecycle | `client-world/java`, native entity presentation, `gameplay/java`: Native adult/baby villagers now use pinned models, biome/profession/level layers and hat metadata, synchronized updates and native hitbox picking. Inspected Linux offline vanilla clothing changes, unload/revisit and reconnect pass; normal NPC use now validates pinned MerchantOffers and closes the unsupported trading screen through the existing scoped close path without disconnecting; trading is not implemented or assumed necessary for Hypixel shops. Nonempty potion-particle metadata no longer excludes entire players/NPCs: all128 native option schemas are framed and validated; optional particle visuals remain absent. Custom head/held layers, sleeping poses, custom skins/non-idle poses, representative mobs/projectiles, conditional merchant transactions, ranged presentation and active poses; ordinary offhand shielding/use and remote armor/held and basic two-client damage/death/respawn now pass controlled offline evidence | Controlled counterpart and server-confirmed results, ID reuse and reconnect |
 | Block/item actions | `gameplay/java`, native outbound: accepted native survival mining/progress/cancel and basic main-hand food/bow use/release; basic both-hand block/entity/air precedence and active-use lifetime now pass controlled vanilla; remaining specialized uses, dynamic same-item component refresh, target-slot fallthrough and Adventure predicates | Actual inputs, denied-action recovery and server state |
 | Server UI/chat | `java-protocol/session`, `client-world/java/scoreboard`, shared chat/HUD: unsigned player conversations, disguised announcements, command/system/actionbar routing pass controlled vanilla; native cache/window/checksum framing is integrated. Account-bound certificate preparation and signature/chain verification are connected with synthetic fixtures; authenticated service acceptance remains pending. Server-backed command suggestions now reach the shared editor with native UTF-16 ranges and correlated responses. Native server command trees and ordinary message/alias envelopes now share the existing certificate/index/ACK owner; synthetic keys verify chain continuity. Linux offline whispers, permission/tree replacement, root redirects and reconnect/configuration passed. Complex selectors/UUID/other signed prefixes, string-mode admission hardening, suggestion tooltips/large catalogs, deletion presentation and trust badges and remaining rich text/HUD surfaces remain incomplete | Controlled formatted menus, teams, tab, titles/boss bars, chat/commands |
-| Packs and transitions | Native session/configuration and resource ownership: transfer consent/destination, full Java pack offer/application/status, stale work retirement | Controlled reconfiguration/backend changes, reload and world/session cleanup |
+| Packs and transitions | Native session/configuration and resource ownership: bounded native address-transfer handoff now implemented with one connection owner, captured account/cookies and monotonic world/correction identities. Full Java pack offer/application/status and live network-server qualification remain incomplete | Controlled reconfiguration/backend changes, reload and world/session cleanup |
 | iOS actions | Existing semantic/touch/menu/text paths: connect every implemented Java action, text input, safe-area and background release | Shared input fixtures now; actual device flow remains external acceptance |
 | Bed Wars then Duels | Integrate the above through lobby, shop/build/combat/death and return; track modes separately | Controlled implementation fixtures plus user-directed real mode acceptance |
 
@@ -57,9 +69,11 @@ owners; no second network, inventory, simulation or world authority is introduce
   enforced policy excludes Hypixel support/game hosts. Do not change the handshake integer.
 - **Authenticated online:** approved application retained; needs permitted auth/session
   hosts and one legitimate interactive account login. Offline fixtures are separate.
-- **Apple:** no accessible Apple runner established; Mac/Xcode build, simulator/device
-  launch, Keychain, touch and background/resume acceptance remain pending. Packaging
-  fixtures do not establish an IPA or physical-iPhone acceptance.
+- **Apple:** hosted macOS builds were attempted. Preflight defects were repaired; the
+  subsequent runner has Xcode26.6 / SDK26.5 rather than pinned27.1, so it correctly
+  stopped before compiling. No updated IPA exists. The owner's Mac/Xcode27.1 can use
+  [the existing build procedure](../ios-java-test.md). New simulator/device launch,
+  Keychain, touch and background/resume acceptance remain pending.
 
 | Milestone | Implementation and next action | Verified evidence | Open acceptance / blocker |
 | --- | --- | --- | --- |

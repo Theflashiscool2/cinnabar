@@ -214,6 +214,7 @@ impl WorldState {
                 }
                 self.block_ack = Some((dimension_epoch, sequence));
             }
+            Event::ServerTransfer { .. } => {}
             Event::Phase(phase) => {
                 self.phase = Some(phase);
                 if phase == Phase::Configuration {

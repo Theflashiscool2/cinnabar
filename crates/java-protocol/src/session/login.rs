@@ -1,12 +1,16 @@
 //! Login dispatch and compression/encryption transition ordering.
 use super::*;
 impl Connection {
-    pub(super) async fn login(&mut self, options: &Options) -> Result<(), Error> {
+    pub(super) async fn login(
+        &mut self,
+        address: &Address,
+        transferred: bool,
+    ) -> Result<(), Error> {
         let mut hello = vec![0];
         codec::write_varint(target::PROTOCOL, &mut hello);
-        codec::write_string(&options.address.host, 255, &mut hello)?;
-        hello.extend(options.address.port.to_be_bytes());
-        hello.push(2);
+        codec::write_string(&address.host, 255, &mut hello)?;
+        hello.extend(address.port.to_be_bytes());
+        hello.push(if transferred { 3 } else { 2 });
         self.stream.write(&hello).await?;
         let mut start = Vec::new();
         codec::write_string(&self.profile.name, 16, &mut start)?;
@@ -55,14 +59,10 @@ impl Connection {
                     r.finish()?;
                     let (secret, response, hash) = crypto::response(&id, &key, &challenge)?;
                     if authenticate {
-                        match &options.identity {
-                            Identity::Online(a) => auth::join(a, &hash).await?,
-                            Identity::OfflineFixture { .. } => {
-                                return Err(Error::Unsupported(
-                                    "online-mode authentication with an offline fixture identity",
-                                ));
-                            }
-                        }
+                        let account = self.chat_account.clone().ok_or(Error::Unsupported(
+                            "online-mode authentication with an offline fixture identity",
+                        ))?;
+                        auth::join(&account, &hash).await?;
                     }
                     self.send("ServerboundKeyPacket", &response).await?;
                     self.stream.encryption(&secret);
@@ -95,7 +95,7 @@ impl Connection {
                     }
                     self.server_session = r.uuid()?;
                     r.finish()?;
-                    if matches!(options.identity, Identity::Online(_)) && id != self.profile.id {
+                    if self.chat_account.is_some() && id != self.profile.id {
                         return Err(
                             ProtocolError::Invalid("server changed authenticated profile").into(),
                         );

@@ -402,10 +402,12 @@ impl Connection {
                 return Ok(true);
             }
             Command::AcceptTeleport { .. } => {}
-            Command::Respawn if self.dead => {
+            Command::Respawn { dimension_epoch }
+                if self.dead && dimension_epoch == self.dimension_epoch =>
+            {
                 self.send("ServerboundClientCommandPacket", &[0]).await?
             }
-            Command::Respawn => {}
+            Command::Respawn { .. } => {}
             Command::PlayerLoaded { dimension_epoch }
                 if dimension_epoch == self.dimension_epoch
                     && self.bootstrapped

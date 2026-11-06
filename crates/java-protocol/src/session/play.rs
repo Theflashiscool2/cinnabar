@@ -89,7 +89,10 @@ impl Connection {
                 )
             {
                 let mut packet = packet;
-                packet.boundary = *name == "ClientboundStartConfigurationPacket";
+                packet.boundary = matches!(
+                    *name,
+                    "ClientboundStartConfigurationPacket" | "ClientboundTransferPacket"
+                );
                 self.ingress.push(packet);
                 continue;
             }
@@ -430,6 +433,16 @@ impl Connection {
                         keep_metadata: keep & 2 != 0,
                     })
                     .await?;
+                }
+                "ClientboundCookieRequestPacket" => {
+                    let key = r.string(32767)?;
+                    self.cookie(&key).await?;
+                }
+                "ClientboundStoreCookiePacket" => {
+                    self.store_cookie(&mut r)?;
+                }
+                "ClientboundTransferPacket" => {
+                    return Err(Error::Transfer(transfer::destination(&mut r)?));
                 }
                 "ClientboundStartConfigurationPacket" => {
                     r.finish().map_err(packet_error)?;

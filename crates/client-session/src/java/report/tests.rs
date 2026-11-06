@@ -294,3 +294,14 @@ fn shop_diagnostics_use_canonical_menu_kinds_and_reject_retired_content_without_
     );
     assert!(!d.to_string().contains("PRIVATE"));
 }
+
+#[test]
+fn transfer_observation_never_retains_destination_identity() {
+    let mut r = Report::default();
+    r.observe(&event(Event::ServerTransfer {
+        address: "PRIVATE_TRANSFER_SERVER:25565".into(),
+    }));
+    let d = r.document("cancelled_or_retired", None);
+    assert!(d.to_string().contains("server_transfer"));
+    assert!(!d.to_string().contains("PRIVATE"));
+}

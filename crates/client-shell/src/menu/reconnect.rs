@@ -42,6 +42,20 @@ impl MenuRuntime {
         }
     }
 
+    /// The native Java task follows the destination with its captured account/cookies.
+    /// Only update presentation and the Java retry destination; never enqueue Bedrock.
+    pub fn following_java_transfer(&mut self, address: &str) {
+        if let Some(target) = self.retry_target.as_mut()
+            && target.edition == launcher::menu::ServerEdition::Java
+        {
+            target.address = address.to_owned();
+            target.featured = false;
+        }
+        self.begin_join_progress(address, false);
+        self.show_connecting();
+        self.show_transfer(address);
+    }
+
     /// Prevents retrying the old server when a transfer cannot be followed safely.
     pub fn clear_retry_target(&mut self) {
         self.retry_target = None;

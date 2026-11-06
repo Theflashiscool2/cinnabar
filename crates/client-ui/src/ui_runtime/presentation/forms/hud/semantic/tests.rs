@@ -743,3 +743,61 @@ fn chat_mentions_follow_display_name_changes_without_rewriting_messages() {
         assert!(!fixture.check(&mut cache).chat);
     }
 }
+
+#[test]
+fn java_transfer_replaces_sidebar_even_when_projection_revision_restarts() {
+    use crate::ui_runtime::presentation::retained_hud::PresentedScoreboard;
+    let mut f = Fixture::default();
+    let mut hud = world::java::hud::Snapshot {
+        session: 1,
+        epoch: 1,
+        mode: Some(world::java::hud::GameMode::Survival),
+        hardcore: false,
+        selected_slot: Some(0),
+        health: Some(20.),
+        maximum_health: Some(20.),
+        food: Some(20),
+        saturation: Some(0.),
+        armor: Some(0.),
+        experience: None,
+    };
+    assert!(f.runtime.publish_java_hud(hud));
+    let old = PresentedScoreboard {
+        scope:
+            crate::ui_runtime::presentation::retained_hud::ScoreboardPresentationScope::HudSidebar,
+        title: "Old lobby".into(),
+        rows: Vec::new(),
+    };
+    let mut cache = SemanticHud::default();
+    let key = (1, 1, false);
+    let paint = |cache: &mut SemanticHud, f: &Fixture, sidebar| {
+        cache.refresh(
+            &f.player,
+            &f.runtime,
+            &f.frame,
+            sidebar,
+            key,
+            &f.settings,
+            false,
+            &f.catalog,
+        )
+    };
+    assert!(paint(&mut cache, &f, Some(&old)).sidebar);
+    assert!(cache.model.sidebar.is_some());
+    assert!(!paint(&mut cache, &f, Some(&old)).sidebar);
+    hud.epoch = 2;
+    assert!(f.runtime.publish_java_hud(hud));
+    assert!(paint(&mut cache, &f, None).sidebar);
+    assert!(cache.model.sidebar.is_none());
+    assert!(!paint(&mut cache, &f, None).sidebar);
+    // A subsequent world can publish a different title under the same numeric key.
+    hud.epoch = 3;
+    assert!(f.runtime.publish_java_hud(hud));
+    let new = PresentedScoreboard {
+        scope:
+            crate::ui_runtime::presentation::retained_hud::ScoreboardPresentationScope::HudSidebar,
+        title: "New arena".into(),
+        rows: Vec::new(),
+    };
+    assert!(paint(&mut cache, &f, Some(&new)).sidebar);
+}
