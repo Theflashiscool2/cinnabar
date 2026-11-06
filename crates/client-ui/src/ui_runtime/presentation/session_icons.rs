@@ -220,6 +220,11 @@ impl UiPresentationRuntime {
         self.icon_refs.as_deref()?.get(sprite).copied()
     }
 
+    /// Identity of the raster source actually installed in the current UI atlas.
+    pub(crate) fn session_icon_source(&self) -> Option<&Arc<SessionIcons>> {
+        self.session_icons.source.as_ref()
+    }
+
     /// Returns the session override for this item variant, falling back to variant zero.
     pub fn session_item_icon(&self, identifier: &str, metadata: u32) -> Option<IconRef> {
         self.session_icons.icon(identifier, metadata)

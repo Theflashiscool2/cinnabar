@@ -162,11 +162,19 @@ impl UiRuntime {
     ) -> Option<ui_screens::containers::NativeInventory> {
         self.java_hud()?;
         let projection = &self.session.java_inventory;
+        let aliases = self.java_icon_aliases(artwork);
         let cells = |slots: &[Option<Slot>], texts: &[String]| {
             slots
                 .iter()
                 .enumerate()
-                .map(|(i, s)| cell(s, artwork, texts.get(i).map_or("", String::as_str)))
+                .map(|(i, s)| {
+                    cell(
+                        s,
+                        artwork,
+                        texts.get(i).map_or("", String::as_str),
+                        &aliases,
+                    )
+                })
                 .collect()
         };
         Some(ui_screens::containers::NativeInventory {
@@ -188,6 +196,7 @@ impl UiRuntime {
                 } else {
                     &projection.text.player_carried
                 },
+                &aliases,
             ),
         })
     }
@@ -201,13 +210,18 @@ impl UiRuntime {
     pub(super) fn java_inventory_items(&self, artwork: &UiPresentationRuntime) -> Option<HudItems> {
         self.java_hud()?;
         let projection = &self.session.java_inventory;
+        let aliases = self.java_icon_aliases(artwork);
         Some(HudItems {
-            hotbar: std::array::from_fn(|i| item(&projection.hotbar[i], artwork)),
-            offhand: item(&projection.offhand, artwork),
+            hotbar: std::array::from_fn(|i| item(&projection.hotbar[i], artwork, &aliases)),
+            offhand: item(&projection.offhand, artwork, &aliases),
         })
     }
 }
-fn item(slot: &Option<Slot>, artwork: &UiPresentationRuntime) -> HudItem {
+fn item(
+    slot: &Option<Slot>,
+    artwork: &UiPresentationRuntime,
+    aliases: &[Option<(String, String)>; 2],
+) -> HudItem {
     let Some(slot) = slot else {
         return HudItem::default();
     };
@@ -219,7 +233,7 @@ fn item(slot: &Option<Slot>, artwork: &UiPresentationRuntime) -> HudItem {
     };
     let native_key =
         assets::registry::java::items::key(&stack.item, stack.count, &stack.added, &stack.removed);
-    let icon = artwork.item_icon(&native_key, 0);
+    let icon = artwork::continuity::resolve(&native_key, aliases, |key| artwork.item_icon(key, 0));
     let durability = component(stack, "minecraft:max_damage")
         .and_then(|v| v.as_u64())
         .filter(|max| *max > 0)
@@ -314,8 +328,9 @@ fn cell(
     slot: &Option<Slot>,
     artwork: &UiPresentationRuntime,
     hover: &str,
+    aliases: &[Option<(String, String)>; 2],
 ) -> ui_screens::containers::NativeCell {
-    let visual = item(slot, artwork);
+    let visual = item(slot, artwork, aliases);
     let name = hover.to_owned();
     ui_screens::containers::NativeCell {
         known: visual.known,

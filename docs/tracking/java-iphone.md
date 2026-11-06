@@ -322,7 +322,12 @@ entity16frames (zero dropped/filled in these accepted clips); a native observer 
 received server swings. Actual mouse attack dealt server health1000→994; mining release
 preserved obsidian; chat consumed attack and reconnect retired the old gesture. Initial zero-frame
 air capture is superseded only by the inspected warm repeat, not a performance qualification.
-The entity video also exposes a remaining durability-update defect: held sword and selected
-hotbar icon briefly disappear while replacement native artwork is pending. That shared-owner
-continuity repair is next. Bare-arm composition, STAB/special attacks and full gameplay/iOS/online/
+The follow-up repair retains same-hand/same-item committed geometry during preparation and
+bridges icon lookup to the actual uploaded UI atlas source. Bounded weak publication history
+prevents texture retention; resource/world changes, failed artwork and empty/replaced items do
+not reuse incompatible graphics. An initial raster-copy attempt still flickered and was replaced
+by the uploaded-page bridge. Final inspected47-frame Linux vanilla clip has no dropped/filled
+frames or missing sword-cell blade pixels through3 real hits (server health1000→982, durability3).
+Normal dirt selection, authoritative sword breaking and reconnect were inspected too. This is
+main-hand functional evidence, not all-menu/offhand/device/performance qualification. Bare-arm composition, STAB/special attacks and full gameplay/iOS/online/
 Hypixel acceptance remain incomplete. Evidence: private recovery/java-local-swing/ACCEPTANCE.json.

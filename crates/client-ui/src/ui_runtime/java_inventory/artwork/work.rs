@@ -10,6 +10,7 @@ pub(super) struct Output {
     pub(super) icons: Arc<SessionIcons>,
     pub(super) hands: [Held; 2],
     pub(super) held_misses: Vec<String>,
+    pub(super) sources: [Option<super::continuity::Source>; 2],
 }
 pub(super) type Ticket = (u64, u64, u64, u64);
 pub(super) struct Request {
@@ -22,6 +23,10 @@ pub(super) struct Request {
 pub(super) struct Shared {
     pub(super) closed: bool,
     pub(super) installed: Option<Arc<SessionIcons>>,
+    pub(super) installed_ticket: Option<Ticket>,
+    pub(super) installed_sources: [Option<super::continuity::Source>; 2],
+    pub(super) desired_sources: [Option<super::continuity::Source>; 2],
+    pub(super) publications: Vec<super::continuity::Publication>,
     pub(super) desired: Option<Ticket>,
     pub(super) request: Option<Request>,
     pub(super) result: Option<(Ticket, Output)>,
@@ -74,6 +79,13 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
                 }
             }
         }
+        let sources = std::array::from_fn(|i| {
+            let key = request.hands[i].as_ref()?;
+            Some(super::continuity::Source {
+                key: key.clone(),
+                item: request.stacks.get(key)?.item.clone(),
+            })
+        });
         let mut hands = std::array::from_fn(|_| None);
         let mut held_misses = Vec::new();
         for (hand, key) in request.hands.into_iter().enumerate() {
@@ -108,6 +120,7 @@ pub(super) fn worker(catalog: Arc<Catalog>, shared: Arc<(Mutex<Shared>, Condvar)
                 icons: Arc::new(icons),
                 hands,
                 held_misses,
+                sources,
             },
         );
     }

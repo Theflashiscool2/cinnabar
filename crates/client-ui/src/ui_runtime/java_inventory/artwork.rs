@@ -6,6 +6,7 @@ use std::{
     collections::BTreeMap,
     sync::{Arc, Condvar, Mutex},
 };
+pub(super) mod continuity;
 mod work;
 use work::{Request, Shared, worker};
 pub(in crate::ui_runtime) struct State {
@@ -75,7 +76,6 @@ impl State {
                 normalize_registry_components(&mut value, world);
                 stacks.entry(key).or_insert(value);
             }
-            work.desired = Some(ticket);
             let stack_key = |stack: &inventory::java::Stack| {
                 assets::registry::java::items::key(
                     &stack.item,
@@ -96,17 +96,29 @@ impl State {
                 .as_ref()
                 .and_then(Option::as_ref)
                 .map(stack_key);
+            let hands = [main, off];
+            let sources = std::array::from_fn(|i| {
+                let key = hands[i].as_ref()?;
+                Some(continuity::Source {
+                    key: key.clone(),
+                    item: stacks.get(key)?.item.clone(),
+                })
+            });
+            work.begin(ticket, sources);
             work.request = Some(Request {
                 ticket,
                 stacks,
                 heads,
-                hands: [main, off],
+                hands,
             });
             work.result = None;
             self.shared.1.notify_one();
         }
         work.result.take().and_then(|(key, output)| {
             if key == ticket {
+                work.installed_ticket = Some(ticket);
+                work.installed_sources = output.sources.clone();
+                work.remember(ticket, &output.icons, output.sources.clone());
                 work.installed = Some(output.icons.clone());
                 work.hands = output.hands;
                 work.held_misses = output.held_misses;
@@ -162,20 +174,53 @@ fn normalize_registry_components(stack: &mut Stack, world: &client_world::java::
     }
 }
 impl UiRuntime {
-    /// A held model is usable only for the exact current stack; pending revisions never reuse a different item.
+    /// Current same-item graphics may bridge a pending revision in the same resource/world scope.
+    /// Empty/replaced hands, failed publication and retired scopes never reuse a different item.
     pub fn java_held_item(
         &self,
         key: &str,
         offhand: bool,
     ) -> Option<Arc<render_model::equipment::java_item::Prepared>> {
-        self.java_hud()?;
+        let hud = self.java_hud()?;
         let state = self.session.java_item_artwork.as_ref()?;
         let work = state.shared.0.lock().unwrap();
-        if work.closed {
+        if work.closed
+            || !work
+                .desired
+                .is_some_and(|t| (t.0, t.1) == (hud.session, hud.epoch))
+        {
             return None;
         }
-        let (identity, prepared) = work.hands[usize::from(offhand)].as_ref()?;
-        (identity == key).then(|| prepared.clone())
+        let hand = usize::from(offhand);
+        if !work.can_hold(hand, key) {
+            return None;
+        }
+        let (identity, prepared) = work.hands[hand].as_ref()?;
+        (work.installed_sources[hand].as_ref()?.key == *identity).then(|| prepared.clone())
+    }
+
+    pub(super) fn java_icon_aliases(
+        &self,
+        artwork: &super::UiPresentationRuntime,
+    ) -> [Option<(String, String)>; 2] {
+        let Some(hud) = self.java_hud() else {
+            return Default::default();
+        };
+        let Some(state) = &self.session.java_item_artwork else {
+            return Default::default();
+        };
+        let Some(source) = artwork.session_icon_source() else {
+            return Default::default();
+        };
+        let work = state.shared.0.lock().unwrap();
+        if work.closed
+            || !work
+                .desired
+                .is_some_and(|t| (t.0, t.1) == (hud.session, hud.epoch))
+        {
+            return Default::default();
+        }
+        work.aliases_for(source)
     }
 
     /// Bounded operational state; no component payloads or authentication data are retained.
