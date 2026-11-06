@@ -133,6 +133,15 @@ impl SessionController {
         self
     }
 
+    /// Holds the actual native session owner in preparation without network/account I/O.
+    #[cfg(test)]
+    pub(crate) fn with_pending_java(mut self) -> Self {
+        self.java = Some(client_session::java::Session::prepare(
+            std::future::pending(),
+        ));
+        self
+    }
+
     /// A controller that releases `kept` instead of the stacks joins share.
     #[cfg(test)]
     pub(crate) fn with_kept_packs(mut self, kept: &'static CompiledStacks) -> Self {

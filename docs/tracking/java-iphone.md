@@ -294,5 +294,7 @@ items, count updates, server-authoritative pickup, remote gear coexistence/remov
 unload/revisit, dimension replacement and reconnect. Server NBT independently confirmed stacks
 and persisted item identity. Positions follow server snapshots; local item physics and pickup
 animation remain incomplete. Full MCP tool tests pass16; this does not mean all application tests
-ran. A real shared-pack reload attempt failed material validation against resident Java chunks;
-that resource-ownership defect remains open. No new online, iOS or Hypixel acceptance.
+ran. A live-found shared-pack defect is repaired: Bedrock pack publication preserves the
+Java-owned terrain, block-entity, environment and actor resources. Actual application and
+removal of an authored empty shared pack, unchanged native artwork, continued rendering and
+server-confirmed pickup passed offline; this is edition isolation, not Java pack layering. No new online, iOS or Hypixel acceptance.

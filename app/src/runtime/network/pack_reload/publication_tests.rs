@@ -102,3 +102,48 @@ fn shared_frame_publishes_server_visuals_before_consumers() {
     app.update();
     assert_eq!(app.world().resource::<ExpectedVisuals>().observations, 3);
 }
+
+#[test]
+fn bedrock_pack_publication_preserves_native_java_render_ownership() {
+    let _sounds = client_audio::audio::SERVER_SOUNDS_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let bedrock = Arc::new(assets::RuntimeAssets::diagnostic());
+    let java = Arc::new(assets::RuntimeAssets::diagnostic());
+    let mut app = App::new();
+    app.insert_resource(ClientWorld::new(bedrock.clone()))
+        .insert_resource(UiRuntimeResource(client_ui::ui_runtime::UiRuntime::new(0)))
+        .insert_resource(render_scene::ChunkTextureAssets::with_revision(java, 71))
+        .init_resource::<render_scene::ChunkTextureReload>()
+        .insert_resource(crate::session::SessionController::default().with_pending_java())
+        .init_resource::<PackReload>()
+        .add_systems(Update, reload_resource_packs);
+    let before = app
+        .world()
+        .resource::<render_scene::ChunkTextureAssets>()
+        .binding_identity();
+    let mut reload = app.world_mut().resource_mut::<PackReload>();
+    reload.revision = 1;
+    reload.ready = Some(Prepared {
+        revision: 1,
+        generation: reload.generation,
+        application: PackApplication::default(),
+        assets: bedrock,
+        environment: None,
+        elapsed: Duration::ZERO,
+    });
+    app.update();
+    assert_eq!(app.world().resource::<PackReload>().completed_revision(), 1);
+    assert_eq!(
+        app.world()
+            .resource::<render_scene::ChunkTextureAssets>()
+            .binding_identity(),
+        before
+    );
+    assert!(
+        app.world()
+            .resource::<render_scene::ChunkTextureReload>()
+            .requested()
+            .is_none()
+    );
+}

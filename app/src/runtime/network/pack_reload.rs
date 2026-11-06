@@ -391,18 +391,32 @@ pub(crate) fn reload_resource_packs(
     mut reload: ResMut<PackReload>,
     mut world: ResMut<ClientWorld>,
     mut ui: ResMut<UiRuntimeResource>,
-    mut textures: Option<ResMut<render_scene::ChunkTextureAssets>>,
+    textures: Option<ResMut<render_scene::ChunkTextureAssets>>,
     presentation: Option<Res<UiPresentationResource>>,
     mut environment: EnvironmentPublication,
-    mut block_entity_scene: Option<ResMut<render_scene::BlockEntitySceneResource>>,
-    mut entity_artwork: Option<ResMut<render_scene::ActorArtworkResource>>,
+    block_entity_scene: Option<ResMut<render_scene::BlockEntitySceneResource>>,
+    entity_artwork: Option<ResMut<render_scene::ActorArtworkResource>>,
     equipment: Option<Res<client_presentation::presentation::equipment::EquipmentRuntime>>,
     gpu_reload: Option<Res<render_scene::ChunkTextureReload>>,
     mut chunks: Query<&mut render_scene::ChunkRenderInstance>,
     mut render_queue: Option<ResMut<render_scene::ChunkRenderQueue>>,
     mut biome_tints: Option<ResMut<render_scene::ChunkBiomeTints>>,
-    profiler: Option<Res<render_scene::RuntimeStageProfiler>>,
+    context: (
+        Option<Res<render_scene::RuntimeStageProfiler>>,
+        Option<Res<crate::session::SessionController>>,
+    ),
 ) {
+    let (profiler, session) = context;
+    // These packs compile Bedrock terrain. A native Java session owns the shared
+    // renderer slot, including while loading; never stage a Bedrock atlas against
+    // its resident material IDs. Shared UI resources may still be reloaded.
+    let java_active = session
+        .as_ref()
+        .is_some_and(|session| session.java_world_if_active().is_some());
+    let mut textures = textures.filter(|_| !java_active);
+    let gpu_reload = gpu_reload.filter(|_| !java_active);
+    let mut block_entity_scene = block_entity_scene.filter(|_| !java_active);
+    let mut entity_artwork = entity_artwork.filter(|_| !java_active);
     let _timer = profiler
         .as_deref()
         .map(|profiler| profiler.time(render_scene::RuntimeStage::PackReload));
@@ -523,7 +537,7 @@ pub(crate) fn reload_resource_packs(
                 reload.aim_assist_textures = prepared.application.aim_assist_textures.clone();
                 reload.replace_previous(Some(prepared.application.clone()));
                 reload.previous_assets = Some(prepared.assets.clone());
-                if let Some(prepared) = prepared.environment {
+                if !java_active && let Some(prepared) = prepared.environment {
                     environment.publish(prepared);
                 }
                 let packs = prepared.application;
@@ -542,7 +556,7 @@ pub(crate) fn reload_resource_packs(
                 {
                     current.0 = (**next).clone();
                 }
-                if let Some(stream) = world.stream.as_mut() {
+                if !java_active && let Some(stream) = world.stream.as_mut() {
                     if terrain_identity_changed
                         && Arc::ptr_eq(stream.runtime_assets(), &prepared.assets)
                     {
