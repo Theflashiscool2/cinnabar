@@ -458,6 +458,9 @@ pub(super) fn snapshot(world: &World) -> Value {
             |m| json!({"position":m.position,"velocity":m.velocity,"yaw":m.yaw,"pitch":m.pitch})
         ));
         snapshot["native_java"]["pose_revision"] = json!(state.player_pose_revision);
+        snapshot["native_java"]["player_swing"] = json!(state.player_visual.swing.sample(1.).map(
+            |s| json!({"offhand":s.offhand,"kind":format!("{:?}",s.kind),"progress":s.progress})
+        ));
         snapshot["native_java"]["player_use"] = json!({"flags":state.player_visual.use_flags,"revision":state.player_visual.use_revision});
         snapshot["native_java"]["player_entity"] =
             json!(state.bootstrap.as_ref().map(|b| b.world.entity_id));

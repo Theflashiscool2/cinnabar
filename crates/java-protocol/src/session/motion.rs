@@ -208,6 +208,20 @@ impl Connection {
                 tracing::debug!(target:"java_session", entity=action.entity, lifetime, dimension_epoch, "Native entity use written; awaiting server authority");
             }
             Command::UseEntity { .. } => {}
+            Command::Punch {
+                dimension_epoch,
+                correction_sequence,
+            } if dimension_epoch == self.dimension_epoch
+                && correction_sequence == self.correction_sequence
+                && self.pending_teleport.is_none()
+                && self.pending_rotation.is_none()
+                && self.loaded_epoch == Some(dimension_epoch)
+                && !self.dead =>
+            {
+                self.send("ServerboundPunchPacket", &[]).await?;
+                tracing::debug!(target:"java_session", dimension_epoch, "Native attack miss written; no target or inventory prediction");
+            }
+            Command::Punch { .. } => {}
             Command::Attack {
                 dimension_epoch,
                 correction_sequence,

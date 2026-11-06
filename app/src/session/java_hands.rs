@@ -35,6 +35,7 @@ pub(crate) fn update(
     server_camera: Option<Res<client_presentation::camera::ServerCameraView>>,
     movement: Res<java_movement::Movement>,
     interaction: Res<super::java_interaction::Interaction>,
+    clock: Res<super::java_cooldowns::Clock>,
     motion: Option<Res<FirstPersonHandMotion>>,
     artwork: Option<Res<render_scene::ActorArtworkResource>>,
     time: Res<Time<bevy::time::Real>>,
@@ -194,15 +195,27 @@ pub(crate) fn update(
         } else {
             Mat4::IDENTITY
         };
+        let attack = use_pose::attack(
+            world.player_visual.swing.sample(clock.fraction()),
+            hand == 1,
+            interaction.0.using_hand().is_some_and(|using| {
+                matches!(
+                    (using, hand),
+                    (gameplay::java::item_use::plan::Hand::Main, 0)
+                        | (gameplay::java::item_use::plan::Hand::Off, 1)
+                )
+            }),
+        );
         let transform = (motion
             * use_pose
             * Mat4::from_translation(Vec3::new(
                 if hand == 0 { 0.56 } else { -0.56 },
                 -0.52,
                 -0.72,
-            )))
-        .transpose()
-        .to_cols_array_2d();
+            ))
+            * attack)
+            .transpose()
+            .to_cols_array_2d();
         let shiny = stacks[hand]
             .is_some_and(|s| assets::registry::java::items::glint(&s.item, &s.added, &s.removed));
         for (layer, geometry) in prepared.groups.iter().enumerate() {

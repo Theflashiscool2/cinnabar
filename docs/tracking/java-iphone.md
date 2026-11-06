@@ -312,3 +312,17 @@ initial20fps recording dropped/repeated frames; the warm10fps retry, offhand and
 clips did not. These are functional software-rendering observations, not frame-budget or iPhone
 qualification. Local first-person input swings, STAB-specific held-item transforms, other living
 schemas/use poses and full combat remain incomplete. No new online or Hypixel qualification.
+
+Native local ordinary WHACK feedback now follows admitted ordered entity attacks, mining
+starts/continued valid holds, and a guarded targetless native Punch for air misses. The existing
+player visual/client timer owns animation; no damage or inventory is predicted. First-person
+item transforms match twelve pinned26.3 native reference matrices, including hand/use ownership.
+Linux Xvfb/lavapipe offline vanilla inspected real-time air44frames, mining37frames and
+entity16frames (zero dropped/filled in these accepted clips); a native observer independently
+received server swings. Actual mouse attack dealt server health1000→994; mining release
+preserved obsidian; chat consumed attack and reconnect retired the old gesture. Initial zero-frame
+air capture is superseded only by the inspected warm repeat, not a performance qualification.
+The entity video also exposes a remaining durability-update defect: held sword and selected
+hotbar icon briefly disappear while replacement native artwork is pending. That shared-owner
+continuity repair is next. Bare-arm composition, STAB/special attacks and full gameplay/iOS/online/
+Hypixel acceptance remain incomplete. Evidence: private recovery/java-local-swing/ACCEPTANCE.json.

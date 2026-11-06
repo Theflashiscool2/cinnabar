@@ -93,6 +93,11 @@ pub enum Command {
         sequence: u64,
         id: i32,
     },
+    /// A native attack miss has no target, but still sends the normal Punch edge.
+    Punch {
+        dimension_epoch: u64,
+        correction_sequence: u64,
+    },
     Attack {
         dimension_epoch: u64,
         correction_sequence: u64,

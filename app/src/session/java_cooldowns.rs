@@ -12,6 +12,9 @@ pub(crate) struct Clock {
     elapsed: Duration,
 }
 impl Clock {
+    pub(super) fn fraction(&self) -> f32 {
+        (self.elapsed.as_secs_f32() / simulation_clock::TICK_DURATION.as_secs_f32()).clamp(0., 1.)
+    }
     pub(super) fn service(&mut self, world: &mut client_world::java::WorldState, now: Instant) {
         let session = Some(world.generation());
         if self.session != session {

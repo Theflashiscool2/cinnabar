@@ -156,7 +156,6 @@ async fn census_all_play_packet_dispatch_gates() {
         "ClientboundOpenSignEditorPacket",
         "ClientboundPongResponsePacket",
         "ClientboundPlaceGhostRecipePacket",
-        "ClientboundPlayerChatPacket",
         "ClientboundTestInstanceBlockStatus",
         "ClientboundTransferPacket",
         "ClientboundShowDialogGamePacket",

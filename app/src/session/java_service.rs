@@ -56,11 +56,12 @@ impl Authority {
             self.movement.1.controls.yaw = motion.yaw;
             self.movement.1.controls.pitch = motion.pitch;
         }
-        if !self.interaction.prepare_movement(
-            &self.java,
-            &self.world,
-            !self.interaction.1.use_button_down() || self.world.inventory.opened.is_some(),
-        ) {
+        let release_use =
+            !self.interaction.1.use_button_down() || self.world.inventory.opened.is_some();
+        if !self
+            .interaction
+            .prepare_movement(&self.java, &mut self.world, release_use)
+        {
             return;
         }
         self.movement.0.use_effects = self.interaction.0.use_effects();
@@ -70,7 +71,7 @@ impl Authority {
             self.movement.1.ticks += self.movement.0.ticks.saturating_sub(before);
             self.interaction.service(
                 &self.java,
-                &self.world,
+                &mut self.world,
                 &self.movement,
                 self.shapes.as_deref(),
             );

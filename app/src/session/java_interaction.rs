@@ -12,12 +12,14 @@ use java_protocol::session::{
 use sim::java::selection;
 mod entity;
 mod item;
+mod swing;
 
 #[derive(Resource, Default)]
 pub(crate) struct Interaction(
     pub gameplay::java::interaction::Controller,
     pub Actions,
     Option<web_time::Instant>,
+    Option<((u64, u64), u64)>,
 );
 impl Interaction {
     pub(super) fn elapsed(&mut self) -> std::time::Duration {
@@ -33,7 +35,7 @@ impl Interaction {
     pub(super) fn service(
         &mut self,
         java: &client_session::java::Session,
-        state: &client_world::java::WorldState,
+        state: &mut client_world::java::WorldState,
         movement: &Movement,
         shapes: Option<&::assets::registry::java::interaction::Table>,
     ) {
@@ -71,13 +73,15 @@ impl Interaction {
             .flatten()
         })();
         self.0.advance(state, self.1.held_attack(), hit);
-        send_pending(java, state, &mut self.0);
+        if send_pending(java, state, &mut self.0) {
+            self.continue_swing(java, state);
+        }
     }
 
     pub(super) fn prepare_movement(
         &mut self,
         java: &client_session::java::Session,
-        state: &client_world::java::WorldState,
+        state: &mut client_world::java::WorldState,
         release: bool,
     ) -> bool {
         self.0
@@ -95,6 +99,47 @@ impl Interaction {
         }
     }
 
+    /// Native continueAttack sends Punch while a valid held destroy target is active.
+    /// The existing client timer bounds emission; rendering and the service loan share this receipt.
+    fn continue_swing(
+        &mut self,
+        java: &client_session::java::Session,
+        state: &mut client_world::java::WorldState,
+    ) {
+        if !self.1.held_attack().held
+            || self.0.mining_progress().is_none()
+            || self.0.blocked.is_some()
+        {
+            return;
+        }
+        let Some(d) = state.terrain.dimension() else {
+            return;
+        };
+        let receipt = (
+            (d.session, d.epoch),
+            state.inventory.cooldowns.client_tick(),
+        );
+        if self.3 == Some(receipt) {
+            return;
+        }
+        match java.command(Command::Punch {
+            dimension_epoch: d.epoch,
+            correction_sequence: state.motion_sequence(),
+        }) {
+            Ok(()) => {
+                self.3 = Some(receipt);
+                swing::predict(state);
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                self.0.blocked =
+                    Some("Java mining gesture is waiting for transport capacity".into())
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                self.0.blocked = Some("Java mining gesture transport closed".into())
+            }
+        }
+    }
+
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
@@ -109,11 +154,17 @@ pub(crate) fn retire_use(
     controller: Option<ResMut<SessionController>>,
     mut interaction: ResMut<Interaction>,
 ) {
-    let Some(controller) = controller else { return };
-    let Some(java) = controller.java.as_ref() else {
+    let Some(mut controller) = controller else {
         return;
     };
-    let state = &controller.java_world;
+    let SessionController {
+        java,
+        java_world: state,
+        ..
+    } = &mut *controller;
+    let Some(java) = java.as_ref() else {
+        return;
+    };
     let release = !input.0.phase(semantic_input::Action::Use).held
         || input.0.snapshot().is_none_or(|s| s.authority_released)
         || state.inventory.opened.is_some();
@@ -133,14 +184,18 @@ pub(crate) fn update(
     movement: Res<Movement>,
     mut interaction: ResMut<Interaction>,
 ) {
-    let Some(controller) = controller else {
+    let Some(mut controller) = controller else {
         return;
     };
-    let Some(java) = controller.java.as_ref() else {
+    let SessionController {
+        java,
+        java_world: state,
+        ..
+    } = &mut *controller;
+    let Some(java) = java.as_ref() else {
         *interaction = Default::default();
         return;
     };
-    let state = &controller.java_world;
     let target = pick(
         state,
         &presentation,
@@ -204,7 +259,10 @@ pub(crate) fn update(
                                 entity: network_id,
                                 lifetime,
                             }) {
-                                Ok(()) => interaction.1.entity_attack_queued(),
+                                Ok(()) => {
+                                    interaction.1.entity_attack_queued();
+                                    swing::predict(state);
+                                }
                                 Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
                                     interaction.0.blocked = Some(
                                         "Java attack is waiting for transport capacity".into(),
@@ -222,6 +280,38 @@ pub(crate) fn update(
                     let (phase, _) = interaction.1.consume_attack(pressed);
                     interaction.0.advance(state, phase, None);
                     continue;
+                }
+                if pressed
+                    && matches!(interaction.1.target(), Some(Target::Air { .. }))
+                    && !released
+                    && interaction.0.blocked.is_none()
+                    && state.inventory.opened.is_none()
+                    && presentation.world_ready() == Some(true)
+                    && state.player_motion.is_some()
+                    && state.status.mode != Some(world::java::hud::GameMode::Spectator)
+                    && state.vitals.as_ref().is_some_and(|v| v.health > 0.)
+                {
+                    if let Err(error) = entity::ordinary_attack(state.inventory.held()) {
+                        interaction.0.blocked = Some(error.into());
+                    } else if let Some(dimension) = state.terrain.dimension() {
+                        match java.command(Command::Punch {
+                            dimension_epoch: dimension.epoch,
+                            correction_sequence: state.motion_sequence(),
+                        }) {
+                            Ok(()) => {
+                                swing::predict(state);
+                            }
+                            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                                interaction.0.blocked =
+                                    Some("Java attack is waiting for transport capacity".into());
+                                return;
+                            }
+                            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                                interaction.0.blocked = Some("Java attack transport closed".into());
+                                return;
+                            }
+                        }
+                    }
                 }
                 let (phase, captured_hit) = interaction.1.consume_attack(pressed);
                 interaction.0.advance(state, phase, captured_hit);
@@ -315,7 +405,9 @@ pub(crate) fn update(
                 }
                 let phase = interaction.1.held_attack();
                 interaction.0.advance(state, phase, hit);
-                send_pending(java, state, &mut interaction.0);
+                if send_pending(java, state, &mut interaction.0) {
+                    interaction.continue_swing(java, state);
+                }
                 return;
             }
         }
@@ -350,7 +442,7 @@ fn advance_use(
 /// Keeps the captured action unchanged until the bounded transport accepts it.
 pub(super) fn send_pending(
     java: &client_session::java::Session,
-    state: &client_world::java::WorldState,
+    state: &mut client_world::java::WorldState,
     interaction: &mut gameplay::java::interaction::Controller,
 ) -> bool {
     if !interaction.validate_use_entity(state) {
@@ -452,6 +544,9 @@ pub(super) fn send_pending(
     };
     match java.command(command) {
         Ok(()) => {
+            if request.kind == Kind::Break {
+                swing::predict(state);
+            }
             interaction.queued();
             // One captured click has at most four ordered main/offhand target/air stages.
             return send_pending(java, state, interaction);

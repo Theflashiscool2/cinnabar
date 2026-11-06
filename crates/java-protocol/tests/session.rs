@@ -170,6 +170,8 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
     assert_eq!(wire.read().await.unwrap(), [0x0d]);
     // Official report: set_carried_item=54, followed by a signed big-endian short.
     assert_eq!(wire.read().await.unwrap(), [54, 0, 8]);
+    // Exactly one current air-attack edge; stale epochs/corrections emit no bytes.
+    assert_eq!(wire.read().await.unwrap(), [46]);
     // Official protocol-777 report: player_action=41, punch=46, block_changed_ack=4.
     // Retired dimension/correction actions produce no bytes; the current action and punch
     // remain ordered on the same compressed, encrypted stream as movement and receipts.
@@ -458,6 +460,16 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                                 dimension_epoch: epoch,
                                 sequence: 1,
                                 slot: 8,
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    for (epoch, correction) in [(99, 3), (dimension_epoch, 2), (dimension_epoch, 3)]
+                    {
+                        commands
+                            .send(session::Command::Punch {
+                                dimension_epoch: epoch,
+                                correction_sequence: correction,
                             })
                             .await
                             .unwrap();
