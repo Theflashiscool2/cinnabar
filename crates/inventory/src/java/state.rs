@@ -142,9 +142,11 @@ impl State {
                 let Some(menu) = self.menu_mut(container) else {
                     return Ok(false);
                 };
-                if slots.len() != menu.slots.len() {
+                // Pinned AbstractContainerMenu.initializeContents iterates the received
+                // list, not the menu capacity. Omitted trailing slots keep their authority.
+                if slots.len() > menu.slots.len() {
                     return Err(format!(
-                        "Java container {container} content length disagrees with its layout: expected {}, received {}",
+                        "Java container {container} content length exceeds its layout: capacity {}, received {}",
                         menu.slots.len(),
                         slots.len()
                     ));

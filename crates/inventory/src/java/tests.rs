@@ -116,14 +116,15 @@ fn invalid_snapshots_are_atomic_and_replacement_retires_containers_and_cursor() 
             Update::Content {
                 container: 0,
                 state: 1,
-                slots: vec![None; 45],
-                carried: None
+                slots: vec![item("minecraft:dirt", 1); PLAYER_MENU_SIZE + 1],
+                carried: item("minecraft:torch", 2)
             }
         )
         .is_err()
     );
     assert!(s.held().is_none());
     assert_eq!(s.player.as_ref().unwrap().state, None);
+    assert_eq!(s.player.as_ref().unwrap().carried, None);
     open(&mut s, 5);
     assert!(s.opened.as_ref().unwrap().incarnation > first);
     assert!(!s.admit(7, 2, Update::Close(4)).unwrap());
@@ -261,7 +262,7 @@ fn invalid_authority_reports_original_failure_without_accepting_a_click() {
             Update::Content {
                 container: 0,
                 state: 0,
-                slots: vec![],
+                slots: vec![None; PLAYER_MENU_SIZE + 1],
                 carried: None,
             },
         )
@@ -276,5 +277,81 @@ fn invalid_authority_reports_original_failure_without_accepting_a_click() {
     assert_eq!(
         s.observe_storage_slot(stale, 36).unwrap_err(),
         "Java container lifetime is no longer current"
+    );
+}
+
+#[test]
+fn native_content_prefix_updates_hotbar_and_preserves_omitted_offhand() {
+    let mut s = state();
+    let mut prefix = vec![None; OFFHAND_MENU_SLOT];
+    prefix[HOTBAR_START] = item("minecraft:oak_planks", 16);
+    apply(
+        &mut s,
+        Update::Content {
+            container: 0,
+            state: 3,
+            slots: prefix.clone(),
+            carried: None,
+        },
+    );
+    assert!(s.error.is_none());
+    assert_eq!(s.held(), Some(&item("minecraft:oak_planks", 16)));
+    assert_eq!(
+        s.slot(0, OFFHAND_MENU_SLOT),
+        None,
+        "omitted does not mean empty"
+    );
+    apply(
+        &mut s,
+        Update::Slot {
+            container: 0,
+            state: 4,
+            slot: OFFHAND_MENU_SLOT,
+            stack: item("minecraft:shield", 1),
+        },
+    );
+    prefix[HOTBAR_START] = item("minecraft:oak_planks", 15);
+    apply(
+        &mut s,
+        Update::Content {
+            container: 0,
+            state: 5,
+            slots: prefix,
+            carried: None,
+        },
+    );
+    assert_eq!(
+        s.slot(0, OFFHAND_MENU_SLOT),
+        Some(&item("minecraft:shield", 1))
+    );
+    assert_eq!(s.held(), Some(&item("minecraft:oak_planks", 15)));
+    open(&mut s, 2);
+    apply(
+        &mut s,
+        Update::Content {
+            container: 2,
+            state: 6,
+            slots: vec![item("minecraft:paper", 1)],
+            carried: None,
+        },
+    );
+    let id = s.active_identity().unwrap();
+    assert_eq!(s.observe_storage_slot(id, 0).unwrap().0, 6);
+    assert!(
+        s.slot(2, 1).is_none(),
+        "unreported server menu slot stays unknown"
+    );
+    assert!(
+        !s.admit(
+            7,
+            1,
+            Update::Content {
+                container: 2,
+                state: 7,
+                slots: vec![],
+                carried: None
+            }
+        )
+        .unwrap()
     );
 }
