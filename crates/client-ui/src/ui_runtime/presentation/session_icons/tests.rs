@@ -573,3 +573,33 @@ fn shrinking_weights_colour_by_coverage() {
     assert_eq!(size, [1, 1]);
     assert_eq!(pixels, [240, 120, 60, 63]);
 }
+
+#[test]
+fn captured_item_coordinates_hold_their_atlas_until_the_next_capture() {
+    let mut p = UiPresentationRuntime::new(ui_engine::test_support::fixture_font()).unwrap();
+    let a = Arc::new(SessionIcons {
+        icons: vec![sprite(1)],
+        ..Default::default()
+    });
+    let b = Arc::new(SessionIcons {
+        icons: vec![sprite(2), sprite(1)],
+        ..Default::default()
+    });
+    capture(&mut p, Some(&a));
+    let generation = p.session_icon_generation();
+    let coordinates = p.session_item_icon("test:variant", 1);
+    assert!(coordinates.is_some());
+    // Simulate a replacement becoming available after the host captured its item refs.
+    observe_frame(&mut p, Some(&b));
+    assert!(Arc::ptr_eq(p.session_icon_source().unwrap(), &a));
+    assert_eq!(p.session_item_icon("test:variant", 1), coordinates);
+    assert_eq!(p.session_icon_generation(), generation);
+    capture(&mut p, Some(&b));
+    assert!(Arc::ptr_eq(p.session_icon_source().unwrap(), &b));
+    assert!(p.session_icon_generation() > generation);
+    observe_frame(&mut p, Some(&b));
+    assert!(Arc::ptr_eq(p.session_icon_source().unwrap(), &b));
+    // Standalone builders without a host capture still install resources normally.
+    observe_frame(&mut p, Some(&a));
+    assert!(Arc::ptr_eq(p.session_icon_source().unwrap(), &a));
+}

@@ -21,6 +21,7 @@ pub fn capture_hud_frame(
     icon_frames: ItemIconFrames,
 ) -> (Option<IconRef>, Option<IconRef>) {
     dynamic_textures::observe_session(presentation, runtime.session_id());
+    session_icons::capture(presentation, runtime.session_icons());
     presentation.capture_local_player_identity(
         world.map(|world| world.local_player()),
         runtime.session_id(),

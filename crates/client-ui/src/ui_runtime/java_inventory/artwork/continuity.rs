@@ -13,6 +13,7 @@ pub(super) struct Publication {
     ticket: Ticket,
     icons: Weak<SessionIcons>,
     sources: [Option<Source>; 2],
+    inventory_sources: std::collections::BTreeMap<(i32, u64, usize), Source>,
 }
 fn compatible(installed: Option<Ticket>, desired: Option<Ticket>) -> bool {
     installed
@@ -53,26 +54,27 @@ impl Shared {
             ticket,
             icons: Arc::downgrade(icons),
             sources,
+            inventory_sources: self.inventory_sources.clone(),
         });
     }
     pub(super) fn aliases_for(
         &self,
         uploaded: &Arc<SessionIcons>,
-    ) -> [Option<(String, String)>; 2] {
+    ) -> Vec<Option<(String, String)>> {
         if self.closed {
-            return Default::default();
+            return vec![None, None];
         }
         let Some(page) = self
             .publications
             .iter()
             .find(|p| p.icons.ptr_eq(&Arc::downgrade(uploaded)))
         else {
-            return Default::default();
+            return vec![None, None];
         };
         if !compatible(Some(page.ticket), self.desired) {
-            return Default::default();
+            return vec![None, None];
         }
-        std::array::from_fn(|i| {
+        let hands: [Option<(String, String)>; 2] = std::array::from_fn(|i| {
             let old = page.sources[i].as_ref()?;
             let new = self.desired_sources[i].as_ref()?;
             if old.item != new.item || old.key == new.key {
@@ -87,13 +89,44 @@ impl Shared {
                 return None;
             }
             Some((new.key.clone(), old.key.clone()))
-        })
+        });
+        let mut aliases = hands.to_vec();
+        let mut candidates = std::collections::BTreeMap::<String, Option<String>>::new();
+        for (slot, new) in &self.inventory_sources {
+            let Some(old) = page.inventory_sources.get(slot) else {
+                continue;
+            };
+            if old.item != new.item
+                || old.key == new.key
+                || self.installed_ticket == self.desired
+                    && self
+                        .installed
+                        .as_ref()
+                        .is_some_and(|icons| icons.misses.contains_key(new.key.as_str()))
+            {
+                continue;
+            }
+            candidates
+                .entry(new.key.clone())
+                .and_modify(|candidate| {
+                    if candidate.as_ref() != Some(&old.key) {
+                        *candidate = None;
+                    }
+                })
+                .or_insert_with(|| Some(old.key.clone()));
+        }
+        aliases.extend(
+            candidates
+                .into_iter()
+                .filter_map(|(new, old)| old.map(|old| Some((new, old)))),
+        );
+        aliases
     }
 }
-/// Prefer the exact current entry; bridge only to the same hand's actually uploaded source.
+/// Prefer the exact current entry; bridge only to a proven uploaded source.
 pub(in crate::ui_runtime::java_inventory) fn resolve<T>(
     key: &str,
-    aliases: &[Option<(String, String)>; 2],
+    aliases: &[Option<(String, String)>],
     mut lookup: impl FnMut(&str) -> Option<T>,
 ) -> Option<T> {
     lookup(key).or_else(|| {
@@ -205,5 +238,47 @@ mod tests {
         assert_eq!(shared.aliases_for(&uploaded), [None, None]);
         shared.closed = true;
         assert_eq!(shared.aliases_for(&uploaded), [None, None]);
+    }
+    #[test]
+    fn menu_slots_bridge_pending_updates_without_crossing_lifetimes_or_items() {
+        let uploaded = Arc::new(SessionIcons::default());
+        let mut shared = Shared::default();
+        let slot = (4, 17, 10);
+        shared
+            .inventory_sources
+            .insert(slot, source("old", "paper").unwrap());
+        shared.remember((7, 2, 19, 1), &uploaded, [None, None]);
+        shared.begin((7, 2, 20, 1), [None, None]);
+        shared
+            .inventory_sources
+            .insert(slot, source("new", "paper").unwrap());
+        let lookup = |k: &str| (k == "old").then_some(42);
+        assert_eq!(
+            resolve("new", &shared.aliases_for(&uploaded), lookup),
+            Some(42)
+        );
+        shared
+            .inventory_sources
+            .insert(slot, source("new", "sword").unwrap());
+        assert_eq!(resolve("new", &shared.aliases_for(&uploaded), lookup), None);
+        shared.inventory_sources.clear();
+        shared
+            .inventory_sources
+            .insert((4, 18, 10), source("new", "paper").unwrap());
+        assert_eq!(resolve("new", &shared.aliases_for(&uploaded), lookup), None);
+        shared.inventory_sources.clear();
+        assert_eq!(resolve("new", &shared.aliases_for(&uploaded), lookup), None);
+        shared
+            .inventory_sources
+            .insert(slot, source("new", "paper").unwrap());
+        let mut failed = SessionIcons::default();
+        failed
+            .misses
+            .insert("new".into(), "unsupported current model".into());
+        shared.installed = Some(Arc::new(failed));
+        shared.installed_ticket = shared.desired;
+        assert_eq!(resolve("new", &shared.aliases_for(&uploaded), lookup), None);
+        shared.begin((7, 3, 20, 1), [None, None]);
+        assert_eq!(resolve("new", &shared.aliases_for(&uploaded), lookup), None);
     }
 }

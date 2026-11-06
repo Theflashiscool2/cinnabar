@@ -80,6 +80,9 @@ See [the module contract](crates/java-protocol/README.md) for limits and command
 Native Java inventory artwork now resolves actual item definitions and default components on a
 scoped worker into the shared GPU atlas. First-person/equipment and dynamic context remain
 incomplete; see [item artwork](docs/references/java-item-artwork.md).
+Menu artwork retains frame-consistent atlas coordinates and scoped pending-item
+continuity, checked against controlled vanilla updates/reopen/reconnect on Linux
+software rendering. Mac/iPhone/Hypixel menu acceptance remains pending.
 All pinned item component types now have bounded readers and a batch wire corpus.
 A play dispatch census records remaining interactive/session gates; neither check
 proves complete item behavior or live server compatibility. Automatic bounded join

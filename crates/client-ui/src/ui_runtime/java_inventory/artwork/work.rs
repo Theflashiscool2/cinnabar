@@ -26,6 +26,7 @@ pub(super) struct Shared {
     pub(super) installed_ticket: Option<Ticket>,
     pub(super) installed_sources: [Option<super::continuity::Source>; 2],
     pub(super) desired_sources: [Option<super::continuity::Source>; 2],
+    pub(super) inventory_sources: BTreeMap<(i32, u64, usize), super::continuity::Source>,
     pub(super) publications: Vec<super::continuity::Publication>,
     pub(super) desired: Option<Ticket>,
     pub(super) request: Option<Request>,

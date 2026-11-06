@@ -56,7 +56,7 @@ impl UiPresentationRuntime {
         let _build_span = tracing::info_span!("ui.build").entered();
         dynamic_textures::observe_session(self, runtime.session_id());
         self.publish_shield_icons();
-        session_icons::observe(self, runtime.session_icons());
+        session_icons::observe_frame(self, runtime.session_icons());
         self.observe_server_ui(runtime.server_ui());
         self.publish_local_player_identity(runtime.session_id());
         session_glyphs::observe(self, runtime.session_glyphs());

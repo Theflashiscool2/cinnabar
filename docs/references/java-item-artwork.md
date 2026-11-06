@@ -12,6 +12,12 @@ request/result. Session, world epoch, inventory revision, resource catalog ident
 and head-resource revision fence publication. Disconnect/replacement closes the old
 worker; clearing its atlas cannot clear another edition's atlas.
 
+HUD capture installs the available session atlas before resolving item coordinates;
+painting retains that atlas until the next capture. Pending metadata changes can
+reuse the actually uploaded artwork for the same item in the same container slot
+and incarnation. Empty slots, different items, failed current artwork and replaced
+world/resource scopes cannot inherit that artwork.
+
 The native entity exporter now supplies special-item model parts separately from
 placed-block transforms. Chest/shulker/banner/skull/statue/conduit/pot/shield/trident
 artwork uses those verified parts and the archive's entity textures. Pattern holders
@@ -53,6 +59,13 @@ items (8in chest,8in player storage), including unload/revisit and reconnect. Se
 commands prepared the fixture; actual client input performed the transfers. An
 application-loader regression catches the initially reproduced missing-model binding.
 These are functional software-rendering results, not hardware/iOS/Hypixel qualification.
+
+A controlled vanilla menu also exercised forty authoritative name updates without
+pointer input. Inspected screenshots retained the paper icon throughout the sampled
+updates, cleared an emptied slot and showed a replacement item after reopening and
+reconnecting. Focused regressions cover atlas replacement between capture and paint
+and slot continuity across item, menu and world changes. This does not establish
+every-frame pacing or Mac/iPhone/Hypixel acceptance.
 
 Remaining work includes first-person/remote-equipment integration, owner/world-driven
 model predicates and animations, arbitrary pack layering/local head patches outside

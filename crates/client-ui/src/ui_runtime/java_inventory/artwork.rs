@@ -105,6 +105,31 @@ impl State {
                 })
             });
             work.begin(ticket, sources);
+            work.inventory_sources.clear();
+            let personal = projection
+                .player
+                .iter()
+                .enumerate()
+                .map(|(slot, stack)| ((0, 0, slot), stack));
+            let opened = projection.opened.iter().flat_map(|menu| {
+                menu.slots.iter().enumerate().map(move |(slot, stack)| {
+                    (
+                        (menu.identity.container, menu.identity.incarnation, slot),
+                        stack,
+                    )
+                })
+            });
+            for (slot, stack) in personal.chain(opened) {
+                if let Some(Some(stack)) = stack {
+                    work.inventory_sources.insert(
+                        slot,
+                        continuity::Source {
+                            key: stack_key(stack),
+                            item: stack.item.clone(),
+                        },
+                    );
+                }
+            }
             work.request = Some(Request {
                 ticket,
                 stacks,
@@ -202,7 +227,7 @@ impl UiRuntime {
     pub(super) fn java_icon_aliases(
         &self,
         artwork: &super::UiPresentationRuntime,
-    ) -> [Option<(String, String)>; 2] {
+    ) -> Vec<Option<(String, String)>> {
         let Some(hud) = self.java_hud() else {
             return Default::default();
         };

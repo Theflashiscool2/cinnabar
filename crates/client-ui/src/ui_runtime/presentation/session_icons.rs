@@ -77,6 +77,7 @@ pub(super) struct SessionIconPage {
     pub(super) models: BTreeMap<IconKey, Arc<UiMesh>>,
     pub(super) page: Option<UiTexturePage>,
     generation: u64,
+    captured_for_frame: bool,
     /// A newer set packing on a worker; the installed set draws until it lands.
     packing: Option<Packing>,
 }
@@ -280,6 +281,23 @@ impl UiPresentationRuntime {
     }
 }
 
+/// Installs available artwork before HUD/container capture resolves atlas coordinates.
+pub(super) fn capture(runtime: &mut UiPresentationRuntime, icons: Option<&Arc<SessionIcons>>) {
+    observe(runtime, icons);
+    runtime.session_icons.captured_for_frame = true;
+}
+
+/// A captured frame must draw with the same atlas that supplied its item coordinates.
+/// Packing that finishes between capture and painting is installed at the next capture.
+pub(super) fn observe_frame(
+    runtime: &mut UiPresentationRuntime,
+    icons: Option<&Arc<SessionIcons>>,
+) {
+    if !std::mem::take(&mut runtime.session_icons.captured_for_frame) {
+        observe(runtime, icons);
+    }
+}
+
 /// Repacks the page when the runtime's icon set changes identity. A large set packs on a
 /// worker while the installed set keeps drawing, and installs on the frame it lands.
 pub(super) fn observe(runtime: &mut UiPresentationRuntime, icons: Option<&Arc<SessionIcons>>) {
@@ -379,6 +397,7 @@ fn install(
         models,
         page,
         generation: runtime.session_icons.generation.wrapping_add(1),
+        captured_for_frame: false,
         packing: None,
     };
     dynamic_textures::rebuild(runtime);

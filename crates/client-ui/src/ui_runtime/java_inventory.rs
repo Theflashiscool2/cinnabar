@@ -234,7 +234,7 @@ impl UiRuntime {
 fn item(
     slot: &Option<Slot>,
     artwork: &UiPresentationRuntime,
-    aliases: &[Option<(String, String)>; 2],
+    aliases: &[Option<(String, String)>],
 ) -> HudItem {
     let Some(slot) = slot else {
         return HudItem::default();
@@ -342,7 +342,7 @@ fn cell(
     slot: &Option<Slot>,
     artwork: &UiPresentationRuntime,
     hover: &str,
-    aliases: &[Option<(String, String)>; 2],
+    aliases: &[Option<(String, String)>],
 ) -> ui_screens::containers::NativeCell {
     let visual = item(slot, artwork, aliases);
     let name = hover.to_owned();
