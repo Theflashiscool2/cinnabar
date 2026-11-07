@@ -341,12 +341,20 @@ fn native_metadata_selects_registry_appearance_and_rejects_partial_or_stale_upda
         )
     )));
     assert!(s.entities.get(99).unwrap().visual.invisible());
-    // An unsupported payload produces an explicit gap which later delta packets cannot erase.
+    // The old particle payload is truncated now that particles have a codec.
+    assert!(
+        wire::decode(
+            "ClientboundSetEntityDataPacket",
+            &mut Reader(&[99, 0, 0, 0, 10, 17, 1, 255])
+        )
+        .is_err()
+    );
+    // RESOLVABLE_PROFILE is still deferred; no valid flags prefix may be admitted.
     assert!(s.admit(event(
         1,
         decoded(
             "ClientboundSetEntityDataPacket",
-            &[99, 0, 0, 0, 10, 17, 1, 255]
+            &[99, 0, 0, 0, 10, 41, 1, 255]
         )
     )));
     assert!(s.entities.get(99).unwrap().visual.incomplete.is_some());
@@ -542,4 +550,99 @@ fn player_potion_aura_metadata_keeps_body_layers_and_identity_visible() {
     assert!(!e.visual.invisible());
     assert!(e.visual.player_layers.hat);
     assert!(e.visual.player_layers.jacket);
+}
+
+#[test]
+fn armor_stand_name_metadata_survives_invisibility_and_updates_without_body_support() {
+    use java_protocol::{
+        session::entities::metadata::{Entry, Packet, Value},
+        target,
+    };
+    let mut s = state();
+    let wire::Packet::Spawn(mut a) = spawn() else {
+        unreachable!()
+    };
+    a.kind = target::ENTITY_ARMOR_STAND;
+    assert!(s.admit(event(1, wire::Packet::Spawn(a))));
+    let entry = |name, value| {
+        let spec = target::METADATA_ARMOR_STAND
+            .iter()
+            .find(|s| s.name == name)
+            .unwrap();
+        Entry {
+            index: spec.index,
+            serializer: spec.serializer,
+            value,
+        }
+    };
+    let packet = || {
+        wire::Packet::Metadata(Packet {
+            id: 99,
+            unsupported: None,
+            entries: vec![
+                entry("DATA_SHARED_FLAGS_ID", Value::Byte(32)),
+                entry(
+                    "DATA_CUSTOM_NAME",
+                    Value::Component(Some(java_protocol::nbt::Value::String("SHOP".into()))),
+                ),
+                entry("DATA_CUSTOM_NAME_VISIBLE", Value::Bool(true)),
+                entry("DATA_CLIENT_FLAGS", Value::Byte(16)),
+            ],
+        })
+    };
+    assert!(s.admit(event(1, packet())));
+    let e = s.entities.get(99).unwrap();
+    assert!(e.visual.invisible() && e.visual.custom_name_visible);
+    assert_eq!(e.visual.armor_stand_flags, Some(16));
+    assert!(e.presentation.is_some() && e.visual.incomplete.is_none());
+    assert_eq!(
+        e.visual.custom_name.as_deref(),
+        Some(&world::NbtValue::String("SHOP".into()))
+    );
+    assert!(!s.admit(event(9, packet())));
+    assert!(s.admit(event(
+        1,
+        wire::Packet::Metadata(Packet {
+            id: 99,
+            unsupported: None,
+            entries: vec![entry("DATA_CUSTOM_NAME", Value::Component(None))]
+        })
+    )));
+    assert!(s.entities.get(99).unwrap().visual.custom_name.is_none());
+}
+#[test]
+fn server_hurt_feedback_is_visual_only_lifetime_fenced_and_expires() {
+    let mut s = state();
+    assert!(s.admit(event(1, spawn())));
+    s.entities
+        .update((7, 1), 99, |e| {
+            e.visual.health = Some(20.);
+            Ok(())
+        })
+        .unwrap();
+    let hurt = |lifetime| wire::Packet::Hurt { lifetime, id: 99 };
+    assert!(!s.admit(event(1, hurt(2))));
+    assert!(!s.admit(event(9, hurt(1))));
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
+    assert!(s.admit(event(1, hurt(1))));
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 10);
+    assert_eq!(
+        s.entities.get(99).unwrap().visual.health,
+        Some(20.),
+        "no damage award from a visual notification"
+    );
+    for _ in 0..10 {
+        s.entities.tick_presentation();
+    }
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
+    assert!(s.admit(event(1, hurt(1))));
+    assert!(s.admit(event(1, wire::Packet::Remove(vec![99]))));
+    let wire::Packet::Spawn(mut replacement) = spawn() else {
+        unreachable!()
+    };
+    replacement.lifetime = 2;
+    assert!(s.admit(event(1, wire::Packet::Spawn(replacement))));
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
+    assert!(!s.admit(event(1, hurt(1))));
+    assert!(s.admit(event(1, hurt(2))));
 }

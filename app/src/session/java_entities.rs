@@ -2,6 +2,7 @@
 mod assets;
 mod equipment;
 mod ground;
+mod skins;
 mod villager;
 use super::{SessionController, java_render};
 use bevy::prelude::*;
@@ -48,11 +49,14 @@ pub(crate) struct Presentation {
     unknown_light: usize,
     glow_pending: usize,
     custom_skin_pending: usize,
+    skin_layers_full: bool,
+    skins: skins::Players,
     published_players: usize,
     published_villagers: usize,
     log_after_tick: u64,
     logged_counts: Option<[usize; 5]>,
-    elapsed: std::time::Duration,
+    fraction: f32,
+    backlog_ticks: u128,
     ticks: u64,
 }
 impl Default for Presentation {
@@ -75,11 +79,14 @@ impl Default for Presentation {
             unknown_light: 0,
             glow_pending: 0,
             custom_skin_pending: 0,
+            skin_layers_full: false,
+            skins: Default::default(),
             published_players: 0,
             published_villagers: 0,
             log_after_tick: 0,
             logged_counts: None,
-            elapsed: std::time::Duration::ZERO,
+            fraction: 0.,
+            backlog_ticks: 0,
             ticks: 0,
         }
     }
@@ -92,18 +99,21 @@ impl Drop for Presentation {
 impl Presentation {
     /// Shared sampling fraction for this native actor frame, including its world-space labels.
     pub(crate) fn partial_tick(&self) -> f32 {
-        (self.elapsed.as_secs_f64() / simulation_clock::TICK_DURATION.as_secs_f64()).min(1.) as f32
+        self.fraction
     }
     fn reset(&mut self) {
         self.cancel.store(true, Ordering::Release);
         let serial = self.serial;
+        let mut skins = std::mem::take(&mut self.skins);
+        skins.retire();
         let old = std::mem::take(self);
+        self.skins = skins;
         self.serial = serial;
         client_runtime::session::release_off_frame(old);
     }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len()+self.villagers.len(),"error":self.failure,"presentation":"native_living_interpolation","published_players":self.published_players,"published_villagers":self.published_villagers,"published_items":self.published_items,"item_pending":self.item_pending,"item_motion":"server_positions","custom_skin_pending":self.custom_skin_pending,"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.elapsed.as_nanos()/simulation_clock::TICK_DURATION.as_nanos(),"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
+        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len()+self.villagers.len(),"error":self.failure,"presentation":"native_living_interpolation","published_players":self.published_players,"published_villagers":self.published_villagers,"published_items":self.published_items,"item_pending":self.item_pending,"item_motion":"server_positions","custom_skin_pending":self.custom_skin_pending,"skin_frame_capacity_exhausted":self.skin_layers_full,"skins":self.skins.diagnostic(),"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.backlog_ticks,"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
     }
 }
 pub(crate) mod publish;

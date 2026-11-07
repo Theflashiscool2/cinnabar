@@ -282,6 +282,7 @@ public final class ExportEntities {
         metadata.add("player", metadata(net.minecraft.world.entity.player.Player.class));
         metadata.add("item", metadata(net.minecraft.world.entity.item.ItemEntity.class));
         metadata.add("villager", metadata(net.minecraft.world.entity.npc.villager.Villager.class));
+        metadata.add("armor_stand", metadata(net.minecraft.world.entity.decoration.ArmorStand.class));
         facts.add("metadata", metadata);
         facts.add("particles", particles());
         JsonArray positionSources = new JsonArray();

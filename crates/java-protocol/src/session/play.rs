@@ -493,7 +493,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundAddTransientBlockPacket",
     "ClientboundGameRuleValuesPacket",
     "ClientboundGameTestHighlightPosPacket",
-    "ClientboundHurtAnimationPacket",
     "ClientboundInitializeBorderPacket",
     "ClientboundLevelEventPacket",
     "ClientboundLevelParticlesPacket",

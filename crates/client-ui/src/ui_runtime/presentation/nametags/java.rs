@@ -19,6 +19,7 @@ struct Cached {
 #[derive(Default)]
 pub struct Cache {
     entries: BTreeMap<Identity, Cached>,
+    custom: BTreeMap<Identity, (Arc<world::NbtValue>, Arc<[Arc<str>]>)>,
     anchors: Vec<NametagAnchor>,
     /// Labels whose received component styling/content needs a further text consumer.
     pub unsupported_text: usize,
@@ -27,6 +28,7 @@ impl Cache {
     /// Retires all connection-owned text when its edition or world stops presenting.
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.custom.clear();
         self.anchors.clear();
         self.unsupported_text = 0;
     }
@@ -75,7 +77,71 @@ impl Cache {
             c.seen = false;
         }
         let mut tags = std::mem::take(&mut self.anchors);
+        let named: std::collections::BTreeSet<_> = entities
+            .iter()
+            .filter(|e| e.visual.custom_name_visible && e.visual.custom_name.is_some())
+            .map(|e| e.identity)
+            .collect();
+        self.custom.retain(|id, _| named.contains(id));
         for e in entities.iter() {
+            if e.visual.player.is_none()
+                && e.visual.custom_name_visible
+                && let Some(name) = &e.visual.custom_name
+            {
+                let feet = glam::DVec3::from_array(
+                    e.presentation
+                        .as_ref()
+                        .map_or(e.motion.position, |p| p.sample(fraction).pose.position),
+                )
+                .as_vec3();
+                if view.camera_position.distance_squared(feet) < 64. * 64. {
+                    let cached = self
+                        .custom
+                        .get(&e.identity)
+                        .filter(|(old, _)| Arc::ptr_eq(old, name));
+                    let lines = if let Some((_, lines)) = cached {
+                        Some(Arc::clone(lines))
+                    } else {
+                        match text::component_text(name, None) {
+                            Ok(text) => {
+                                let lines = super::nametag_lines(&text);
+                                self.custom
+                                    .insert(e.identity, (Arc::clone(name), Arc::clone(&lines)));
+                                Some(lines)
+                            }
+                            Err(()) => {
+                                self.unsupported_text += 1;
+                                None
+                            }
+                        }
+                    };
+                    let height = e
+                        .visual
+                        .armor_stand_flags
+                        .map_or(e.visual.name_height, |flags| {
+                            if flags & 16 != 0 {
+                                0.
+                            } else if flags & 1 != 0 {
+                                e.visual.name_height * 0.5
+                            } else {
+                                e.visual.name_height
+                            }
+                        });
+                    if let Some(lines) = lines
+                        && let Some(tag) = NametagAnchor::world_label(
+                            e.identity.incarnation,
+                            feet + glam::Vec3::Y
+                                * (height * e.visual.scale + super::HEAD_CLEARANCE),
+                            lines,
+                            view,
+                            false,
+                            1.,
+                        )
+                    {
+                        tags.push(tag);
+                    }
+                }
+            }
             let Some(profile) = &e.visual.player else {
                 continue;
             };

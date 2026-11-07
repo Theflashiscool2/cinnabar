@@ -206,3 +206,25 @@ fn native_swing_vectors_and_truncation_preserve_hand_type_and_duration() {
     assert!(!offhand);
     assert_eq!(duration, -1);
 }
+
+#[test]
+fn native_hurt_notification_decodes_without_fabricating_damage() {
+    // Independent26.3 STREAM_CODEC vector: ID300/yaw45.
+    let Packet::Hurt { lifetime, id } = packet(
+        "ClientboundHurtAnimationPacket",
+        &[0xac, 2, 0x42, 0x34, 0, 0],
+    )
+    .unwrap() else {
+        panic!()
+    };
+    assert_eq!((lifetime, id), (0, 300));
+    assert!(packet("ClientboundHurtAnimationPacket", &[0xac, 2, 0x42]).is_err());
+    assert!(
+        packet(
+            "ClientboundHurtAnimationPacket",
+            &[0xac, 2, 0x42, 0x34, 0, 0, 1]
+        )
+        .is_err()
+    );
+    assert!(packet("ClientboundHurtAnimationPacket", &[1, 0x7f, 0xc0, 0, 0]).is_ok());
+}

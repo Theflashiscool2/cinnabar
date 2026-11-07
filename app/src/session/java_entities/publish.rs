@@ -22,6 +22,7 @@ pub(crate) fn update(
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
     time: Res<Time<bevy::time::Real>>,
+    clock: Res<super::super::java_cooldowns::Clock>,
 ) {
     let (Some(mut controller), Some(terrain), Some(mut presentation)) =
         (controller, terrain, presentation)
@@ -52,16 +53,11 @@ pub(crate) fn update(
         prepared.replace_scene(empty(), state.generation(), 0., 0);
         return;
     };
-    p.elapsed = p.elapsed.saturating_add(time.delta());
-    // Preserve excess elapsed time for later frames instead of silently skipping native ticks.
-    for _ in 0..4 {
-        if p.elapsed < simulation_clock::TICK_DURATION {
-            break;
-        }
-        p.elapsed -= simulation_clock::TICK_DURATION;
-        state.entities.tick_presentation();
-        p.ticks = p.ticks.saturating_add(1);
-    }
+    p.skins.update(scope, time.elapsed(), &state.entities);
+    // The sole world clock also advances during a render stall; sampling never double-ticks.
+    p.fraction = clock.fraction();
+    p.backlog_ticks = clock.backlog_ticks();
+    p.ticks = state.inventory.cooldowns.client_tick();
     let fraction = p.partial_tick();
     p.published = 0;
     p.unsupported = 0;
@@ -126,10 +122,11 @@ pub(crate) fn update(
             p.equipment = Some(equipment::State::new(catalog, assets));
         }
         if let Some(equipment) = &mut p.equipment {
-            equipment.update(state, &mut scene);
+            equipment.update(state, &mut scene, &p.skins);
         }
     }
     let mut batch = empty();
+    let mut skin_layers_full = false;
     if p.failure.is_none()
         && terrain.world_ready() == Some(true)
         && let Some(assets) = &p.assets
@@ -247,16 +244,24 @@ pub(crate) fn update(
                 p.published_villagers += 1;
                 continue;
             }
+            let custom_skin = p.skins.get(e.identity).and_then(|(skin, slim)| {
+                let layer = skins::frame_layer(&mut batch.skin_layers, skin);
+                skin_layers_full |= layer.is_none();
+                layer.map(|layer| (layer, slim))
+            });
             let (model_name, texture, textures) = if let Some(profile) = &e.visual.player {
                 if profile
                     .properties
                     .iter()
                     .any(|p| p.name.as_ref() == "textures")
                 {
-                    p.custom_skin_pending += 1;
+                    p.custom_skin_pending += usize::from(custom_skin.is_none());
                 }
                 (
-                    if profile.default_skin.slim {
+                    if custom_skin
+                        .as_ref()
+                        .map_or(profile.default_skin.slim, |(_, slim)| *slim)
+                    {
                         "player_slim"
                     } else {
                         "player_wide"
@@ -410,6 +415,7 @@ pub(crate) fn update(
                     + Vec3::Y * posture.map_or(0., |p| p.render_offset_y),
             )
             .to_cols_array_2d();
+            let runtime_layer = custom_skin.map(|(layer, _)| layer);
             batch.submissions.push(ActorRigSubmission {
                 material: ActorMaterial::default(),
                 culling_bounds: pose.bounds,
@@ -424,15 +430,19 @@ pub(crate) fn update(
                 world_from_actor: std::array::from_fn(|r| {
                     [matrix[0][r], matrix[1][r], matrix[2][r], matrix[3][r]]
                 }),
-                texture_layer: artwork.layer,
+                texture_layer: runtime_layer.unwrap_or(artwork.layer),
                 route: ActorRigRoute::Compiled,
                 tint: 0,
-                overlay_rgba8: 0,
+                overlay_rgba8: if e.visual.hurt_ticks != 0 {
+                    render_model::pack_overlay_rgba8([1., 0., 0., 77. / 255.])
+                } else {
+                    0
+                },
                 uv_anim: [0., 0., 1., 1.],
                 light,
             });
             if let (Some(posture), Some(gear), Some(equipment)) = (posture, gear, &p.equipment)
-                && let Some(entry) = equipment.entry(e, gear)
+                && let Some(entry) = equipment.entry(e, gear, &p.skins)
             {
                 let body = batch.submissions.last().unwrap().clone();
                 if let Err(error) = equipment::append(
@@ -448,7 +458,9 @@ pub(crate) fn update(
                     break;
                 }
             }
-            batch.artwork.insert(identity, artwork);
+            if runtime_layer.is_none() {
+                batch.artwork.insert(identity, artwork);
+            }
             p.published_players += usize::from(is_player);
         }
         p.poses.retain(|id, _| retained.contains(id));
@@ -465,6 +477,10 @@ pub(crate) fn update(
             menu.set_java_diagnostic(format!("Java entities incomplete: {error}. Check the pinned models.json and client.jar in the packaged Java asset directory."));
         }
     }
+    if skin_layers_full && !p.skin_layers_full {
+        bevy::log::warn!(target:"java_session",limit=render_model::MAX_RENDERED_PLAYERS,"Native Java skin frame capacity reached; excess players retain default skins");
+    }
+    p.skin_layers_full = skin_layers_full;
     p.published = batch.submissions.len();
     let counts = [
         state.entities.iter().count(),

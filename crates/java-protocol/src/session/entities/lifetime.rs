@@ -10,7 +10,7 @@ pub struct Lifetimes {
 impl Lifetimes {
     pub fn observe(&mut self, packet: &mut Packet) -> Result<(), &'static str> {
         match packet {
-            Packet::Swing { lifetime, id, .. } => {
+            Packet::Swing { lifetime, id, .. } | Packet::Hurt { lifetime, id } => {
                 *lifetime = self.active.get(id).copied().unwrap_or(0);
             }
             Packet::Equipment(packet) => {
@@ -120,5 +120,40 @@ mod swing_tests {
         };
         assert!(owner.accepts(42, next));
         assert_ne!(first, next);
+    }
+}
+
+#[cfg(test)]
+mod hurt_tests {
+    use super::*;
+    #[test]
+    fn hurt_notifications_use_the_socket_lifetime_and_retire_on_removal() {
+        let mut owner = Lifetimes::default();
+        let mut hurt = Packet::Hurt { lifetime: 7, id: 4 };
+        owner.observe(&mut hurt).unwrap();
+        assert!(matches!(hurt, Packet::Hurt { lifetime: 0, .. }));
+        let spawn = || {
+            Packet::Spawn(super::super::Spawn {
+                lifetime: 0,
+                id: 4,
+                uuid: [1; 16],
+                kind: "minecraft:player",
+                position: [0.; 3],
+                velocity: [0.; 3],
+                pitch: 0.,
+                yaw: 0.,
+                head_yaw: 0.,
+                data: 0,
+            })
+        };
+        owner.observe(&mut spawn()).unwrap();
+        owner.observe(&mut hurt).unwrap();
+        assert!(matches!(hurt, Packet::Hurt { lifetime: 1, .. }));
+        owner.observe(&mut Packet::Remove(vec![4])).unwrap();
+        owner.observe(&mut hurt).unwrap();
+        assert!(matches!(hurt, Packet::Hurt { lifetime: 0, .. }));
+        owner.observe(&mut spawn()).unwrap();
+        owner.observe(&mut hurt).unwrap();
+        assert!(matches!(hurt, Packet::Hurt { lifetime: 2, .. }));
     }
 }

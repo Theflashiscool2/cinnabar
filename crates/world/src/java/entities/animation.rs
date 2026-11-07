@@ -79,6 +79,7 @@ impl Sample {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BodyKind {
+    Other,
     Pig,
     Villager,
     Player,

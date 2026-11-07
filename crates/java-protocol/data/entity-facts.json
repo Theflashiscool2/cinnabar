@@ -2051,6 +2051,140 @@
         "index": 20,
         "serializer": 8
       }
+    ],
+    "armor_stand": [
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SHARED_FLAGS_ID",
+        "index": 0,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_AIR_SUPPLY_ID",
+        "index": 1,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME",
+        "index": 2,
+        "serializer": 6
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_CUSTOM_NAME_VISIBLE",
+        "index": 3,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_SILENT",
+        "index": 4,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_NO_GRAVITY",
+        "index": 5,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_POSE",
+        "index": 6,
+        "serializer": 20
+      },
+      {
+        "owner": "net.minecraft.world.entity.Entity",
+        "name": "DATA_TICKS_FROZEN",
+        "index": 7,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_LIVING_ENTITY_FLAGS",
+        "index": 8,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_HEALTH_ID",
+        "index": 9,
+        "serializer": 3
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_PARTICLES",
+        "index": 10,
+        "serializer": 17
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_EFFECT_AMBIENCE_ID",
+        "index": 11,
+        "serializer": 8
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_ARROW_COUNT_ID",
+        "index": 12,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "DATA_STINGER_COUNT_ID",
+        "index": 13,
+        "serializer": 1
+      },
+      {
+        "owner": "net.minecraft.world.entity.LivingEntity",
+        "name": "SLEEPING_POS_ID",
+        "index": 14,
+        "serializer": 11
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_CLIENT_FLAGS",
+        "index": 15,
+        "serializer": 0
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_HEAD_POSE",
+        "index": 16,
+        "serializer": 9
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_BODY_POSE",
+        "index": 17,
+        "serializer": 9
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_LEFT_ARM_POSE",
+        "index": 18,
+        "serializer": 9
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_RIGHT_ARM_POSE",
+        "index": 19,
+        "serializer": 9
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_LEFT_LEG_POSE",
+        "index": 20,
+        "serializer": 9
+      },
+      {
+        "owner": "net.minecraft.world.entity.decoration.ArmorStand",
+        "name": "DATA_RIGHT_LEG_POSE",
+        "index": 21,
+        "serializer": 9
+      }
     ]
   },
   "particles": [

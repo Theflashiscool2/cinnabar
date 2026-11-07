@@ -12,6 +12,9 @@ pub(crate) struct Clock {
     elapsed: Duration,
 }
 impl Clock {
+    pub(super) fn backlog_ticks(&self) -> u128 {
+        self.elapsed.as_nanos() / simulation_clock::TICK_DURATION.as_nanos()
+    }
     pub(super) fn fraction(&self) -> f32 {
         (self.elapsed.as_secs_f32() / simulation_clock::TICK_DURATION.as_secs_f32()).clamp(0., 1.)
     }
@@ -33,8 +36,10 @@ impl Clock {
         self.elapsed -= simulation_clock::TICK_DURATION * ticks;
         world.inventory.cooldowns.advance(u64::from(ticks));
         for _ in 0..ticks {
+            world.entities.tick_presentation();
             world.player_dynamics.tick_effects();
             world.player_visual.swing.tick();
+            world.player_visual.hurt_ticks = world.player_visual.hurt_ticks.saturating_sub(1);
         }
     }
 }
@@ -97,6 +102,73 @@ mod tests {
             world.inventory.cooldowns.client_tick(),
             0,
             "old session backlog must not advance a new player's timers"
+        );
+    }
+}
+
+#[cfg(test)]
+mod remote_tests {
+    use super::*;
+    #[test]
+    fn remote_interpolation_and_hurt_expire_on_world_ticks_without_render_updates() {
+        use world::java::{
+            entities::{Spawn, visual::Visual},
+            player::Motion,
+        };
+        let mut world = client_world::java::WorldState::default();
+        world.begin(7);
+        world.inventory.begin(7, 1);
+        world.entities.begin(7, 1);
+        world
+            .entities
+            .spawn(
+                (7, 1),
+                Spawn {
+                    transport_lifetime: 1,
+                    network_id: 42,
+                    uuid: [1; 16],
+                    kind: "minecraft:pig".into(),
+                    motion: Motion::default(),
+                    head_yaw: 0.,
+                    object_data: 0,
+                    visual: Visual {
+                        hurt_ticks: 10,
+                        ..Default::default()
+                    },
+                    interpolation_interval: Some(3),
+                },
+            )
+            .unwrap();
+        world
+            .entities
+            .update((7, 1), 42, |e| {
+                e.motion.position = [3., 0., 0.];
+                e.presentation
+                    .as_mut()
+                    .unwrap()
+                    .retarget(e.motion.into(), &[])?;
+                Ok(())
+            })
+            .unwrap();
+        let start = Instant::now();
+        let mut clock = Clock::default();
+        clock.service(&mut world, start);
+        for tick in 1..=10 {
+            clock.service(&mut world, start + Duration::from_millis(50 * tick));
+            let e = world.entities.get(42).unwrap();
+            let position = e.presentation.as_ref().unwrap().track.current.position[0];
+            let expected = (tick as f64).min(3.);
+            // Native lerp fractions are f32 even though world positions are f64.
+            assert!((position - expected).abs() <= f64::from(f32::EPSILON) * 3.);
+
+            assert_eq!(e.visual.hurt_ticks, 10 - tick as u8);
+        }
+        assert_eq!(world.inventory.cooldowns.client_tick(), 10);
+        clock.service(&mut world, start + Duration::from_millis(500));
+        assert_eq!(
+            world.inventory.cooldowns.client_tick(),
+            10,
+            "no double tick on frame reclaim"
         );
     }
 }

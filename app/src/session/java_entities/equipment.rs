@@ -85,6 +85,8 @@ pub(super) struct State {
     shared: Arc<(Mutex<Shared>, Condvar)>,
     installed: Option<Output>,
     error: Option<String>,
+    desired_source: Option<(u64, Vec<(Identity, bool)>)>,
+    sequence: u64,
 }
 impl Drop for State {
     fn drop(&mut self) {
@@ -95,14 +97,19 @@ impl Drop for State {
 fn signature(
     e: &world::java::entities::Entity,
     gear: &client_world::java::equipment::Equipment,
+    skins: &super::skins::Players,
 ) -> Signature {
     Signature {
         revision: gear.revision,
-        slim: e
-            .visual
-            .player
-            .as_ref()
-            .is_some_and(|p| p.default_skin.slim),
+        slim: skins.get(e.identity).map_or_else(
+            || {
+                e.visual
+                    .player
+                    .as_ref()
+                    .is_some_and(|p| p.default_skin.slim)
+            },
+            |(_, slim)| slim,
+        ),
         left: e.visual.left_handed,
     }
 }
@@ -122,18 +129,31 @@ impl State {
             shared,
             installed: None,
             error: spawn.err().map(|e| e.to_string()),
+            desired_source: None,
+            sequence: 0,
         }
     }
     pub fn matches(&self, catalog: &Arc<Catalog>) -> bool {
         Arc::ptr_eq(&self.catalog, catalog)
     }
-    pub fn update(&mut self, state: &client_world::java::WorldState, scene: &mut ActorRenderScene) {
+    pub fn update(
+        &mut self,
+        state: &client_world::java::WorldState,
+        scene: &mut ActorRenderScene,
+        skins: &super::skins::Players,
+    ) {
         if self.error.is_some() {
             return;
         }
         let mut work = self.shared.0.lock().unwrap();
-        let revision = state.equipment.revision();
-        if work.desired != Some(revision) {
+        let source = (state.equipment.revision(), skins.model_key());
+        if self.desired_source.as_ref() != Some(&source) {
+            let Some(revision) = self.sequence.checked_add(1) else {
+                self.error = Some("Native equipment publication exhausted".into());
+                return;
+            };
+            self.sequence = revision;
+            self.desired_source = Some(source);
             let players = state
                 .entities
                 .iter()
@@ -142,7 +162,7 @@ impl State {
                     let gear = state.equipment.get(e.identity)?;
                     Some(Player {
                         id: e.identity,
-                        signature: signature(e, gear),
+                        signature: signature(e, gear, skins),
                         slots: gear.slots.clone(),
                     })
                 })
@@ -200,12 +220,17 @@ impl State {
         &self,
         e: &world::java::entities::Entity,
         gear: &client_world::java::equipment::Equipment,
+        skins: &super::skins::Players,
     ) -> Option<&Entry> {
         self.installed
             .as_ref()?
             .entries
             .get(&e.identity)
-            .filter(|v| !v.ground && v.signature.usable(signature(e, gear), self.error.is_some()))
+            .filter(|v| {
+                !v.ground
+                    && v.signature
+                        .usable(signature(e, gear, skins), self.error.is_some())
+            })
     }
     pub fn ground_entry(&self, id: Identity, revision: u64) -> Option<&Entry> {
         self.installed

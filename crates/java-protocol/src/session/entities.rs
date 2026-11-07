@@ -46,6 +46,11 @@ pub enum Position {
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
     Spawn(Spawn),
+    /// Native visual notification, never an attack/damage acknowledgement.
+    Hurt {
+        lifetime: u64,
+        id: i32,
+    },
     Equipment(equipment::Packet),
     Swing {
         lifetime: u64,
@@ -110,6 +115,12 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
             kind: r.var()?,
             duration: r.var()?,
         },
+        "ClientboundHurtAnimationPacket" => {
+            let id = r.var()?;
+            // Native LivingEntity.animateHurt ignores the wire yaw in this release.
+            let _yaw_bits = r.i32()?;
+            Packet::Hurt { lifetime: 0, id }
+        }
         "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
         "ClientboundEntityEventPacket" => {
             let mut probe = Reader(r.0);

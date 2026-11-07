@@ -1,6 +1,9 @@
 //! Native entity appearance facts; no wire metadata IDs reach render code.
 use std::sync::Arc;
 
+/// Pinned LivingEntity.animateHurt duration, measured in native visual ticks.
+pub const HURT_TICKS: u8 = 10;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PigModel {
     Normal,
@@ -40,6 +43,11 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
+    pub hurt_ticks: u8,
+    pub custom_name: Option<Arc<crate::NbtValue>>,
+    pub custom_name_visible: bool,
+    pub name_height: f32,
+    pub armor_stand_flags: Option<u8>,
     pub swing: super::animation::swing::State,
     pub effects: std::collections::BTreeMap<String, super::super::dynamics::Effect>,
     /// LivingEntity use/offhand/spin bits, admitted only from native authoritative updates.
@@ -64,6 +72,11 @@ impl Default for Visual {
         // native defaults, not claims that an omitted required variant was received.
         Self {
             flags: 0,
+            hurt_ticks: 0,
+            custom_name: None,
+            custom_name_visible: false,
+            name_height: 0.,
+            armor_stand_flags: None,
             swing: Default::default(),
             effects: Default::default(),
             use_flags: 0,

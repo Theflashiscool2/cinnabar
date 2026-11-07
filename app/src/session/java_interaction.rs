@@ -432,6 +432,15 @@ fn advance_use(
     }
     let steps = item::steps(state, target);
     if phase.pressed
+        && steps.is_ok()
+        && state
+            .inventory
+            .slot(0, inventory::java::OFFHAND_MENU_SLOT)
+            .is_none()
+    {
+        bevy::log::debug!(target:"java_session","Native main-hand use retained; offhand awaits authoritative slot data");
+    }
+    if phase.pressed
         && let Err(error) = steps
     {
         bevy::log::warn!(target:"java_session",error,"Native item use rejected before transport");

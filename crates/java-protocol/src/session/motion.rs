@@ -243,7 +243,18 @@ impl Connection {
                 self.send("ServerboundPunchPacket", &[]).await?;
                 tracing::debug!(target: "java_session", entity, lifetime, dimension_epoch, "Native entity attack written; awaiting server authority");
             }
-            Command::Attack { .. } => {}
+            Command::Attack {
+                dimension_epoch,
+                correction_sequence,
+                entity,
+                lifetime,
+            } => {
+                tracing::debug!(target:"java_session",dimension_epoch,correction_sequence,entity,lifetime,
+                    current_epoch=self.dimension_epoch,current_correction=self.correction_sequence,
+                    teleport_pending=self.pending_teleport.is_some(),rotation_pending=self.pending_rotation.is_some(),
+                    loaded=self.loaded_epoch==Some(dimension_epoch),dead=self.dead,lifetime_current=self.entity_lifetimes.accepts(entity,lifetime),
+                    "Native entity attack retired before write");
+            }
             Command::Drop {
                 dimension_epoch,
                 correction_sequence,

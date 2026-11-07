@@ -59,8 +59,8 @@
   },
   "entity_facts_report": {
     "path": "data/entity-facts.json",
-    "bytes": 1376036,
-    "sha256": "31921b62d162b7374e24a65538c51b0a78f2b8601801b94109b512672e4ad83c",
+    "bytes": 1379581,
+    "sha256": "ed5c77e5fedf77b9058953be474e654e3e3ca07021f7e796a382bca4ae1337f9",
     "generator": "crates/asset-compiler/src/bin/assetc/java/ExportEntities.java"
   },
   "metadata_schema": {

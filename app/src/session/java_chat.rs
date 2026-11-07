@@ -59,11 +59,14 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
     }
 
     if let Some((sequence, written)) = state.chat.written {
-        if ui.acknowledge_chat_send(state.generation(), sequence) && !written {
-            ui.push_local_chat_line(
-                "Java chat input was not sent; see the server or connection diagnostic.".into(),
-                now,
-            );
+        if ui.acknowledge_chat_send(state.generation(), sequence) {
+            bevy::log::debug!(target:"java_session",sequence,written,"Native Java chat write receipt");
+            if !written {
+                ui.push_local_chat_line(
+                    "Java chat input was not sent; see the server or connection diagnostic.".into(),
+                    now,
+                );
+            }
         }
     }
     if ui.in_flight_chat_sends() != 0 || state.phase != Some(Phase::Play) {
@@ -102,6 +105,7 @@ pub(crate) fn flush(controller: &mut SessionController, ui: &mut UiRuntime, now:
     };
     match java.command(intent) {
         Ok(()) => {
+            bevy::log::debug!(target:"java_session",sequence=request.sequence,command=request.message.starts_with('/'),utf16_units=request.message.encode_utf16().count(),"Native Java chat input queued");
             ui.mark_chat_send_enqueued(request.session, request.sequence);
         }
         Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {}

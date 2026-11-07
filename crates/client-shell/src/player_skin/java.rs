@@ -14,6 +14,10 @@ pub struct Texture(String);
 impl Texture {
     /// Extracts the public SKIN resource. Unknown JSON fields are not interpreted as actions.
     pub fn from_property(encoded: &str) -> Result<Option<Self>, String> {
+        Self::appearance(encoded).map(|skin| skin.map(|(texture, _)| texture))
+    }
+    /// Public texture and native arm model; absent/unknown models select wide arms.
+    pub fn appearance(encoded: &str) -> Result<Option<(Self, bool)>, String> {
         if encoded.len() > PROPERTY_BUDGET {
             return Err("Java skin property exceeds processing budget".into());
         }
@@ -38,7 +42,12 @@ impl Texture {
             .get("url")
             .and_then(serde_json::Value::as_str)
             .ok_or("Java skin URL missing")?;
-        Self::from_url(url).map(Some)
+        let slim = skin
+            .get("metadata")
+            .and_then(|m| m.get("model"))
+            .and_then(serde_json::Value::as_str)
+            == Some("slim");
+        Self::from_url(url).map(|texture| Some((texture, slim)))
     }
     fn from_url(url: &str) -> Result<Self, String> {
         let mut url = reqwest::Url::parse(url).map_err(|_| "invalid Java skin URL")?;
@@ -127,7 +136,7 @@ impl Downloader {
             bytes.extend_from_slice(&chunk);
         }
         check()?;
-        skin::decode(&bytes).map_err(|_| "invalid Java head skin image".into())
+        player_image(&bytes)
     }
 }
 #[cfg(test)]
@@ -196,3 +205,61 @@ pub mod pool;
 pub mod cache;
 
 pub mod profiles;
+
+/// Reuses the guarded head decoder and expands native whole-player body regions.
+fn player_image(bytes: &[u8]) -> Result<Image, String> {
+    let mut image = skin::decode(bytes).map_err(|_| "invalid Java skin image")?;
+    if u32::from_be_bytes(bytes[20..24].try_into().unwrap()) == 32 {
+        image.rgba = render_api::expand_legacy_skin_rgba8(&image.rgba[..64 * 32 * 4], 64);
+    }
+    for (x0, y0, x1, y1) in [(0, 16, 64, 32), (16, 48, 48, 64)] {
+        for y in y0..y1 {
+            for x in x0..x1 {
+                image.rgba[(y * 64 + x) * 4 + 3] = 255;
+            }
+        }
+    }
+    Ok(image)
+}
+
+#[cfg(test)]
+mod player_tests {
+    use super::*;
+    fn png(height: u32) -> Vec<u8> {
+        let mut out = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            64,
+            height,
+            image::Rgba([57, 99, 133, 12]),
+        ))
+        .write_to(&mut out, image::ImageFormat::Png)
+        .unwrap();
+        out.into_inner()
+    }
+    #[test]
+    fn whole_body_alpha_and_legacy_limbs_are_prepared_without_losing_hat_alpha() {
+        for height in [32, 64] {
+            let image = player_image(&png(height)).unwrap();
+            assert_eq!(
+                (image.width, image.height, image.rgba.len()),
+                (64, 64, 64 * 64 * 4)
+            );
+            for (x, y) in [(8, 8), (8, 24), (24, 56), (40, 56)] {
+                assert_eq!(image.rgba[(y * 64 + x) * 4 + 3], 255);
+            }
+            assert_eq!(image.rgba[(8 * 64 + 40) * 4 + 3], 12);
+            assert_eq!(&image.rgba[(56 * 64 + 24) * 4..][..3], &[57, 99, 133]);
+        }
+    }
+    #[test]
+    fn property_selects_slim_without_changing_public_texture_identity() {
+        let encoded = |model| {
+            STANDARD.encode(serde_json::json!({"textures":{"SKIN":{"url":"https://textures.minecraft.net/texture/fixture","metadata":{"model":model}}}}).to_string())
+        };
+        let (a, slim) = Texture::appearance(&encoded("slim")).unwrap().unwrap();
+        let (b, wide) = Texture::appearance(&encoded("default")).unwrap().unwrap();
+        assert!(slim);
+        assert!(!wide);
+        assert_eq!(a, b);
+    }
+}

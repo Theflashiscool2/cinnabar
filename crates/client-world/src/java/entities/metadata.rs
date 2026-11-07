@@ -161,6 +161,15 @@ fn apply(
                 item = Some(super::super::inventory::stack(stack)?)
             }
             ("DATA_SHARED_FLAGS_ID", Value::Byte(flags)) => visual.flags = flags,
+            ("DATA_CUSTOM_NAME", Value::Component(name)) => {
+                visual.custom_name = name.map(super::super::nbt::convert).map(Arc::new)
+            }
+            ("DATA_CUSTOM_NAME_VISIBLE", Value::Bool(visible)) => {
+                visual.custom_name_visible = visible
+            }
+            ("DATA_CLIENT_FLAGS", Value::Byte(flags)) if visual.armor_stand_flags.is_some() => {
+                visual.armor_stand_flags = Some(flags)
+            }
             ("DATA_LIVING_ENTITY_FLAGS", Value::Byte(flags)) => visual.observe_use(flags)?,
             ("DATA_POSE", Value::Int(pose)) => {
                 visual.pose = usize::try_from(pose)
@@ -234,6 +243,7 @@ fn schema(kind: &str) -> Option<&'static [target::MetadataSpec]> {
         target::ENTITY_PLAYER => target::METADATA_PLAYER,
         target::ENTITY_ITEM => target::METADATA_ITEM,
         target::ENTITY_VILLAGER => target::METADATA_VILLAGER,
+        target::ENTITY_ARMOR_STAND => target::METADATA_ARMOR_STAND,
         _ => return None,
     })
 }

@@ -45,7 +45,7 @@ impl Cache {
     pub fn scope(&mut self, scope: Option<(u64, u64)>) {
         if self.scope != scope {
             self.entries
-                .retain(|_, e| !matches!(e.state, State::Pending(_)));
+                .retain(|_, e| matches!(e.state, State::Ready { .. }));
             self.scope = scope;
         }
     }
@@ -133,6 +133,14 @@ impl Cache {
             }
         }
         hash.finalize().into()
+    }
+    /// Borrows public pixels only while this caller owns an active scope.
+    pub fn image(&self, texture: &Texture) -> Option<&Arc<Image>> {
+        self.scope?;
+        match &self.entries.get(texture)?.state {
+            State::Ready { image, .. } => Some(image),
+            _ => None,
+        }
     }
     pub fn failure(&self, texture: &Texture) -> Option<&str> {
         if !self.entries.contains_key(texture) && self.entries.len() >= CAPACITY {
@@ -224,5 +232,49 @@ mod tests {
         assert_eq!(cache.failure(&t), Some("controlled failure"));
         cache.update((1, 1), LIFETIME + Duration::from_secs(1), &BTreeSet::new());
         assert!(cache.failure(&t).is_none());
+    }
+}
+
+#[cfg(test)]
+mod retry_tests {
+    use super::*;
+    #[test]
+    fn new_scope_retries_failed_downloads_but_retains_public_ready_pixels() {
+        let make = |name: &str| {
+            use base64::{Engine, engine::general_purpose::STANDARD};
+            Texture::from_property(&STANDARD.encode(serde_json::json!({"textures":{"SKIN":{"url":format!("https://textures.minecraft.net/texture/{name}")}}}).to_string())).unwrap().unwrap()
+        };
+        let good = make("ready");
+        let bad = make("failed");
+        let mut cache = Cache::default();
+        cache.scope(Some((7, 1)));
+        cache.entries.insert(
+            good.clone(),
+            Entry {
+                touched: Duration::ZERO,
+                state: State::Ready {
+                    image: Arc::new(Image {
+                        width: 64,
+                        height: 64,
+                        rgba: vec![255; PIXEL_BYTES],
+                    }),
+                    digest: [0; 32],
+                },
+            },
+        );
+        cache.entries.insert(
+            bad.clone(),
+            Entry {
+                touched: Duration::ZERO,
+                state: State::Failed("temporary HTTP failure".into()),
+            },
+        );
+        assert!(cache.image(&good).is_some());
+        assert!(cache.failure(&bad).is_some());
+        cache.scope(None);
+        assert!(cache.image(&good).is_none());
+        cache.scope(Some((7, 2)));
+        assert!(cache.image(&good).is_some());
+        assert!(!cache.entries.contains_key(&bad));
     }
 }

@@ -150,9 +150,14 @@ pub(super) fn steps(
     };
     let mut steps = Vec::with_capacity(4);
     for hand in [Hand::Main, Hand::Off] {
-        let slot = hand
-            .held(&state.inventory)
-            .ok_or("Native use hand inventory is not known")?;
+        let Some(slot) = hand.held(&state.inventory) else {
+            // A partial server inventory cannot erase resolved main-hand actions.
+            // Never invent an empty offhand or transmit use with an unknown stack.
+            if hand == Hand::Off {
+                break;
+            }
+            return Err("Native use hand inventory is not known");
+        };
         if let Some(target) = entity_target {
             if !target.current(state) {
                 return Ok(Vec::new());
@@ -204,7 +209,7 @@ mod tests {
         assert_eq!(duration("minecraft:bread"), 32);
         assert_eq!(duration("minecraft:bow"), 72000);
     }
-    fn use_state(
+    pub(super) fn use_state(
         main: Option<&str>,
         off: Option<&str>,
         food: i32,
@@ -398,5 +403,98 @@ mod tests {
         assert_eq!(c.entity_uses_queued, 2);
         s.entities.remove((7, 1), &[42]).unwrap();
         assert!(super::steps(&s, Some(target)).unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod prefix_tests {
+    use gameplay::java::{
+        actions::Target,
+        interaction::{Controller, Kind},
+        item_use::plan::Hand,
+    };
+    #[test]
+    fn omitted_offhand_cannot_erase_a_known_main_hand_npc_interaction() {
+        use world::java::{
+            entities::{Spawn, visual::Visual},
+            player::Motion,
+        };
+        let mut s = super::tests::use_state(Some("minecraft:iron_sword"), None, 20);
+        let held = s.inventory.held().unwrap().clone();
+        s.inventory.begin(7, 1);
+        let mut slots = vec![None; 45];
+        slots[36] = held;
+        s.inventory
+            .admit(
+                7,
+                1,
+                inventory::java::Update::Content {
+                    container: 0,
+                    state: 1,
+                    slots,
+                    carried: None,
+                },
+            )
+            .unwrap();
+        assert!(
+            s.inventory
+                .slot(0, inventory::java::OFFHAND_MENU_SLOT)
+                .is_none()
+        );
+        s.entities.begin(7, 1);
+        s.entities
+            .spawn(
+                (7, 1),
+                Spawn {
+                    transport_lifetime: 8,
+                    network_id: 42,
+                    uuid: [1; 16],
+                    kind: java_protocol::target::ENTITY_PLAYER.into(),
+                    motion: Motion::default(),
+                    head_yaw: 0.,
+                    object_data: 0,
+                    visual: Visual::default(),
+                    interpolation_interval: Some(3),
+                },
+            )
+            .unwrap();
+        let target = Target::Entity {
+            network_id: 42,
+            identity: s.entities.get(42).unwrap().identity,
+            lifetime: 8,
+            location: [0., 1.5, 0.],
+            rotation: [0.; 2],
+            secondary: false,
+        };
+        let steps = super::steps(&s, Some(target)).unwrap();
+        let mut c = Controller::default();
+        c.begin_frame(
+            &s,
+            std::time::Duration::ZERO,
+            Some(semantic_input::identity::InputAuthorityGeneration::INITIAL),
+            false,
+        );
+        c.use_chain(
+            &s,
+            semantic_input::ActionPhase {
+                pressed: true,
+                held: true,
+                released: false,
+            },
+            Ok(steps),
+        );
+        for kind in [Kind::UseEntity, Kind::UseAir] {
+            let request = c.pending().unwrap();
+            assert_eq!((request.kind, request.hand), (kind, Hand::Main));
+            c.queued();
+        }
+        assert!(c.pending().is_none());
+        assert!(
+            s.inventory
+                .slot(0, inventory::java::OFFHAND_MENU_SLOT)
+                .is_none()
+        );
+        s.inventory.begin(7, 1);
+        assert!(super::steps(&s, Some(target)).is_err());
     }
 }

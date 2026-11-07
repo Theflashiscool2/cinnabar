@@ -24,6 +24,21 @@ pub(super) fn admit(
         .world
         .entity_id;
     match packet {
+        wire::Packet::Hurt { lifetime, id } => {
+            if id == own {
+                state.player_visual.hurt_ticks = domain::visual::HURT_TICKS;
+                return Ok(true);
+            }
+            if state.entities.get(id).is_none_or(|e| {
+                lifetime == 0 || e.transport_lifetime != lifetime || !metadata::living(&e.kind)
+            }) {
+                return Ok(false);
+            }
+            state.entities.update(scope, id, |e| {
+                e.visual.hurt_ticks = domain::visual::HURT_TICKS;
+                Ok(())
+            })
+        }
         wire::Packet::Swing {
             lifetime,
             id,
@@ -85,7 +100,10 @@ pub(super) fn admit(
             } else {
                 None
             };
-            let interpolated = pig.is_some() || player.is_some() || villager.is_some();
+            let interpolated = pig.is_some()
+                || player.is_some()
+                || villager.is_some()
+                || s.kind == java_protocol::target::ENTITY_ARMOR_STAND;
             let previous = state.entities.get(s.id).map(|e| e.identity);
             let admitted = state.entities.spawn(
                 scope,
@@ -103,6 +121,14 @@ pub(super) fn admit(
                     head_yaw: s.head_yaw,
                     object_data: s.data,
                     visual: domain::visual::Visual {
+                        name_height: java_protocol::target::ENTITY_SPECS
+                            [java_protocol::target::ENTITY_TYPES
+                                .iter()
+                                .position(|n| *n == s.kind)
+                                .expect("decoded entity type")]
+                        .dimensions[1],
+                        armor_stand_flags: (s.kind == java_protocol::target::ENTITY_ARMOR_STAND)
+                            .then_some(0),
                         pig,
                         villager,
                         player,

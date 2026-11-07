@@ -159,3 +159,67 @@ fn native_crouching_attachment_does_not_receive_a_second_legacy_sneak_drop() {
     assert!(!tags[0].sneaking); // The private shared flag controls the older camera-space drop.
     assert_eq!(tags[0].text_alpha, 0.5);
 }
+
+#[test]
+fn invisible_marker_hologram_keeps_authoritative_name_and_retires_updates() {
+    let mut e = Entities::default();
+    e.begin(7, 1);
+    e.spawn(
+        (7, 1),
+        Spawn {
+            transport_lifetime: 1,
+            network_id: 10,
+            uuid: [1; 16],
+            kind: "minecraft:armor_stand".into(),
+            motion: Motion {
+                position: [0., 0., -5.],
+                ..Default::default()
+            },
+            head_yaw: 0.,
+            object_data: 0,
+            visual: Visual {
+                flags: 0x20,
+                armor_stand_flags: Some(16),
+                name_height: 1.975,
+                custom_name_visible: true,
+                custom_name: Some(Arc::new(world::NbtValue::String("SHOP".into()))),
+                ..Default::default()
+            },
+            interpolation_interval: Some(3),
+        },
+    )
+    .unwrap();
+    let mut c = Cache::default();
+    let roster = Roster::new(7);
+    let tags = c.project_players(&e, &roster, "Viewer", None, view(), 0.);
+    assert_eq!(tags.len(), 1);
+    assert_eq!(tags[0].lines[0].as_ref(), "§rSHOP");
+    assert_eq!(
+        tags[0].position,
+        glam::Vec3::new(0., super::super::HEAD_CLEARANCE, -5.)
+    );
+    e.update((7, 1), 10, |e| {
+        e.visual.custom_name = Some(Arc::new(world::NbtValue::String("UPGRADES".into())));
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(
+        c.project_players(&e, &roster, "Viewer", None, view(), 0.)[0].lines[0].as_ref(),
+        "§rUPGRADES"
+    );
+    e.update((7, 1), 10, |e| {
+        e.visual.custom_name_visible = false;
+        Ok(())
+    })
+    .unwrap();
+    assert!(
+        c.project_players(&e, &roster, "Viewer", None, view(), 0.)
+            .is_empty()
+    );
+    assert!(c.custom.is_empty());
+    e.begin(7, 2);
+    assert!(
+        c.project_players(&e, &roster, "Viewer", None, view(), 0.)
+            .is_empty()
+    );
+}
