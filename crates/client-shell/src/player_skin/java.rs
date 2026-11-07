@@ -3,6 +3,8 @@ use assets::registry::java::{skull::skin, textures::Image};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+#[cfg(feature = "developer-control")]
+mod fixtures;
 
 /// Operational budgets return explicit errors; they do not establish complete resource parity.
 pub(crate) const TEXTURE_HOST: &str = "textures.minecraft.net";
@@ -108,6 +110,10 @@ impl Downloader {
             }
         };
         check()?;
+        #[cfg(feature = "developer-control")]
+        if let Some(image) = fixtures::head(texture, cancelled)? {
+            return Ok(image);
+        }
         let mut response = self
             .0
             .get(texture.url())
