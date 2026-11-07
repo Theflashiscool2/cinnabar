@@ -134,6 +134,10 @@ impl Presentation {
             walk: Walk::default(),
         })
     }
+    /// LivingEntity.handleDamageEvent sets the visual walk impulse without moving the entity.
+    pub fn damage_feedback(&mut self) {
+        self.walk.speed = 1.5;
+    }
     pub fn retarget(&mut self, pose: Pose, path: &[PositionStep]) -> Result<(), &'static str> {
         self.track.retarget(pose, path)
     }

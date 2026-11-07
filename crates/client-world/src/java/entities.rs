@@ -23,8 +23,9 @@ pub(super) fn admit(
         .ok_or("Java entity before player identity")?
         .world
         .entity_id;
+    let damage_event = matches!(&packet, wire::Packet::Damage { .. });
     match packet {
-        wire::Packet::Hurt { lifetime, id } => {
+        wire::Packet::Hurt { lifetime, id } | wire::Packet::Damage { lifetime, id, .. } => {
             if id == own {
                 state.player_visual.hurt_ticks = domain::visual::HURT_TICKS;
                 return Ok(true);
@@ -36,6 +37,9 @@ pub(super) fn admit(
             }
             state.entities.update(scope, id, |e| {
                 e.visual.hurt_ticks = domain::visual::HURT_TICKS;
+                if damage_event && let Some(presentation) = &mut e.presentation {
+                    presentation.damage_feedback();
+                }
                 Ok(())
             })
         }

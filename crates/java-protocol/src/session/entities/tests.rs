@@ -228,3 +228,90 @@ fn native_hurt_notification_decodes_without_fabricating_damage() {
     );
     assert!(packet("ClientboundHurtAnimationPacket", &[1, 0x7f, 0xc0, 0, 0]).is_ok());
 }
+
+#[test]
+fn native_damage_event_preserves_registry_and_optional_source_fields() {
+    // Official26.3 STREAM_CODEC output from a DamageType holder registry at ID0.
+    let bytes = [
+        0xac, 2, 0, 10, 11, 1, 0x3f, 0xf0, 0, 0, 0, 0, 0, 0, 0xc0, 0x50, 0, 0, 0, 0, 0, 0, 0x3f,
+        0xe0, 0, 0, 0, 0, 0, 0,
+    ];
+    let Packet::Damage {
+        lifetime,
+        id,
+        source_type,
+        source_cause,
+        source_direct,
+        source_position,
+    } = packet("ClientboundDamageEventPacket", &bytes).unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(
+        (lifetime, id, source_type, source_cause, source_direct),
+        (0, 300, 0, 9, 10)
+    );
+    assert_eq!(source_position, Some([1., -64., 0.5]));
+    for end in 0..bytes.len() {
+        assert!(packet("ClientboundDamageEventPacket", &bytes[..end]).is_err());
+    }
+    let mut trailing = bytes.to_vec();
+    trailing.push(0);
+    assert!(packet("ClientboundDamageEventPacket", &trailing).is_err());
+    let Packet::Damage {
+        source_cause,
+        source_direct,
+        source_position,
+        ..
+    } = packet("ClientboundDamageEventPacket", &[0xac, 2, 0, 0, 0, 0]).unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(
+        (source_cause, source_direct, source_position),
+        (-1, -1, None)
+    );
+    let mut nonfinite = bytes;
+    nonfinite[6..14].copy_from_slice(&f64::NAN.to_bits().to_be_bytes());
+    let Packet::Damage {
+        source_position, ..
+    } = packet("ClientboundDamageEventPacket", &nonfinite).unwrap()
+    else {
+        panic!()
+    };
+    assert!(
+        source_position.unwrap()[0].is_nan(),
+        "native optional source coordinates must not be confused with entity poses"
+    );
+}
+
+#[test]
+fn damage_event_tokens_retire_when_socket_entity_ids_are_reused() {
+    let mut lifetimes = lifetime::Lifetimes::default();
+    let mut damage = packet("ClientboundDamageEventPacket", &[0xac, 2, 0, 0, 0, 0]).unwrap();
+    lifetimes.observe(&mut damage).unwrap();
+    assert!(matches!(damage, Packet::Damage { lifetime: 0, .. }));
+    let spawn = || {
+        Packet::Spawn(Spawn {
+            lifetime: 0,
+            id: 300,
+            uuid: [1; 16],
+            kind: "minecraft:pig",
+            position: [0.; 3],
+            velocity: [0.; 3],
+            pitch: 0.,
+            yaw: 0.,
+            head_yaw: 0.,
+            data: 0,
+        })
+    };
+    lifetimes.observe(&mut spawn()).unwrap();
+    lifetimes.observe(&mut damage).unwrap();
+    assert!(matches!(damage, Packet::Damage { lifetime: 1, .. }));
+    lifetimes.observe(&mut Packet::Remove(vec![300])).unwrap();
+    lifetimes.observe(&mut damage).unwrap();
+    assert!(matches!(damage, Packet::Damage { lifetime: 0, .. }));
+    lifetimes.observe(&mut spawn()).unwrap();
+    lifetimes.observe(&mut damage).unwrap();
+    assert!(matches!(damage, Packet::Damage { lifetime: 2, .. }));
+}

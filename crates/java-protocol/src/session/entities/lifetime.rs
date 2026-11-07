@@ -10,7 +10,9 @@ pub struct Lifetimes {
 impl Lifetimes {
     pub fn observe(&mut self, packet: &mut Packet) -> Result<(), &'static str> {
         match packet {
-            Packet::Swing { lifetime, id, .. } | Packet::Hurt { lifetime, id } => {
+            Packet::Swing { lifetime, id, .. }
+            | Packet::Hurt { lifetime, id }
+            | Packet::Damage { lifetime, id, .. } => {
                 *lifetime = self.active.get(id).copied().unwrap_or(0);
             }
             Packet::Equipment(packet) => {

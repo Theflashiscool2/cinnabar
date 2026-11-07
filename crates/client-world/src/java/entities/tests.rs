@@ -646,3 +646,45 @@ fn server_hurt_feedback_is_visual_only_lifetime_fenced_and_expires() {
     assert!(!s.admit(event(1, hurt(1))));
     assert!(s.admit(event(1, hurt(2))));
 }
+
+#[test]
+fn damage_event_flashes_and_impulses_walk_but_never_changes_health_or_pose() {
+    let mut s = state();
+    assert!(s.admit(event(1, spawn())));
+    s.entities
+        .update((7, 1), 99, |e| {
+            e.visual.health = Some(20.);
+            Ok(())
+        })
+        .unwrap();
+    let damage = |lifetime| wire::Packet::Damage {
+        lifetime,
+        id: 99,
+        source_type: 0,
+        source_cause: -1,
+        source_direct: -1,
+        source_position: Some([f64::NAN, 0., 0.]),
+    };
+    assert!(!s.admit(event(1, damage(2))));
+    assert!(!s.admit(event(9, damage(1))));
+    let before = s.entities.get(99).unwrap().motion;
+    assert!(s.admit(event(1, damage(1))));
+    let e = s.entities.get(99).unwrap();
+    assert_eq!(e.visual.hurt_ticks, 10);
+    assert_eq!(e.visual.health, Some(20.));
+    assert_eq!(e.motion, before);
+    assert_eq!(e.presentation.as_ref().unwrap().sample(1.).walk_speed, 1.);
+    for _ in 0..10 {
+        s.entities.tick_presentation();
+    }
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
+    assert!(s.admit(event(1, wire::Packet::Remove(vec![99]))));
+    let wire::Packet::Spawn(mut replacement) = spawn() else {
+        unreachable!()
+    };
+    replacement.lifetime = 2;
+    assert!(s.admit(event(1, wire::Packet::Spawn(replacement))));
+    assert!(!s.admit(event(1, damage(1))));
+    assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
+    assert!(s.admit(event(1, damage(2))));
+}

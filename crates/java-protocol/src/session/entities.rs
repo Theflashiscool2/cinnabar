@@ -51,6 +51,15 @@ pub enum Packet {
         lifetime: u64,
         id: i32,
     },
+    /// Damage source observation; consumers must not infer a health delta or attack success.
+    Damage {
+        lifetime: u64,
+        id: i32,
+        source_type: i32,
+        source_cause: i32,
+        source_direct: i32,
+        source_position: Option<[f64; 3]>,
+    },
     Equipment(equipment::Packet),
     Swing {
         lifetime: u64,
@@ -120,6 +129,30 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
             // Native LivingEntity.animateHurt ignores the wire yaw in this release.
             let _yaw_bits = r.i32()?;
             Packet::Hurt { lifetime: 0, id }
+        }
+        "ClientboundDamageEventPacket" => {
+            let id = r.var()?;
+            let source_type = r.var()?; // DamageType.STREAM_CODEC is a registry holder ID.
+            let source_cause = r.var()?.wrapping_sub(1);
+            let source_direct = r.var()?.wrapping_sub(1);
+            let source_position = if r.bool()? {
+                let mut position = [0.; 3];
+                for value in &mut position {
+                    // Native Vec3 reads raw doubles. This observation never becomes a pose.
+                    *value = f64::from_bits(r.i64()? as u64);
+                }
+                Some(position)
+            } else {
+                None
+            };
+            Packet::Damage {
+                lifetime: 0,
+                id,
+                source_type,
+                source_cause,
+                source_direct,
+                source_position,
+            }
         }
         "ClientboundSetEntityDataPacket" => Packet::Metadata(metadata::decode(r)?),
         "ClientboundEntityEventPacket" => {
