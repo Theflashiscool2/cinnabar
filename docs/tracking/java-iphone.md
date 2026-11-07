@@ -4,7 +4,7 @@ The recoverable branch includes native Java networking and earlier Linux fixture
 Missing unpublished work from the previous execution environment is not assumed to
 exist. The official iOS host/Metal renderer/touch controls and packaging are reused.
 
-## Required playable flow (current evidence, 2026-11-06)
+## Required playable flow (current evidence, 2026-11-07)
 
 | Step | Current implementation / evidence | Remaining implementation or acceptance | External dependency |
 | --- | --- | --- | --- |
@@ -13,10 +13,18 @@ exist. The official iOS host/Metal renderer/touch controls and packaging are reu
 | 3 Authenticate/persist securely | Existing approved public-client flow and iOS Keychain; owner login passed | Refresh/expiry/multi-account device acceptance | Legitimate interactive account |
 | 4 Controlled online server | Native encryption/session auth retained | Agent online-live acceptance pending | Account and authorized online infrastructure |
 | 5 Hypixel lobby | Owner Mac lobby reached; protocol777 preserved | Repeated backend handoff and iPhone lobby qualification | Legitimate account/user-directed test |
-| 6 World/players/items/server UI | Native rendering/roster/inventory/sidebar; Linux offline evidence | Native ordinary/special inventory icons now inspected in Linux vanilla; idle held items and remote humanoid armor/equipment now inspected offline; dynamic context, custom skins/non-idle poses and full server UI remain incomplete | Independent implementation available |
+| 6 World/players/items/server UI | Native rendering/roster/inventory/sidebar; Linux offline evidence | Native ordinary/special inventory icons now inspected in Linux vanilla; idle held items and remote humanoid armor/equipment now inspected offline; controlled standard/slim/legacy skin fixtures and invisible-stand labels are inspected; public skin delivery, dynamic context and full server UI remain unqualified | Independent implementation available |
 | 7 Touch gameplay/menus/chat | Existing touch and semantic actions retained | Full touch action/menu/text and authenticated signed-chat acceptance | Device for acceptance; implementation independent |
 | 8 Play complete Bed Wars | Some movement, inventory, block interaction and melee exist | Controlled native shop/mine/place/use/two-client combat/death/respawn/world/reconnect loop passed; complete real Bed Wars rules/shop/varied combat and mode acceptance remain incomplete | Public matchmaking stays user-directed |
 | 9 Reconnect/restart | Controlled offline reconnect evidence; secure persistence implemented | Authenticated/iPhone restart and backend cleanup acceptance | Account/device for acceptance |
+
+Reconstructed-source Linux acceptance additionally verifies ordinary wool placement
+with its hand gesture, authoritative consumption, a chunk boundary and border denial;
+server-driven damage flashes with measured health loss; three local-transport skin
+fixtures and holograms; source/destination HUD replacement; and dead join, respawn,
+movement and reconnect. Local skin transport and headless counterparts do not prove
+public texture delivery or multi-user/Hypixel acceptance. Shared actor/input regression
+checks pass; the entire application/MCP suite has not been rerun on this revision.
 
 This is the finite primary target. No row is qualified by ping, a decoder, upstream
 footage or a unit test alone. Terrain/weather cosmetics are deferred unless blocking it.

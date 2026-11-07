@@ -207,6 +207,18 @@ impl Connection {
                 continue;
             }
 
+            if let Some(packet) = border::decode(name, &mut r).map_err(packet_error)? {
+                r.finish().map_err(packet_error)?;
+                if !self.bootstrapped {
+                    return Err(ProtocolError::Invalid("border before Java world login").into());
+                }
+                self.emit(Event::Border {
+                    dimension_epoch: self.dimension_epoch,
+                    packet,
+                })
+                .await?;
+                continue;
+            }
             if let Some(packet) = inventory::decode(name, &mut r).map_err(packet_error)? {
                 r.finish().map_err(packet_error)?;
                 if !self.bootstrapped {
@@ -492,7 +504,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundAddTransientBlockPacket",
     "ClientboundGameRuleValuesPacket",
     "ClientboundGameTestHighlightPosPacket",
-    "ClientboundInitializeBorderPacket",
     "ClientboundLevelEventPacket",
     "ClientboundLevelParticlesPacket",
     "ClientboundLowDiskSpaceWarningPacket",
@@ -507,11 +518,6 @@ const OPTIONAL_OBSERVATIONS: &[&str] = &[
     "ClientboundRemoveMobEffectPacket",
     "ClientboundSelectAdvancementsTabPacket",
     "ClientboundServerDataPacket",
-    "ClientboundSetBorderCenterPacket",
-    "ClientboundSetBorderLerpSizePacket",
-    "ClientboundSetBorderSizePacket",
-    "ClientboundSetBorderWarningDelayPacket",
-    "ClientboundSetBorderWarningDistancePacket",
     "ClientboundSetCameraPacket",
     "ClientboundSetDefaultSpawnPositionPacket",
     "ClientboundSetEntityLinkPacket",

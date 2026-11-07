@@ -1,17 +1,23 @@
 //! Local gesture prediction after ordered admission; never predicts hits or inventory.
+use gameplay::java::item_use::plan::Hand;
 use world::java::entities::animation::swing::{Kind, modified_duration};
 
+const ATTACK: &str = "minecraft:attack_animation";
+const INTERACT: &str = "minecraft:interact_animation";
+
 fn description(held: Option<&inventory::java::Slot>) -> Option<(Kind, i32)> {
+    describe(held, ATTACK)
+}
+
+fn describe(held: Option<&inventory::java::Slot>, component: &str) -> Option<(Kind, i32)> {
     let held = held?;
     let value = held.as_ref().and_then(|stack| {
-        let name = "minecraft:attack_animation";
-        if stack.removed.contains(name) {
+        if stack.removed.contains(component) {
             None
         } else {
-            stack
-                .added
-                .get(name)
-                .or_else(|| assets::registry::java::items::defaults::component(&stack.item, name))
+            stack.added.get(component).or_else(|| {
+                assets::registry::java::items::defaults::component(&stack.item, component)
+            })
         }
     });
     // ItemStack.getAttackAnimation falls back to SwingAnimation.DEFAULT, including removals.
@@ -35,20 +41,66 @@ fn description(held: Option<&inventory::java::Slot>) -> Option<(Kind, i32)> {
     Some((kind, duration))
 }
 pub(super) fn predict(state: &mut client_world::java::WorldState) {
-    let Some((kind, duration)) = description(state.inventory.held()) else {
+    let animation = description(state.inventory.held());
+    start(state, false, animation);
+}
+
+/// 26.3 startUseItem uses getInteractAnimation, independently of attack gestures.
+/// Call only after a native PREDICTED interaction result and ordered admission.
+pub(super) fn predict_interact(state: &mut client_world::java::WorldState, hand: Hand) {
+    let animation = describe(hand.held(&state.inventory), INTERACT);
+    start(state, hand == Hand::Off, animation);
+}
+
+fn start(
+    state: &mut client_world::java::WorldState,
+    offhand: bool,
+    animation: Option<(Kind, i32)>,
+) {
+    let Some((kind, duration)) = animation else {
         return;
     };
     let modified = modified_duration(&state.player_dynamics.effects, duration);
     state
         .player_visual
         .swing
-        .start(false, kind, duration, modified);
+        .start(offhand, kind, duration, modified);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn interaction_animation_is_independent_of_attack_and_respects_removal() {
+        let mut stack = inventory::java::Stack {
+            item: "fixture:item".into(),
+            count: 1,
+            added: Default::default(),
+            removed: Default::default(),
+        };
+        stack
+            .added
+            .insert(ATTACK.into(), json!({"type":"stab","duration":12}));
+        stack
+            .added
+            .insert(INTERACT.into(), json!({"type":"whack","duration":4}));
+        assert_eq!(
+            description(Some(&Some(stack.clone()))),
+            Some((Kind::Stab, 12))
+        );
+        assert_eq!(
+            describe(Some(&Some(stack.clone())), INTERACT),
+            Some((Kind::Whack, 4))
+        );
+        stack.removed.insert(INTERACT.into());
+        assert_eq!(
+            describe(Some(&Some(stack.clone())), INTERACT),
+            Some((Kind::Whack, 6))
+        );
+        assert_eq!(description(Some(&Some(stack))), Some((Kind::Stab, 12)));
+        assert_eq!(describe(None, INTERACT), None);
+    }
     #[test]
     fn native_default_patch_removal_and_malformed_animation() {
         assert_eq!(description(None), None);

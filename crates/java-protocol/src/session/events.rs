@@ -1,9 +1,13 @@
 //! Ordered native session messages exposed to admission consumers.
-use super::{Phase, chat, dynamics, entities, facts, hud, inventory, roster, scoreboard};
+use super::{Phase, border, chat, dynamics, entities, facts, hud, inventory, roster, scoreboard};
 use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    Border {
+        dimension_epoch: u64,
+        packet: border::Packet,
+    },
     CommandTree {
         nodes: usize,
         message_arguments: usize,

@@ -1,5 +1,6 @@
 //! Java admission boundary. Initial authoritative facts stay distinct from Bedrock world state.
 mod biomes;
+pub mod border;
 pub mod chat;
 mod dynamics;
 mod entities;
@@ -29,6 +30,7 @@ use java_protocol::session::{
 };
 #[derive(Default, Debug)]
 pub struct WorldState {
+    pub border: border::Authority,
     pub chat: chat::State,
     pub inventory: ::inventory::java::State,
     generation: u64,
@@ -395,6 +397,17 @@ impl WorldState {
                 }
                 self.respawn_rotation_velocity = Some(inherited);
                 self.respawn = Some(spawn);
+            }
+            Event::Border {
+                dimension_epoch,
+                packet,
+            } => {
+                if !self.terrain.accepts(self.generation, dimension_epoch) {
+                    return false;
+                }
+                return self
+                    .border
+                    .apply((self.generation, dimension_epoch), packet);
             }
             Event::Terrain {
                 dimension_epoch,

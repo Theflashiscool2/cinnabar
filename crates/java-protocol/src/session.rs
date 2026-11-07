@@ -1,4 +1,5 @@
 //! Native login/configuration/play owner. One future owns all ordered socket operations.
+pub mod border;
 pub mod chat;
 mod configuration;
 mod crypto;

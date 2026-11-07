@@ -212,6 +212,7 @@ impl Report {
             Event::Vitals(_) => "vitals",
             Event::Death { .. } => "death",
             Event::Terrain { .. } => "terrain",
+            Event::Border { .. } => "border",
         };
         if self.recent.len() == RECENT {
             self.recent.pop_front();

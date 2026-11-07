@@ -69,6 +69,16 @@ arguments, suggestions, deletion presentation, trust indicators and advanced for
 remain required implementation. This does not qualify iOS or Hypixel.
 
 
+Ordinary full-cube BlockItem placement now predicts the owning hand's native
+interaction gesture after transport admission. Exported placement/dispatch facts,
+known destination terrain, height/border constraints, cooldowns and supported entity
+bounds gate that presentation; terrain and inventory remain server-owned. Native
+border packets update a scoped, interpolated constraint, not a rendered border wall.
+Replaceable targets, specialized/partial shapes and unknown collision contexts remain
+unpredicted. Linux graphical vanilla acceptance covers wool placement across a chunk
+boundary, border rejection, server counts, transfer and respawn/reconnect; iOS and
+Hypixel acceptance of these repairs is pending.
+
 The native foundation targets the single Java release/protocol pinned in
 [`crates/java-protocol/data/target.json`](crates/java-protocol/data/target.json).
 Saved-server edition routing, cancellable background discovery, separate Java

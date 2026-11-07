@@ -74,6 +74,7 @@ impl Authority {
                 &mut self.world,
                 &self.movement,
                 self.shapes.as_deref(),
+                physics,
             );
         }
     }

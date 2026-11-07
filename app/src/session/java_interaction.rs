@@ -12,6 +12,7 @@ use java_protocol::session::{
 use sim::java::selection;
 mod entity;
 mod item;
+mod placement;
 mod swing;
 
 #[derive(Resource, Default)]
@@ -38,11 +39,16 @@ impl Interaction {
         state: &mut client_world::java::WorldState,
         movement: &Movement,
         shapes: Option<&::assets::registry::java::interaction::Table>,
+        physics: &::assets::registry::java::physics::Table,
     ) {
+        let placement = Some(placement::Context {
+            physics,
+            body: movement.0.body,
+        });
         let elapsed = self.elapsed();
         self.0.service_frame(state, elapsed);
         self.0.contact = Some((movement.0.body.on_ground, movement.0.body.eyes_in_water()));
-        if !send_pending(java, state, &mut self.0) {
+        if !send_pending(java, state, &mut self.0, placement) {
             return;
         }
         if self.0.mining_progress().is_none() {
@@ -73,7 +79,7 @@ impl Interaction {
             .flatten()
         })();
         self.0.advance(state, self.1.held_attack(), hit);
-        if send_pending(java, state, &mut self.0) {
+        if send_pending(java, state, &mut self.0, placement) {
             self.continue_swing(java, state);
         }
     }
@@ -93,7 +99,7 @@ impl Interaction {
             }
         }
         if self.0.pending().is_some_and(|r| r.kind == Kind::ReleaseUse) {
-            send_pending(java, state, &mut self.0)
+            send_pending(java, state, &mut self.0, None)
         } else {
             true
         }
@@ -196,6 +202,12 @@ pub(crate) fn update(
         *interaction = Default::default();
         return;
     };
+    let placement = presentation
+        .movement_physics()
+        .map(|physics| placement::Context {
+            physics,
+            body: movement.0.body,
+        });
     let target = pick(
         state,
         &presentation,
@@ -226,7 +238,7 @@ pub(crate) fn update(
     }
     // A retained attack must enter the transport before a following slot change.
     for _ in 0..=interaction.1.backlog() {
-        if !send_pending(java, state, &mut interaction.0) {
+        if !send_pending(java, state, &mut interaction.0, placement) {
             return;
         }
         match interaction.1.front(state) {
@@ -317,7 +329,8 @@ pub(crate) fn update(
                 interaction.0.advance(state, phase, captured_hit);
             }
             Some(Intent::Use(pressed)) => {
-                if !interaction.0.cancel_mining() || !send_pending(java, state, &mut interaction.0)
+                if !interaction.0.cancel_mining()
+                    || !send_pending(java, state, &mut interaction.0, placement)
                 {
                     return;
                 }
@@ -374,10 +387,11 @@ pub(crate) fn update(
                 interaction
                     .0
                     .prepare_selection(state, state.inventory.cooldowns.client_tick());
-                if !send_pending(java, state, &mut interaction.0) {
+                if !send_pending(java, state, &mut interaction.0, placement) {
                     return;
                 }
-                if !interaction.0.cancel_mining() || !send_pending(java, state, &mut interaction.0)
+                if !interaction.0.cancel_mining()
+                    || !send_pending(java, state, &mut interaction.0, placement)
                 {
                     return;
                 }
@@ -400,12 +414,12 @@ pub(crate) fn update(
             None => {
                 let use_phase = interaction.1.held_use();
                 advance_use(&mut interaction.0, state, use_phase, chosen);
-                if !send_pending(java, state, &mut interaction.0) {
+                if !send_pending(java, state, &mut interaction.0, placement) {
                     return;
                 }
                 let phase = interaction.1.held_attack();
                 interaction.0.advance(state, phase, hit);
-                if send_pending(java, state, &mut interaction.0) {
+                if send_pending(java, state, &mut interaction.0, placement) {
                     interaction.continue_swing(java, state);
                 }
                 return;
@@ -449,10 +463,11 @@ fn advance_use(
 }
 
 /// Keeps the captured action unchanged until the bounded transport accepts it.
-pub(super) fn send_pending(
+fn send_pending(
     java: &client_session::java::Session,
     state: &mut client_world::java::WorldState,
     interaction: &mut gameplay::java::interaction::Controller,
+    placement: Option<placement::Context<'_>>,
 ) -> bool {
     if !interaction.validate_use_entity(state) {
         return true;
@@ -468,7 +483,7 @@ pub(super) fn send_pending(
         if !interaction.validate_mining_target(current) {
             // Invalidating an already started action leaves only an ABORT, so recursion
             // is bounded to one cancellation and never sends an obsolete finish.
-            return send_pending(java, state, interaction);
+            return send_pending(java, state, interaction, placement);
         }
     }
     let command = match (request.kind, request.target) {
@@ -551,14 +566,20 @@ pub(super) fn send_pending(
             return false;
         }
     };
+    let predict_placement = request.kind == Kind::UseOn
+        && placement.is_some_and(|context| placement::predict(state, &request, context));
     match java.command(command) {
         Ok(()) => {
+            if predict_placement {
+                bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand, "Native placement gesture predicted; blocks and stacks remain authoritative");
+                swing::predict_interact(state, request.hand);
+            }
             if request.kind == Kind::Break {
                 swing::predict(state);
             }
             interaction.queued();
             // One captured click has at most four ordered main/offhand target/air stages.
-            return send_pending(java, state, interaction);
+            return send_pending(java, state, interaction, placement);
         }
         Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
             interaction.blocked = Some("Java interaction is waiting for transport capacity".into())
