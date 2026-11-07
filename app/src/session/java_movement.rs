@@ -69,6 +69,10 @@ pub(crate) fn update(
         view.set_rotation(super::java_look::view_rotation([motion.yaw, motion.pitch]));
         view.reanchor_camera();
     }
+    let released = input.0.snapshot().is_some_and(|s| s.authority_released);
+    if released {
+        movement.0.release_input();
+    }
     let Some(physics) = physics else {
         return;
     };
@@ -80,11 +84,16 @@ pub(crate) fn update(
         return;
     }
     movement.0.use_effects = interaction.0.use_effects();
-    let axes = input.0.raw_movement();
-    let held = |action| input.0.phase(action).held;
+    let axes = if released {
+        [0.; 2]
+    } else {
+        input.0.raw_movement()
+    };
+    let held = |action| !released && input.0.phase(action).held;
     let buttons = input
         .0
         .snapshot()
+        .filter(|_| !released)
         .map(|s| s.movement_buttons)
         .unwrap_or_default();
     let bits = [

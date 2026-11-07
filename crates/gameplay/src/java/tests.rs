@@ -161,3 +161,44 @@ fn stationary_native_ticks_keep_tick_cadence_without_repeating_unchanged_wire_fl
     collided.horizontal_collision = true;
     assert!(c.next_frame(1, 42, motion, collided, 0).status_changed);
 }
+
+#[test]
+fn sprint_tap_history_is_not_advanced_by_render_frames_and_retires_with_the_world() {
+    let mut controller = Controller::default();
+    controller.begin_frame(&world(1), TICK);
+    let forward = sim::java::travel::Input {
+        forward: 1.,
+        ..Default::default()
+    };
+    let idle = sim::java::travel::Input::default();
+    assert!(
+        !controller
+            .sprint
+            .select(forward, false, true, true, false, false)
+    );
+    for _ in 0..30 {
+        controller.begin_frame(&world(1), std::time::Duration::ZERO);
+    }
+    assert!(
+        !controller
+            .sprint
+            .select(idle, false, true, true, false, false)
+    );
+    assert!(
+        controller
+            .sprint
+            .select(forward, false, true, true, false, false)
+    );
+    controller.release_input();
+    assert!(
+        !controller
+            .sprint
+            .select(forward, true, true, true, false, false)
+    );
+    controller.begin_frame(&world(2), TICK);
+    assert!(
+        !controller
+            .sprint
+            .select(forward, false, true, true, false, false)
+    );
+}

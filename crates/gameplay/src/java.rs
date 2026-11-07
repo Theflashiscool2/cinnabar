@@ -4,6 +4,7 @@ pub mod attack;
 pub mod interaction;
 pub mod item_use;
 pub mod mining;
+mod sprint;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
@@ -40,6 +41,7 @@ pub struct Controller {
     scope: Option<(u64, u64)>,
     sequence: u64,
     pub body: Body,
+    sprint: sprint::Trigger,
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
@@ -85,6 +87,11 @@ impl Controller {
             self.elapsed = self.elapsed.saturating_add(elapsed);
         }
         corrected
+    }
+
+    /// Input authority release retires both pending taps and sprint continuation.
+    pub fn release_input(&mut self) {
+        self.sprint.release();
     }
 
     pub fn pending(&self) -> Option<&Frame> {
@@ -214,8 +221,23 @@ impl Controller {
             return Err("Native Java mounted movement is not implemented".into());
         }
         let mut input = controls.travel;
-        input.sprint &= input.forward > 0.8
-            && (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6));
+        let possible = (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6))
+            && !state
+                .player_dynamics
+                .effects
+                .contains_key("minecraft:blindness");
+        let slow = self.use_effects.is_some_and(|e| !e.can_sprint);
+        let can_start = (!input.crouch && !self.body.low_profile || self.body.eyes_in_water())
+            && (self.body.water_height <= 0. || self.body.eyes_in_water());
+        let mut sprint = self.sprint;
+        input.sprint = sprint.select(
+            input,
+            self.body.sprinting,
+            possible,
+            can_start,
+            slow,
+            controls.buttons & 2 != 0,
+        );
         let mut parameters = parameters(state)?;
         if let Some(effects) = self.use_effects {
             input.sprint &= effects.can_sprint;
@@ -247,6 +269,7 @@ impl Controller {
         ));
         self.reminder = self.reminder.saturating_add(1);
         self.body = body;
+        self.sprint = sprint;
         state.player_motion = Some(motion);
         state.player_pose_revision = revision;
         Ok(true)

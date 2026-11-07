@@ -6,6 +6,66 @@ stop and inspect `git status`; do not reset or discard them. The published candi
 uses the build number in `packaging/ios/runtime.json`. There is no downloadable IPA
 until a Mac/CI build actually produces one.
 
+## Fast Mac test cycle and diagnostics
+
+Keep the same checkout path, Rust toolchain, `play` profile and existing APFS Cargo/Go
+cache paths between runs. Do not run `cargo clean`, switch profiles, or change
+`RUSTFLAGS` while iterating. The `play` profile already disables LTO and enables
+incremental compilation; `CARGO_INCREMENTAL=0` overrides that benefit. Enabling it
+can rebuild workspace crates once; changed dependencies still need compilation.
+No command guarantees a short cold build, especially on unreliable external storage.
+
+From the existing checkout, after mounting the existing APFS build volume:
+
+```sh
+git status --short --branch
+git pull --ff-only origin feature/native-java-foundation
+export CARGO_BUILD_JOBS=2
+export CARGO_INCREMENTAL=1
+export CINNABAR_JAVA_ASSETS="$PWD/.local/assets/java/26.3"
+export CINNABAR_SLOW_FRAME_LOG=0
+export CINNABAR_LOG='warn,java_session=debug,java_auth=info,client_shell::menu=info'
+TEST_DIR=$(mktemp -d "$HOME/Desktop/cinnabar-java-test.XXXXXX")
+touch "$TEST_DIR/started"
+make play 2>&1 | tee "$TEST_DIR/console.log"
+```
+
+Keep existing `CARGO_BUILD_BUILD_DIR`, `CARGO_TARGET_DIR`, `GOCACHE` and account/user-root
+settings. Check that their volumes are actually mounted before creating directories.
+Stop on a failed pull or build. A failed command piped to `tee` may look successful;
+use `set -o pipefail` in the test shell. After a successful build, **relaunch the same
+binary without compilation or asset preparation**:
+
+```sh
+make play-run 2>&1 | tee "$TEST_DIR/console-relaunch.log"
+```
+
+On ExFAT this assembly can copy large binaries because hard links are unavailable.
+For an already assembled, unchanged build, launch it directly to skip those copies:
+
+```sh
+"target/play/Cinnabar Dev.app/Contents/MacOS/cinnabar" 2>&1 | tee "$TEST_DIR/console-relaunch.log"
+```
+
+After a source update, build successfully once before using either no-build route.
+For each attempt, disconnect in the application before collecting the join report;
+it is finalized when the connection ends. Quit normally so log writes finish. Then:
+
+```sh
+python3 packaging/macos/collect-java-diagnostics.py "$TEST_DIR"
+open "$TEST_DIR"
+```
+
+The collector copies only `client.log`, `core.log` and `java-join-latest.json` modified
+since the test started, checking the existing user-root, local logs and Cinnabar
+Application Support directories. It does not copy account/token stores, reuse old
+reports as current evidence, or overwrite earlier collections. Share the test folder
+privately, plus the exact chat rejection/screenshot. For hits, record the action,
+visible response and any damage/health change; for loading, record which world,
+players, skins or menu appeared late. For double-tap sprint, press/release/press W
+within the native seven-tick window and hold the second press; also test release,
+sneaking, menu/focus changes and reconnect. Mac results do not establish iPhone acceptance.
+
 ## Prerequisites and inputs
 
 Use macOS, full Xcode/iPhoneOS SDK **27.1** (patch updates allowed), the pinned Rust
