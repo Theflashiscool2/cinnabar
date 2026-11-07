@@ -96,6 +96,16 @@ impl MenuRuntime {
             self.local_ui
                 .begin_option_edit(id, self.screen == launcher::menu::MenuScreen::Settings);
         }
+        // Controls can be inserted ahead of a field (for example, the Java/Bedrock
+        // selector). Keep visual/navigation focus with the actual editor rather
+        // than retaining an index that now names a different control.
+        if let Some(action) = self
+            .focus_actions()
+            .into_iter()
+            .find(|action| action.text_field() == Some(field))
+        {
+            self.focus_pointer(action);
+        }
         self.field_activation = self.field_activation.wrapping_add(1);
         self.field = Some(field);
         self.edit_field(|editor| editor.move_end(false));

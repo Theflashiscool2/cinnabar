@@ -22,7 +22,7 @@ pub(crate) fn update(
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
     time: Res<Time<bevy::time::Real>>,
-    clock: Res<super::super::java_cooldowns::Clock>,
+    clock: Option<Res<super::super::java_cooldowns::Clock>>,
 ) {
     let (Some(mut controller), Some(terrain), Some(mut presentation)) =
         (controller, terrain, presentation)
@@ -53,6 +53,17 @@ pub(crate) fn update(
         prepared.replace_scene(empty(), state.generation(), 0., 0);
         return;
     };
+    // Shared Bedrock hosts need no Java clock. An active Java host must still
+    // report the missing owner, rather than silently sampling a fabricated tick.
+    const MISSING_CLOCK: &str = "Native Java entity simulation clock is unavailable";
+    let Some(clock) = clock else {
+        p.failure = Some(MISSING_CLOCK.into());
+        prepared.replace_scene(empty(), state.generation(), 0., 0);
+        return;
+    };
+    if p.failure.as_deref() == Some(MISSING_CLOCK) {
+        p.failure = None;
+    }
     p.skins.update(scope, time.elapsed(), &state.entities);
     // The sole world clock also advances during a render stall; sampling never double-ticks.
     p.fraction = clock.fraction();

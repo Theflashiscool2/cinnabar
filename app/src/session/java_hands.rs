@@ -20,6 +20,7 @@ pub(crate) struct State {
     builder: Option<ActorRigFrameBuilder>,
     serial: u64,
     bones: Option<Arc<[RenderBoneTransform]>>,
+    missing_owners: bool,
 }
 /// Runs after ordinary actor publication. Only the active Java edition owns this override.
 #[allow(
@@ -30,12 +31,12 @@ pub(crate) fn update(
     controller: Option<Res<SessionController>>,
     terrain: Option<Res<java_render::Presentation>>,
     ui: Res<UiRuntimeResource>,
-    menu: Res<MenuRuntime>,
+    menu: Option<Res<MenuRuntime>>,
     camera: Res<CameraSettingsAuthority>,
     server_camera: Option<Res<client_presentation::camera::ServerCameraView>>,
-    movement: Res<java_movement::Movement>,
-    interaction: Res<super::java_interaction::Interaction>,
-    clock: Res<super::java_cooldowns::Clock>,
+    movement: Option<Res<java_movement::Movement>>,
+    interaction: Option<Res<super::java_interaction::Interaction>>,
+    clock: Option<Res<super::java_cooldowns::Clock>>,
     motion: Option<Res<FirstPersonHandMotion>>,
     artwork: Option<Res<render_scene::ActorArtworkResource>>,
     time: Res<Time<bevy::time::Real>>,
@@ -46,6 +47,20 @@ pub(crate) fn update(
         *state = State::default();
         return; // Leave the newly published Bedrock frame untouched.
     };
+    // Shared actor hosts must not require Java-only owners during Bevy's
+    // parameter validation. An active Java host still needs the real owners;
+    // missing simulation data is never replaced with a fabricated pose/tick.
+    let (Some(menu), Some(movement), Some(interaction), Some(clock)) =
+        (menu, movement, interaction, clock)
+    else {
+        if !state.missing_owners {
+            warn!(target: "java_session", "Native Java hand owners are unavailable");
+        }
+        state.missing_owners = true;
+        scene.clear();
+        return;
+    };
+    state.missing_owners = false;
     let world = &controller.java_world;
     let Some(hud) = ui.java_hud() else {
         scene.clear();
