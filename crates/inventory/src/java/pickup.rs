@@ -40,7 +40,12 @@ impl State {
         {
             return false;
         }
+        if self.pickup_writes.remove(&receipt.sequence) && !receipt.written {
+            self.pickup_player_view.clear();
+            self.clear_pickup_menu_view();
+        }
         if receipt.written && receipt.closed {
+            self.clear_pickup_menu_view();
             self.opened = None;
         }
         self.input_receipt = Some(receipt);
@@ -83,8 +88,7 @@ impl State {
         }
         Ok((
             menu.state.ok_or("Java container contents are not ready")?,
-            menu.carried
-                .as_ref()
+            self.carried_view(identity.container)
                 .ok_or("Java carried stack is unknown")?,
         ))
     }

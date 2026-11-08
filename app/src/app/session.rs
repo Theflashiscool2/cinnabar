@@ -57,6 +57,12 @@ pub(crate) fn configure_finish_system(app: &mut App) {
         )
         .add_systems(
             Update,
+            crate::session::java_interaction::diagnose_mining
+                .after(crate::session::java_interaction::update)
+                .in_set(ClientFrameSet::NetworkSend),
+        )
+        .add_systems(
+            Update,
             crate::session::java_movement::update.in_set(ClientFrameSet::NetworkSend),
         )
         .add_systems(

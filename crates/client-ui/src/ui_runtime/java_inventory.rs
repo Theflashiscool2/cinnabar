@@ -104,11 +104,7 @@ impl UiRuntime {
             player: (0..inventory::java::PLAYER_MENU_SIZE)
                 .map(|i| world.inventory.slot(0, i).cloned())
                 .collect(),
-            player_carried: world
-                .inventory
-                .player
-                .as_ref()
-                .and_then(|m| m.carried.clone()),
+            player_carried: world.inventory.carried_view(0).cloned(),
             identity: world.inventory.active_identity(),
             opened: world.inventory.opened.as_ref().and_then(|menu| {
                 Some(MenuView {
@@ -118,7 +114,7 @@ impl UiRuntime {
                     slots: (0..menu.len())
                         .map(|i| world.inventory.slot(menu.container, i).cloned())
                         .collect(),
-                    carried: menu.carried.clone(),
+                    carried: world.inventory.carried_view(menu.container).cloned(),
                 })
             }),
         };

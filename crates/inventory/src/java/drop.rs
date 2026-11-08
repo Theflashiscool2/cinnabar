@@ -3,8 +3,9 @@
 use super::*;
 impl State {
     pub fn player_slot_view(&self, index: usize) -> Option<&Slot> {
-        self.drop_predictions
+        self.pickup_player_view
             .get(&index)
+            .or_else(|| self.drop_predictions.get(&index))
             .or_else(|| self.storage.get(index)?.value())
     }
     pub fn drop_written(&mut self, session: u64, epoch: u64, receipt: DropReceipt) -> bool {
@@ -41,6 +42,7 @@ impl State {
                 stack.count -= 1;
             }
         }
+        self.pickup_player_view.remove(&slot);
         self.drop_predictions.insert(slot, projected);
         self.drop_notice = None;
         self.revision = self.revision.saturating_add(1);

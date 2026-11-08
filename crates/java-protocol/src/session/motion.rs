@@ -131,6 +131,11 @@ impl Connection {
                             .await?;
                     }
                 }
+                tracing::debug!(target:"java_session", sequence, container, written,
+                    dimension_epoch, active_epoch=self.dimension_epoch, dead=self.dead,
+                    world_loaded=self.loaded_epoch == Some(dimension_epoch),
+                    menu_matches=self.menu_lifetime.accepts(container, incarnation),
+                    "Native Java inventory write receipt");
                 self.emit(Event::InventorySent {
                     dimension_epoch,
                     incarnation,
@@ -293,8 +298,8 @@ impl Connection {
                 action,
                 ..
             } if action.action == interaction::Action::ReleaseUse => {
-                // A neutral release is independent of a position correction. It still
-                // belongs to this exact world, and the server must really be loaded.
+                // Neutral release remains independent of position corrections.
+                // The existing cancellation owner still waits for this loaded world.
                 self.cancelled_use
                     .hold(dimension_epoch, self.dimension_epoch);
                 self.flush_use_cancellation().await?;
@@ -303,25 +308,30 @@ impl Connection {
                 dimension_epoch,
                 correction_sequence,
                 action,
-            } if dimension_epoch == self.dimension_epoch
-                && correction_sequence == self.correction_sequence
-                && self.pending_teleport.is_none()
-                && self.pending_rotation.is_none()
-                && self.loaded_epoch == Some(dimension_epoch)
-                && !self.dead =>
-            {
-                self.send(
-                    "ServerboundPlayerActionPacket",
-                    &interaction::encode(action)?,
-                )
-                .await?;
-                // FINISH/ABORT/RELEASE are not attack edges. Sending Punch here would
-                // incorrectly reset attack timing and animate an extra attack.
-                if action.action.punches() {
-                    self.send("ServerboundPunchPacket", &[]).await?;
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && correction_sequence == self.correction_sequence
+                    && self.pending_teleport.is_none()
+                    && self.pending_rotation.is_none()
+                    && self.loaded_epoch == Some(dimension_epoch)
+                    && !self.dead;
+                if written {
+                    self.send(
+                        "ServerboundPlayerActionPacket",
+                        &interaction::encode(action)?,
+                    )
+                    .await?;
+                    if action.action.punches() {
+                        self.send("ServerboundPunchPacket", &[]).await?;
+                    }
                 }
+                tracing::debug!(target:"java_session", action=?action.action, sequence=action.sequence,
+                    written, dimension_epoch, active_epoch=self.dimension_epoch,
+                    correction_matches=correction_sequence == self.correction_sequence,
+                    teleport_pending=self.pending_teleport.is_some() || self.pending_rotation.is_some(),
+                    world_loaded=self.loaded_epoch == Some(dimension_epoch), dead=self.dead,
+                    "Native Java block action write receipt");
             }
-            Command::Interact { .. } => {}
             Command::UseOn {
                 dimension_epoch,
                 correction_sequence,

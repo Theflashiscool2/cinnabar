@@ -94,7 +94,11 @@ impl State {
     /// Resolves a menu view against the one authoritative player storage.
     pub fn slot(&self, id: i32, index: usize) -> Option<&Slot> {
         match self.menu(id)?.slots.get(index)? {
-            Binding::Owned(value) => value.value(),
+            Binding::Owned(value) => self
+                .pickup_menu_view
+                .get(&index)
+                .filter(|_| self.pickup_view_identity.is_some_and(|p| p.container == id))
+                .or_else(|| value.value()),
             Binding::Player(index) => self.player_slot_view(*index),
         }
     }
@@ -104,9 +108,11 @@ impl State {
             Binding::Owned(_) => None,
         };
         if let Some(storage) = storage {
+            self.pickup_player_view.remove(&storage);
             self.drop_predictions.remove(&storage);
             self.storage[storage] = Cell::Known(stack);
         } else {
+            self.pickup_menu_view.remove(&index);
             self.menu_mut(id).unwrap().slots[index] = Binding::Owned(Cell::Known(stack));
         }
     }
@@ -130,6 +136,7 @@ impl State {
                 if slot >= self.storage.len() {
                     return Err("Java player inventory slot is out of range".into());
                 }
+                self.pickup_player_view.remove(&slot);
                 self.drop_predictions.remove(&slot);
                 self.storage[slot] = Cell::Known(stack);
             }
@@ -156,6 +163,7 @@ impl State {
                 }
                 menu.state = Some(state);
                 menu.carried = Some(carried);
+                self.pickup_cursor_view = None;
                 for (slot, stack) in slots.into_iter().enumerate() {
                     self.set_slot(container, slot, stack);
                 }
@@ -185,6 +193,7 @@ impl State {
             Update::Cursor(stack) => {
                 let menu = self.opened.as_mut().or(self.player.as_mut()).unwrap();
                 menu.carried = Some(stack);
+                self.pickup_cursor_view = None;
             }
             Update::Open {
                 incarnation,
@@ -198,6 +207,7 @@ impl State {
                 if incarnation <= self.incarnation {
                     return Ok(false);
                 }
+                self.clear_pickup_menu_view();
                 self.incarnation = incarnation;
                 self.opened = None;
                 let Some(start) =
@@ -231,6 +241,7 @@ impl State {
                 {
                     return Ok(false);
                 }
+                self.clear_pickup_menu_view();
                 self.opened = None;
             }
             Update::Property {

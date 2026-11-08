@@ -707,3 +707,6 @@ mod merchant;
 
 #[path = "session/transfer.rs"]
 mod transfer;
+
+#[path = "session/cancellation.rs"]
+mod cancellation;

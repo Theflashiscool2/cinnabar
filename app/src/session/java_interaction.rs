@@ -428,6 +428,38 @@ pub(crate) fn update(
     }
 }
 
+/// Change-driven admission diagnostics; no server text, stack components or account data.
+pub(crate) fn diagnose_mining(
+    controller: Option<Res<SessionController>>,
+    interaction: Res<Interaction>,
+    input: Res<SemanticInputSnapshot>,
+    mut previous: Local<Option<(u64, Option<String>)>>,
+) {
+    let Some(world) = controller.as_ref().and_then(|s| s.native_java_world()) else {
+        *previous = None;
+        return;
+    };
+    let phase = input.0.phase(semantic_input::Action::Attack);
+    if !phase.held && !phase.pressed {
+        *previous = None;
+        return;
+    }
+    let reason = interaction.0.blocked.clone().or_else(|| {
+        interaction
+            .0
+            .using_item()
+            .then(|| "An active item use owns attack input".into())
+    });
+    let current = (world.generation(), reason.clone());
+    if previous.as_ref() != Some(&current) || phase.pressed {
+        bevy::log::debug!(target:"java_session", reason=?reason, mode=?world.status.mode,
+            has_block_target=interaction.0.selected.is_some(), using_item=interaction.0.using_item(),
+            queued_actions=interaction.0.queued_actions, correction_pending=world.awaiting_correction_ack(),
+            "Native Java mining input state");
+        *previous = Some(current);
+    }
+}
+
 fn advance_use(
     interaction: &mut gameplay::java::interaction::Controller,
     state: &client_world::java::WorldState,

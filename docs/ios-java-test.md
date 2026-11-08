@@ -96,6 +96,16 @@ paths, modification times and unverified provenance; it does not identify them a
 this run's evidence. A console containing only `assetc prepare` has no gameplay
 trace. Disconnect to flush the join report, then collect again if needed.
 
+For inventory/mining reports, reproduce one regular-item pickup and placement in
+the player inventory, then hold attack on a placed wool block during a permitted
+game phase. With `java_session=debug`, `Native Java inventory input queued` records
+local admission, `Native Java inventory write receipt` records the socket result,
+and `Native Java mining input state` reports the game mode and local admission
+reason. `Native Java block action write receipt` distinguishes start/finish writes
+from correction/lifecycle refusals. A successful write or local cursor movement
+does not establish server acceptance. Include the visible server response and
+whether reopening the inventory restores the old item location.
+
 ## Prerequisites and inputs
 
 Use macOS, full Xcode/iPhoneOS SDK **27.1** (patch updates allowed), the pinned Rust

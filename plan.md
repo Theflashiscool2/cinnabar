@@ -93,6 +93,12 @@ incomplete; see [item artwork](docs/references/java-item-artwork.md).
 Menu artwork retains frame-consistent atlas coordinates and scoped pending-item
 continuity, checked against controlled vanilla updates/reopen/reconnect on Linux
 software rendering. Mac/iPhone/Hypixel menu acceptance remains pending.
+Ordinary Java inventory/storage pickups send post-click slot and cursor metadata.
+A bounded working view supports consecutive clicks without requiring a server echo;
+authoritative contents, cursor corrections, write failures and session changes
+reconcile it. Controlled Linux tests cover a sword moved between hotbar and bag,
+rejection recovery, chest transfers and reconnect. Specialized slot rules, complete
+component hashing and Hypixel/iPhone acceptance remain incomplete.
 All pinned item component types now have bounded readers and a batch wire corpus.
 A play dispatch census records remaining interactive/session gates; neither check
 proves complete item behavior or live server compatibility. Automatic bounded join

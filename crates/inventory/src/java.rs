@@ -116,6 +116,11 @@ pub struct State {
     pub drop_receipt: Option<u64>,
     pub drop_notice: Option<&'static str>,
     drop_predictions: BTreeMap<usize, Slot>,
+    pickup_player_view: BTreeMap<usize, Slot>,
+    pickup_menu_view: BTreeMap<usize, Slot>,
+    pickup_cursor_view: Option<Slot>,
+    pickup_view_identity: Option<pickup::MenuIdentity>,
+    pickup_writes: BTreeSet<u64>,
     storage: Vec<Cell>,
     pub player: Option<Menu>,
     pub opened: Option<Menu>,
@@ -124,6 +129,7 @@ pub struct State {
 pub mod cooldown;
 mod drop;
 pub mod pickup;
+mod pickup_view;
 mod state;
 pub use drop::DropReceipt;
 

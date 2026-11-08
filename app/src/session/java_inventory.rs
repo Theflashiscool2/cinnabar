@@ -29,13 +29,20 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
             bevy::log::warn!(target:"java_session", "Native merchant trading is not implemented; closing this menu without disconnecting");
             java.diagnostic_notice("java_merchant_menu_closed_unsupported");
         }
-        let result = prepare(input, &controller.java_world.inventory);
-        let command = match result {
-            Ok((command, missing)) => {
+        let result =
+            prepare(input, &controller.java_world.inventory).and_then(|(command, missing)| {
+                Ok((
+                    command,
+                    missing,
+                    pickup_plan(input, &controller.java_world.inventory)?,
+                ))
+            });
+        let (command, prediction) = match result {
+            Ok((command, missing, prediction)) => {
                 if missing > 0 {
                     java.diagnostic_notice("java_inventory_prediction_requires_server_resync");
                 }
-                command
+                (command, prediction)
             }
             Err(error) => {
                 bevy::log::warn!(target:"java_session", %error, "Java inventory action refused");
@@ -45,6 +52,16 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
         };
         match java.command(command) {
             Ok(()) => {
+                if let Some(plan) = prediction {
+                    let applied = controller
+                        .java_world
+                        .inventory
+                        .pickup_queued(plan, input.sequence);
+                    if !applied {
+                        bevy::log::warn!(target:"java_session", sequence=input.sequence,
+                            "Native pickup view retired after queue admission");
+                    }
+                }
                 bevy::log::debug!(target: "java_session", sequence=input.sequence,
                     container=input.identity.container, intent=?input.intent,
                     "Native Java inventory input queued");
@@ -138,10 +155,37 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
         Intent::Close | Intent::QuickCraft { .. } | Intent::DropCursor { .. } => unreachable!(),
     };
     let (revision, carried) = state.observe_click_slot(id, slot)?;
-    if let Intent::Pickup { button, .. } = input.intent
-        && (id.container != 0 || slot >= 9)
-    {
-        state.plan_pickup(id, slot, button, max_stack)?;
+    if let Some(plan) = pickup_plan(input, state)? {
+        let mut missing = 0;
+        let mut changed = std::collections::BTreeMap::new();
+        for (slot, stack) in &plan.changed {
+            let (value, gaps) = hash(stack)?;
+            missing += gaps;
+            changed.insert(
+                i16::try_from(*slot).map_err(|_| "Java slot exceeds wire range")?,
+                value,
+            );
+        }
+        let (cursor, gaps) = hash(&plan.carried)?;
+        missing += gaps;
+        let click = outbound::pickup(&outbound::Pickup {
+            container: id.container,
+            state: revision,
+            slot: i16::try_from(slot).map_err(|_| "Java slot exceeds wire range")?,
+            button: u8::from(plan.button == Button::Right),
+            changed,
+            carried: cursor,
+        })
+        .map_err(|e| e.to_string())?;
+        return Ok((
+            Command::ContainerClick {
+                dimension_epoch: id.epoch,
+                incarnation: id.incarnation,
+                sequence: input.sequence,
+                click,
+            },
+            missing,
+        ));
     }
     // Reserved personal slots use the SAME observed click packet below. Only
     // authoritative recipe/equipment/curse rules may move their stacks.
@@ -201,6 +245,23 @@ fn prepare(input: &Input, state: &inventory::java::State) -> Result<(Command, us
         missing,
     ))
 }
+fn pickup_plan(
+    input: &Input,
+    state: &inventory::java::State,
+) -> Result<Option<inventory::java::pickup::Plan>, String> {
+    if let Intent::Pickup { slot, button } = input.intent
+        && (input.identity.container != 0 || slot >= 9)
+    {
+        if !state.pickup_queue_ready() {
+            return Err("Java inventory is waiting for its queued writes".into());
+        }
+        return state
+            .plan_pickup(input.identity, slot, button, max_stack)
+            .map(Some);
+    }
+    Ok(None)
+}
+
 fn hash(slot: &Slot) -> Result<(Option<outbound::HashedStack>, usize), String> {
     let Some(stack) = slot else {
         return Ok((None, 0));
@@ -237,6 +298,84 @@ pub(crate) fn max_stack(stack: &inventory::java::Stack) -> Result<u32, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn player_sword_pickup_serializes_post_click_cursor_and_changed_slot() {
+        use inventory::java::{PLAYER_MENU_SIZE, Stack, State, Update};
+        use java_protocol::wire::Reader;
+        let mut state = State::default();
+        state.begin(7, 1);
+        let mut slots = vec![None; PLAYER_MENU_SIZE];
+        slots[39] = Some(Stack {
+            item: "minecraft:wooden_sword".into(),
+            count: 1,
+            added: [("minecraft:unbreakable".into(), serde_json::Value::Null)].into(),
+            removed: Default::default(),
+        });
+        state
+            .admit(
+                7,
+                1,
+                Update::Content {
+                    container: 0,
+                    state: 3,
+                    slots,
+                    carried: None,
+                },
+            )
+            .unwrap();
+        let input = Input {
+            identity: state.active_identity().unwrap(),
+            sequence: 1,
+            intent: Intent::Pickup {
+                slot: 39,
+                button: Button::Left,
+            },
+        };
+        let (Command::ContainerClick { click, .. }, 0) = prepare(&input, &state).unwrap() else {
+            panic!("not a native click")
+        };
+        let mut r = Reader(click.payload());
+        assert_eq!(r.var().unwrap(), 0);
+        assert_eq!(r.var().unwrap(), 3);
+        assert_eq!(r.take(2).unwrap(), 39_i16.to_be_bytes());
+        assert_eq!(r.byte().unwrap(), 0);
+        assert_eq!(r.var().unwrap(), i32::from(target::CONTAINER_INPUT_PICKUP));
+        assert_eq!(
+            r.var().unwrap(),
+            1,
+            "changed slot is required by the native pickup result"
+        );
+        assert_eq!(r.take(2).unwrap(), 39_i16.to_be_bytes());
+        assert_eq!(r.var().unwrap(), 0, "source is empty after pickup");
+        assert_eq!(
+            r.var().unwrap(),
+            1,
+            "post-click carried sword, not the old empty cursor"
+        );
+        assert_eq!(
+            r.var().unwrap() as usize,
+            target::ITEM_TYPES
+                .iter()
+                .position(|n| *n == "minecraft:wooden_sword")
+                .unwrap()
+        );
+        assert_eq!(r.var().unwrap(), 1, "carried stack count");
+        assert_eq!(r.var().unwrap(), 1);
+        assert_eq!(
+            r.var().unwrap() as usize,
+            target::ITEM_COMPONENTS
+                .iter()
+                .position(|c| c.name == "minecraft:unbreakable")
+                .unwrap()
+        );
+        r.take(4).unwrap();
+        assert_eq!(r.var().unwrap(), 0);
+        r.finish().unwrap();
+        assert!(
+            state.slot(0, 39).unwrap().is_some(),
+            "packet preparation alone cannot move an item"
+        );
+    }
     #[test]
     fn cursor_drop_preserves_authority_and_rejects_replaced_menus() {
         let mut state = inventory::java::State::default();
