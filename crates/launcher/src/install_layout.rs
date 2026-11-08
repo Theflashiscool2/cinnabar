@@ -87,6 +87,13 @@ impl InstallLayout {
             let custom = isolated.is_some();
             let (config, data, runtime) = isolated
                 .unwrap_or_else(|| (local.join("cinnabar"), local.clone(), local.join("run")));
+            let transient = if custom {
+                runtime.clone()
+            } else {
+                local.join("cinnabar")
+            };
+            let transient =
+                desktop_ipc_root(platform, &config, environment.home.as_deref(), transient);
             return Ok(Self {
                 resource_root: local.clone(),
                 compiled_assets: local.join("assets/compiled"),
@@ -97,11 +104,7 @@ impl InstallLayout {
                 user_config_root: config,
                 user_data_root: data,
                 runtime_root: runtime.clone(),
-                transient_runtime_root: if custom {
-                    runtime
-                } else {
-                    local.join("cinnabar")
-                },
+                transient_runtime_root: transient,
             });
         }
 
@@ -149,6 +152,12 @@ impl InstallLayout {
             }
         };
         let (user_config_root, user_data_root, runtime_root) = user_roots(platform, environment)?;
+        let transient = desktop_ipc_root(
+            platform,
+            &user_config_root,
+            environment.home.as_deref(),
+            runtime_root.clone(),
+        );
         Ok(Self {
             compiled_assets: resource_root.join("assets"),
             physics_registry: resource_root
@@ -158,7 +167,7 @@ impl InstallLayout {
             core_executable,
             user_config_root,
             user_data_root,
-            transient_runtime_root: runtime_root.clone(),
+            transient_runtime_root: transient,
             runtime_root,
         })
     }
@@ -420,6 +429,26 @@ impl InstallLayout {
         self.transient_runtime_root
             .join(format!("connect-{process_id}-{generation}"))
     }
+}
+
+/// macOS checkouts/profiles may live on ExFAT, which cannot host Unix sockets.
+/// Only ephemeral IPC moves to the system's local Unix temporary filesystem;
+/// credentials, configuration, logs, assets and build caches retain their owners.
+fn desktop_ipc_root(
+    platform: Platform,
+    config: &Path,
+    home: Option<&Path>,
+    original: PathBuf,
+) -> PathBuf {
+    if platform != Platform::MacOs {
+        return original;
+    }
+    use std::hash::{Hash, Hasher};
+    let mut identity = std::collections::hash_map::DefaultHasher::new();
+    (APP_DIR, config, home).hash(&mut identity);
+    // This is a disposable namespace, not a persisted identifier or credential hash.
+    // The core still validates directory/socket ownership and keeps incarnation leases.
+    PathBuf::from("/tmp").join(format!("cinnabar-ipc-{:016x}", identity.finish()))
 }
 
 /// Cargo runs tests from its build directory, which `build-dir` puts outside the

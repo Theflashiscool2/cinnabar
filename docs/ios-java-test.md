@@ -32,6 +32,9 @@ make play 2>&1 | tee "$TEST_DIR/console.log"
 
 Keep existing `CARGO_BUILD_BUILD_DIR`, `CARGO_TARGET_DIR`, `GOCACHE` and account/user-root
 settings. Check that their volumes are actually mounted before creating directories.
+macOS account/game IPC uses a profile-isolated directory under `/tmp/cinnabar-ipc-*`,
+so Unix sockets do not depend on the checkout or profile volume supporting them.
+This does not move your accounts, logs, assets, or build caches.
 Stop on a failed pull or build. A failed command piped to `tee` may look successful;
 use `set -o pipefail` in the test shell. After a successful build, **relaunch the same
 binary without compilation or asset preparation**:

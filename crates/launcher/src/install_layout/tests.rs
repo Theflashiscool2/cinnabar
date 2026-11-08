@@ -402,3 +402,71 @@ fn development_layout_is_not_installed() {
         PathBuf::from("/work/cinnabar/.local/assets/compiled")
     );
 }
+
+#[test]
+fn macos_external_checkout_keeps_data_and_isolates_local_ipc_profiles() {
+    let mut env = environment(
+        "/Volumes/ExternalSSD/CinnabarBuild/cinnabar-iphone-test/target/play/cinnabar",
+        "/Users/test",
+    );
+    let normal = InstallLayout::resolve(Platform::MacOs, &env).unwrap();
+    assert!(normal.user_data_root.starts_with("/Volumes/ExternalSSD"));
+    assert!(normal.transient_runtime_root().starts_with("/tmp"));
+    assert!(
+        !normal
+            .account_socket_dir(42, 1)
+            .starts_with(&normal.user_data_root)
+    );
+    assert_ne!(
+        normal.account_socket_dir(42, 1),
+        normal.connect_socket_dir(42, 1)
+    );
+    env.user_root = Some(PathBuf::from("/Volumes/ExternalSSD/Profile A"));
+    let a = InstallLayout::resolve(Platform::MacOs, &env).unwrap();
+    env.user_root = Some(PathBuf::from("/Volumes/ExternalSSD/Profile B"));
+    let b = InstallLayout::resolve(Platform::MacOs, &env).unwrap();
+    assert_ne!(a.transient_runtime_root(), b.transient_runtime_root());
+    assert_eq!(
+        a.user_data_root,
+        PathBuf::from("/Volumes/ExternalSSD/Profile A/data")
+    );
+    assert!(a.transient_runtime_root().starts_with("/tmp"));
+    assert_eq!(
+        a,
+        InstallLayout::resolve(
+            Platform::MacOs,
+            &InstallEnvironment {
+                user_root: Some(PathBuf::from("/Volumes/ExternalSSD/Profile A")),
+                ..env
+            }
+        )
+        .unwrap()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn macos_ephemeral_endpoint_binds_without_touching_the_external_profile() {
+    let fixture = crate::test_support::scratch("macos-ipc");
+    let external = fixture
+        .user_config_root
+        .join("not-created-external-volume/profile");
+    let mut env = environment(
+        "/Volumes/ExternalSSD/cinnabar/target/play/cinnabar",
+        "/Users/test",
+    );
+    env.user_root = Some(external.clone());
+    let layout = InstallLayout::resolve(Platform::MacOs, &env).unwrap();
+    let root = layout.transient_runtime_root();
+    assert!(!root.exists());
+    std::fs::create_dir_all(root).unwrap();
+    let endpoint = root.join("test.sock");
+    let listener = std::os::unix::net::UnixListener::bind(&endpoint).unwrap();
+    assert!(
+        !external.exists(),
+        "IPC binding never creates or migrates profile data"
+    );
+    drop(listener);
+    std::fs::remove_file(endpoint).unwrap();
+    std::fs::remove_dir(root).unwrap();
+}
