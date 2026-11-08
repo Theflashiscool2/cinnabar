@@ -24,7 +24,6 @@ pub(crate) fn publish_position(
 ) {
     let feet = bevy::prelude::Vec3::from_array(position.map(|v| v as f32));
     view.set_subject_position(feet + bevy::prelude::Vec3::Y * eye_height as f32, feet);
-    view.reanchor_camera();
 }
 
 #[cfg(test)]

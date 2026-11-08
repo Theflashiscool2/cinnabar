@@ -28,6 +28,16 @@ class CollectionTests(unittest.TestCase):
             self.assertEqual((output / "1-client.log").read_bytes(), original)
             self.assertTrue((output / "next-1-client.log").is_file())
 
+    def test_recovery_labels_older_logs_without_collecting_credentials(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "client.log").write_text("older app still running")
+            (root / "java-accounts.json").write_text("not a diagnostic")
+            result = collector.collect(root / "out", [root], float("inf"), recover_existing=True)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["provenance"], "pre_existing_not_verified_as_this_run")
+            self.assertEqual(Path(result[0]["source"]).name, "client.log")
+
 
 if __name__ == "__main__":
     unittest.main()

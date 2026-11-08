@@ -22,6 +22,7 @@ use world::java::entities::visual::PigAppearance;
 
 pub(super) struct Prepared {
     pub models: BTreeMap<String, Arc<Model>>,
+    pub arm: Arc<Model>,
     pub textures: BTreeMap<String, ActorArtworkLocation>,
     pub player_textures: BTreeMap<String, ActorArtworkLocation>,
     pub artwork: ActorArtworkPages,
@@ -68,6 +69,13 @@ fn inner(
         .ok_or("Java model GPU namespace exhausted")?;
         compiled.insert(name.to_owned(), Arc::new(Model::compile(part, id)?));
     }
+    let arm = Arc::new(Model::compile_first_person_arm(
+        models
+            .get("player_wide")
+            .ok_or("Pinned native player arm missing")?,
+        java_model_rig_id(u32::try_from(compiled.len())?)
+            .ok_or("Native arm namespace exhausted")?,
+    )?);
     let mut jar = Jar::open(
         &root.join("client.jar"),
         target::CLIENT_ASSETS_SHA256,
@@ -170,6 +178,7 @@ fn inner(
     check()?;
     Ok(Prepared {
         models: compiled,
+        arm,
         textures,
         player_textures,
         artwork,

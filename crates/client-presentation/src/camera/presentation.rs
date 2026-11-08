@@ -68,7 +68,7 @@ pub fn collect_fov_inputs(
     ui: Option<&client_ui::ui_runtime::UiRuntime>,
     physics: Option<&dyn crate::observations::PhysicsObservation>,
     movement_speed: Option<f64>,
-    mut inputs: ResMut<CameraFovInputs>,
+    inputs: &mut CameraFovInputs,
 ) {
     let sprinting = physics
         .and_then(|physics| physics.latest_sneak_sprint())

@@ -295,17 +295,8 @@ pub(crate) fn update(
         controller.connecting = false;
     }
     let state = &mut controller.java_world;
-    if let Some(position) = &state.player_motion
-        && p.teleport != Some(state.player_pose_revision)
-    {
-        // Motion is a 20Hz position publication, not a new authoritative rotation.
-        // The movement/correction owner alone replaces angles; retaining a newer
-        // input here prevents taps between simulation ticks from being erased.
-        super::java_look::publish_position(
-            &mut view,
-            position.position,
-            movement.0.eye_height(state),
-        );
+    if let Some(sample) = movement.0.view_sample(state) {
+        super::java_look::publish_position(&mut view, sample.feet, sample.eye_height);
         p.teleport = Some(state.player_pose_revision);
     }
     if p.failure.is_none()

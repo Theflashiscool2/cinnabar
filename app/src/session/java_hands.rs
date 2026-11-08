@@ -17,6 +17,7 @@ use std::sync::Arc;
 pub(crate) struct State {
     scope: Option<(u64, u64)>,
     items: [Option<Arc<Prepared>>; 2],
+    arm: Option<Arc<render_model::actor::java_geometry::Model>>,
     builder: Option<ActorRigFrameBuilder>,
     serial: u64,
     bones: Option<Arc<[RenderBoneTransform]>>,
@@ -30,6 +31,7 @@ pub(crate) struct State {
 pub(crate) fn update(
     controller: Option<Res<SessionController>>,
     terrain: Option<Res<java_render::Presentation>>,
+    entities: Option<Res<super::java_entities::Presentation>>,
     ui: Res<UiRuntimeResource>,
     menu: Option<Res<MenuRuntime>>,
     camera: Res<CameraSettingsAuthority>,
@@ -110,7 +112,24 @@ pub(crate) fn update(
             ui.java_held_item(&key, i == 1)
         })
     });
+    // Known-empty is required; missing inventory never fabricates an empty hand.
+    let arm = world
+        .inventory
+        .held()
+        .is_some_and(Option::is_none)
+        .then(|| {
+            entities
+                .as_ref()
+                .and_then(|e| e.first_person_arm())
+                .cloned()
+        })
+        .flatten();
     if state.builder.is_none()
+        || match (&state.arm, &arm) {
+            (Some(old), Some(new)) => !Arc::ptr_eq(old, new),
+            (None, None) => false,
+            _ => true,
+        }
         || (0..2).any(|i| match (&state.items[i], &items[i]) {
             (Some(a), Some(b)) => !Arc::ptr_eq(a, b),
             (None, None) => false,
@@ -121,11 +140,13 @@ pub(crate) fn update(
             items
                 .iter()
                 .flatten()
-                .flat_map(|p| p.groups.iter().cloned()),
+                .flat_map(|p| p.groups.iter().cloned())
+                .chain(arm.iter().map(|model| model.geometry.clone())),
         ) {
             Ok(builder) => {
                 state.builder = Some(builder);
                 state.items = items;
+                state.arm = arm;
             }
             Err(error) => {
                 warn!(target:"java_session",?error,"Native held geometry rejected");
@@ -278,8 +299,48 @@ pub(crate) fn update(
             });
         }
     }
+    if let Some(arm) = &state.arm {
+        let progress = world
+            .player_visual
+            .swing
+            .sample(clock.fraction())
+            .filter(|s| !s.offhand)
+            .map_or(0., |s| s.progress);
+        let transform = (motion * use_pose::bare_arm(progress))
+            .transpose()
+            .to_cols_array_2d();
+        submissions.push(ActorRigSubmission {
+            input: ActorRigRenderInput {
+                identity: ActorRenderIdentity {
+                    session_id: scope.0,
+                    dimension: 0,
+                    runtime_id: 3,
+                    spawn_revision: std::num::NonZeroU64::new(scope.1.saturating_add(1)).unwrap(),
+                    ingress_sequence: world.inventory.revision.max(1),
+                    source_tick: None,
+                    movement_revision: world.inventory.revision,
+                    pose_generation: render_api::PoseGeneration::new(serial),
+                    layer: 0,
+                },
+                rig: arm.geometry.id,
+                previous_bones: arm.rest_pose.clone(),
+                current_bones: arm.rest_pose.clone(),
+                completed_tick: serial,
+                reset_generation: scope.1,
+            },
+            material: ActorMaterial::default(),
+            culling_bounds: arm.bounds,
+            world_from_actor: [transform[0], transform[1], transform[2]],
+            texture_layer: 0,
+            route: ActorRigRoute::Compiled,
+            tint: 0,
+            overlay_rgba8: 0,
+            uv_anim: [0., 0., 1., 1.],
+            light: render_model::pack_actor_light(block, sky),
+        });
+    }
     let frame = state.builder.as_mut().unwrap().build(0., None, submissions);
-    // No body geometry is emitted; retain the existing admitted body-sampler binding.
+    // The native empty arm uses the skin sampler; held items keep their own atlas bindings.
     if scene.publish(
         frame,
         menu.player_skin().standard_skin().rgba8,

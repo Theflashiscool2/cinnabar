@@ -61,6 +61,26 @@ pub(crate) fn translated_component_text(
     )?;
     Ok(out.into())
 }
+/// Bounded chat-only content projection when its presentation cannot be represented.
+/// Callers must disclose the styling gap. Unknown content still fails; no selector,
+/// score, NBT or click action is evaluated and no arbitrary subtree is stringified.
+pub(crate) fn translated_component_content(
+    value: &NbtValue,
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Result<Arc<str>, ()> {
+    let mut out = String::new();
+    let mut remaining = ui::MAX_TEXT_SPANS;
+    component_mode(
+        value,
+        Style::default(),
+        &mut out,
+        &mut remaining,
+        0,
+        Some(lookup),
+        true,
+    )?;
+    Ok(out.into())
+}
 fn literal(s: &str, style: Style, out: &mut String) -> Result<(), ()> {
     // Reset sibling formatting before restoring inherited fields. Bedrock colour codes alone
     // do not reset bold/italic, so simply concatenating component strings is incorrect.
@@ -97,6 +117,17 @@ fn component(
     depth: usize,
     translate: Option<&dyn Fn(&str) -> Option<String>>,
 ) -> Result<(), ()> {
+    component_mode(v, inherited, out, remaining, depth, translate, false)
+}
+fn component_mode(
+    v: &NbtValue,
+    inherited: Style,
+    out: &mut String,
+    remaining: &mut usize,
+    depth: usize,
+    translate: Option<&dyn Fn(&str) -> Option<String>>,
+    content_only: bool,
+) -> Result<(), ()> {
     if depth > world::MAX_NBT_DEPTH || *remaining == 0 {
         return Err(());
     }
@@ -108,14 +139,22 @@ fn component(
             let mut style = inherited;
             for (i, part) in parts.iter().enumerate() {
                 if i == 0 {
-                    style = styled(part, inherited)?;
+                    style = styled(part, inherited, content_only)?;
                 }
-                component(part, style, out, remaining, depth + 1, translate)?;
+                component_mode(
+                    part,
+                    style,
+                    out,
+                    remaining,
+                    depth + 1,
+                    translate,
+                    content_only,
+                )?;
             }
             Ok(())
         }
         NbtValue::Compound(c) => {
-            let style = styled(v, inherited)?;
+            let style = styled(v, inherited, content_only)?;
             if let Some(NbtValue::String(s)) = c.get("text") {
                 literal(s, style, out)?;
             } else if let (Some(lookup), Some(NbtValue::String(key))) =
@@ -134,7 +173,18 @@ fn component(
                     None => &[],
                     _ => return Err(()),
                 };
-                translated(&format, args, style, out, remaining, depth, lookup)?;
+                translated(
+                    &format,
+                    args,
+                    style,
+                    out,
+                    remaining,
+                    depth,
+                    Translation {
+                        lookup,
+                        content_only,
+                    },
+                )?;
             } else {
                 return Err(());
             }
@@ -143,13 +193,26 @@ fn component(
                     return Err(());
                 };
                 for part in parts {
-                    component(part, style, out, remaining, depth + 1, translate)?;
+                    component_mode(
+                        part,
+                        style,
+                        out,
+                        remaining,
+                        depth + 1,
+                        translate,
+                        content_only,
+                    )?;
                 }
             }
             Ok(())
         }
         _ => Err(()),
     }
+}
+#[derive(Clone, Copy)]
+struct Translation<'a> {
+    lookup: &'a dyn Fn(&str) -> Option<String>,
+    content_only: bool,
 }
 fn translated(
     mut text: &str,
@@ -158,8 +221,12 @@ fn translated(
     out: &mut String,
     remaining: &mut usize,
     depth: usize,
-    lookup: &dyn Fn(&str) -> Option<String>,
+    translation: Translation<'_>,
 ) -> Result<(), ()> {
+    let Translation {
+        lookup,
+        content_only,
+    } = translation;
     let mut next = 0usize;
     while let Some(at) = text.find('%') {
         if *remaining == 0 {
@@ -198,19 +265,31 @@ fn translated(
         match arg {
             NbtValue::Int(n) => literal(&n.to_string(), style, out)?,
             NbtValue::Long(n) => literal(&n.to_string(), style, out)?,
-            value => component(value, style, out, remaining, depth + 1, Some(lookup))?,
+            value => component_mode(
+                value,
+                style,
+                out,
+                remaining,
+                depth + 1,
+                Some(lookup),
+                content_only,
+            )?,
         }
     }
     literal(text, style, out)
 }
-fn styled(v: &NbtValue, mut s: Style) -> Result<Style, ()> {
+fn styled(v: &NbtValue, mut s: Style, content_only: bool) -> Result<Style, ()> {
     let NbtValue::Compound(c) = v else {
         return Ok(s);
     };
-    if c.boolean("underlined") == Some(true)
-        || c.boolean("strikethrough") == Some(true)
-        || c.get("font").is_some()
-        || c.get("shadow_color").is_some()
+    let default_font = c.get("font").is_none_or(
+        |font| matches!(font, NbtValue::String(name) if name.as_ref() == "minecraft:default"),
+    );
+    if !content_only
+        && (c.boolean("underlined") == Some(true)
+            || c.boolean("strikethrough") == Some(true)
+            || !default_font
+            || c.get("shadow_color").is_some())
     {
         return Err(());
     }
@@ -218,13 +297,16 @@ fn styled(v: &NbtValue, mut s: Style) -> Result<Style, ()> {
         let NbtValue::String(name) = color else {
             return Err(());
         };
-        s.color = Some(
-            ui::BedrockColor::from_name(name)
-                .and_then(|c| c.descriptor())
-                .filter(|c| c.code.is_ascii_hexdigit())
-                .ok_or(())?
-                .code,
-        );
+        let code = ui::BedrockColor::from_name(name)
+            .and_then(|c| c.descriptor())
+            .filter(|c| c.code.is_ascii_hexdigit())
+            .map(|c| c.code);
+        if code.is_none() && !content_only {
+            return Err(());
+        }
+        if let Some(code) = code {
+            s.color = Some(code);
+        }
     }
     s.bold = c.boolean("bold").unwrap_or(s.bold);
     s.italic = c.boolean("italic").unwrap_or(s.italic);
@@ -241,6 +323,53 @@ mod tests {
             c.insert(k, v);
         }
         NbtValue::Compound(c)
+    }
+    #[test]
+    fn native_default_font_is_not_an_unsupported_custom_font() {
+        // Verified26.3 ComponentSerialization.CODEC emits this exact shape.
+        let v = compound([
+            (
+                "text",
+                NbtValue::String("You cannot send messages here.".into()),
+            ),
+            ("font", NbtValue::String("minecraft:default".into())),
+        ]);
+        assert_eq!(
+            &*translated_component_text(&v, &|_| None).unwrap(),
+            "§rYou cannot send messages here."
+        );
+    }
+    #[test]
+    fn partial_chat_presentation_retains_content_without_claiming_full_style_support() {
+        for style in [
+            ("underlined", NbtValue::Byte(1)),
+            ("strikethrough", NbtValue::Byte(1)),
+            ("color", NbtValue::String("#12ABEF".into())),
+            ("font", NbtValue::String("fixture:custom".into())),
+        ] {
+            let v = compound([
+                ("text", NbtValue::String("Actual server rejection".into())),
+                style,
+                (
+                    "extra",
+                    NbtValue::List(vec![NbtValue::String(" — retained".into())]),
+                ),
+            ]);
+            assert!(translated_component_text(&v, &|_| None).is_err());
+            assert_eq!(
+                &*translated_component_content(&v, &|_| None).unwrap(),
+                "§rActual server rejection§r — retained"
+            );
+        }
+        let dynamic = compound([("selector", NbtValue::String("@a".into()))]);
+        assert!(translated_component_content(&dynamic, &|_| None).is_err());
+        assert!(
+            translated_component_content(
+                &NbtValue::String("X".repeat(ui::UiLimits::MAX_TEXT_BYTES).into()),
+                &|_| None
+            )
+            .is_err()
+        );
     }
     #[test]
     fn inherited_styles_restore_after_siblings_and_unicode_is_retained() {

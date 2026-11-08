@@ -42,6 +42,18 @@ pub struct Model {
     pub bounds: assets::SkinGeometryBounds,
 }
 impl Model {
+    /// Select the pinned player arm and sleeve while retaining its factory offsets/UVs.
+    /// The hand host removes the living-entity world transform before camera placement.
+    pub fn compile_first_person_arm(root: &Part, id: EntityRigId) -> Result<Self, Error> {
+        let mut arm = root.clone();
+        arm.faces.clear();
+        arm.children.retain(|part| part.name == "right_arm");
+        if arm.children.len() != 1 {
+            return Err(Error::MissingGeometry);
+        }
+        Self::compile(&arm, id)
+    }
+
     /// Runs on preparation workers. Pixel data and packet schemas never enter this conversion.
     pub fn compile(root: &Part, id: EntityRigId) -> Result<Self, Error> {
         let mut vertices = Vec::new();
@@ -311,6 +323,40 @@ mod tests {
                 [4., -4., -8., 1., 0.],
             ],
         }
+    }
+    #[test]
+    fn first_person_arm_keeps_only_factory_arm_and_sleeve_geometry() {
+        let root = part(
+            "root",
+            [0.; 3],
+            vec![],
+            vec![
+                part("body", [0.; 3], vec![face()], vec![]),
+                part(
+                    "right_arm",
+                    [-5., 2., 0.],
+                    vec![face()],
+                    vec![part("right_sleeve", [0.; 3], vec![face()], vec![])],
+                ),
+            ],
+        );
+        let id = super::super::java_model_rig_id(0).unwrap();
+        let all = Model::compile(&root, id).unwrap();
+        let arm = Model::compile_first_person_arm(&root, id).unwrap();
+        assert_eq!(all.geometry.vertices.len(), 18);
+        assert_eq!(arm.geometry.vertices.len(), 12);
+        assert_eq!(arm.bones[1].offset, Vec3::new(-5. / 16., 2. / 16., 0.));
+        assert_eq!(arm.geometry.vertices[0].uv, all.geometry.vertices[6].uv);
+        let missing = part("root", [0.; 3], vec![], vec![]);
+        assert!(matches!(
+            Model::compile_first_person_arm(&missing, id),
+            Err(Error::MissingGeometry)
+        ));
+        assert_eq!(
+            root.children.len(),
+            2,
+            "preparation never edits shared source models"
+        );
     }
     #[test]
     fn native_local_offsets_move_children_and_reset_without_mutating_geometry() {

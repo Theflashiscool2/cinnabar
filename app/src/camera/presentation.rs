@@ -14,13 +14,19 @@ use {
 };
 
 /// Borrows the semantic frame, HUD effects and movement speed for this frame's FOV inputs.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "host samples the active edition through existing simulation and camera owners"
+)]
 pub(crate) fn collect_fov_inputs(
     input: Res<client_state::SemanticInputSnapshot>,
     settings: Res<CameraSettingsAuthority>,
     ui: Option<Res<UiRuntimeResource>>,
     physics: Option<Res<LocalPhysicsController>>,
     movement_speed: Option<Res<client_interaction::movement::LocalMovementSpeedAuthority>>,
-    inputs: ResMut<CameraFovInputs>,
+    mut inputs: ResMut<CameraFovInputs>,
+    native: Option<Res<crate::session::SessionController>>,
+    movement: Option<Res<crate::session::java_movement::Movement>>,
 ) {
     client_presentation::camera::presentation::collect_fov_inputs(
         client_presentation::observations::InputObservation(input.snapshot()),
@@ -30,8 +36,30 @@ pub(crate) fn collect_fov_inputs(
             .as_deref()
             .map(|value| value as &dyn client_presentation::observations::PhysicsObservation),
         movement_speed.and_then(|speed| speed.current()),
-        inputs,
+        &mut inputs,
     );
+    inputs.native_java = false;
+    if let Some(state) = native
+        .as_ref()
+        .and_then(|session| session.native_java_world())
+    {
+        inputs.native_java = true;
+        inputs.movement_speed = movement
+            .as_ref()
+            .and_then(|m| m.0.view_speed(state))
+            .unwrap_or(0.1);
+        inputs.walk_speed = state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .map_or(0.1, |a| a.walking_speed);
+        inputs.flying = state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|a| a.flying);
+        inputs.slowness_amplifier = None;
+    }
 }
 
 /// Samples the local actor after tick preparation and clears death time when it leaves or recovers.

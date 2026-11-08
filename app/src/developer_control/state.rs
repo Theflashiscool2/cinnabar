@@ -321,6 +321,11 @@ pub(super) fn snapshot(world: &World) -> Value {
             .map(|player| player.facts.is_immobile()),
         "feet": view.map(|view| view.feet_translation().to_array()),
         "eye": view.map(|view| view.eye_translation().to_array()),
+        "native_camera_fov": world.get_resource::<client_presentation::camera::CameraFovInputs>()
+            .filter(|inputs| inputs.native_java).map(|inputs| json!({
+                "movement_speed": inputs.movement_speed, "walk_speed": inputs.walk_speed,
+                "target_multiplier": inputs.target_modifier(), "effects_scale": inputs.fov_effects_scale,
+            })),
         "server_position": player_position(world),
         "rotation": view.map(|view| {
             let [yaw, pitch] = super::input::view_angles(view);

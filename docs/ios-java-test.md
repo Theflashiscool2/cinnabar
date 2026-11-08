@@ -66,6 +66,33 @@ players, skins or menu appeared late. For double-tap sprint, press/release/press
 within the native seven-tick window and hold the second press; also test release,
 sneaking, menu/focus changes and reconnect. Mac results do not establish iPhone acceptance.
 
+If the app was already open when the test folder was created, recover its existing
+logs without rebuilding:
+
+```sh
+RECOVERED_LOGS=$(mktemp -d "$HOME/Desktop/cinnabar-existing-logs.XXXXXX")
+python3 packaging/macos/collect-java-diagnostics.py "$RECOVERED_LOGS" --recover-existing
+open "$RECOVERED_LOGS"
+```
+
+Older logs are explicitly labelled in the manifest and may belong to another
+build or attempt. Include the build revision and approximate attempt time.
+Disconnect first to finalize the join report.
+
+If the app was already running before the test folder was created, recover its
+existing logs without building again:
+
+```sh
+RECOVERY_LOGS=$(mktemp -d "$HOME/Desktop/cinnabar-existing-logs.XXXXXX")
+python3 packaging/macos/collect-java-diagnostics.py "$RECOVERY_LOGS" --recover-existing
+open "$RECOVERY_LOGS"
+```
+
+This explicitly includes older allowlisted logs. The manifest labels their original
+paths, modification times and unverified provenance; it does not identify them as
+this run's evidence. A console containing only `assetc prepare` has no gameplay
+trace. Disconnect to flush the join report, then collect again if needed.
+
 ## Prerequisites and inputs
 
 Use macOS, full Xcode/iPhoneOS SDK **27.1** (patch updates allowed), the pinned Rust

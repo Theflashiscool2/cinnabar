@@ -96,6 +96,24 @@ mod tests {
         );
     }
     #[test]
+    fn bare_arm_is_finite_moves_through_swing_and_returns_to_idle() {
+        let idle = bare_arm(0.);
+        for progress in [0.1, 0.25, 0.5, 0.75] {
+            let moving = bare_arm(progress);
+            assert!(moving.is_finite());
+            assert_ne!(idle, moving);
+            assert!((moving.determinant() - 1.).abs() < 0.00001);
+        }
+        assert_eq!(bare_arm(-1.), idle);
+        let returned = bare_arm(1.);
+        assert!(
+            idle.to_cols_array()
+                .into_iter()
+                .zip(returned.to_cols_array())
+                .all(|(a, b)| (a - b).abs() < 0.005)
+        );
+    }
+    #[test]
     fn eating_uses_target_remaining_ticks_and_mirrors_hands_without_mutating_geometry() {
         let right = eat(17, 32, 0., true);
         let left = eat(17, 32, 0., false);
@@ -107,4 +125,28 @@ mod tests {
         assert_eq!(r.y, l.y);
         assert_eq!(eat(0, 0, 0., true), Mat4::IDENTITY);
     }
+}
+
+/// Pinned renderPlayerArm at fully equipped height, in the shared native rig coordinates.
+/// Geometry comes from player_wide; no stretched item cube or Bedrock arm substitute.
+pub(super) fn bare_arm(progress: f32) -> Mat4 {
+    use std::f32::consts::{PI, TAU};
+    let p = progress.clamp(0., 1.);
+    let root = p.sqrt();
+    let sin = |v| world::java::player::trig(v)[0] as f32;
+    let native = Mat4::from_translation(Vec3::new(
+        -0.3 * sin(root * PI) + 0.64000005,
+        0.4 * sin(root * TAU) - 0.6,
+        -0.4 * sin(p * PI) - 0.71999997,
+    )) * Mat4::from_rotation_y(45_f32.to_radians())
+        * Mat4::from_rotation_y((70. * sin(root * PI)).to_radians())
+        * Mat4::from_rotation_z((-20. * sin(p * p * PI)).to_radians())
+        * Mat4::from_translation(Vec3::new(-1., 3.6, 3.5))
+        * Mat4::from_rotation_z(120_f32.to_radians())
+        * Mat4::from_rotation_x(200_f32.to_radians())
+        * Mat4::from_rotation_y((-135_f32).to_radians())
+        * Mat4::from_translation(Vec3::new(5.6, 0., 0.));
+    // Model::pose owns the LivingEntityRenderer conversion, absent from renderPlayerHand.
+    let living = Mat4::from_translation(Vec3::new(0., 1.501, 0.)) * Mat4::from_rotation_x(PI);
+    native * living.inverse()
 }

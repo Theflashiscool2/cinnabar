@@ -202,3 +202,41 @@ fn sprint_tap_history_is_not_advanced_by_render_frames_and_retires_with_the_worl
             .select(forward, false, true, true, false, false)
     );
 }
+
+#[test]
+fn native_camera_history_is_read_only_and_retires_on_world_change() {
+    let mut state = world(1);
+    let mut controller = Controller::default();
+    controller.begin_frame(&state, Duration::ZERO);
+    let old = view::Sample {
+        feet: [0., 5., 0.],
+        eye_height: 1.62,
+    };
+    let new = view::Sample {
+        feet: [0., 5., 0.2],
+        eye_height: 1.27,
+    };
+    controller.view.reset(old);
+    controller.view.tick(old, new);
+    controller.elapsed = TICK / 2;
+    let motion_before = state.player_motion;
+    assert!((controller.view_sample(&state).unwrap().feet[2] - 0.1).abs() < 1e-10);
+    assert_eq!(state.player_motion, motion_before);
+    state.terrain.begin(world::java::Dimension {
+        session: 7,
+        epoch: 2,
+        name: "fixture:other".into(),
+        min_y: -64,
+        height: 384,
+        has_skylight: true,
+    });
+    assert!(
+        controller.view_sample(&state).is_none(),
+        "a newly received dimension cannot sample old history before its first movement frame"
+    );
+    controller.begin_frame(&state, Duration::ZERO);
+    assert!(
+        controller.view_sample(&state).is_none(),
+        "old dimension cannot publish a camera"
+    );
+}

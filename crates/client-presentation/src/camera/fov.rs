@@ -23,6 +23,8 @@ const PLAYER_DEATH_FOV_TICKS: f32 = 500.0;
 /// Gameplay facts that steer the FOV multiplier; the equipment lane owns `bow_draw_seconds` and `spyglass_scoping`.
 #[derive(Resource, Debug, Clone, Copy, PartialEq)]
 pub struct CameraFovInputs {
+    /// Native Java uses its attribute/ability ratio directly; Bedrock retains its own scaling.
+    pub native_java: bool,
     /// Effective movement-speed attribute, including the local sprint modifier.
     pub movement_speed: f32,
     /// Resolved walk-speed ability.
@@ -41,6 +43,7 @@ pub struct CameraFovInputs {
 impl Default for CameraFovInputs {
     fn default() -> Self {
         Self {
+            native_java: false,
             movement_speed: sim::DEFAULT_MOVEMENT_SPEED as f32,
             walk_speed: DEFAULT_WALK_SPEED_ABILITY,
             flying: false,
@@ -89,12 +92,23 @@ impl CameraFovInputs {
             return SPYGLASS_FOV_MODIFIER;
         }
         let mut modifier = if self.flying { FLYING_MODIFIER } else { 1.0 };
-        modifier = match self.slowness_amplifier {
-            None => {
-                modifier * ((self.movement_speed / self.walk_speed) * SPEED_RATIO_SCALE + 1.0) * 0.5
+        modifier = if self.native_java {
+            // AbstractClientPlayer.getFieldOfViewModifier: zero walking ability skips
+            // the speed term; effects already contribute to the admitted attribute.
+            if self.walk_speed != 0. {
+                modifier *= (self.movement_speed / self.walk_speed + 1.) * 0.5;
             }
-            Some(amplifier) => {
-                modifier * (amplifier as f32 * SLOWNESS_STEP + 1.0).max(SLOWNESS_FLOOR)
+            modifier
+        } else {
+            match self.slowness_amplifier {
+                None => {
+                    modifier
+                        * ((self.movement_speed / self.walk_speed) * SPEED_RATIO_SCALE + 1.0)
+                        * 0.5
+                }
+                Some(amplifier) => {
+                    modifier * (amplifier as f32 * SLOWNESS_STEP + 1.0).max(SLOWNESS_FLOOR)
+                }
             }
         };
         if let Some(seconds) = self.bow_draw_seconds.filter(|seconds| seconds.is_finite()) {
@@ -306,5 +320,30 @@ mod tests {
         assert!(state.modifier().is_finite());
         state.advance(0.5, f32::NAN);
         assert!(state.modifier().is_finite());
+    }
+}
+
+#[cfg(test)]
+mod native_tests {
+    use super::*;
+    #[test]
+    fn native_sprint_uses_the_vanilla_ratio_and_effect_scale() {
+        let mut input = CameraFovInputs {
+            native_java: true,
+            movement_speed: 0.1,
+            walk_speed: 0.1,
+            ..Default::default()
+        };
+        assert_eq!(input.target_modifier(), 1.);
+        input.movement_speed = 0.13;
+        assert!((input.target_modifier() - 1.15).abs() < 0.00001);
+        input.fov_effects_scale = 0.;
+        assert_eq!(input.target_modifier(), 1.);
+        input.fov_effects_scale = 1.;
+        input.walk_speed = 0.;
+        assert_eq!(input.target_modifier(), 1.);
+        input.native_java = false;
+        input.walk_speed = 0.1;
+        assert!((input.target_modifier() - 1.28).abs() < 0.00001);
     }
 }

@@ -97,6 +97,12 @@ impl Drop for Presentation {
     }
 }
 impl Presentation {
+    pub(super) fn first_person_arm(
+        &self,
+    ) -> Option<&Arc<render_model::actor::java_geometry::Model>> {
+        self.assets.as_ref().map(|assets| &assets.arm)
+    }
+
     /// Shared sampling fraction for this native actor frame, including its world-space labels.
     pub(crate) fn partial_tick(&self) -> f32 {
         self.fraction

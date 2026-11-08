@@ -5,6 +5,7 @@ pub mod interaction;
 pub mod item_use;
 pub mod mining;
 mod sprint;
+pub mod view;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
@@ -42,6 +43,7 @@ pub struct Controller {
     sequence: u64,
     pub body: Body,
     sprint: sprint::Trigger,
+    view: view::History,
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
@@ -78,6 +80,13 @@ impl Controller {
             self.last_flags = None;
             self.last_rotation = state.player_motion.map(|m| [m.yaw, m.pitch]);
             self.reminder = 0;
+            self.view = Default::default();
+            if let Some(motion) = state.player_motion {
+                self.view.reset(view::Sample {
+                    feet: motion.position,
+                    eye_height: self.eye_height(state),
+                });
+            }
             // The pinned position handler updates kinematics, not entity pose/fluid history.
             // A new session/dimension retires Body above; same-world corrections retain it.
         }
@@ -92,6 +101,34 @@ impl Controller {
     /// Input authority release retires both pending taps and sprint continuation.
     pub fn release_input(&mut self) {
         self.sprint.release();
+    }
+
+    /// Render-only sample; authoritative picking and movement continue using WorldState.
+    pub fn view_sample(&self, state: &WorldState) -> Option<view::Sample> {
+        if self.scope != state.terrain.dimension().map(|d| (d.session, d.epoch)) {
+            return state.player_motion.map(|m| view::Sample {
+                feet: m.position,
+                eye_height: self.eye_height(state),
+            });
+        }
+        self.view
+            .sample(self.elapsed.as_secs_f64() / TICK.as_secs_f64())
+            .or_else(|| {
+                state.player_motion.map(|m| view::Sample {
+                    feet: m.position,
+                    eye_height: self.eye_height(state),
+                })
+            })
+    }
+
+    /// Effective native attribute, including exactly one predicted sprint modifier.
+    pub fn view_speed(&self, state: &WorldState) -> Option<f32> {
+        let (walking, sprinting) = movement_speeds(state).ok()?;
+        Some(if self.body.sprinting {
+            sprinting
+        } else {
+            walking
+        })
     }
 
     pub fn pending(&self) -> Option<&Frame> {
@@ -246,6 +283,10 @@ impl Controller {
         motion.yaw = controls.yaw;
         motion.pitch = controls.pitch;
         let mut body = self.body;
+        let before = view::Sample {
+            feet: motion.position,
+            eye_height: self.eye_height(state),
+        };
         travel::step(
             &mut motion,
             &mut body,
@@ -269,6 +310,13 @@ impl Controller {
         ));
         self.reminder = self.reminder.saturating_add(1);
         self.body = body;
+        self.view.tick(
+            before,
+            view::Sample {
+                feet: motion.position,
+                eye_height: self.eye_height(state),
+            },
+        );
         self.sprint = sprint;
         state.player_motion = Some(motion);
         state.player_pose_revision = revision;
@@ -288,14 +336,7 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
     if value("minecraft:bounciness")? != 0. {
         return Err("Native Java attribute-driven bouncing is not implemented".into());
     }
-    let mut speed = get("minecraft:movement_speed")?.clone();
-    speed.modifiers.retain(|m| m.name != "minecraft:sprinting");
-    let base_speed = speed.value().map_err(str::to_owned)? as f32;
-    speed.modifiers.push(Modifier {
-        name: "minecraft:sprinting".into(),
-        amount: f64::from(0.3_f32),
-        operation: Operation::AddMultipliedTotal,
-    });
+    let (base_speed, sprint_speed) = movement_speeds(state)?;
     let climbable = state
         .bootstrap
         .as_ref()
@@ -304,7 +345,7 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         .map_or(&[][..], Vec::as_slice);
     Ok(Parameters {
         speed: base_speed,
-        sprint_speed: speed.value().map_err(str::to_owned)? as f32,
+        sprint_speed,
         friction_modifier: value("minecraft:friction_modifier")? as f32,
         air_drag_modifier: value("minecraft:air_drag_modifier")? as f32,
         gravity: value("minecraft:gravity")?,
@@ -329,3 +370,20 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
 
 #[cfg(test)]
 mod tests;
+
+fn movement_speeds(state: &WorldState) -> Result<(f32, f32), String> {
+    let mut speed = state
+        .player_dynamics
+        .attributes
+        .get("minecraft:movement_speed")
+        .ok_or("Missing pinned Java movement speed")?
+        .clone();
+    speed.modifiers.retain(|m| m.name != "minecraft:sprinting");
+    let base_speed = speed.value().map_err(str::to_owned)? as f32;
+    speed.modifiers.push(Modifier {
+        name: "minecraft:sprinting".into(),
+        amount: f64::from(0.3_f32),
+        operation: Operation::AddMultipliedTotal,
+    });
+    Ok((base_speed, speed.value().map_err(str::to_owned)? as f32))
+}
