@@ -48,7 +48,7 @@ pub fn collect(
     epoch: u64,
     region: Bounds,
 ) -> Result<Query, QueryError> {
-    collect_with_context(terrain, physics, session, epoch, region, None)
+    collect_with_context(terrain, physics, session, epoch, region, None, None).map(|(q, _)| q)
 }
 
 pub fn collect_player(
@@ -61,8 +61,59 @@ pub fn collect_player(
     if !context.bottom.is_finite() {
         return Err(QueryError::Bounds);
     }
-    collect_with_context(terrain, physics, scope.0, scope.1, region, Some(context))
+    collect_with_context(
+        terrain,
+        physics,
+        scope.0,
+        scope.1,
+        region,
+        Some(context),
+        None,
+    )
+    .map(|(q, _)| q)
 }
+/// Native CollisionGetter.findSupportingBlock uses actual footprint contact, nearest
+/// block center, then the greatest BlockPos (Y/Z/X) for a distance tie.
+pub fn supporting_block(
+    terrain: &Terrain,
+    physics: &Table,
+    scope: (u64, u64),
+    shape: Bounds,
+    position: [f64; 3],
+    context: PlayerContext,
+    fallback_movement: Option<[f64; 3]>,
+) -> Result<Option<[i32; 3]>, QueryError> {
+    if !position.into_iter().all(f64::is_finite)
+        || !context.bottom.is_finite()
+        || fallback_movement.is_some_and(|v| !v.into_iter().all(f64::is_finite))
+    {
+        return Err(QueryError::Bounds);
+    }
+    let mut foot = shape;
+    foot.max[1] = shape.min[1];
+    foot.min[1] -= 1.0e-6;
+    let query = |region| {
+        collect_with_context(
+            terrain,
+            physics,
+            scope.0,
+            scope.1,
+            region,
+            Some(context),
+            Some(position),
+        )
+        .map(|(_, p)| p)
+    };
+    let first = query(foot)?;
+    if first.is_some() {
+        return Ok(first);
+    }
+    if let Some(movement) = fallback_movement {
+        return query(translated(foot, [-movement[0], 0., -movement[2]]));
+    }
+    Ok(None)
+}
+
 fn collect_with_context(
     terrain: &Terrain,
     physics: &Table,
@@ -70,7 +121,8 @@ fn collect_with_context(
     epoch: u64,
     region: Bounds,
     context: Option<PlayerContext>,
-) -> Result<Query, QueryError> {
+    support_origin: Option<[f64; 3]>,
+) -> Result<(Query, Option<[i32; 3]>), QueryError> {
     let dimension = terrain
         .dimension()
         .filter(|d| d.session == session && d.epoch == epoch)
@@ -106,6 +158,8 @@ fn collect_with_context(
         return Err(QueryError::Budget);
     }
     let mut boxes = Vec::new();
+    let mut support = None;
+    let mut support_distance = f64::MAX;
     for y in min[1]..=max[1] {
         // Outside the registered vertical interval is void space, not a missing column.
         if i64::from(y) < i64::from(dimension.min_y)
@@ -121,7 +175,7 @@ fn collect_with_context(
                     .ok_or(QueryError::Missing(position))?
                     .0;
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-                match &state.collision {
+                let shape: std::borrow::Cow<'_, [Bounds]> = match &state.collision {
                     Collision::Dynamic => {
                         let scaffold = physics.registry().filter(|r| {
                             assets::registry::java::physics::climbing::kind(r, id)
@@ -129,8 +183,7 @@ fn collect_with_context(
                                     assets::registry::java::physics::climbing::Kind::Scaffolding,
                                 )
                         });
-                        let shape: std::borrow::Cow<'_, [Bounds]> = if let Some(registry) = scaffold
-                        {
+                        if let Some(registry) = scaffold {
                             let context = context.ok_or(QueryError::Dynamic { id, position })?;
                             std::borrow::Cow::Borrowed(
                                 scaffolding::shape(registry, id, position, context)
@@ -141,19 +194,25 @@ fn collect_with_context(
                                 super::piston::collision::shape(terrain, physics, position)
                                     .ok_or(QueryError::Dynamic { id, position })?,
                             )
-                        };
-                        for &bounds in shape.iter() {
-                            let bounds = translated(bounds, position.map(f64::from));
-                            if intersects(bounds, region) {
-                                boxes.push(bounds);
-                            }
                         }
                     }
-                    Collision::Static(shape) => {
-                        for &bounds in shape.iter() {
-                            let bounds = translated(bounds, position.map(f64::from));
-                            if intersects(bounds, region) {
-                                boxes.push(bounds);
+                    Collision::Static(shape) => std::borrow::Cow::Borrowed(shape),
+                };
+                for &bounds in shape.iter() {
+                    let bounds = translated(bounds, position.map(f64::from));
+                    if intersects(bounds, region) {
+                        boxes.push(bounds);
+                        if let Some(origin) = support_origin {
+                            let distance = (0..3)
+                                .map(|i| (f64::from(position[i]) + 0.5 - origin[i]).powi(2))
+                                .sum::<f64>();
+                            let key = |p: [i32; 3]| [p[1], p[2], p[0]];
+                            if distance < support_distance
+                                || (distance == support_distance
+                                    && support.is_none_or(|old| key(position) > key(old)))
+                            {
+                                support = Some(position);
+                                support_distance = distance;
                             }
                         }
                     }
@@ -161,7 +220,7 @@ fn collect_with_context(
             }
         }
     }
-    Ok(Query { boxes, cells })
+    Ok((Query { boxes, cells }, support))
 }
 
 pub fn translated(bounds: Bounds, delta: [f64; 3]) -> Bounds {

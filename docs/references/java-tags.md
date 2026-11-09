@@ -35,3 +35,11 @@ does not invent vanilla tag definitions. The original `ProbeEmptyTags.java`
 reference and empty-tag vectors cover this separately from the existing
 server-data-tag vectors. Interaction tests cover omission, explicit clearing,
 late updates, START/FINISH and cancellation without changing blocks locally.
+
+Player collision restitution reads the runtime-exported `SUPPRESSES_BOUNCE` tag key
+from the same current configuration. Slime support does not invent missing tag
+memberships. Sneaking independently suppresses bounce and low-speed surface drag;
+normal movement still uses the native block restitution and fractional contact.
+The original `ProbeBlockCallbacks.java` and `ProbeSlime.java` references identify
+the supported class and exercise the pinned runtime callbacks. Other special
+movement callbacks and nonzero entity-bounciness attributes remain explicit gaps.

@@ -79,3 +79,5 @@ fn item_use_scales_normalized_axes_before_sneak_and_square_adjustment() {
     assert!((diagonal[1] - 0.196).abs() < 1e-7);
     assert_eq!(modified_input([1., 1.], 0., 1.), [0., 0.]);
 }
+
+mod slime;

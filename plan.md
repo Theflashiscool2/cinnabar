@@ -98,8 +98,17 @@ The native foundation targets the single Java release/protocol pinned in
 Saved-server edition routing, cancellable background discovery, separate Java
 account storage, login/configuration and typed play bootstrap are implemented.
 The app renders an experimental native terrain slice through the existing renderer.
-Dry-land movement has narrow Linux offline fixture coverage; the complete playable
-loop is not implemented.
+Dry-land movement has narrow Linux offline fixture coverage. Slime landing,
+sneak suppression, low-speed stepping and footprint support across chunk edges
+have native callback/vertical-travel reference coverage. Controlled Linux graphical
+vanilla tests verify bounce, sneak/walk/jump, negative chunk edges, live tag changes,
+corrections and reconnect. Ordinary bed coefficients use the same restitution path
+and pass graphical bounce/sneak tests. Mac/iPhone/Hypixel acceptance is pending.
+Other special block
+callbacks and nonzero entity-bounciness attributes remain incomplete; native
+Slime block coefficients do not imply those systems are supported. Dropped-item
+Slime callbacks still use their explicit authoritative-position fallback.
+The complete playable loop is not implemented.
 See [the module contract](crates/java-protocol/README.md) for limits and commands.
 Native Java inventory artwork now resolves actual item definitions and default components on a
 scoped worker into the shared GPU atlas. First-person/equipment and dynamic context remain

@@ -77,6 +77,7 @@ pub(super) fn parameters() -> Parameters<'static> {
         fast_lava: false,
         may_fly: false,
         climbable: &[],
+        suppresses_bounce: &[],
     }
 }
 

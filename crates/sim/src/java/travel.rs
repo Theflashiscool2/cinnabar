@@ -5,6 +5,7 @@
 mod bubbles;
 mod climbing;
 mod liquid;
+mod slime;
 mod swimming;
 use super::collision::{self, QueryError};
 use assets::registry::java::physics::{Bounds, State, Table};
@@ -84,6 +85,7 @@ pub struct Parameters<'a> {
     pub may_fly: bool,
     /// Current server block-tag members, never client fixture defaults.
     pub climbable: &'a [i32],
+    pub suppresses_bounce: &'a [i32],
 }
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -211,7 +213,20 @@ pub fn step(
             },
         );
     }
-    let feet = surface(terrain, physics, next.position, -0.5)?;
+    let support = if next_body.on_ground {
+        collision::supporting_block(
+            terrain,
+            physics,
+            scope,
+            shape,
+            next.position,
+            climbing::context(next.position, input.crouch),
+            None,
+        )?
+    } else {
+        None
+    };
+    let feet = surface_on(terrain, physics, next.position, -0.5, support)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
     let block_friction = if next_body.on_ground {
         modified_friction(feet.friction, p.friction_modifier)
@@ -359,13 +374,48 @@ pub fn step(
     } else {
         next_body.fall_distance + (-actual[1]).max(0.)
     };
+    let support = if next_body.on_ground {
+        collision::supporting_block(
+            terrain,
+            physics,
+            scope,
+            travel_pose.bounds(next.position, p.scale),
+            next.position,
+            climbing::context(next.position, input.crouch),
+            Some(actual),
+        )?
+    } else {
+        None
+    };
     for i in [0, 2] {
         if (desired[i] - actual[i]).abs() >= f64::from(1.0e-5_f32) {
             next.velocity[i] = 0.;
         }
     }
     if desired[1] != actual[1] {
-        next.velocity[1] = 0.;
+        let floor = surface_on(
+            terrain,
+            physics,
+            next.position,
+            -f64::from(0.2_f32),
+            support,
+        )?;
+        let tagged = slime::suppressed(
+            terrain,
+            physics,
+            next.position,
+            support,
+            p.suppresses_bounce,
+        )?;
+        next.velocity[1] = slime::restitute_y(
+            next.velocity[1],
+            actual[1],
+            next_body.on_ground,
+            input.crouch || tagged,
+            floor.bounce_restitution,
+            p.gravity,
+            modified_friction(0.98, p.air_drag_modifier),
+        );
     }
     if ((!wet && (next_body.horizontal_collision || input.jump))
         || (contact.water > 0. && next_body.horizontal_collision))
@@ -373,7 +423,7 @@ pub fn step(
     {
         next.velocity[1] = 0.2;
     }
-    let feet = surface(terrain, physics, next.position, -0.5)?;
+    let feet = surface_on(terrain, physics, next.position, -0.5, support)?;
     let inside = surface(terrain, physics, next.position, 0.)?;
     ensure_contacts(terrain, physics, travel_pose.bounds(next.position, p.scale))?;
     let cell = next.position.map(|n| n.floor() as i32);
@@ -443,6 +493,14 @@ pub fn step(
     }
     if !next.is_finite() {
         return Err(Error::Invalid);
+    }
+    if next_body.on_ground {
+        let cell = slime::contact_cell(next.position, support);
+        if let Some(id) = climbing::cell(terrain, cell)?
+            && slime::is_slime(physics, id)
+        {
+            slime::step_on(&mut next.velocity, input.crouch);
+        }
     }
     bubbles::apply(
         motion.position,
@@ -526,10 +584,19 @@ fn surface<'a>(
     position: [f64; 3],
     y_offset: f64,
 ) -> Result<&'a State, Error> {
+    surface_on(terrain, physics, position, y_offset, None)
+}
+fn surface_on<'a>(
+    terrain: &Terrain,
+    physics: &'a Table,
+    position: [f64; 3],
+    y_offset: f64,
+    support: Option<[i32; 3]>,
+) -> Result<&'a State, Error> {
     let cell = [
-        position[0].floor() as i32,
+        support.map_or(position[0].floor() as i32, |s| s[0]),
         (position[1] + y_offset).floor() as i32,
-        position[2].floor() as i32,
+        support.map_or(position[2].floor() as i32, |s| s[2]),
     ];
     let Some(id) = climbing::cell(terrain, cell)? else {
         return physics.air().ok_or(Error::Unsupported {
@@ -538,10 +605,10 @@ fn surface<'a>(
         });
     };
     let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-    if (state.special_callbacks
+    if state.special_callbacks
         && !bubbles::is_column(physics, id)
-        && !bubbles::server_damage(physics, id))
-        || state.bounce_restitution != 0.
+        && !bubbles::server_damage(physics, id)
+        && !slime::is_slime(physics, id)
     {
         return Err(Error::Unsupported {
             behavior: "special block movement callbacks",
@@ -564,6 +631,7 @@ fn ensure_contacts(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<
                 if state.special_callbacks
                     && !bubbles::is_column(physics, id)
                     && !bubbles::server_damage(physics, id)
+                    && !slime::is_slime(physics, id)
                 {
                     return Err(Error::Unsupported {
                         behavior: "special block contact behavior",

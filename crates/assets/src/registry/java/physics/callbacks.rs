@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     BubbleColumn,
+    Slime,
     ServerDamage,
     Other,
 }
@@ -17,6 +18,8 @@ struct Facts {
     states: usize,
     bubble: Vec<String>,
     server_damage: Vec<String>,
+    slime: Vec<String>,
+    suppresses_bounce: String,
 }
 fn facts() -> &'static Facts {
     static FACTS: OnceLock<Facts> = OnceLock::new();
@@ -29,6 +32,10 @@ fn facts() -> &'static Facts {
         f
     })
 }
+/// Exact native synchronized tag key used by Entity's collision restitution.
+pub fn suppresses_bounce_tag() -> &'static str {
+    &facts().suppresses_bounce
+}
 /// Class membership from the verified runtime, admitted only for its exact state registry.
 pub fn kind(registry: &BlockRegistry, state: u32) -> Option<Kind> {
     let f = facts();
@@ -38,6 +45,8 @@ pub fn kind(registry: &BlockRegistry, state: u32) -> Option<Kind> {
     let name = registry.state(state)?.name.as_ref();
     Some(if f.bubble.iter().any(|n| n == name) {
         Kind::BubbleColumn
+    } else if f.slime.iter().any(|n| n == name) {
+        Kind::Slime
     } else if f.server_damage.iter().any(|n| n == name) {
         Kind::ServerDamage
     } else {
@@ -62,6 +71,7 @@ mod tests {
         );
         assert_eq!(f.blocks_sha256, p["block_registry_report"]["sha256"]);
         assert_eq!(f.bubble.len(), 1);
+        assert_eq!(f.slime.len(), 1);
         assert_eq!(f.server_damage.len(), 1);
     }
 }

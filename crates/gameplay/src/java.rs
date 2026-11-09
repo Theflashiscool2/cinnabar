@@ -343,6 +343,14 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         .and_then(|b| b.configuration.tags.get("minecraft:block"))
         .and_then(|tags| tags.get("minecraft:climbable"))
         .map_or(&[][..], Vec::as_slice);
+    let suppresses_bounce = state
+        .bootstrap
+        .as_ref()
+        .and_then(|b| b.configuration.tags.get("minecraft:block"))
+        .and_then(|tags| {
+            tags.get(assets::registry::java::physics::callbacks::suppresses_bounce_tag())
+        })
+        .map_or(&[][..], Vec::as_slice);
     Ok(Parameters {
         speed: base_speed,
         sprint_speed,
@@ -362,6 +370,7 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
             .as_ref()
             .is_some_and(|a| a.may_fly),
         climbable,
+        suppresses_bounce,
         fast_lava: state
             .fast_lava()?
             .unwrap_or_else(assets::registry::java::fluids::contacts::fast_lava_default),
