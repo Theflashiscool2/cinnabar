@@ -27,6 +27,30 @@ reuse the existing bounded public-profile/skin services, UUID defaults and admit
 local player texture resources. Failed downloads remain diagnostic; a native default
 while pending is not successful custom-skin acceptance.
 
+## Dropped-item motion
+
+`world::java::entities::item_motion::View` owns presentation-only positions and
+velocity. Native position/velocity packets reconcile that view without changing
+the authoritative delta anchor; rotation and metadata do not restart its flight.
+Relative teleports use the active view's position and known velocity, while the
+wire delta anchor remains separate. The existing world-service clock drives
+`sim::java::item` at native client ticks.
+Rendering samples the same view for the transform and light probe. Despawn, reused
+network IDs, world replacement and reconnect retire the owning entity and view.
+
+The implemented dry/full-cube path follows pinned `ItemEntity.tick`,
+`Entity.getAirDrag`, movement collision, support friction and resting cadence.
+`sim/src/java/item/native-dry-vectors.json` records actual vanilla server
+`Pos`/`Motion`/`OnGround` after `tick freeze` and individual `tick step 1`, including
+flight, landing and rest. The reference floor is translated rigidly into the
+independent fixture; the native output supplies expected values.
+
+Fluid motion, partial shapes, special block effects and missing neighbours use
+explicit authoritative-position fallback, exposed in developer diagnostics. They
+are incomplete local simulation, not collision-free terrain. Local visual motion
+never grants a pickup, edits a stack or decides server damage. No per-frame timer
+or competing authoritative entity simulation is introduced.
+
 ## Reuse and attribution
 
 The isolated MIT resource library at `third_party/java-item-model` vendors selected

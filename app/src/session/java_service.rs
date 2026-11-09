@@ -35,7 +35,7 @@ impl Authority {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
-        self.clock.service(&mut self.world, now);
+        let visual_ticks = self.clock.service(&mut self.world, now);
         let elapsed = self.movement.elapsed(&self.world, now);
         let current = self.world.terrain.dimension().map(|d| (d.session, d.epoch));
         // A replacement world requires its own real PlayerLoaded/publication admission.
@@ -43,6 +43,7 @@ impl Authority {
         let physics = self.physics.as_deref().filter(|_| {
             self.scope == current && self.world.terrain_error.is_none() && !self.java.is_finished()
         });
+        super::java_cooldowns::advance_items(&mut self.world, physics, visual_ticks);
         let corrected = self.movement.0.begin_frame(
             &self.world,
             if physics.is_some() {

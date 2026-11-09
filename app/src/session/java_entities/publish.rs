@@ -178,7 +178,12 @@ pub(crate) fn update(
                     p.item_pending += 1;
                     continue;
                 };
-                let Some(light) = light(&state.terrain, e.motion.position) else {
+                let position = e
+                    .item_motion
+                    .as_ref()
+                    .filter(|v| v.active)
+                    .map_or(e.motion.position, |v| v.sample(fraction));
+                let Some(light) = light(&state.terrain, position) else {
                     p.unknown_light += 1;
                     continue;
                 };
@@ -194,6 +199,7 @@ pub(crate) fn update(
                         scope,
                         serial: p.serial,
                         age: p.ticks.saturating_sub(birth) as f32 + fraction,
+                        position,
                         light,
                     },
                 ) {
@@ -247,6 +253,7 @@ pub(crate) fn update(
                         serial: p.serial,
                         age: 0.,
                         light,
+                        position: sampled.pose.position,
                     },
                 ) {
                     p.failure = Some(error);

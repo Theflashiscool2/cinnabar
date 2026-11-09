@@ -43,6 +43,9 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
+    pub no_gravity: bool,
+    /// Present only for native dropped-item presentation, derived from the pinned entity report.
+    pub item_dimensions: Option<[f32; 2]>,
     pub hurt_ticks: u8,
     pub custom_name: Option<Arc<crate::NbtValue>>,
     pub custom_name_visible: bool,
@@ -72,6 +75,8 @@ impl Default for Visual {
         // native defaults, not claims that an omitted required variant was received.
         Self {
             flags: 0,
+            no_gravity: false,
+            item_dimensions: None,
             hurt_ticks: 0,
             custom_name: None,
             custom_name_visible: false,

@@ -688,3 +688,149 @@ fn damage_event_flashes_and_impulses_walk_but_never_changes_health_or_pose() {
     assert_eq!(s.entities.get(99).unwrap().visual.hurt_ticks, 0);
     assert!(s.admit(event(1, damage(2))));
 }
+
+#[test]
+fn dropped_item_motion_reconciles_only_real_position_velocity_packets_and_lifetimes() {
+    let mut s = state();
+    let item = || {
+        let wire::Packet::Spawn(mut p) = spawn() else {
+            unreachable!()
+        };
+        p.kind = java_protocol::target::ENTITY_ITEM;
+        p.velocity = [0.1, 0.2, 0.];
+        wire::Packet::Spawn(p)
+    };
+    assert!(s.admit(event(1, item())));
+    let first = s.entities.get(99).unwrap().identity;
+    let raw = s.entities.get(99).unwrap().motion;
+    s.entities
+        .update((7, 1), 99, |e| {
+            let v = e.item_motion.as_mut().unwrap();
+            v.position = [10., 60., 10.];
+            v.velocity = [0.3, 0.4, 0.];
+            v.active = true;
+            Ok(())
+        })
+        .unwrap();
+    // Rotation and metadata must not undo already integrated local visual movement.
+    assert!(s.admit(event(
+        1,
+        wire::Packet::Rotate {
+            id: 99,
+            rotation: [10., 20.],
+            on_ground: false
+        }
+    )));
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .item_motion
+            .as_ref()
+            .unwrap()
+            .position,
+        [10., 60., 10.]
+    );
+    let gravity = java_protocol::target::METADATA_ITEM
+        .iter()
+        .find(|s| s.name == "DATA_NO_GRAVITY")
+        .unwrap();
+    let metadata = wire::metadata::Packet {
+        id: 99,
+        unsupported: None,
+        entries: vec![wire::metadata::Entry {
+            index: gravity.index,
+            serializer: gravity.serializer,
+            value: wire::metadata::Value::Bool(true),
+        }],
+    };
+    assert!(s.admit(event(1, wire::Packet::Metadata(metadata))));
+    assert!(s.entities.get(99).unwrap().visual.no_gravity);
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .item_motion
+            .as_ref()
+            .unwrap()
+            .velocity,
+        [0.3, 0.4, 0.]
+    );
+    assert!(s.admit(Envelope {
+        generation: 7,
+        event: Event::Dynamics {
+            dimension_epoch: 1,
+            packet: dynamics::Packet::Velocity {
+                entity: 99,
+                velocity: [0.1, 0.2, 0.]
+            }
+        }
+    }));
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .item_motion
+            .as_ref()
+            .unwrap()
+            .velocity,
+        [0.1, 0.2, 0.]
+    );
+    assert!(s.admit(event(
+        1,
+        wire::Packet::Move {
+            id: 99,
+            delta: wire::Delta::Linear([4096, 0, 0]),
+            rotation: None,
+            on_ground: true
+        }
+    )));
+    let e = s.entities.get(99).unwrap();
+    let v = e.item_motion.as_ref().unwrap();
+    assert_eq!(
+        e.motion.position,
+        domain::decode_delta(raw.position, [4096, 0, 0])
+    );
+    assert_eq!(v.position, e.motion.position);
+    assert_eq!(v.previous, v.position);
+    assert!(v.on_ground);
+    let anchor = s.entities.get(99).unwrap().delta_base;
+    s.entities
+        .update((7, 1), 99, |e| {
+            let v = e.item_motion.as_mut().unwrap();
+            v.position = [8., 60., 4.];
+            v.velocity = [0.3, 0.4, 0.];
+            v.active = true;
+            Ok(())
+        })
+        .unwrap();
+    assert!(s.admit(event(
+        1,
+        wire::Packet::Teleport {
+            id: 99,
+            position: [1., 2., 3.],
+            velocity: [0.1, 0., 0.],
+            rotation: [0., 0.],
+            relative: Flag::X.mask() | Flag::Y.mask() | Flag::Z.mask() | Flag::VelocityX.mask(),
+            on_ground: false
+        }
+    )));
+    let e = s.entities.get(99).unwrap();
+    assert_eq!(e.motion.position, [9., 62., 7.]);
+    assert_eq!(e.motion.velocity, [0.4, 0., 0.]);
+    assert_eq!(
+        e.delta_base, anchor,
+        "relative corrections cannot rebase VecDeltaCodec"
+    );
+    assert_eq!(e.item_motion.as_ref().unwrap().position, e.motion.position);
+    assert!(s.admit(event(1, wire::Packet::Remove(vec![99]))));
+    assert!(s.admit(event(1, item())));
+    let e = s.entities.get(99).unwrap();
+    assert_ne!(e.identity, first);
+    let v = e.item_motion.as_ref().unwrap();
+    assert!(!v.active);
+    assert_eq!(v.ticks, 0);
+    assert!(!e.visual.no_gravity);
+    s.begin(8);
+    assert!(s.entities.get(99).is_none());
+}

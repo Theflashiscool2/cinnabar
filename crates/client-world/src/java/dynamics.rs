@@ -183,6 +183,9 @@ pub(super) fn admit(
                 .entities
                 .update((state.generation(), epoch), entity, |e| {
                     e.motion.velocity = velocity;
+                    if let Some(view) = &mut e.item_motion {
+                        view.velocity = velocity;
+                    }
                     Ok(())
                 });
         }

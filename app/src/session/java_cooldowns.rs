@@ -18,7 +18,11 @@ impl Clock {
     pub(super) fn fraction(&self) -> f32 {
         (self.elapsed.as_secs_f32() / simulation_clock::TICK_DURATION.as_secs_f32()).clamp(0., 1.)
     }
-    pub(super) fn service(&mut self, world: &mut client_world::java::WorldState, now: Instant) {
+    pub(super) fn service(
+        &mut self,
+        world: &mut client_world::java::WorldState,
+        now: Instant,
+    ) -> u32 {
         let session = Some(world.generation());
         if self.session != session {
             *self = Self {
@@ -41,14 +45,68 @@ impl Clock {
             world.player_visual.swing.tick();
             world.player_visual.hurt_ticks = world.player_visual.hurt_ticks.saturating_sub(1);
         }
+        ticks
     }
 }
-pub(crate) fn advance(mut clock: ResMut<Clock>, mut controller: ResMut<SessionController>) {
+pub(crate) fn advance(
+    mut clock: ResMut<Clock>,
+    mut controller: ResMut<SessionController>,
+    presentation: Option<Res<super::java_render::Presentation>>,
+) {
     if controller.java.is_none() {
         *clock = Default::default();
         return;
     }
-    clock.service(&mut controller.java_world, Instant::now());
+    let ticks = clock.service(&mut controller.java_world, Instant::now());
+    let physics = presentation.as_ref().and_then(|p| p.service_physics());
+    advance_items(&mut controller.java_world, physics.as_deref(), ticks);
+}
+
+/// Item visuals use the same elapsed ticks and world loan as network/player processing.
+pub(super) fn advance_items(
+    world: &mut client_world::java::WorldState,
+    physics: Option<&::assets::registry::java::physics::Table>,
+    ticks: u32,
+) {
+    if ticks == 0 {
+        return;
+    }
+    let scope = world.terrain.dimension().map(|d| (d.session, d.epoch));
+    for entity in world.entities.items_mut() {
+        let view = entity
+            .item_motion
+            .as_mut()
+            .expect("item presentation filter");
+        let ready = world
+            .equipment
+            .ground(entity.identity)
+            .and_then(|s| s.stack.as_ref())
+            .is_some();
+        let supported = physics
+            .zip(scope)
+            .filter(|_| ready && world.terrain_error.is_none());
+        if let Some((physics, scope)) = supported {
+            for _ in 0..ticks {
+                if let Err(error) = sim::java::item::tick(
+                    &world.terrain,
+                    physics,
+                    scope,
+                    view,
+                    entity.network_id,
+                    entity.visual.no_gravity,
+                ) {
+                    view.suspend(entity.motion, entity.on_ground, error.reason());
+                    break;
+                }
+            }
+        } else {
+            view.suspend(
+                entity.motion,
+                entity.on_ground,
+                "awaiting native item data and physics",
+            );
+        }
+    }
 }
 
 #[cfg(test)]

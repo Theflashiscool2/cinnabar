@@ -1,5 +1,5 @@
 //! Ground items reuse native item models and the existing actor atlas/rig owner.
-//! Positions are server facts; visual bob/spin do not simulate or award pickups.
+//! Dry movement is sampled from the native item view; pickups remain server-owned.
 use super::*;
 use render_model::{ActorGlint, HandItemAlphaMode};
 
@@ -8,6 +8,7 @@ pub(super) struct Frame {
     pub serial: u64,
     pub age: f32,
     pub light: u32,
+    pub position: [f64; 3],
 }
 /// Native ItemClusterRenderState thresholds, including its unused empty-stack branch.
 fn amount(count: u32) -> usize {
@@ -82,7 +83,7 @@ pub(super) fn append(
         frame.age,
         phase,
         first.bounds,
-        Vec3::from_array(entity.motion.position.map(|n| n as f32)),
+        Vec3::from_array(frame.position.map(|n| n as f32)),
     );
     let bones: Arc<[RenderBoneTransform]> = Arc::from([RenderBoneTransform {
         rotation: [0., 0., 0., 1.],

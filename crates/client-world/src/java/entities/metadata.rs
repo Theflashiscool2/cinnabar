@@ -161,6 +161,7 @@ fn apply(
                 item = Some(super::super::inventory::stack(stack)?)
             }
             ("DATA_SHARED_FLAGS_ID", Value::Byte(flags)) => visual.flags = flags,
+            ("DATA_NO_GRAVITY", Value::Bool(value)) => visual.no_gravity = value,
             ("DATA_CUSTOM_NAME", Value::Component(name)) => {
                 visual.custom_name = name.map(super::super::nbt::convert).map(Arc::new)
             }

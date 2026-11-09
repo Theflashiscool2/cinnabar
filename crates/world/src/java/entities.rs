@@ -2,6 +2,7 @@
 use super::player::{Motion, Relative};
 pub mod animation;
 pub mod interpolation;
+pub mod item_motion;
 pub mod visual;
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -70,6 +71,7 @@ pub struct Entity {
     pub path: Arc<[PositionStep]>,
     pub visual: visual::Visual,
     pub presentation: Option<animation::Presentation>,
+    pub item_motion: Option<item_motion::View>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -96,6 +98,12 @@ impl Entities {
     }
     pub fn iter(&self) -> impl Iterator<Item = &Entity> {
         self.entries.values()
+    }
+    /// Only presentation item views are mutable here; transport motion remains separate.
+    pub fn items_mut(&mut self) -> impl Iterator<Item = &mut Entity> {
+        self.entries
+            .values_mut()
+            .filter(|e| e.item_motion.is_some())
     }
     pub fn revision(&self) -> u64 {
         self.revision
@@ -290,6 +298,10 @@ impl Entities {
                 revision,
                 teleport_revision: 1,
                 path: Arc::from([]),
+                item_motion: spawn
+                    .visual
+                    .item_dimensions
+                    .map(|dimensions| item_motion::View::new(spawn.motion, dimensions)),
                 visual: spawn.visual,
                 presentation,
             },
@@ -377,6 +389,12 @@ impl Entities {
     }
 }
 impl Entity {
+    /// An actual position packet rebases the item view; metadata/rotation do not.
+    pub fn synchronize_item_position(&mut self) {
+        if let Some(view) = &mut self.item_motion {
+            view.reposition(self.motion.position, self.on_ground);
+        }
+    }
     /// Called for each decoded position/rotation packet, including unchanged targets.
     /// Metadata/velocity updates must not restart this cosmetic timeline.
     pub fn queue_presentation_motion(&mut self) -> Result<(), &'static str> {
@@ -413,6 +431,14 @@ impl Entity {
         on_ground: bool,
     ) -> Result<(), &'static str> {
         let mut base = self.motion;
+        // ItemEntity has no living interpolation target: relative correction uses its
+        // locally integrated position and known velocity, never the delta-packet anchor.
+        if let Some(view) = &self.item_motion
+            && view.active
+        {
+            base.position = view.position;
+            base.velocity = view.velocity;
+        }
         if let Some(presentation) = &self.presentation
             && presentation.track.pending_steps() == 0
         {
@@ -434,6 +460,11 @@ impl Entity {
             }
         }
         self.motion = motion;
+        self.on_ground = on_ground;
+        self.synchronize_item_position();
+        if let Some(view) = &mut self.item_motion {
+            view.velocity = motion.velocity;
+        }
         self.path = Arc::from([]);
         self.on_ground = on_ground;
         self.teleport_revision = revision;

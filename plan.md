@@ -74,10 +74,24 @@ interaction gesture after transport admission. Exported placement/dispatch facts
 known destination terrain, height/border constraints, cooldowns and supported entity
 bounds gate that presentation; terrain and inventory remain server-owned. Native
 border packets update a scoped, interpolated constraint, not a rendered border wall.
-Replaceable targets, specialized/partial shapes and unknown collision contexts remain
-unpredicted. Linux graphical vanilla acceptance covers wool placement across a chunk
+Replaceable targets and specialized/partial shapes remain unpredicted. Unknown
+entity geometry does not imply clear collision: ordinary eligible BlockItems may
+show a cosmetic attempt gesture after transport admission, while known obstructions
+still suppress it. This provisional attempt feedback is not native local-result
+parity and does not predict placement success. Linux graphical vanilla acceptance covers wool placement across a chunk
 boundary, border rejection, server counts, transfer and respawn/reconnect; iOS and
 Hypixel acceptance of these repairs is pending.
+
+Mining accepts the native empty bootstrap tag memberships when a server omits
+block tags, without installing guessed vanilla tags. Later synchronized updates
+remain authoritative. Dropped items have bounded native dry/full-block visual
+motion on the existing world-service timer, independent of authoritative positions,
+delta anchors, stacks and pickups. Fluid, partial-shape and special-block callbacks
+remain explicit server-position fallbacks; full drop-motion parity is incomplete.
+Controlled Linux/lavapipe acceptance verifies tagless wool mining, repeated swings,
+clear/unknown-entity placement, a server-counted Q drop with visible flight/landing,
+velocity corrections, chunk crossing, dimension retirement and reconnect. Mac,
+iPhone, Hypixel and full resource-content reload acceptance remain pending.
 
 The native foundation targets the single Java release/protocol pinned in
 [`crates/java-protocol/data/target.json`](crates/java-protocol/data/target.json).

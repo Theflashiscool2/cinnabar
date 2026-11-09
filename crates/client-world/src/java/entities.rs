@@ -125,6 +125,16 @@ pub(super) fn admit(
                     head_yaw: s.head_yaw,
                     object_data: s.data,
                     visual: domain::visual::Visual {
+                        item_dimensions: (s.kind == java_protocol::target::ENTITY_ITEM).then(
+                            || {
+                                let id = java_protocol::target::ENTITY_TYPES
+                                    .iter()
+                                    .position(|n| *n == s.kind)
+                                    .expect("decoded entity type");
+                                let d = java_protocol::target::ENTITY_SPECS[id].dimensions;
+                                [d[0], d[1]]
+                            },
+                        ),
                         name_height: java_protocol::target::ENTITY_SPECS
                             [java_protocol::target::ENTITY_TYPES
                                 .iter()
@@ -198,6 +208,7 @@ pub(super) fn admit(
                 e.motion.pitch = pitch;
             }
             e.on_ground = on_ground;
+            e.synchronize_item_position();
             e.queue_presentation_motion()
         }),
         wire::Packet::Rotate {
@@ -245,6 +256,7 @@ pub(super) fn admit(
             e.motion.yaw = yaw;
             e.motion.pitch = pitch;
             e.on_ground = on_ground;
+            e.synchronize_item_position();
             e.synchronize_presentation_motion()
         }),
         wire::Packet::Teleport {
