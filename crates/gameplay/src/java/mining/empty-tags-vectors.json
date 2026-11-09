@@ -1,0 +1,113 @@
+{
+  "source": "Original java-protocol/tests/java/ProbeEmptyTags.java; verified Java26.3/protocol777. Bootstrap/default components only, no SERVER_DATA tag reload or network tags.",
+  "vectors": [
+    {
+      "item": "minecraft:air",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:air",
+      "block": "minecraft:white_wool",
+      "state": 2409,
+      "block_id": 151,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:air",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_sword",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_sword",
+      "block": "minecraft:white_wool",
+      "state": 2409,
+      "block_id": 151,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:wooden_sword",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1097859072,
+      "correct": true,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:white_wool",
+      "state": 2409,
+      "block_id": 151,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:iron_pickaxe",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:stone",
+      "state": 1,
+      "block_id": 1,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:white_wool",
+      "state": 2409,
+      "block_id": 151,
+      "speed_bits": 1065353216,
+      "correct": false,
+      "tags": []
+    },
+    {
+      "item": "minecraft:shears",
+      "block": "minecraft:cobweb",
+      "state": 2362,
+      "block_id": 139,
+      "speed_bits": 1097859072,
+      "correct": true,
+      "tags": []
+    }
+  ]
+}

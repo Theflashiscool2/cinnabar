@@ -598,12 +598,14 @@ fn send_pending(
             return false;
         }
     };
-    let predict_placement = request.kind == Kind::UseOn
-        && placement.is_some_and(|context| placement::predict(state, &request, context));
+    let placement_preview = (request.kind == Kind::UseOn)
+        .then(|| placement.and_then(|context| placement::preview(state, &request, context)))
+        .flatten();
     match java.command(command) {
         Ok(()) => {
-            if predict_placement {
-                bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand, "Native placement gesture predicted; blocks and stacks remain authoritative");
+            if let Some(collision) = placement_preview.filter(|p| p.gesture()) {
+                bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand,
+                    ?collision, "Native placement attempt gesture; blocks and stacks remain authoritative");
                 swing::predict_interact(state, request.hand);
             }
             if request.kind == Kind::Break {

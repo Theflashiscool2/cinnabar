@@ -203,45 +203,46 @@ mod tests {
     }
     #[test]
     fn speeds_and_drop_rules_match_independent_native_itemstack_vectors() {
-        let fixture: Value = serde_json::from_str(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/java/mining/vectors.json"
-        )))
-        .unwrap();
-        let facts = assets::registry::java::mining::builtin().unwrap();
-        let rows = fixture["vectors"].as_array().unwrap();
-        assert_eq!(rows.len(), 36);
-        for row in rows {
-            let item = Stack {
-                item: row["item"].as_str().unwrap().into(),
-                count: 1,
-                added: Default::default(),
-                removed: Default::default(),
-            };
-            let state = facts.state(row["state"].as_u64().unwrap() as u32).unwrap();
-            assert_eq!(state.block as u64, row["block_id"].as_u64().unwrap());
-            let tags = row["tags"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|t| (t.as_str().unwrap().into(), vec![state.block as i32]))
-                .collect();
-            let (speed, correct) =
-                tool(Some(&item), state, row["block"].as_str().unwrap(), &tags).unwrap();
-            assert_eq!(
-                speed.to_bits() as u64,
-                row["speed_bits"].as_u64().unwrap(),
-                "{} {}",
-                item.item,
-                row["block"]
-            );
-            assert_eq!(
-                correct,
-                row["correct"].as_bool().unwrap(),
-                "{} {}",
-                item.item,
-                row["block"]
-            );
+        for (data, count) in [
+            (include_str!("mining/vectors.json"), 36),
+            (include_str!("mining/empty-tags-vectors.json"), 12),
+        ] {
+            let fixture: Value = serde_json::from_str(data).unwrap();
+            let facts = assets::registry::java::mining::builtin().unwrap();
+            let rows = fixture["vectors"].as_array().unwrap();
+            assert_eq!(rows.len(), count);
+            for row in rows {
+                let item = Stack {
+                    item: row["item"].as_str().unwrap().into(),
+                    count: 1,
+                    added: Default::default(),
+                    removed: Default::default(),
+                };
+                let state = facts.state(row["state"].as_u64().unwrap() as u32).unwrap();
+                assert_eq!(state.block as u64, row["block_id"].as_u64().unwrap());
+                let tags = row["tags"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|t| (t.as_str().unwrap().into(), vec![state.block as i32]))
+                    .collect();
+                let (speed, correct) =
+                    tool(Some(&item), state, row["block"].as_str().unwrap(), &tags).unwrap();
+                assert_eq!(
+                    speed.to_bits() as u64,
+                    row["speed_bits"].as_u64().unwrap(),
+                    "{} {}",
+                    item.item,
+                    row["block"]
+                );
+                assert_eq!(
+                    correct,
+                    row["correct"].as_bool().unwrap(),
+                    "{} {}",
+                    item.item,
+                    row["block"]
+                );
+            }
         }
     }
     #[test]

@@ -1,5 +1,5 @@
-//! Read-only native ordinary BlockItem placement result. This predicts only the
-//! owning hand's gesture, never blocks, consumption or permission from the server.
+//! Ordinary placement feedback. Collision certainty remains separate from a cosmetic
+//! attempt gesture; neither changes blocks, stacks or server permission.
 use assets::registry::java::physics::{Bounds, Collision, Table};
 use client_world::java::WorldState;
 use gameplay::java::interaction::{Request, Target};
@@ -11,10 +11,31 @@ pub(super) struct Context<'a> {
     pub body: Body,
 }
 
-pub(super) fn predict(state: &WorldState, request: &Request, context: Context<'_>) -> bool {
-    eligible(state, request, context).unwrap_or(false)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Outcome {
+    Clear,
+    Blocked,
+    UnknownEntities,
 }
-fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Option<bool> {
+impl Outcome {
+    /// Known obstructions suppress feedback; unresolved entity data is an attempt only.
+    pub(super) fn gesture(self) -> bool {
+        self != Self::Blocked
+    }
+}
+
+pub(super) fn preview(
+    state: &WorldState,
+    request: &Request,
+    context: Context<'_>,
+) -> Option<Outcome> {
+    eligible(state, request, context)
+}
+#[cfg(test)]
+fn predict(state: &WorldState, request: &Request, context: Context<'_>) -> bool {
+    preview(state, request, context) == Some(Outcome::Clear)
+}
+fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Option<Outcome> {
     use world::java::hud::GameMode;
     if !matches!(
         state.status.mode,
@@ -53,7 +74,7 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
     )
     .ok()?
     {
-        return Some(false);
+        return Some(Outcome::Blocked);
     }
     let rules = assets::registry::java::use_rules::builtin().ok()?;
     let target = rules.block(state.block_name(hit.state)?)?;
@@ -73,7 +94,7 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
         || !state.border.contains_block(scope, hit.block).ok()?
         || !state.border.contains_block(scope, destination).ok()?
     {
-        return Some(false);
+        return Some(Outcome::Blocked);
     }
     let existing = context.physics.state(state.terrain.block(destination)?.0)?;
     if !existing.is_air || !existing.fluid_empty {
@@ -101,8 +122,9 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
         occupied,
         context.body.bounds(state.player_motion?.position, scale),
     ) {
-        return Some(false);
+        return Some(Outcome::Blocked);
     }
+    let mut unknown = false;
     for entity in state.entities.iter() {
         if rules.never_obstructs(&entity.kind)
             || state.player_entity_mode(entity.network_id) == Some(GameMode::Spectator)
@@ -110,55 +132,66 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
         {
             continue;
         }
-        // Unknown collision semantics remain unpredicted, not replaced with a
-        // guessed box. They do not prevent sending the authoritative request.
-        if entity.visual.incomplete.is_some()
-            || state.entities.passengers(entity.network_id).is_some()
-        {
-            return None;
-        }
-        let position = entity.presentation.as_ref()?.track.current.position;
-        let bounds = if entity.visual.player.is_some() {
-            match entity.visual.pose.as_ref() {
-                "standing" => sim::java::travel::bounds(position, false, entity.visual.scale),
-                "crouching" => sim::java::travel::bounds(position, true, entity.visual.scale),
-                _ => return None,
-            }
-        } else {
-            if (entity.visual.pig.is_none()
-                && entity.visual.villager.is_none()
-                && entity.visual.armor_stand_flags.is_none())
-                || entity.visual.pose.as_ref() != "standing"
+        let bounds = (|| {
+            // Unknown collision semantics remain unpredicted, not replaced with a
+            // guessed box. They do not prevent sending the authoritative request.
+            if entity.visual.incomplete.is_some()
+                || state.entities.passengers(entity.network_id).is_some()
             {
                 return None;
             }
-            let id = java_protocol::target::ENTITY_TYPES
-                .iter()
-                .position(|n| *n == entity.kind.as_ref())?;
-            let dims = java_protocol::target::ENTITY_SPECS[id].dimensions;
-            let small =
-                entity.visual.baby || entity.visual.armor_stand_flags.is_some_and(|f| f & 1 != 0);
-            let age = if small { 0.5_f32 } else { 1. };
-            let width = f64::from((dims[0] * age) * entity.visual.scale);
-            let height = f64::from((dims[1] * age) * entity.visual.scale);
-            Bounds {
-                min: [
-                    position[0] - width / 2.,
-                    position[1],
-                    position[2] - width / 2.,
-                ],
-                max: [
-                    position[0] + width / 2.,
-                    position[1] + height,
-                    position[2] + width / 2.,
-                ],
-            }
+            let position = entity.presentation.as_ref()?.track.current.position;
+            let bounds = if entity.visual.player.is_some() {
+                match entity.visual.pose.as_ref() {
+                    "standing" => sim::java::travel::bounds(position, false, entity.visual.scale),
+                    "crouching" => sim::java::travel::bounds(position, true, entity.visual.scale),
+                    _ => return None,
+                }
+            } else {
+                if (entity.visual.pig.is_none()
+                    && entity.visual.villager.is_none()
+                    && entity.visual.armor_stand_flags.is_none())
+                    || entity.visual.pose.as_ref() != "standing"
+                {
+                    return None;
+                }
+                let id = java_protocol::target::ENTITY_TYPES
+                    .iter()
+                    .position(|n| *n == entity.kind.as_ref())?;
+                let dims = java_protocol::target::ENTITY_SPECS[id].dimensions;
+                let small = entity.visual.baby
+                    || entity.visual.armor_stand_flags.is_some_and(|f| f & 1 != 0);
+                let age = if small { 0.5_f32 } else { 1. };
+                let width = f64::from((dims[0] * age) * entity.visual.scale);
+                let height = f64::from((dims[1] * age) * entity.visual.scale);
+                Bounds {
+                    min: [
+                        position[0] - width / 2.,
+                        position[1],
+                        position[2] - width / 2.,
+                    ],
+                    max: [
+                        position[0] + width / 2.,
+                        position[1] + height,
+                        position[2] + width / 2.,
+                    ],
+                }
+            };
+            Some(bounds)
+        })();
+        let Some(bounds) = bounds else {
+            unknown = true;
+            continue;
         };
         if overlaps(occupied, bounds) {
-            return Some(false);
+            return Some(Outcome::Blocked);
         }
     }
-    Some(true)
+    Some(if unknown {
+        Outcome::UnknownEntities
+    } else {
+        Outcome::Clear
+    })
 }
 fn overlaps(a: Bounds, b: Bounds) -> bool {
     (0..3).all(|i| a.min[i] < b.max[i] && a.max[i] > b.min[i])
@@ -337,6 +370,72 @@ mod tests {
         request.correction_sequence -= 1;
         state.terrain.unload([-1, 0]);
         assert!(!predict(&state, &request, context));
+    }
+    #[test]
+    fn unknown_entities_keep_collision_uncertain_and_known_obstructions_still_win() {
+        use world::java::entities::{Spawn, visual::Visual};
+        let (mut state, physics, request) = fixture();
+        let context = Context {
+            physics: &physics,
+            body: Body::default(),
+        };
+        state.entities.begin(7, 1);
+        let spawn = |id: i32, kind: &str, position: [f64; 3], stand: bool| Spawn {
+            transport_lifetime: id as u64,
+            network_id: id,
+            uuid: [id as u8; 16],
+            kind: kind.into(),
+            motion: world::java::player::Motion {
+                position,
+                ..Default::default()
+            },
+            head_yaw: 0.,
+            object_data: 0,
+            visual: Visual {
+                armor_stand_flags: stand.then_some(0),
+                ..Default::default()
+            },
+            interpolation_interval: stand.then_some(3),
+        };
+        state
+            .entities
+            .spawn((7, 1), spawn(98, "minecraft:cow", [20., -59., 20.], false))
+            .unwrap();
+        assert_eq!(
+            preview(&state, &request, context),
+            Some(Outcome::UnknownEntities)
+        );
+        assert!(
+            !predict(&state, &request, context),
+            "unknown is never a successful collision preview"
+        );
+        assert!(
+            Outcome::UnknownEntities.gesture(),
+            "feedback describes only an attempt"
+        );
+        state
+            .entities
+            .spawn(
+                (7, 1),
+                spawn(
+                    99,
+                    java_protocol::target::ENTITY_ARMOR_STAND,
+                    [-15.5, -59., 1.5],
+                    true,
+                ),
+            )
+            .unwrap();
+        assert_eq!(
+            preview(&state, &request, context),
+            Some(Outcome::Blocked),
+            "an earlier unknown cannot hide a known overlap"
+        );
+        assert!(!Outcome::Blocked.gesture());
+        state.entities.remove((7, 1), &[99]).unwrap();
+        state.player_motion.as_mut().unwrap().position = [-15.5, -59., 1.5];
+        assert_eq!(preview(&state, &request, context), Some(Outcome::Blocked));
+        assert_eq!(state.terrain.block([-16, -59, 1]).unwrap().0, 0);
+        assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 4);
     }
     #[test]
     fn an_unremoved_dead_body_still_obstructs_but_a_marker_does_not() {

@@ -518,11 +518,19 @@ impl Controller {
         let name = state
             .block_name(hit.state)
             .ok_or("Native mining registry is not installed")?;
-        let tags = state
+        let configuration = &state
             .bootstrap
             .as_ref()
-            .and_then(|b| b.configuration.tags.get("minecraft:block"))
-            .ok_or("Native block tags are not known")?;
+            .ok_or("Native mining configuration is not installed")?
+            .configuration;
+        // Missing named tags have no synchronized members, just as an explicitly
+        // empty registry does. Tool defaults still determine speed/drop correctness;
+        // never fabricate vanilla memberships over a server's tag definitions.
+        let empty_tags = Default::default();
+        let tags = configuration
+            .tags
+            .get("minecraft:block")
+            .unwrap_or(&empty_tags);
         let attribute = |name| {
             state
                 .player_dynamics

@@ -6,6 +6,9 @@ use java_protocol::session::{
 use sim::java::selection::Face;
 use world::java::{Dimension, dynamics::Abilities, hud::GameMode};
 
+#[path = "tests/tags.rs"]
+mod tags;
+
 fn state() -> WorldState {
     let mut state = WorldState::default();
     state.begin(7);

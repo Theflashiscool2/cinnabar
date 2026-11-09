@@ -46,7 +46,8 @@ pub(super) fn predict(state: &mut client_world::java::WorldState) {
 }
 
 /// 26.3 startUseItem uses getInteractAnimation, independently of attack gestures.
-/// Call only after a native PREDICTED interaction result and ordered admission.
+/// Ordinary placement feedback follows ordered admission; unresolved entity collision
+/// is cosmetic attempt feedback, never a successful placement prediction.
 pub(super) fn predict_interact(state: &mut client_world::java::WorldState, hand: Hand) {
     let animation = describe(hand.held(&state.inventory), INTERACT);
     start(state, hand == Hand::Off, animation);
