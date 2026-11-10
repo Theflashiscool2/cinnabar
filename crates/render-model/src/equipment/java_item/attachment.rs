@@ -51,6 +51,15 @@ pub fn held_bone(
     };
     b.is_finite().then_some(b)
 }
+/// Pinned CustomHeadLayer.DEFAULT: raw skull geometry follows the sampled head at 19/16 scale.
+pub fn skull_bone(head: RenderBoneTransform) -> Option<RenderBoneTransform> {
+    matrix(&head)?;
+    let mut bone = head;
+    for scale in &mut bone.axis_scale[..3] {
+        *scale *= 1.1875;
+    }
+    bone.is_finite().then_some(bone)
+}
 pub fn posed_bounds(
     bounds: assets::SkinGeometryBounds,
     bone: &RenderBoneTransform,
@@ -76,6 +85,29 @@ mod tests {
             translation_scale: [0., 0., 0., 1.],
             axis_scale: [1.; 4],
         }
+    }
+    #[test]
+    fn worn_skull_follows_head_rotation_without_item_translation() {
+        // 26.3 CustomHeadLayer.submit: head transform, then uniform 1.1875 scale.
+        let mut head = identity();
+        head.rotation = Quat::from_rotation_y(0.7).to_array();
+        head.translation_scale = [1., 2., 3., 1.];
+        let skull = skull_bone(head).unwrap();
+        assert_eq!(skull.rotation, head.rotation);
+        assert_eq!(skull.translation_scale, head.translation_scale);
+        assert_eq!(skull.axis_scale, [1.1875, 1.1875, 1.1875, 1.]);
+        let bound = posed_bounds(
+            assets::SkinGeometryBounds {
+                center: [0., -0.25, 0.],
+                half_extents: [0.25; 3],
+            },
+            &skull,
+        )
+        .unwrap();
+        assert!((bound.center[1] - (2. - 0.25 * 1.1875)).abs() < 1e-6);
+        let mut invalid = head;
+        invalid.rotation = [0.; 4];
+        assert!(skull_bone(invalid).is_none());
     }
     #[test]
     fn native_adult_offsets_mirror_and_slim_shift_precedes_arm_rotation() {

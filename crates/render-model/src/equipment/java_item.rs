@@ -5,7 +5,7 @@ use glam::Vec3;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 mod attachment;
-pub use attachment::{held_bone, posed_bounds};
+pub use attachment::{held_bone, posed_bounds, skull_bone};
 /// One geometry per sampled material; each uses the corresponding texture-array layer.
 #[derive(Clone, Debug)]
 pub struct Prepared {
