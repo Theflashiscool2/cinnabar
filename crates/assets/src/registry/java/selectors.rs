@@ -241,19 +241,19 @@ fn position_seed([x, y, z]: [i32; 3]) -> i64 {
         .wrapping_add(seed.wrapping_mul(11))
         >> 16
 }
-struct Random(u64);
+pub(super) struct Random(u64);
 impl Random {
-    fn new(seed: i64) -> Self {
+    pub(super) fn new(seed: i64) -> Self {
         Self((seed as u64 ^ 0x5deece66d) & ((1 << 48) - 1))
     }
-    fn bits(&mut self, n: u32) -> u32 {
+    pub(super) fn bits(&mut self, n: u32) -> u32 {
         self.0 = self.0.wrapping_mul(0x5deece66d).wrapping_add(11) & ((1 << 48) - 1);
         (self.0 >> (48 - n)) as u32
     }
     fn long(&mut self) -> i64 {
         (i64::from(self.bits(32) as i32) << 32).wrapping_add(i64::from(self.bits(32) as i32))
     }
-    fn bounded(&mut self, bound: u32) -> u32 {
+    pub(super) fn bounded(&mut self, bound: u32) -> u32 {
         if bound.is_power_of_two() {
             return ((u64::from(bound) * u64::from(self.bits(31))) >> 31) as u32;
         }

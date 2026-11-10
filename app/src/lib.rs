@@ -1,3 +1,6 @@
+// Developer snapshots combine both edition diagnostics in one JSON document.
+#![cfg_attr(feature = "developer-control", recursion_limit = "256")]
+
 #[cfg(not(target_arch = "wasm32"))]
 pub mod args;
 pub mod asset_bindings;

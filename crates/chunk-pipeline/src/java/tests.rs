@@ -279,3 +279,28 @@ fn spatial_edit_retries_obsolete_initial_jobs_instead_of_losing_their_first_mesh
     assert!(stream.metrics.obsolete > 0);
     assert!(stream.errors().is_empty());
 }
+
+#[test]
+fn spatial_biomes_force_native_sampling_only_for_affected_palette_ids() {
+    let (terrain, _) = fixture();
+    let mut snapshot = Snapshot::capture(&terrain, [0, 0]).unwrap();
+    let mut variants = vec![None; 43];
+    variants[42] = Some([70, 71]);
+    assert_eq!(
+        section_biome_with_variants(&snapshot, -1, &variants)
+            .unwrap()
+            .uniform_tint_index(),
+        Some(41)
+    );
+    variants[41] = Some([68, 69]);
+    assert!(section_biome_with_variants(&snapshot, -1, &variants).is_err());
+    snapshot.biome_seed = Some(1234);
+    let record = section_biome_with_variants(&snapshot, -1, &variants).unwrap();
+    assert!(
+        record
+            .java_tint_indices()
+            .unwrap()
+            .iter()
+            .all(|id| [68, 69].contains(id))
+    );
+}

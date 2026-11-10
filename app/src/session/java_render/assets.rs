@@ -22,6 +22,7 @@ pub(super) struct Prepared {
     pub graphics: Arc<Graphics>,
     pub tints: Vec<render_scene::chunk::biome_tints::BiomeTint>,
     pub unsupported_tints: BTreeSet<u32>,
+    pub biome_variants: Arc<[Option<[u32; 2]>]>,
 }
 struct CancelSource {
     jar: Jar,
@@ -233,14 +234,25 @@ fn load_inner(
     let foliage = colormap("colormap/foliage")?;
     let dry_foliage = colormap("colormap/dry_foliage")?;
     let mut tints = Vec::new();
+    let mut swamp = Vec::new();
     let mut unsupported_tints = BTreeSet::new();
     for (id, biome) in biomes.into_iter().enumerate() {
-        if biome.grass_modifier.as_deref().is_some_and(|m| m != "none") {
+        if biome
+            .grass_modifier
+            .as_deref()
+            .is_some_and(|m| !matches!(m, "none" | "dark_forest" | "swamp"))
+        {
             unsupported_tints.insert(id as u32);
         }
         let grass = biome
             .grass_color
             .unwrap_or(grass.climate_color(biome.temperature, biome.downfall)?);
+        let grass = if biome.grass_modifier.as_deref() == Some("dark_forest") {
+            assets::registry::java::biome::dark_forest(grass)
+        } else {
+            grass
+        };
+        swamp.push(biome.grass_modifier.as_deref() == Some("swamp"));
         let foliage = biome
             .foliage_color
             .unwrap_or(foliage.climate_color(biome.temperature, biome.downfall)?);
@@ -256,6 +268,20 @@ fn load_inner(
             water: linear(biome.water_color),
             ..Default::default()
         });
+    }
+    let mut biome_variants = vec![None; tints.len()];
+    for (id, is_swamp) in swamp.into_iter().enumerate() {
+        if !is_swamp {
+            continue;
+        }
+        let first = tints.len() as u32;
+        for color in assets::registry::java::biome::SWAMP_COLORS {
+            tints.push(render_scene::chunk::biome_tints::BiomeTint {
+                grass: linear(color),
+                ..tints[id]
+            });
+        }
+        biome_variants[id] = Some([first, first + 1]);
     }
     let mut states = columns
         .iter()
@@ -319,6 +345,7 @@ fn load_inner(
         graphics,
         tints,
         unsupported_tints,
+        biome_variants: biome_variants.into(),
     })
 }
 fn read_input(root: &std::path::Path, name: &str) -> Result<Vec<u8>, String> {

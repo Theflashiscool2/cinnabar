@@ -254,10 +254,26 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
                 }
                 _ => return Err(Error::Invalid("Java entity position path kind")),
             };
+            // Native FLOAT codecs preserve bit patterns. Entity setters ignore each
+            // non-finite angle; finite coordinates and framing remain mandatory.
+            let rotation = [
+                f32::from_bits(r.i32()? as u32),
+                f32::from_bits(r.i32()? as u32),
+            ];
+            if rotation.iter().any(|v| !v.is_finite()) {
+                use std::sync::atomic::{AtomicU64, Ordering};
+                static ODD_ROTATIONS: AtomicU64 = AtomicU64::new(0);
+                let count = ODD_ROTATIONS
+                    .fetch_add(1, Ordering::Relaxed)
+                    .wrapping_add(1);
+                if count.is_power_of_two() {
+                    tracing::warn!(target: "java_session", id, count, yaw_bits = rotation[0].to_bits(), pitch_bits = rotation[1].to_bits(), "Java entity sync retained non-finite rotation for native per-axis handling");
+                }
+            }
             Packet::Position {
                 id,
                 path,
-                rotation: [r.f32()?, r.f32()?],
+                rotation,
                 on_ground: r.bool()?,
             }
         }

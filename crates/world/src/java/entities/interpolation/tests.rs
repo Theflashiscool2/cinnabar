@@ -188,3 +188,56 @@ fn native_interpolation_preserves_coalesced_turns_and_snaps_retire_paths() {
     assert_eq!(track.current, before);
     assert_eq!(track.pending_steps(), 0);
 }
+
+#[test]
+fn raw_sync_angles_match_native_queued_setter_oracle_and_recover() {
+    // ProbeSyncAngles.java samples pinned InterpolationData plus Entity setter semantics.
+    let mut track = Track::new(
+        Pose {
+            position: [1., 64., 0.],
+            ..Default::default()
+        },
+        3,
+    )
+    .unwrap();
+    let target = |yaw, pitch| Pose {
+        position: [1., 64., 0.],
+        yaw,
+        pitch,
+    };
+    track.retarget(target(90., 0.), &[]).unwrap();
+    let expected = [
+        [30., 0.],
+        [60., 0.],
+        [60., 0.8888893],
+        [60., 5.827161],
+        [60., 10.452675],
+        [60., 12.],
+        [60., 12.],
+        [55., 12.],
+        [50., 12.],
+        [45., 12.],
+        [45., 12.],
+        [45., 12.],
+    ];
+    for (tick, [yaw, pitch]) in expected.into_iter().enumerate() {
+        if tick == 1 {
+            track
+                .retarget_entity_sync(target(f32::NAN, 12.), &[])
+                .unwrap();
+        }
+        if tick == 7 {
+            track
+                .retarget_entity_sync(target(45., f32::INFINITY), &[])
+                .unwrap();
+        }
+        track.tick();
+        assert!(track.current.finite());
+        assert_eq!(track.current.yaw, yaw, "tick {tick}");
+        assert_eq!(track.current.pitch, pitch, "tick {tick}");
+    }
+    assert!(track.retarget(target(f32::NAN, 0.), &[]).is_err());
+    let mut invalid = target(0., 0.);
+    invalid.position[0] = f64::NAN;
+    assert!(track.retarget_entity_sync(invalid, &[]).is_err());
+}

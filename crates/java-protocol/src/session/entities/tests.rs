@@ -315,3 +315,33 @@ fn damage_event_tokens_retire_when_socket_entity_ids_are_reused() {
     lifetimes.observe(&mut damage).unwrap();
     assert!(matches!(damage, Packet::Damage { lifetime: 2, .. }));
 }
+
+#[test]
+fn sync_angles_preserve_native_nonfinite_bits_without_relaxing_framing_or_position() {
+    for bits in [
+        f32::NAN.to_bits(),
+        f32::INFINITY.to_bits(),
+        f32::NEG_INFINITY.to_bits(),
+    ] {
+        let mut bytes = vec![42, 0];
+        bytes.extend([0; 24]);
+        bytes.extend(bits.to_be_bytes());
+        bytes.extend(12f32.to_be_bytes());
+        bytes.push(1);
+        let Packet::Position { rotation, .. } =
+            packet("ClientboundEntityPositionSyncPacket", &bytes).unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(rotation[0].to_bits(), bits);
+        assert_eq!(rotation[1], 12.);
+        for n in 0..bytes.len() {
+            assert!(packet("ClientboundEntityPositionSyncPacket", &bytes[..n]).is_err());
+        }
+        bytes.push(0);
+        assert!(packet("ClientboundEntityPositionSyncPacket", &bytes).is_err());
+        bytes.pop();
+        bytes[2..10].copy_from_slice(&f64::NAN.to_be_bytes());
+        assert!(packet("ClientboundEntityPositionSyncPacket", &bytes).is_err());
+    }
+}

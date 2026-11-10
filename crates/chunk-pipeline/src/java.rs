@@ -41,6 +41,7 @@ pub struct Metrics {
 pub struct Stream {
     dimension: Dimension,
     graphics: Arc<Graphics>,
+    biome_variants: Arc<[Option<[u32; 2]>]>,
     focus: SectionKey,
     pending: BTreeSet<SectionKey>,
     active: BTreeSet<SectionKey>,
@@ -70,6 +71,14 @@ impl Drop for Stream {
 }
 impl Stream {
     pub fn new(terrain: &Terrain, graphics: Arc<Graphics>) -> Option<Self> {
+        Self::new_with_biome_variants(terrain, graphics, Arc::from([]))
+    }
+    /// Binds the immutable resource generation's spatial tint aliases before dispatch.
+    pub fn new_with_biome_variants(
+        terrain: &Terrain,
+        graphics: Arc<Graphics>,
+        biome_variants: Arc<[Option<[u32; 2]>]>,
+    ) -> Option<Self> {
         let dimension = terrain.dimension()?.clone();
         let center = terrain.center.unwrap_or_default();
         let focus = [center[0], dimension.min_y.div_euclid(16), center[1]];
@@ -77,6 +86,7 @@ impl Stream {
         let mut stream = Self {
             dimension,
             graphics,
+            biome_variants,
             focus,
             pending: BTreeSet::new(),
             active: BTreeSet::new(),
@@ -246,6 +256,7 @@ impl Stream {
                 continue;
             };
             let graphics = Arc::clone(&self.graphics);
+            let biome_variants = Arc::clone(&self.biome_variants);
             let sender = self.sender.clone();
             let cancel = Arc::clone(&self.cancel);
             self.active.insert(section);
@@ -254,7 +265,8 @@ impl Stream {
                 if cancel.load(Ordering::Acquire) {
                     return;
                 }
-                let result = section_biome(&snapshot, section[1]).and_then(|biome| {
+                let biome = section_biome_with_variants(&snapshot, section[1], &biome_variants);
+                let result = biome.and_then(|biome| {
                     meshing::java::mesh(&snapshot, section[1], &graphics).map(|mesh| (mesh, biome))
                 });
                 if cancel.load(Ordering::Acquire) {
@@ -290,7 +302,15 @@ impl Stream {
     }
 }
 /// Uniform fields use a compact descriptor; mixed fields use native seeded sampling.
+#[cfg(test)]
 fn section_biome(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecord, Error> {
+    section_biome_with_variants(snapshot, section_y, &[])
+}
+fn section_biome_with_variants(
+    snapshot: &Snapshot,
+    section_y: i32,
+    variants: &[Option<[u32; 2]>],
+) -> Result<PackedBiomeRecord, Error> {
     let mut uniform = None;
     for column in snapshot.columns.values() {
         for dy in -1..=1 {
@@ -302,8 +322,12 @@ fn section_biome(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecor
                     .get(i)
                     .ok_or_else(|| Error::Invalid("missing Java biome value".into()))?
                     .0;
-                if uniform.is_some_and(|old| old != id) {
-                    return meshing::java::biomes::record(snapshot, section_y);
+                if uniform.is_some_and(|old| old != id)
+                    || variants.get(id as usize).is_some_and(Option::is_some)
+                {
+                    return meshing::java::biomes::record_with_variants(
+                        snapshot, section_y, variants,
+                    );
                 }
                 uniform = Some(id);
             }

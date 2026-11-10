@@ -102,7 +102,24 @@ impl Track {
     /// Receives each ordered path, including multiple packets between rendered frames.
     /// The caller admits this into a replacement entity only after all validation succeeds.
     pub fn retarget(&mut self, target: Pose, path: &[PositionStep]) -> Result<(), &'static str> {
-        if !target.finite()
+        self.retarget_inner(target, path, false)
+    }
+    /// Wire sync angles may be non-finite; keep them private until native setter sampling.
+    pub fn retarget_entity_sync(
+        &mut self,
+        target: Pose,
+        path: &[PositionStep],
+    ) -> Result<(), &'static str> {
+        self.retarget_inner(target, path, true)
+    }
+    fn retarget_inner(
+        &mut self,
+        target: Pose,
+        path: &[PositionStep],
+        native_sync: bool,
+    ) -> Result<(), &'static str> {
+        if !target.position.into_iter().all(f64::is_finite)
+            || (!native_sync && !target.finite())
             || path
                 .iter()
                 .any(|s| s.tick_offset <= 0 || !s.position.into_iter().all(f64::is_finite))
@@ -114,7 +131,15 @@ impl Track {
         } else {
             self.target
         };
-        if !self.target.lerp(target, 0.5).finite() || !starting.lerp(target, 0.5).finite() {
+        let safe_span = |from: Pose| {
+            let middle = from.lerp(target, 0.5);
+            middle.position.into_iter().all(f64::is_finite)
+                && (!from.yaw.is_finite() || !target.yaw.is_finite() || middle.yaw.is_finite())
+                && (!from.pitch.is_finite()
+                    || !target.pitch.is_finite()
+                    || middle.pitch.is_finite())
+        };
+        if !safe_span(self.target) || !safe_span(starting) {
             return Err("native interpolation arithmetic overflow");
         }
         let mut previous = starting.position;
@@ -186,7 +211,7 @@ impl Track {
             self.speed = 1.;
             return;
         }
-        self.current = loop {
+        let sampled = loop {
             let Some(step) = self.steps.front() else {
                 break self.target;
             };
@@ -198,9 +223,20 @@ impl Track {
             self.step_ticks -= step.ticks as f32;
             self.anchor = self.steps.pop_front().expect("observed step").pose;
         };
-        // Entity.setRot normalizes the sampled entity angles, independently of the raw target.
-        self.current.yaw %= 360.;
-        self.current.pitch %= 360.;
+        // Entity setters ignore each non-finite sampled angle; queued positions still advance.
+        self.current = Pose {
+            position: sampled.position,
+            yaw: if sampled.yaw.is_finite() {
+                sampled.yaw % 360.
+            } else {
+                self.current.yaw
+            },
+            pitch: if sampled.pitch.is_finite() {
+                sampled.pitch % 360.
+            } else {
+                self.current.pitch
+            },
+        };
         let target_speed = (self.remaining_ticks / self.interval as f32).max(1.);
         self.speed += (target_speed - self.speed) * (1. / self.interval as f32);
         let advance = if self.speed < self.remaining_ticks {

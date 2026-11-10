@@ -76,6 +76,15 @@ fn sample(snapshot: &Snapshot, seed: i64, position: [i32; 3]) -> Result<u32, Err
         .ok_or(Error::MissingBiome(position))
 }
 pub fn record(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecord, Error> {
+    record_with_variants(snapshot, section_y, &[])
+}
+
+/// Spatial grass resolves at each native blend sample; aliases preserve other tint channels.
+pub fn record_with_variants(
+    snapshot: &Snapshot,
+    section_y: i32,
+    variants: &[Option<[u32; 2]>],
+) -> Result<PackedBiomeRecord, Error> {
     let seed = snapshot
         .biome_seed
         .ok_or_else(|| Error::Invalid("Java spawn biome seed not received".into()))?;
@@ -97,7 +106,14 @@ pub fn record(snapshot: &Snapshot, section_y: i32) -> Result<PackedBiomeRecord, 
                 let [Some(x), Some(y), Some(z)] = position else {
                     return Err(Error::Invalid("Java biome sample overflow".into()));
                 };
-                grid.push(sample(snapshot, seed, [x, y, z])?);
+                let biome = sample(snapshot, seed, [x, y, z])?;
+                let tint = variants
+                    .get(biome as usize)
+                    .and_then(|v| *v)
+                    .map_or(biome, |ids| {
+                        ids[assets::registry::java::biome::swamp_variant([x, z])]
+                    });
+                grid.push(tint);
             }
         }
     }
@@ -288,6 +304,47 @@ mod tests {
                 "{row}"
             );
         }
+    }
+    #[test]
+    fn swamp_aliases_match_native_25_position_blends_and_recover_missing_boundary() {
+        let t = terrain();
+        let mut snapshot = Snapshot::capture(&t, [-1, -1]).unwrap();
+        for column in snapshot.columns.values_mut() {
+            for section in &mut Arc::make_mut(column).sections {
+                Arc::make_mut(section).biomes = Palette::uniform(BiomeId(3), 64);
+            }
+        }
+        let mut variants = vec![None; 4];
+        variants[3] = Some([40, 41]);
+        let r = record_with_variants(&snapshot, -1, &variants).unwrap();
+        let cases: Vec<[i32; 4]> =
+            serde_json::from_str(include_str!("biome-swamp-26.3.json")).unwrap();
+        for [x, z, low, high] in cases {
+            let cell = r.java_cell([x + 16, 0, z + 16]).unwrap();
+            let actual = cell[2..]
+                .chunks_exact(2)
+                .map(|p| (p[0], p[1]))
+                .collect::<BTreeMap<_, _>>();
+            let expected = [(40, low as u32), (41, high as u32)]
+                .into_iter()
+                .filter(|(_, n)| *n > 0)
+                .collect::<BTreeMap<_, _>>();
+            assert_eq!(actual, expected, "{x},{z}");
+        }
+        let before = record(&snapshot, -1).unwrap();
+        assert_eq!(before.uniform_tint_index(), Some(3));
+        let neighbour = snapshot.columns.remove(&[-2, -1]).unwrap();
+        assert!(matches!(
+            record_with_variants(&snapshot, -1, &variants),
+            Err(Error::MissingBiome(_))
+        ));
+        snapshot.columns.insert([-2, -1], neighbour);
+        assert_eq!(
+            record_with_variants(&snapshot, -1, &variants)
+                .unwrap()
+                .words,
+            r.words
+        );
     }
     #[test]
     fn missing_neighbour_and_seed_are_explicit_and_recover_on_capture() {

@@ -233,6 +233,7 @@ pub(super) fn admit(
             rotation: [yaw, pitch],
             on_ground,
         } => state.entities.update(scope, id, |e| {
+            let displayed = e.presentation.as_ref().map(|p| p.track.current);
             match path {
                 wire::Position::Linear(position) => {
                     e.motion.position = position;
@@ -253,11 +254,20 @@ pub(super) fn admit(
                 }
             }
             e.delta_base = e.motion.position;
-            e.motion.yaw = yaw;
-            e.motion.pitch = pitch;
+            // Entity.setYRot/setXRot retain their previous value for non-finite input.
+            e.motion.yaw = if yaw.is_finite() {
+                yaw
+            } else {
+                displayed.map_or(e.motion.yaw, |p| p.yaw)
+            };
+            e.motion.pitch = if pitch.is_finite() {
+                pitch
+            } else {
+                displayed.map_or(e.motion.pitch, |p| p.pitch)
+            };
             e.on_ground = on_ground;
             e.synchronize_item_position();
-            e.synchronize_presentation_motion()
+            e.synchronize_presentation_sync([yaw, pitch])
         }),
         wire::Packet::Teleport {
             id,

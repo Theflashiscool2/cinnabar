@@ -410,12 +410,21 @@ impl Entity {
     }
     /// Absolute synchronization compares the displayed entity position to the new wire target.
     pub fn synchronize_presentation_motion(&mut self) -> Result<(), &'static str> {
+        self.synchronize_presentation_sync([self.motion.yaw, self.motion.pitch])
+    }
+    /// Absolute sync keeps raw wire angles private to the native interpolation timeline.
+    pub fn synchronize_presentation_sync(
+        &mut self,
+        rotation: [f32; 2],
+    ) -> Result<(), &'static str> {
         if let Some(presentation) = &mut self.presentation {
             if interpolation::within_correction_distance(
                 presentation.track.current.position,
                 self.motion.position,
             ) {
-                presentation.retarget(self.motion.into(), &self.path)?;
+                let mut pose: interpolation::Pose = self.motion.into();
+                [pose.yaw, pose.pitch] = rotation;
+                presentation.track.retarget_entity_sync(pose, &self.path)?;
             } else {
                 presentation.snap(self.motion.into());
             }

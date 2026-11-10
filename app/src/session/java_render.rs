@@ -361,7 +361,11 @@ pub(crate) fn update(
                     meshing::ChunkBiomeTintIdentity::new(dimension.session, dimension.epoch),
                 );
                 p.unsupported_tints = prepared.unsupported_tints;
-                p.stream = chunk_pipeline::java::Stream::new(&state.terrain, prepared.graphics);
+                p.stream = chunk_pipeline::java::Stream::new_with_biome_variants(
+                    &state.terrain,
+                    prepared.graphics,
+                    prepared.biome_variants,
+                );
             }
             Err(error) => p.failure = Some(format!("Java terrain preparation: {error}")),
         }

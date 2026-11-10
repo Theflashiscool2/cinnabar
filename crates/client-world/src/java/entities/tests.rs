@@ -834,3 +834,103 @@ fn dropped_item_motion_reconciles_only_real_position_velocity_packets_and_lifeti
     s.begin(8);
     assert!(s.entities.get(99).is_none());
 }
+
+#[test]
+fn nonfinite_sync_angle_retains_that_axis_but_keeps_position_and_other_axis_live() {
+    let mut s = state();
+    s.admit(event(1, spawn()));
+    let old = s.entities.get(99).unwrap().motion;
+    for (yaw, pitch) in [
+        (f32::NAN, 12.),
+        (f32::INFINITY, 12.),
+        (f32::NEG_INFINITY, 12.),
+    ] {
+        assert!(s.admit(event(
+            1,
+            wire::Packet::Position {
+                id: 99,
+                path: wire::Position::Linear([2., 64., 3.]),
+                rotation: [yaw, pitch],
+                on_ground: true
+            }
+        )));
+        let e = s.entities.get(99).unwrap();
+        assert_eq!(e.motion.position, [2., 64., 3.]);
+        assert_eq!(e.motion.yaw, old.yaw);
+        assert_eq!(e.motion.pitch, 12.);
+        for _ in 0..5 {
+            s.entities.tick_presentation();
+        }
+    }
+    assert!(s.admit(event(
+        1,
+        wire::Packet::Position {
+            id: 99,
+            path: wire::Position::Linear([4., 64., 5.]),
+            rotation: [45., f32::NAN],
+            on_ground: false
+        }
+    )));
+    let e = s.entities.get(99).unwrap();
+    assert_eq!(e.motion.yaw, 45.);
+    assert_eq!(e.motion.pitch, 12.);
+    assert_eq!(e.delta_base, [4., 64., 5.]);
+}
+
+#[test]
+fn nonfinite_sync_during_interpolation_preserves_native_sampled_angle() {
+    let mut s = state();
+    s.admit(event(1, spawn()));
+    let sync = |yaw| wire::Packet::Position {
+        id: 99,
+        path: wire::Position::Linear([1., 64., 0.]),
+        rotation: [yaw, 0.],
+        on_ground: true,
+    };
+    assert!(s.admit(event(1, sync(90.))));
+    s.entities.tick_presentation();
+    let yaw = s
+        .entities
+        .get(99)
+        .unwrap()
+        .presentation
+        .as_ref()
+        .unwrap()
+        .track
+        .current
+        .yaw;
+    assert_ne!(yaw, 90.);
+    assert!(s.admit(event(1, sync(f32::NAN))));
+    assert_eq!(s.entities.get(99).unwrap().motion.yaw, yaw);
+    for _ in 0..5 {
+        s.entities.tick_presentation();
+        assert_eq!(
+            s.entities
+                .get(99)
+                .unwrap()
+                .presentation
+                .as_ref()
+                .unwrap()
+                .track
+                .current
+                .yaw,
+            60.
+        );
+    }
+    assert!(s.admit(event(1, sync(45.))));
+    for _ in 0..5 {
+        s.entities.tick_presentation();
+    }
+    assert_eq!(
+        s.entities
+            .get(99)
+            .unwrap()
+            .presentation
+            .as_ref()
+            .unwrap()
+            .track
+            .current
+            .yaw,
+        45.
+    );
+}
