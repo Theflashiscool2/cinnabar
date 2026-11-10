@@ -14,8 +14,31 @@ pub(super) fn admit(
     state: &mut client_world::java::WorldState,
     event: Envelope,
 ) -> bool {
+    admit_using(java, state, event, |state, event| state.admit(event))
+}
+
+pub(super) fn admit_reconciled(
+    java: &Session,
+    state: &mut client_world::java::WorldState,
+    event: Envelope,
+    reconcile: impl FnMut(
+        &mut client_world::java::WorldState,
+        world::java::Reconciliation,
+    ) -> Result<(), String>,
+) -> bool {
+    admit_using(java, state, event, |state, event| {
+        state.admit_with_block_reconciliation(event, reconcile)
+    })
+}
+
+fn admit_using(
+    java: &Session,
+    state: &mut client_world::java::WorldState,
+    event: Envelope,
+    apply: impl FnOnce(&mut client_world::java::WorldState, Envelope) -> bool,
+) -> bool {
     let Some(t) = java.telemetry() else {
-        return state.admit(event);
+        return apply(state, event);
     };
     let teleport = matches!(event.event, Event::Teleport { .. });
     let inventory = matches!(event.event, Event::Inventory { .. });
@@ -54,7 +77,7 @@ pub(super) fn admit(
         },
         _ => (0, 0),
     };
-    let admitted = state.admit(event);
+    let admitted = apply(state, event);
     use client_session::java::telemetry::Prediction;
     for (event, amount) in [
         (

@@ -98,6 +98,64 @@ impl WorldState {
             .state(state)
             .map(|s| s.name.as_ref())
     }
+    /// Admits each ACK restore and its native collision/snap before restoring the next cell.
+    /// The application supplies its existing movement owner; no simulation enters world storage.
+    pub fn admit_with_block_reconciliation(
+        &mut self,
+        envelope: Envelope,
+        reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        if let Event::BlockAck {
+            dimension_epoch,
+            sequence,
+        } = envelope.event
+        {
+            if envelope.generation != self.generation
+                || sequence < 0
+                || !self.terrain.accepts(self.generation, dimension_epoch)
+            {
+                return false;
+            }
+            return self.reconcile_block_ack(dimension_epoch, sequence, reconcile);
+        }
+        self.admit(envelope)
+    }
+    /// Resumes an ACK paused on unavailable collision facts before later packets are admitted.
+    pub fn resume_block_ack_reconciliation(
+        &mut self,
+        reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        let Some((epoch, sequence)) = self.block_ack else {
+            return true;
+        };
+        if !self.terrain.accepts(self.generation, epoch) {
+            return true;
+        }
+        self.reconcile_block_ack(epoch, sequence, reconcile)
+    }
+    fn reconcile_block_ack(
+        &mut self,
+        epoch: u64,
+        sequence: i32,
+        mut reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        self.block_ack = Some((epoch, sequence));
+        for position in self.terrain.prediction_positions_up_to(sequence) {
+            let Some(outcome) = self.terrain.reconcile_block(position, sequence) else {
+                continue;
+            };
+            if outcome.changed {
+                self.block_predictions_reverted += 1;
+            } else {
+                self.block_predictions_confirmed += 1;
+            }
+            if reconcile(self, outcome).is_err() {
+                self.block_reconciliations.push_back(outcome);
+                return false;
+            }
+        }
+        true
+    }
     pub fn tick_pistons(&mut self) -> Result<(), &'static str> {
         piston::tick(&mut self.terrain, self.piston_registry.as_deref())
     }
@@ -232,15 +290,10 @@ impl WorldState {
                 if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
                     return false;
                 }
-                self.block_ack = Some((dimension_epoch, sequence));
-                for outcome in self.terrain.reconcile_blocks(sequence) {
-                    if outcome.changed {
-                        self.block_predictions_reverted += 1;
-                    } else {
-                        self.block_predictions_confirmed += 1;
-                    }
-                    self.block_reconciliations.push_back(outcome);
-                }
+                return self.reconcile_block_ack(dimension_epoch, sequence, |state, outcome| {
+                    state.block_reconciliations.push_back(outcome);
+                    Ok(())
+                });
             }
             Event::ServerTransfer { .. } => {}
             Event::Phase(phase) => {

@@ -79,35 +79,41 @@ impl Terrain {
         if sequence < 0 {
             return Vec::new();
         }
-        let positions: Vec<_> = self
-            .prediction_order
+        self.prediction_positions_up_to(sequence)
+            .into_iter()
+            .filter_map(|position| self.reconcile_block(position, sequence))
+            .collect()
+    }
+
+    /// Captures native map order without applying future cells before the current collision.
+    pub fn prediction_positions_up_to(&self, sequence: i32) -> Vec<[i32; 3]> {
+        self.prediction_order
             .positions()
             .filter(|position| self.predictions[position].sequence <= sequence)
-            .collect();
-        positions
-            .into_iter()
-            .map(|position| {
-                self.prediction_order.remove(position);
-                let retained = self
-                    .predictions
-                    .remove(&position)
-                    .expect("retained prediction");
-                let changed = self
-                    .block(position)
-                    .is_some_and(|state| state != retained.state);
-                self.set_block(position, retained.state);
-                Reconciliation {
-                    position,
-                    state: retained.state,
-                    changed,
-                    player_position: (changed
-                        && self
-                            .last_teleport_sequence
-                            .is_none_or(|last| last < sequence))
-                    .then_some(retained.player_position),
-                }
-            })
             .collect()
+    }
+
+    /// Restores one retained cell; the caller performs collision/snap before restoring the next.
+    pub fn reconcile_block(&mut self, position: [i32; 3], sequence: i32) -> Option<Reconciliation> {
+        if self.predictions.get(&position)?.sequence > sequence {
+            return None;
+        }
+        self.prediction_order.remove(position);
+        let retained = self.predictions.remove(&position)?;
+        let changed = self
+            .block(position)
+            .is_some_and(|state| state != retained.state);
+        self.set_block(position, retained.state);
+        Some(Reconciliation {
+            position,
+            state: retained.state,
+            changed,
+            player_position: (changed
+                && self
+                    .last_teleport_sequence
+                    .is_none_or(|last| last < sequence))
+            .then_some(retained.player_position),
+        })
     }
 
     /// Retires a locally queued action the transport did not write. This is a local
