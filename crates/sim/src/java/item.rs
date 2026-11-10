@@ -7,7 +7,7 @@ use world::java::{Terrain, entities::item_motion::View};
 pub enum Error {
     #[error(transparent)]
     Query(#[from] QueryError),
-    #[error("native item motion needs fluid, partial-shape or special block callbacks")]
+    #[error("native item motion needs fluid, extended-shape or special block callbacks")]
     Unsupported,
 }
 impl Error {
@@ -58,8 +58,9 @@ pub fn tick(
     let shape = body(&next);
     let region = collision::expanded(shape, next.velocity);
     let query = collision::collect(terrain, physics, scope.0, scope.1, region)?;
-    // Do not apply ordinary motion through water, slime, cobweb, partial/dynamic shapes,
-    // or missing resources. The default native ItemEntity callbacks are not equivalent.
+    // ItemEntity.tick uses ordinary Entity.move clipping for dry static shapes, including slabs
+    // and stairs. Extended shapes (fences/walls) also need getOnPos tag behavior; keep those,
+    // fluids and block callbacks explicit until their native paths are implemented.
     let min = region.min.map(|p| p.floor() as i32 - 1);
     let max = region.max.map(|p| p.floor() as i32 + 1);
     let dimension = terrain.dimension().ok_or(QueryError::Retired)?;
@@ -75,14 +76,9 @@ pub fn tick(
                 let id = terrain.block(pos).ok_or(QueryError::Missing(pos))?.0;
                 let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
                 let ordinary = match &state.collision {
-                    Collision::Static(boxes) => {
-                        boxes.is_empty()
-                            || boxes.as_ref()
-                                == [Bounds {
-                                    min: [0.; 3],
-                                    max: [1.; 3],
-                                }]
-                    }
+                    Collision::Static(boxes) => boxes.iter().all(|bounds| {
+                        (0..3).all(|axis| bounds.min[axis] >= 0. && bounds.max[axis] <= 1.)
+                    }),
                     Collision::Dynamic => false,
                 };
                 if !ordinary
@@ -111,10 +107,24 @@ pub fn tick(
         }
         let mut horizontal_drag = 0.98_f32;
         if next.on_ground {
+            let support = collision::supporting_block(
+                terrain,
+                physics,
+                scope,
+                body(&next),
+                next.position,
+                collision::PlayerContext {
+                    bottom: next.position[1],
+                    descending: requested[1] < 0.,
+                },
+                Some(actual),
+            )?;
+            // Entity.getOnPos(.500001f) uses supporting X/Z but floors the adjusted Y for
+            // ordinary blocks. Fence/wall/gate exceptions remain outside this dry subset.
             let pos = [
-                next.position[0].floor() as i32,
+                support.map_or(next.position[0].floor() as i32, |position| position[0]),
                 (next.position[1] - f64::from(0.500001_f32)).floor() as i32,
-                next.position[2].floor() as i32,
+                support.map_or(next.position[2].floor() as i32, |position| position[2]),
             ];
             let id = terrain.block(pos).ok_or(QueryError::Missing(pos))?.0;
             horizontal_drag *= physics.state(id).ok_or(QueryError::Unknown(id))?.friction;
