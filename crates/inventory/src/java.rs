@@ -115,7 +115,9 @@ pub struct State {
     pub wire_revision: u64,
     pub drop_receipt: Option<u64>,
     pub drop_notice: Option<&'static str>,
-    drop_predictions: BTreeMap<usize, Slot>,
+    world_player_view: BTreeMap<usize, Slot>,
+    block_uses: BTreeMap<usize, block_use::Journal>,
+    last_block_use_sequence: i32,
     pickup_player_view: BTreeMap<usize, Slot>,
     pickup_menu_view: BTreeMap<usize, Slot>,
     pickup_cursor_view: Option<Slot>,
@@ -126,8 +128,10 @@ pub struct State {
     pub opened: Option<Menu>,
     pub error: Option<String>,
 }
+mod block_use;
 pub mod cooldown;
 mod drop;
+pub use block_use::BlockUseHand;
 pub mod pickup;
 mod pickup_view;
 mod state;

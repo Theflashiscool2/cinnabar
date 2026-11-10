@@ -7,15 +7,16 @@ impl State {
             self.begin(session, epoch);
             return;
         }
+        self.retire_pending_block_uses();
         let storage = std::mem::take(&mut self.storage);
         let selected = self.selected;
-        let projections = std::mem::take(&mut self.drop_predictions);
+        let projections = std::mem::take(&mut self.world_player_view);
         let wire_revision = self.wire_revision;
         let cooldowns = std::mem::take(&mut self.cooldowns);
         self.begin(session, epoch);
         self.storage = storage;
         self.selected = selected;
-        self.drop_predictions = projections;
+        self.world_player_view = projections;
         self.wire_revision = wire_revision;
         self.cooldowns = cooldowns;
     }
@@ -44,7 +45,7 @@ impl State {
             ..Self::default()
         };
     }
-    /// Outer None is unknown; Some(None) is an empty display view. Provisional drops
+    /// Outer None is unknown; Some(None) is an empty display view. Provisional local actions
     /// are separate from the last-server storage and never establish server acceptance.
     pub fn held(&self) -> Option<&Slot> {
         if self.error.is_some() {
@@ -109,7 +110,8 @@ impl State {
         };
         if let Some(storage) = storage {
             self.pickup_player_view.remove(&storage);
-            self.drop_predictions.remove(&storage);
+            self.world_player_view.remove(&storage);
+            self.block_uses.remove(&storage);
             self.storage[storage] = Cell::Known(stack);
         } else {
             self.pickup_menu_view.remove(&index);
@@ -137,7 +139,8 @@ impl State {
                     return Err("Java player inventory slot is out of range".into());
                 }
                 self.pickup_player_view.remove(&slot);
-                self.drop_predictions.remove(&slot);
+                self.world_player_view.remove(&slot);
+                self.block_uses.remove(&slot);
                 self.storage[slot] = Cell::Known(stack);
             }
             Update::Content {
