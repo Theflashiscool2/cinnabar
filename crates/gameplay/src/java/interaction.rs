@@ -256,12 +256,12 @@ impl Controller {
                 }
             }
         }
-        if self
-            .active_use
-            .as_ref()
-            .is_some_and(|u| !u.matches(u.hand().held(&state.inventory)))
-        {
-            self.active_use = None;
+        if let Some(using) = self.active_use.as_mut() {
+            match using.refresh(using.hand().held(&state.inventory)) {
+                Ok(true) => {}
+                Ok(false) => self.active_use = None,
+                Err(error) => self.blocked = Some(error.into()),
+            }
         }
         if release && (self.active_use.is_some() || self.server_use.is_some()) {
             if self.pending.is_none() && self.request_target(Target::Air([0.; 2]), Kind::ReleaseUse)

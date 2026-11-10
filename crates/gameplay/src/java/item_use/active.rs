@@ -8,6 +8,7 @@ pub struct Using {
     item: Stack,
     plan: Active,
     started: u64,
+    initial_duration: u32,
 }
 impl Using {
     pub fn start(item: Stack, plan: Active, tick: u64) -> Self {
@@ -19,6 +20,7 @@ impl Using {
             item,
             plan,
             started: tick,
+            initial_duration: plan.ticks,
         }
     }
     pub fn hand(&self) -> Hand {
@@ -31,8 +33,27 @@ impl Using {
             item.item == self.item.item
         })
     }
+    /// Refreshes same-item authoritative components without restarting use or its countdown.
+    pub fn refresh(&mut self, held: Option<&Slot>) -> Result<bool, &'static str> {
+        if !self.matches(held) {
+            return Ok(false);
+        }
+        let item = held.and_then(Option::as_ref).expect("matching held item");
+        let effects = super::plan::effects(item)?;
+        let duration = super::plan::current_duration(item)?;
+        self.item = item.clone();
+        self.plan.effects = effects;
+        self.plan.ticks = duration;
+        Ok(true)
+    }
+    /// Native getTicksUsingItem is current duration minus the original remaining countdown.
+    pub fn native_elapsed(&self, tick: u64) -> i64 {
+        let passed = tick.saturating_sub(self.started).min(i64::MAX as u64) as i64;
+        passed.saturating_add(i64::from(self.plan.ticks) - i64::from(self.initial_duration))
+    }
+    /// Presentation consumers use a nonnegative animation time.
     pub fn elapsed(&self, tick: u64) -> u32 {
-        tick.saturating_sub(self.started).min(u64::from(u32::MAX)) as u32
+        self.native_elapsed(tick).clamp(0, i64::from(u32::MAX)) as u32
     }
     pub fn duration(&self) -> u32 {
         self.plan.ticks
@@ -44,6 +65,61 @@ impl Using {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn same_item_components_refresh_effects_and_duration_without_resetting_remaining_ticks() {
+        let item = Stack {
+            item: "minecraft:apple".into(),
+            count: 3,
+            added: Default::default(),
+            removed: Default::default(),
+        };
+        let mut using = Using::start(
+            item.clone(),
+            Active {
+                ticks: 32,
+                end: super::super::plan::End::Complete,
+                effects: Effects {
+                    can_sprint: false,
+                    speed_multiplier: 0.2,
+                },
+            },
+            10,
+        );
+        let mut refreshed = item;
+        refreshed.count = 2;
+        refreshed.added.insert(
+            "minecraft:use_effects".into(),
+            serde_json::json!({"can_sprint":true,"speed_multiplier":0.75}),
+        );
+        refreshed.added.insert(
+            "minecraft:consumable".into(),
+            serde_json::json!({"seconds":3.2}),
+        );
+        assert_eq!(using.refresh(Some(&Some(refreshed.clone()))), Ok(true));
+        assert_eq!(using.duration(), 64);
+        assert_eq!(using.native_elapsed(15), 37); // Remaining still 27, not a fresh 64.
+        assert_eq!(
+            using.effects(),
+            Effects {
+                can_sprint: true,
+                speed_multiplier: 0.75
+            }
+        );
+        refreshed.removed.insert("minecraft:consumable".into());
+        refreshed.removed.insert("minecraft:use_effects".into());
+        assert_eq!(using.refresh(Some(&Some(refreshed))), Ok(true));
+        assert_eq!(using.duration(), 0);
+        assert_eq!(using.native_elapsed(15), -27);
+        assert_eq!(using.elapsed(15), 0);
+        assert_eq!(
+            using.effects(),
+            Effects {
+                can_sprint: false,
+                speed_multiplier: 0.2
+            }
+        );
+        assert!(!using.refresh(Some(&None)).unwrap());
+    }
     #[test]
     fn use_lifetime_ignores_counts_but_retires_replacement_and_uses_native_ticks() {
         let item = Stack {
