@@ -324,6 +324,45 @@ pub fn restored_block_collides(
     )
 }
 
+/// Restored-state query with the extra native LivingEntity powder-snow facts.
+pub fn restored_living_block_collides(
+    terrain: &Terrain,
+    physics: &Table,
+    position: [i32; 3],
+    state: u32,
+    body: Bounds,
+    context: PlayerContext,
+    powder: (f64, bool),
+) -> Result<bool, QueryError> {
+    let registry = physics.registry().ok_or(QueryError::Dynamic {
+        id: state,
+        position,
+    })?;
+    let Some(shape) = assets::registry::java::physics::dynamic::powder_shape(
+        registry,
+        state,
+        position,
+        context.bottom,
+        context.descending,
+        powder.0,
+        powder.1,
+    ) else {
+        return restored_block_collides(terrain, physics, position, state, body, context);
+    };
+    if !context.bottom.is_finite()
+        || !powder.0.is_finite()
+        || (0..3).any(|i| {
+            !body.min[i].is_finite() || !body.max[i].is_finite() || body.min[i] >= body.max[i]
+        })
+    {
+        return Err(QueryError::Bounds);
+    }
+    Ok(shape.iter().any(|shape| {
+        let shape = translated(*shape, position.map(f64::from));
+        (0..3).all(|i| shape.min[i].max(body.min[i]) < shape.max[i].min(body.max[i]) - CONTACT)
+    }))
+}
+
 fn block_shape<'a>(
     terrain: &Terrain,
     physics: &'a Table,
@@ -334,6 +373,38 @@ fn block_shape<'a>(
     let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
     match &state.collision {
         Collision::Dynamic => {
+            use assets::registry::java::physics::dynamic::{self, Kind};
+            if let Some(registry) = physics.registry() {
+                match dynamic::kind(registry, id) {
+                    Some(Kind::Offset) => {
+                        return dynamic::offset_shape(registry, id, position)
+                            .map(std::borrow::Cow::Owned)
+                            .ok_or(QueryError::Dynamic { id, position });
+                    }
+                    Some(Kind::Shulker) => {
+                        // NBT loading does not restore lid progress. Opening/closing events
+                        // need authoritative tick progress, never the renderer's clock.
+                        if !terrain.block_event(position).is_some_and(|event| {
+                            event.action == 1 && registry.block_id(id) == Some(event.block)
+                        }) {
+                            return dynamic::missing_block_entity(registry, id)
+                                .map(std::borrow::Cow::Borrowed)
+                                .ok_or(QueryError::Dynamic { id, position });
+                        }
+                        return Err(QueryError::Dynamic { id, position });
+                    }
+                    Some(Kind::Moving)
+                        if !terrain.pistons.contains_key(&position)
+                            && !terrain.pending_pistons.contains_key(&position)
+                            && terrain.block_entity_revision(position).is_none() =>
+                    {
+                        return dynamic::missing_block_entity(registry, id)
+                            .map(std::borrow::Cow::Borrowed)
+                            .ok_or(QueryError::Dynamic { id, position });
+                    }
+                    _ => {}
+                }
+            }
             let scaffold = physics.registry().filter(|r| {
                 assets::registry::java::physics::climbing::kind(r, id)
                     == Some(assets::registry::java::physics::climbing::Kind::Scaffolding)
