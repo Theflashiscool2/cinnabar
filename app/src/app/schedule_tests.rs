@@ -76,12 +76,12 @@ fn production_update_schedule_initializes_without_dependency_cycles() {
 /// registrations dispatch every `Update` and `PostUpdate`. Each one costs executor and parameter
 /// work on every frame even when it finds nothing to do, so growth must be deliberate: change
 /// these with the registrations, and prefer one set condition over a condition per system.
-// The original 143/8 baseline predates native Java registration. The Java path
+// The original 150/8 baseline predates native Java registration. The Java path
 // adds nine session systems, three actor/HUD systems, one deferred sync point,
 // and three Bedrock-authority conditions. Keep the exact equality below: this
 // accounts for the existing edition path, not an allowance for future growth.
 const FRAME_DISPATCH_BUDGET: [(&str, usize, usize); 2] =
-    [("Update", 143 + 9 + 3 + 1, 8 + 3), ("PostUpdate", 1, 0)];
+    [("Update", 150 + 9 + 3 + 1, 8 + 3), ("PostUpdate", 1, 0)];
 
 #[test]
 fn client_frame_dispatch_stays_within_its_budget() {

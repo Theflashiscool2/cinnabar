@@ -37,7 +37,9 @@ impl ActorArtworkPages {
             hash.update(page.width.to_le_bytes());
             hash.update(page.height.to_le_bytes());
             hash.update(page.layers.to_le_bytes());
-            hash.update(&page.rgba8);
+            for part in page.rgba8.parts() {
+                hash.update(part);
+            }
             for layer in 0..page.layers {
                 locations.insert(((index + 1) as ActorArtworkPageId, layer));
             }
@@ -88,7 +90,7 @@ mod tests {
             width: 1,
             height: 1,
             layers: 1,
-            rgba8: Arc::from([255, 0, 0, 255]),
+            rgba8: vec![255, 0, 0, 255].into(),
             color_mask: false,
             multitexture: false,
         }
@@ -115,7 +117,7 @@ mod tests {
             .is_err()
         );
         let mut malformed = page();
-        malformed.rgba8 = Arc::from([0]);
+        malformed.rgba8 = vec![0].into();
         assert!(ActorArtworkPages::from_entity_pages(vec![malformed], &[(rig, 0, 0)]).is_err());
     }
 }

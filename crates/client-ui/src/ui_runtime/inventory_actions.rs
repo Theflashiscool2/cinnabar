@@ -280,7 +280,22 @@ impl UiRuntime {
             self.java_pointer_action(action);
             return;
         }
-        let _ = match action {
+        let _ = self.try_pointer_action(player_runtime, action);
+    }
+
+    /// Runs one pointer action and returns the queued request id, or why the
+    /// ledger refused the gesture.
+    pub fn try_pointer_action(
+        &mut self,
+        player_runtime: &mut player_state::PlayerState,
+        action: PointerAction,
+    ) -> Outcome {
+        // This interface returns Bedrock ledger request ids; Java gestures use their
+        // edition-owned queue through perform_pointer_action.
+        if self.java_hud().is_some() {
+            return Err(InventoryGestureError::InvalidRequest);
+        }
+        match action {
             PointerAction::Click(hit) => {
                 let before = place_snapshot(player_runtime, hit);
                 let result = self.click_hit(player_runtime, hit);
@@ -316,8 +331,19 @@ impl UiRuntime {
                 self.screen_state_mut().pointer.distribution = None;
                 Ok(0)
             }
-            PointerAction::Gather => self.inventory_ledger_mut(player_runtime).begin_gather(),
-        };
+            PointerAction::Gather { hit, shift, focus } => {
+                let ledger = self.inventory_ledger_mut(player_runtime);
+                match hit {
+                    InventoryCellHit::Player(slot) if shift => ledger
+                        .begin_gather_to_storage_with_focus(InventoryTarget::Player(slot), focus),
+                    InventoryCellHit::Storage(slot) if shift => ledger
+                        .begin_gather_to_player_with_focus(InventoryTarget::Storage(slot), focus),
+                    InventoryCellHit::Craft(slot) if shift => ledger
+                        .begin_gather_to_player_with_focus(InventoryTarget::Craft(slot), focus),
+                    _ => ledger.begin_gather(),
+                }
+            }
+        }
     }
 
     /// Lets a drag that continues from a press-time placement rebalance it.
@@ -369,7 +395,7 @@ impl UiRuntime {
             }
             InventoryCellHit::CraftOutput => self.output_click(player_runtime, false),
             InventoryCellHit::Storage(slot) if self.crafter_slot_disables(player_runtime, slot) => {
-                self.set_crafter_slot(player_runtime, slot, true)
+                self.set_crafter_slot(player_runtime, slot as u8, true)
             }
             hit if self.bundle_insert_target(player_runtime, hit).is_some() => {
                 let target = self
@@ -389,7 +415,7 @@ impl UiRuntime {
 
     /// Whether a click on crafter slot `slot` disables it: an empty, enabled
     /// slot clicked with nothing held, as in vanilla's crafter screen.
-    fn crafter_slot_disables(&self, player_runtime: &player_state::PlayerState, slot: u8) -> bool {
+    fn crafter_slot_disables(&self, player_runtime: &player_state::PlayerState, slot: u16) -> bool {
         let ledger = player_runtime.inventory.ledger();
         ledger.window_kind() == Some(WindowKind::Crafter)
             && slot < 9
@@ -397,7 +423,7 @@ impl UiRuntime {
             && ledger
                 .target_stack(InventoryTarget::Storage(slot))
                 .is_none()
-            && !self.screen_state().crafter.is_disabled(slot)
+            && !self.screen_state().crafter.is_disabled(slot as u8)
     }
 
     /// Shows crafter slot `slot` toggled at once and asks the server to follow.
@@ -663,6 +689,21 @@ impl UiRuntime {
             Some(
                 kind @ (WindowKind::Stonecutter | WindowKind::Smithing | WindowKind::Cartography),
             ) => {
+                if let Some(output) = player_runtime.inventory.predicted_smithing_trim() {
+                    let recipe_network_id = self
+                        .active_screen_recipe(player_runtime)
+                        .ok_or(InventoryGestureError::InvalidRequest)?
+                        .id;
+                    return self
+                        .inventory_ledger_mut(player_runtime)
+                        .begin_screen_output_into(
+                            &ScreenCraft::SmithingTrim {
+                                recipe_network_id,
+                                output,
+                            },
+                            sink,
+                        );
+                }
                 let (recipe_network_id, output) = self
                     .active_screen_recipe(player_runtime)
                     .and_then(|recipe| Some((recipe.id, recipe.output?)))
@@ -834,6 +875,10 @@ impl UiRuntime {
                 })
             }
             Widget::InventoryRightTab(tab) => self.select_inventory_right_tab(player_runtime, tab),
+            Widget::StorageRadio { group, index } => {
+                self.screen_state_mut().storage_radios.insert(group, index);
+                Ok(0)
+            }
             Widget::FurnaceTab(tab) => {
                 let tab = protocol::FurnaceTab::from_index(i32::from(tab));
                 if matches!(

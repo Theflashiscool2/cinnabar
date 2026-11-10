@@ -77,6 +77,10 @@ pub mod touch {
     pub const DISMISS_UTILITIES: u16 = 40;
     pub const DROP: u16 = 41;
     pub const DROP_STACK: u16 = 42;
+    /// The classic D-pad; the contact delta is the digital direction of the cell under the
+    /// finger, positive Y forward.
+    pub const DPAD: u16 = 43;
+    const _: () = assert!(DPAD != DROP && DPAD != DROP_STACK && DPAD < MOD_BUTTONS.start);
     /// Mod-registered buttons, one per presented slot. They complete as taps in the app and
     /// never enter the gameplay router's layout.
     pub const MOD_BUTTONS: std::ops::Range<u16> = 64..80;
@@ -99,6 +103,8 @@ pub mod touch {
 
 mod touch_controls;
 pub use touch_controls::{TouchBounds, TouchControlRegion, TouchControlState};
+mod touch_interact;
+pub use touch_interact::{TouchControlMode, TouchGesture, TouchGestures};
 
 pub mod cursor_focus;
 

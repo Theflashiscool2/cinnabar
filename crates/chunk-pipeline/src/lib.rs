@@ -6,7 +6,10 @@ pub mod java;
 pub mod jobs;
 mod stream;
 
-pub use culling::{CaveVisibilityScratch, CaveVisibilityWork, CaveVisibleSet};
+pub use culling::{
+    CaveRebuildStats, CaveVisibilityRebuild, CaveVisibilityScratch, CaveVisibilityWork,
+    CaveVisibleSet,
+};
 
 #[cfg(feature = "benchmark-support")]
 #[doc(hidden)]

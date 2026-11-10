@@ -83,10 +83,7 @@ pub(crate) fn update(
         hud.mode == Some(world::java::hud::GameMode::Spectator),
     );
     if terrain.as_ref().and_then(|t| t.world_ready()) != Some(true)
-        || !client_presentation::camera::hand_first_person(
-            camera.perspective(),
-            server_camera.as_deref(),
-        )
+        || !client_presentation::camera::hand_first_person(Some(&camera), server_camera.as_deref())
         || menu.is_visible()
         || !visibility.hand
         || ui.local_player_alive() == Some(false)

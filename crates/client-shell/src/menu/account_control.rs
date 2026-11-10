@@ -180,6 +180,7 @@ impl MenuRuntime {
         }
         self.sync_invites(control);
         self.sync_realm_membership(control);
+        self.sync_realm_leave(control);
     }
 
     /// Sign out without a launcher core: the saved tokens are removed here.

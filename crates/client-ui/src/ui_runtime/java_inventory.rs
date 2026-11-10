@@ -555,12 +555,8 @@ impl UiRuntime {
             PointerAction::Click(hit) => (hit, Some(Button::Left)),
             PointerAction::SecondaryClick(hit) => (hit, Some(Button::Right)),
             PointerAction::QuickMove(hit) => (hit, None),
-            PointerAction::Gather => {
-                if let Some(slot) = self
-                    .screen_state()
-                    .hover
-                    .and_then(|hit| self.java_menu_slot(hit))
-                {
+            PointerAction::Gather { hit, .. } => {
+                if let Some(slot) = self.java_menu_slot(hit) {
                     self.queue_java_inventory(Intent::Collect { slot });
                 }
                 return;

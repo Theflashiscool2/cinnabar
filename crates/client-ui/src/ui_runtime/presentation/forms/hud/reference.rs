@@ -21,6 +21,7 @@ pub(super) fn hud_model(
     let selected = runtime.hud_selected_slot(player_runtime);
     let survival = runtime.shows_survival_stats(player_runtime);
     let facts = player_runtime.inventory.ledger().item_facts();
+    let mode = player_runtime.facts.player_game_mode();
     let mut slot = |stack: Option<&protocol::NetworkItemStack>,
                     icon: Option<IconRef>,
                     durability: Option<f32>,
@@ -34,7 +35,10 @@ pub(super) fn hud_model(
             id_aux: stack.map(|stack| facts.id_aux(stack)),
             count: stack.map_or(0, |stack| u32::from(stack.count)),
             selected,
-            durability: stack.and(durability).map(f64::from),
+            durability: stack
+                .and(durability)
+                .filter(|_| mode != Some(protocol::PlayerGameMode::Creative))
+                .map(f64::from),
         }
     };
     let mut hotbar = (0..9)
@@ -110,6 +114,10 @@ pub(super) fn hud_model(
         .collect();
     let now_tick = runtime.estimated_server_tick(now);
     let (player_position, days_played) = world_text_lines(runtime, frame);
+    let locator = mode_allows_hotbar
+        && frame.mount_jump.is_none()
+        && frame.locator_view.is_some()
+        && runtime.session.locator.visible(frame.dimension, now);
     HudModel {
         survival_ui: survival,
         armor_visible: runtime
@@ -118,7 +126,8 @@ pub(super) fn hud_model(
             .is_some_and(|armor| armor.current() > 0),
         hotbar_visible: mode_allows_hotbar && selected.is_some(),
         touch_inventory: false,
-        xp_bar: survival && experience.is_some() && frame.mount_jump.is_none(),
+        xp_bar: survival && experience.is_some() && frame.mount_jump.is_none() && !locator,
+        locator_bar: locator,
         exp_progress: experience.map_or(0.0, |xp| f64::from(xp.progress)),
         level: experience.map_or(0, |xp| xp.level),
         hotbar,

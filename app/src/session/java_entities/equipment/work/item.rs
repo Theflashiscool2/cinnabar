@@ -34,7 +34,7 @@ impl Writer<'_> {
             self.rasters.push(EquipmentRaster {
                 width: hand.atlas.width,
                 height: hand.atlas.height,
-                rgba8: hand.atlas.rgba8[i * bytes..(i + 1) * bytes].into(),
+                rgba8: hand.atlas.rgba8.range(i * bytes, bytes).into_owned().into(),
             });
             self.indices.push((id, draws.len()));
             draws.push(Draw {

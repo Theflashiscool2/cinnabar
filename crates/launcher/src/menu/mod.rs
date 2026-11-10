@@ -3,6 +3,7 @@
 use json_ui::vanilla::Reference;
 mod address;
 pub use address::{DEFAULT_PORT, MAX_SERVER_ADDRESS_BYTES, MAX_SERVER_NAME_BYTES, split_address};
+pub mod audio_output;
 pub mod auth;
 mod edition;
 pub use edition::ServerEdition;
@@ -15,6 +16,7 @@ pub mod invite;
 pub mod join_progress;
 pub mod join_requests;
 mod list;
+pub mod play;
 pub mod profile;
 pub mod profile_achievements;
 pub mod realm_membership;
@@ -38,8 +40,8 @@ pub use view::{
     ButtonArt, CatalogFile, CatalogFriend, CatalogServer, EXPERIENCE_ADDRESS_PREFIX,
     FRIEND_ADDRESS_PREFIX, InboxItem, JoinKind, JoinProgress, JoinStage, LiveEventCard,
     LocalWorldCard, MenuCaret, MenuFeeds, MenuFriendCard, MenuGameCard, MenuHome, MenuProfile,
-    MenuRealmCard, MenuServerCard, MenuView, PingInfo, SavedServer, ServerDetails,
-    ServerTrustPrompt, pingable,
+    MenuRealmCard, MenuServerCard, MenuView, PingInfo, REALM_ADDRESS_PREFIX, SavedServer,
+    ServerDetails, ServerTrustPrompt, is_nethernet_target, joined_realm, pingable,
 };
 pub use worlds_tab::{LocalWorldAction, civil_date, file_size};
 
@@ -87,6 +89,8 @@ pub enum MenuDialog {
     Exit,
     DeathQuit,
     RemoveSaved(usize),
+    /// Confirms leaving the joined Realm with this service id.
+    LeaveRealm(u32),
     RemoveShaderPack(u16, u64),
     StorageDelete,
     StorageError,
@@ -104,6 +108,7 @@ pub enum MenuField {
     FriendQuery,
     /// Searches options across settings categories.
     SettingsQuery,
+    StorageQuery,
     Name,
     Address,
     Port,
@@ -158,6 +163,10 @@ pub enum MenuAction {
     PlayRealm(usize),
     /// Opens or advances Realm membership through an invite link or code.
     RealmMembership(realm_membership::Action),
+    /// Asks to confirm leaving the joined Realm with this service id.
+    LeaveRealmDialog(u32),
+    /// Leaves the joined Realm with this service id after the player confirmed.
+    ConfirmLeaveRealm(u32),
     PlayFriend(usize),
     ToggleFavorite(usize),
     RemoveSavedDialog(usize),
@@ -178,7 +187,6 @@ pub enum MenuAction {
     /// Opens the native touch-control layout draft.
     EditTouchControls,
     SettingsScale(i8),
-    SettingsScalePicker,
     SettingsFullscreen(bool),
     SettingsStorage(settings_storage::StorageAction),
     SettingsSupport(settings_support::SupportAction),
@@ -231,6 +239,7 @@ pub enum MenuAction {
     SelectFeatured(usize),
     /// Show a saved server's details on the Servers tab.
     SelectSaved(usize),
+    ServerDetail(view::ServerDetailPart),
     /// Show a Realm's details on the Realms tab.
     SelectRealm(usize),
     /// Flip the info panel's description (0) or news (1) past "read more".

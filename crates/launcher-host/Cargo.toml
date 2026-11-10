@@ -18,6 +18,8 @@ test-support = []
 
 [dependencies]
 java-protocol = { path = "../java-protocol" }
+base64 = "0.22"
+ring = "0.17"
 cosmetics = { path = "../cosmetics" }
 anyhow.workspace = true
 bridge = { path = "../bridge" }
@@ -65,6 +67,12 @@ objc2-foundation = { version = "0.2.2", features = ["NSDictionary", "NSString", 
 objc2-ui-kit = { version = "0.2.2", features = ["UIApplication", "UIResponder", "block2"] }
 block2 = "0.5.1"
 dispatch2 = "0.3"
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+dispatch2 = { version = "0.3", default-features = false, features = ["std"] }
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "block2", "NSApplication", "NSOpenPanel", "NSPanel", "NSResponder", "NSSavePanel", "NSWindow"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSString", "NSURL"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 async-io = "2"

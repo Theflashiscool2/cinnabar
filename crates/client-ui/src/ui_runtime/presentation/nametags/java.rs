@@ -6,6 +6,9 @@ use world::java::{
     hud::GameMode,
     roster::{Profile, teams::Parameters},
 };
+/// Java SubmitNodeCollection clearance; Bedrock owns its separate label offset.
+const NAME_TAG_CLEARANCE: f32 = 0.5;
+
 #[cfg(test)]
 mod tests;
 pub(crate) mod text;
@@ -130,8 +133,7 @@ impl Cache {
                     if let Some(lines) = lines
                         && let Some(tag) = NametagAnchor::world_label(
                             e.identity.incarnation,
-                            feet + glam::Vec3::Y
-                                * (height * e.visual.scale + super::HEAD_CLEARANCE),
+                            feet + glam::Vec3::Y * (height * e.visual.scale + NAME_TAG_CLEARANCE),
                             lines,
                             view,
                             false,
@@ -191,7 +193,7 @@ impl Cache {
                 continue;
             };
             // Pinned Avatar.POSES NAME_TAG attachments plus SubmitNodeCollection's clearance.
-            let position = feet + glam::Vec3::Y * (height + super::HEAD_CLEARANCE);
+            let position = feet + glam::Vec3::Y * (height + NAME_TAG_CLEARANCE);
             if let Some(tag) = NametagAnchor::world_label(
                 e.identity.incarnation,
                 position,

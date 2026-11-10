@@ -8,7 +8,7 @@ const CELLS: [Cell; STORAGE_SLOTS] = {
     let mut cells = [Cell::Storage(0); STORAGE_SLOTS];
     let mut i = 0;
     while i < cells.len() {
-        cells[i] = Cell::Storage(i as u8);
+        cells[i] = Cell::Storage(i as u16);
         i += 1;
     }
     cells

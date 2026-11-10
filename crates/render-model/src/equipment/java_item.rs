@@ -3,7 +3,7 @@ use crate::{ActorRigGeometry, ActorRigSurface, ActorRigVertex, HandItemAtlas};
 use assets::registry::java::items::Quad;
 use glam::Vec3;
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 mod attachment;
 pub use attachment::{held_bone, posed_bounds};
 /// One geometry per sampled material; each uses the corresponding texture-array layer.
@@ -159,7 +159,7 @@ pub fn prepare_with_ids(
             width: width as u16,
             height: height as u16,
             layers: materials.len() as u32,
-            rgba8: Arc::from(rgba),
+            rgba8: rgba.into(),
         },
         bounds: assets::SkinGeometryBounds {
             center: ((low + high) * 0.5).to_array(),
@@ -171,6 +171,7 @@ pub fn prepare_with_ids(
 mod tests {
     use super::*;
     use assets::registry::java::textures::Image;
+    use std::sync::Arc;
     fn face(image: Arc<Image>, color: [f32; 4]) -> Quad {
         Quad {
             positions: [[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]],
@@ -213,8 +214,14 @@ mod tests {
             ]
         );
         assert_eq!(prepared.groups[0].vertices.len(), 12);
-        assert_eq!(&prepared.atlas.rgba8[..4], &[100, 200, 40, 128]);
-        assert_eq!(&prepared.atlas.rgba8[16..20], &[100, 50, 100, 255]);
+        assert_eq!(
+            prepared.atlas.rgba8.range(0, 4).as_ref(),
+            &[100, 200, 40, 128]
+        );
+        assert_eq!(
+            prepared.atlas.rgba8.range(16, 4).as_ref(),
+            &[100, 50, 100, 255]
+        );
         assert_eq!(prepared.groups[1].vertices[2].uv, [0.5, 0.5]);
         assert_eq!(prepared.bounds.center, [0.5, 0.5, 0.]);
         assert_eq!(prepared.groups[0].vertices[0].normal, [0., 0., 1.]);

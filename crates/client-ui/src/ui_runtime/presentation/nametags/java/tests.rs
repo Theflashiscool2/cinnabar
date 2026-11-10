@@ -194,10 +194,7 @@ fn invisible_marker_hologram_keeps_authoritative_name_and_retires_updates() {
     let tags = c.project_players(&e, &roster, "Viewer", None, view(), 0.);
     assert_eq!(tags.len(), 1);
     assert_eq!(tags[0].lines[0].as_ref(), "§rSHOP");
-    assert_eq!(
-        tags[0].position,
-        glam::Vec3::new(0., super::super::HEAD_CLEARANCE, -5.)
-    );
+    assert_eq!(tags[0].position, glam::Vec3::new(0., 0.5, -5.));
     e.update((7, 1), 10, |e| {
         e.visual.custom_name = Some(Arc::new(world::NbtValue::String("UPGRADES".into())));
         Ok(())

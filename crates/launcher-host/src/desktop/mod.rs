@@ -8,6 +8,8 @@ mod android;
 pub mod dbus;
 #[cfg(target_os = "ios")]
 mod ios;
+#[cfg(target_os = "macos")]
+mod macos;
 pub mod picker;
 #[cfg(windows)]
 pub mod windows;

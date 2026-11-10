@@ -9,9 +9,9 @@ use ui::{
 };
 
 use super::{
-    ServerFormStore, anvil, boss, credits, data_driven, emotes, gameplay_hud::GameplayHudState,
-    grindstone, item_activation, item_facts, mob_effects, player_roster, presentation,
-    screen_state, sign_editor, use_on_identity_evidence,
+    ServerFormStore, anvil, boss, command_block, credits, data_driven, emotes,
+    gameplay_hud::GameplayHudState, grindstone, item_activation, item_facts, mob_effects,
+    player_roster, presentation, screen_state, sign_editor, use_on_identity_evidence,
 };
 
 const MAX_PENDING_CHAT_SENDS: usize = 32;
@@ -70,6 +70,7 @@ pub struct SessionUi {
     pub(super) java_item_artwork: Option<Arc<super::java_inventory::artwork::State>>,
     pub(super) java_chat_style_notice: bool,
     pub(super) java_item_names: Option<Arc<assets::registry::java::language::Language>>,
+    pub(super) locator: super::locator::LocatorState,
     pub(super) item_activation: Option<item_activation::ItemActivation>,
     pub(super) pending_totem_snapshots: VecDeque<(u64, Option<u32>)>,
     pub(super) activation_clock: item_activation::ActivationClock,
@@ -78,6 +79,7 @@ pub struct SessionUi {
     pub(super) data_driven: data_driven::DataDrivenUi,
     pub(super) credits: credits::CreditsState,
     pub(super) sign_editor: sign_editor::SignEditor,
+    pub(super) command_block: command_block::CommandBlockEditor,
     pub(super) inventory_pointer_gui: Option<[f32; 2]>,
     pub(super) screen: screen_state::ScreenState,
     pub(super) emotes: emotes::EmoteState,
@@ -177,6 +179,7 @@ impl SessionUi {
             java_chat_style_notice: false,
             java_item_artwork: None,
             java_sidebar: Default::default(),
+            locator: super::locator::LocatorState::default(),
             item_activation: None,
             pending_totem_snapshots: VecDeque::new(),
             activation_clock: item_activation::ActivationClock::default(),
@@ -186,6 +189,7 @@ impl SessionUi {
             data_driven: data_driven::DataDrivenUi::default(),
             credits: credits::CreditsState::default(),
             sign_editor: sign_editor::SignEditor::default(),
+            command_block: command_block::CommandBlockEditor::default(),
             inventory_pointer_gui: None,
             screen: screen_state::ScreenState::default(),
             emotes: emotes::EmoteState::default(),

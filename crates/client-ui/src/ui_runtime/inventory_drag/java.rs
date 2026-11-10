@@ -84,7 +84,11 @@ impl Pointer {
         }
         if let Some(hit) = self.collect.take() {
             if f.primary_released && f.hit == Some(hit) && f.holding {
-                actions.push(PointerAction::Gather);
+                actions.push(PointerAction::Gather {
+                    hit,
+                    shift: false,
+                    focus: None,
+                });
             }
             return actions;
         }
@@ -134,6 +138,7 @@ mod tests {
             shift: false,
             holding: true,
             hit,
+            hit_stack: None,
             now_millis: at,
         }
     }
@@ -254,7 +259,11 @@ mod tests {
                 10,
                 46
             ),
-            vec![PointerAction::Gather]
+            vec![PointerAction::Gather {
+                hit: A,
+                shift: false,
+                focus: None
+            }]
         );
     }
     #[test]
@@ -298,7 +307,11 @@ mod tests {
                 11,
                 46
             ),
-            vec![PointerAction::Gather]
+            vec![PointerAction::Gather {
+                hit: A,
+                shift: false,
+                focus: None
+            }]
         );
         assert!(
             p.step(

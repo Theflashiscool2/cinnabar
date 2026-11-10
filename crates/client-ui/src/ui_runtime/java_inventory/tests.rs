@@ -413,7 +413,11 @@ fn native_collect_and_offhand_inputs_keep_native_slot_identity() {
     ui.publish_java_hud(hud(7, 1));
     ui.publish_java_inventory(&world);
     ui.session.screen.hover = Some(Hit::Player(10));
-    ui.java_pointer_action(super::super::inventory_drag::PointerAction::Gather);
+    ui.java_pointer_action(super::super::inventory_drag::PointerAction::Gather {
+        hit: Hit::Player(10),
+        shift: false,
+        focus: None,
+    });
     assert!(matches!(
         ui.next_java_inventory_input().unwrap().intent,
         Intent::Collect { slot: 10 }
@@ -473,6 +477,7 @@ fn native_drag_filters_component_mismatch_and_queues_one_scoped_release() {
         shift: false,
         holding: true,
         hit: Some(Hit::Player(hit)),
+        hit_stack: None,
         now_millis: at,
     };
     assert!(
@@ -597,7 +602,7 @@ fn native_server_menu_row_count_preserves_last_slot_and_player_aliases() {
         assert!(ui.publish_java_inventory(&world));
         assert_eq!(ui.java_container_slots(), Some(Some(slots)));
         ui.java_pointer_action(super::super::inventory_drag::PointerAction::Click(
-            Hit::Storage((slots - 1) as u8),
+            Hit::Storage((slots - 1) as u16),
         ));
         assert!(matches!(ui.next_java_inventory_input().unwrap().intent,
             Intent::Pickup { slot, .. } if slot == slots-1));
@@ -607,7 +612,7 @@ fn native_server_menu_row_count_preserves_last_slot_and_player_aliases() {
             Intent::Swap { slot, hotbar: 1 } if slot == slots+27));
         ui.finish_java_inventory_input(None);
         ui.java_pointer_action(super::super::inventory_drag::PointerAction::Click(
-            Hit::Storage(slots as u8),
+            Hit::Storage(slots as u16),
         ));
         assert!(
             ui.next_java_inventory_input().is_none(),

@@ -873,7 +873,7 @@ impl Builder {
             }
             self.overlay.textures.push(TextureArray {
                 layers: page.len() as u32,
-                mips: mips.into_boxed_slice(),
+                mips: mips.into_boxed_slice().into(),
             });
         }
         Ok(())

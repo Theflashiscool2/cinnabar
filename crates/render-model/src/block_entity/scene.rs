@@ -28,6 +28,7 @@ use super::{
     heads::HeadModels,
     loyalty_rope::LoyaltyRopeModel,
     mesh::{BlockEntityVertex, MeshBuilder},
+    piston::PistonArmModel,
     pot::DecoratedPotModel,
     shulker::ShulkerModel,
     sign::SignModel,
@@ -49,6 +50,7 @@ pub enum BlockEntityKind {
     JavaPot(super::java_pot::Model),
     JavaShulker(super::java_shulker::Model),
     Shulker(ShulkerModel),
+    PistonArm(PistonArmModel),
     Skull(SkullModel),
     Banner(BannerModel),
     Bed(BedModel),
@@ -57,9 +59,9 @@ pub enum BlockEntityKind {
     EnchantTable {
         book: super::book::BookPose,
     },
+    /// The open book on a lectern; terrain draws the stand.
     Lectern {
         facing_yaw_degrees: f32,
-        has_book: bool,
     },
     Bell(BellModel),
     ItemFrame(ItemFrameModel),
@@ -109,6 +111,7 @@ impl BlockEntityKind {
             | Self::JavaChest(_)
             | Self::Chest(_)
             | Self::Shulker(_)
+            | Self::PistonArm(_)
             | Self::Banner(_)
             | Self::Sign(_)
             | Self::EnchantTable { .. }
@@ -582,6 +585,7 @@ fn emit_submission(
         BlockEntityKind::JavaChest(model) => super::java_chest::emit(builder, atlas, block, model),
         BlockEntityKind::Chest(model) => super::chest::emit(builder, atlas, block, model),
         BlockEntityKind::Shulker(model) => super::shulker::emit(builder, atlas, block, model),
+        BlockEntityKind::PistonArm(model) => super::piston::emit(builder, atlas, block, model),
         BlockEntityKind::Skull(model) => super::skull::emit(builder, atlas, heads, block, model),
         BlockEntityKind::Banner(model) => super::banner::emit(builder, atlas, block, model, clock),
         BlockEntityKind::Bed(model) => super::bed::emit(builder, atlas, block, model, bed),
@@ -592,10 +596,9 @@ fn emit_submission(
         BlockEntityKind::EnchantTable { book } => {
             super::book::emit_enchant_table(builder, atlas, block, *book);
         }
-        BlockEntityKind::Lectern {
-            facing_yaw_degrees,
-            has_book,
-        } => super::book::emit_lectern(builder, atlas, block, *facing_yaw_degrees, *has_book),
+        BlockEntityKind::Lectern { facing_yaw_degrees } => {
+            super::book::emit_lectern_book(builder, atlas, block, *facing_yaw_degrees);
+        }
         BlockEntityKind::Bell(model) => super::bell::emit(builder, atlas, block, model),
         BlockEntityKind::ItemFrame(model) => super::frame::emit(builder, atlas, block, model),
         BlockEntityKind::Conduit(model) => {

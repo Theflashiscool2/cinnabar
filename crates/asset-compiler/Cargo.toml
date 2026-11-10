@@ -36,7 +36,6 @@ reads = [
 ]
 
 [dependencies]
-shaderpack = { path = "../shaderpack" }
 protocol-ids = { path = "../protocol-ids" }
 world = { path = "../world" }
 assets = { path = "../assets" }

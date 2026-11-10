@@ -237,7 +237,6 @@ pub(crate) fn update(
     mut presentation: ResMut<Presentation>,
     frame: Option<ResMut<render_scene::BlockEntityFrameResource>>,
     time: Res<Time<Real>>,
-    view: Option<Res<client_presentation::local_player::LocalViewPose>>,
     camera: Option<Res<client_presentation::local_player::CameraPose>>,
     mut skins: Local<client_shell::player_skin::java::cache::Cache>,
     mut profiles: Local<client_shell::player_skin::java::profiles::Cache>,
@@ -630,9 +629,9 @@ pub(crate) fn update(
                                 ticks,
                                 texture_ticks: time.elapsed_secs_f64() * 20.,
                                 rotation,
-                                camera: view
+                                camera: camera
                                     .as_ref()
-                                    .map_or(Quat::IDENTITY, |v| v.camera_rotation()),
+                                    .map_or(Quat::IDENTITY, |v| v.transform().rotation),
                             },
                         ),
                     });
