@@ -6,6 +6,34 @@ impl Connection {
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         // Queued input from a retired level cannot be serialized before its replacement login.
         if !self.bootstrapped {
+            let prediction = match &command {
+                Command::Interact {
+                    dimension_epoch,
+                    action,
+                    ..
+                } => Some((*dimension_epoch, action.sequence)),
+                Command::UseOn {
+                    dimension_epoch,
+                    action,
+                    ..
+                } => Some((*dimension_epoch, action.sequence)),
+                Command::UseItem {
+                    dimension_epoch,
+                    action,
+                    ..
+                } => Some((*dimension_epoch, action.sequence)),
+                _ => None,
+            };
+            if let Some((dimension_epoch, sequence)) =
+                prediction.filter(|(_, sequence)| *sequence > 0)
+            {
+                self.emit(Event::BlockActionWritten {
+                    dimension_epoch,
+                    sequence,
+                    written: false,
+                })
+                .await?;
+            }
             if let Command::ChatCommand { sequence, .. } | Command::ChatMessage { sequence, .. } =
                 command
             {
@@ -331,44 +359,66 @@ impl Connection {
                     teleport_pending=self.pending_teleport.is_some() || self.pending_rotation.is_some(),
                     world_loaded=self.loaded_epoch == Some(dimension_epoch), dead=self.dead,
                     "Native Java block action write receipt");
+                if action.sequence > 0 {
+                    self.emit(Event::BlockActionWritten {
+                        dimension_epoch,
+                        sequence: action.sequence,
+                        written,
+                    })
+                    .await?;
+                }
             }
             Command::UseOn {
                 dimension_epoch,
                 correction_sequence,
                 action,
-            } if dimension_epoch == self.dimension_epoch
-                && correction_sequence == self.correction_sequence
-                && self.pending_teleport.is_none()
-                && self.pending_rotation.is_none()
-                && self.loaded_epoch == Some(dimension_epoch)
-                && !self.dead =>
-            {
-                self.send(
-                    "ServerboundUseItemOnPacket",
-                    &interaction::encode_use_on(action)?,
-                )
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && correction_sequence == self.correction_sequence
+                    && self.pending_teleport.is_none()
+                    && self.pending_rotation.is_none()
+                    && self.loaded_epoch == Some(dimension_epoch)
+                    && !self.dead;
+                if written {
+                    self.send(
+                        "ServerboundUseItemOnPacket",
+                        &interaction::encode_use_on(action)?,
+                    )
+                    .await?;
+                }
+                self.emit(Event::BlockActionWritten {
+                    dimension_epoch,
+                    sequence: action.sequence,
+                    written,
+                })
                 .await?;
             }
-            Command::UseOn { .. } => {}
             Command::UseItem {
                 dimension_epoch,
                 correction_sequence,
                 action,
-            } if dimension_epoch == self.dimension_epoch
-                && correction_sequence == self.correction_sequence
-                && self.pending_teleport.is_none()
-                && self.pending_rotation.is_none()
-                && self.loaded_epoch == Some(dimension_epoch)
-                && !self.dead =>
-            {
-                self.send(
-                    "ServerboundUseItemPacket",
-                    &interaction::encode_use_item(action)?,
-                )
+            } => {
+                let written = dimension_epoch == self.dimension_epoch
+                    && correction_sequence == self.correction_sequence
+                    && self.pending_teleport.is_none()
+                    && self.pending_rotation.is_none()
+                    && self.loaded_epoch == Some(dimension_epoch)
+                    && !self.dead;
+                if written {
+                    self.send(
+                        "ServerboundUseItemPacket",
+                        &interaction::encode_use_item(action)?,
+                    )
+                    .await?;
+                    tracing::debug!(target: "java_session", dimension_epoch, sequence=action.sequence, "Native item use written; awaiting server authority");
+                }
+                self.emit(Event::BlockActionWritten {
+                    dimension_epoch,
+                    sequence: action.sequence,
+                    written,
+                })
                 .await?;
-                tracing::debug!(target: "java_session", dimension_epoch, sequence=action.sequence, "Native item use written; awaiting server authority");
             }
-            Command::UseItem { .. } => {}
             Command::Move {
                 dimension_epoch,
                 sequence,

@@ -80,6 +80,7 @@ fn begin_inner(
     ));
     state.status.experience = None;
     state.block_ack = None;
+    state.block_reconciliations.clear();
     state.teleport = None;
     state.player_motion = None;
     state.login_motion = None;
@@ -187,7 +188,7 @@ pub(super) fn admit(
             for b in updates {
                 state
                     .terrain
-                    .set_block(b.position, domain::BlockStateId(b.state));
+                    .set_server_block(b.position, domain::BlockStateId(b.state));
                 state.block_updates += 1;
             }
         }

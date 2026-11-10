@@ -106,6 +106,25 @@ impl Terrain {
             .collect()
     }
 
+    /// Retires a locally queued action the transport did not write. This is a local
+    /// cancellation, never an ACK or a server rejection; newer predictions survive.
+    pub fn discard_prediction(&mut self, sequence: i32) -> usize {
+        let positions: Vec<_> = self
+            .predictions
+            .iter()
+            .filter_map(|(position, retained)| (retained.sequence == sequence).then_some(*position))
+            .collect();
+        let retired = positions.len();
+        for position in positions {
+            let retained = self
+                .predictions
+                .remove(&position)
+                .expect("retained prediction");
+            self.set_block(position, retained.state);
+        }
+        retired
+    }
+
     /// Number of retained cells, independent of ACK/action counts.
     pub fn predicted_blocks(&self) -> usize {
         self.predictions.len()
@@ -180,6 +199,20 @@ mod tests {
         let outcome = terrain.reconcile_blocks(3);
         assert_eq!(outcome[0].state, BlockStateId(7));
         assert_eq!(outcome[0].player_position, Some([1.; 3]));
+    }
+    #[test]
+    fn unwritten_action_does_not_retire_a_newer_prediction_at_the_same_position() {
+        let mut terrain = terrain();
+        let position = [1, -60, 1];
+        terrain.predict_block(1, position, BlockStateId(0), [1.; 3]);
+        terrain.predict_block(2, position, BlockStateId(9), [2.; 3]);
+        assert_eq!(terrain.discard_prediction(1), 0);
+        assert_eq!(terrain.block(position), Some(BlockStateId(9)));
+        assert_eq!(terrain.predicted_blocks(), 1);
+        assert!(terrain.reconcile_blocks(1).is_empty());
+        assert_eq!(terrain.discard_prediction(2), 1);
+        assert_eq!(terrain.block(position), Some(BlockStateId(7)));
+        assert!(terrain.reconcile_blocks(2).is_empty());
     }
     #[test]
     fn teleport_preserves_blocks_but_suppresses_only_older_player_rollback() {

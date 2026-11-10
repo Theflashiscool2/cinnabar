@@ -53,6 +53,11 @@ pub struct WorldState {
     pub block_updates: u64,
     /// Processing receipt only; acceptance comes from ordered authoritative block updates.
     pub block_ack: Option<(u64, i32)>,
+    /// Ordered ACK reconciliation candidates for the existing native movement owner.
+    pub block_reconciliations: std::collections::VecDeque<world::java::Reconciliation>,
+    pub block_predictions_confirmed: u64,
+    pub block_predictions_reverted: u64,
+    pub block_predictions_retired: u64,
     pub vitals: Option<java_protocol::session::facts::Vitals>,
     pub death: Option<(i32, java_protocol::nbt::Value)>,
     pub phase: Option<Phase>,
@@ -207,6 +212,19 @@ impl WorldState {
                 self.inventory.wire_revision = wire_revision;
                 return inventory::admit(self, dimension_epoch, incarnation, packet);
             }
+            Event::BlockActionWritten {
+                dimension_epoch,
+                sequence,
+                written,
+            } => {
+                if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
+                    return false;
+                }
+                if !written {
+                    self.block_predictions_retired +=
+                        self.terrain.discard_prediction(sequence) as u64;
+                }
+            }
             Event::BlockAck {
                 dimension_epoch,
                 sequence,
@@ -215,6 +233,14 @@ impl WorldState {
                     return false;
                 }
                 self.block_ack = Some((dimension_epoch, sequence));
+                for outcome in self.terrain.reconcile_blocks(sequence) {
+                    if outcome.changed {
+                        self.block_predictions_reverted += 1;
+                    } else {
+                        self.block_predictions_confirmed += 1;
+                    }
+                    self.block_reconciliations.push_back(outcome);
+                }
             }
             Event::ServerTransfer { .. } => {}
             Event::Phase(phase) => {
@@ -224,6 +250,7 @@ impl WorldState {
                     self.scoreboard.clear();
                     self.inventory = Default::default();
                     self.block_ack = None;
+                    self.block_reconciliations.clear();
                     self.status = Default::default();
                     self.bootstrap = None;
                     self.biomes.clear();
