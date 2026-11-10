@@ -31,7 +31,16 @@ impl Authority {
             let Some(event) = super::java::poll_event(&mut self.java, &mut self.world) else {
                 break;
             };
-            if !super::java_telemetry::admit(&self.java, &mut self.world, event) {
+            let admitted = match self.physics.as_deref() {
+                Some(physics) => super::java_telemetry::admit_reconciled(
+                    &self.java,
+                    &mut self.world,
+                    event,
+                    |state, candidate| self.movement.reconcile_candidate(state, physics, candidate),
+                ),
+                None => super::java_telemetry::admit(&self.java, &mut self.world, event),
+            };
+            if !admitted {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
