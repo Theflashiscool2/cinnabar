@@ -345,3 +345,69 @@ fn sync_angles_preserve_native_nonfinite_bits_without_relaxing_framing_or_positi
         assert!(packet("ClientboundEntityPositionSyncPacket", &bytes).is_err());
     }
 }
+
+#[test]
+fn take_item_decodes_three_native_signed_varints_and_fences_both_lifetimes() {
+    // ClientboundTakeItemEntityPacket(FriendlyByteBuf): itemId, playerId, amount.
+    let bytes = [0xac, 2, 42, 0xff, 0xff, 0xff, 0xff, 15];
+    let mut take = packet("ClientboundTakeItemEntityPacket", &bytes).unwrap();
+    assert!(matches!(
+        take,
+        Packet::TakeItem {
+            item: 300,
+            collector: 42,
+            amount: -1,
+            item_lifetime: 0,
+            collector_lifetime: 0
+        }
+    ));
+    for end in 0..bytes.len() {
+        assert!(packet("ClientboundTakeItemEntityPacket", &bytes[..end]).is_err());
+    }
+    let mut lifetimes = lifetime::Lifetimes::default();
+    for id in [300, 42] {
+        lifetimes
+            .observe(&mut Packet::Spawn(Spawn {
+                lifetime: 0,
+                id,
+                uuid: [0; 16],
+                kind: target::ENTITY_ITEM,
+                position: [0.; 3],
+                velocity: [0.; 3],
+                pitch: 0.,
+                yaw: 0.,
+                head_yaw: 0.,
+                data: 0,
+            }))
+            .unwrap();
+    }
+    lifetimes.observe(&mut take).unwrap();
+    assert!(matches!(
+        take,
+        Packet::TakeItem {
+            item_lifetime: 1,
+            collector_lifetime: 2,
+            ..
+        }
+    ));
+    lifetimes.observe(&mut Packet::Remove(vec![42])).unwrap();
+    lifetimes.observe(&mut take).unwrap();
+    assert!(matches!(
+        take,
+        Packet::TakeItem {
+            item_lifetime: 1,
+            collector_lifetime: 0,
+            ..
+        }
+    ));
+    lifetimes.retire();
+    lifetimes.observe(&mut take).unwrap();
+    assert!(matches!(
+        take,
+        Packet::TakeItem {
+            item_lifetime: 0,
+            collector_lifetime: 0,
+            ..
+        }
+    ));
+}

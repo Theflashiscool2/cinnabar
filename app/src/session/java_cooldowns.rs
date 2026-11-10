@@ -18,10 +18,19 @@ impl Clock {
     pub(super) fn fraction(&self) -> f32 {
         (self.elapsed.as_secs_f32() / simulation_clock::TICK_DURATION.as_secs_f32()).clamp(0., 1.)
     }
+    #[cfg(test)]
     pub(super) fn service(
         &mut self,
         world: &mut client_world::java::WorldState,
         now: Instant,
+    ) -> u32 {
+        self.service_with_eye(world, now, None)
+    }
+    pub(super) fn service_with_eye(
+        &mut self,
+        world: &mut client_world::java::WorldState,
+        now: Instant,
+        local_eye: Option<f64>,
     ) -> u32 {
         let session = Some(world.generation());
         if self.session != session {
@@ -39,8 +48,15 @@ impl Clock {
             .min(simulation_clock::MAX_TICKS_PER_FRAME as u128) as u32;
         self.elapsed -= simulation_clock::TICK_DURATION * ticks;
         world.inventory.cooldowns.advance(u64::from(ticks));
+        let local_target = world.player_motion.zip(local_eye).map(|(motion, eye)| {
+            let mut position = motion.position;
+            position[1] += eye / 2.;
+            position
+        });
+        world.equipment.initialize_pickup_targets(local_target);
         for _ in 0..ticks {
             world.entities.tick_presentation();
+            world.equipment.tick_pickups(&world.entities, local_target);
             world.player_dynamics.tick_effects();
             world.player_visual.swing.tick();
             world.player_visual.hurt_ticks = world.player_visual.hurt_ticks.saturating_sub(1);
@@ -52,12 +68,14 @@ pub(crate) fn advance(
     mut clock: ResMut<Clock>,
     mut controller: ResMut<SessionController>,
     presentation: Option<Res<super::java_render::Presentation>>,
+    movement: Res<super::java_movement::Movement>,
 ) {
     if controller.java.is_none() {
         *clock = Default::default();
         return;
     }
-    let ticks = clock.service(&mut controller.java_world, Instant::now());
+    let eye = movement.0.eye_height(&controller.java_world);
+    let ticks = clock.service_with_eye(&mut controller.java_world, Instant::now(), Some(eye));
     let physics = presentation.as_ref().and_then(|p| p.service_physics());
     advance_items(&mut controller.java_world, physics.as_deref(), ticks);
 }

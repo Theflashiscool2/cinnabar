@@ -83,6 +83,7 @@ pub(crate) fn update(
     p.published_players = 0;
     p.published_villagers = 0;
     p.published_items = 0;
+    p.published_pickups = 0;
     p.item_pending = 0;
     if p.assets.is_none() && p.pending.is_none() && p.failure.is_none() {
         let appearances = match state.pig_appearances() {
@@ -202,7 +203,7 @@ pub(crate) fn update(
                 }
                 match ground::append(
                     &mut batch,
-                    e,
+                    ground::Source::from(e),
                     entry,
                     stack.count,
                     ground::Frame {
@@ -490,6 +491,51 @@ pub(crate) fn update(
                 batch.artwork.insert(identity, artwork);
             }
             p.published_players += usize::from(is_player);
+        }
+        for pickup in state.equipment.pickups() {
+            ground_retained.insert(pickup.source);
+            let Some(stack) = pickup.ground.stack.as_ref() else {
+                continue;
+            };
+            let Some(entry) = p.equipment.as_ref().and_then(|work| {
+                work.ground_entry(pickup.identity, pickup.ground.revision)
+                    .or_else(|| work.ground_entry(pickup.source, pickup.ground.revision))
+            }) else {
+                p.item_pending += 1;
+                continue;
+            };
+            let position = pickup.flight.sample(fraction);
+            let Some(light) = light(&state.terrain, pickup.flight.origin()) else {
+                p.unknown_light += 1;
+                continue;
+            };
+            match ground::append(
+                &mut batch,
+                ground::Source {
+                    identity: pickup.identity,
+                    uuid: pickup.uuid,
+                    revision: pickup.revision,
+                },
+                entry,
+                stack.count,
+                ground::Frame {
+                    scope,
+                    serial: p.serial,
+                    age: pickup.age,
+                    position,
+                    light,
+                },
+            ) {
+                Ok(draws) if draws > 0 => {
+                    p.published += 1;
+                    p.published_pickups += 1;
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    p.failure = Some(error);
+                    break;
+                }
+            }
         }
         p.poses.retain(|id, _| retained.contains(id));
         p.villagers.retain(|(id, _), _| retained.contains(id));

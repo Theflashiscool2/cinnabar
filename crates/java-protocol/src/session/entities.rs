@@ -45,6 +45,13 @@ pub enum Position {
 
 #[derive(Clone, Debug, Serialize)]
 pub enum Packet {
+    TakeItem {
+        item: i32,
+        item_lifetime: u64,
+        collector: i32,
+        collector_lifetime: u64,
+        amount: i32,
+    },
     Spawn(Spawn),
     /// Native visual notification, never an attack/damage acknowledgement.
     Hurt {
@@ -116,6 +123,13 @@ pub fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, Error> {
         return equipment::decode(r).map(|packet| Some(Packet::Equipment(packet)));
     }
     Ok(Some(match name {
+        "ClientboundTakeItemEntityPacket" => Packet::TakeItem {
+            item: r.var()?,
+            item_lifetime: 0,
+            collector: r.var()?,
+            collector_lifetime: 0,
+            amount: r.var()?,
+        },
         "ClientboundSwingAnimationPacket" => Packet::Swing {
             lifetime: 0,
             id: r.var()?,

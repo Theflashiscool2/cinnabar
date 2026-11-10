@@ -159,7 +159,12 @@ fn stacks(world: &client_world::java::WorldState) -> impl Iterator<Item = &inven
                     .and_then(|ground| ground.stack.as_ref()),
             )
     });
-    inventory.chain(remote)
+    inventory.chain(remote).chain(
+        world
+            .equipment
+            .pickups()
+            .filter_map(|pickup| pickup.ground.stack.as_ref()),
+    )
 }
 fn profile(stack: &inventory::java::Stack) -> Option<&serde_json::Value> {
     (!stack.removed.contains("minecraft:profile"))

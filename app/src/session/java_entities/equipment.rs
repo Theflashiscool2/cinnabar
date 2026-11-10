@@ -190,6 +190,13 @@ impl State {
                         stack: ground.stack.clone()?,
                     })
                 })
+                .chain(state.equipment.pickups().filter_map(|pickup| {
+                    Some(Ground {
+                        id: pickup.identity,
+                        revision: pickup.ground.revision,
+                        stack: pickup.ground.stack.clone()?,
+                    })
+                }))
                 .collect();
             work.desired = Some(revision);
             work.request = Some(Request {

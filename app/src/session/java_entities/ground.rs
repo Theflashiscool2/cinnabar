@@ -3,6 +3,22 @@
 use super::*;
 use render_model::{ActorGlint, HandItemAlphaMode};
 
+/// Immutable render facts shared by a live item and its authoritative pickup snapshot.
+#[derive(Clone, Copy)]
+pub(super) struct Source {
+    pub identity: Identity,
+    pub uuid: [u8; 16],
+    pub revision: u64,
+}
+impl From<&world::java::entities::Entity> for Source {
+    fn from(entity: &world::java::entities::Entity) -> Self {
+        Self {
+            identity: entity.identity,
+            uuid: entity.uuid,
+            revision: entity.revision,
+        }
+    }
+}
 pub(super) struct Frame {
     pub scope: (u64, u64),
     pub serial: u64,
@@ -67,7 +83,7 @@ fn pose(age: f32, phase: f32, bounds: ::assets::SkinGeometryBounds, position: Ve
 }
 pub(super) fn append(
     batch: &mut ActorPresentationBatch,
-    entity: &world::java::entities::Entity,
+    entity: Source,
     entry: &equipment::Entry,
     count: u32,
     frame: Frame,

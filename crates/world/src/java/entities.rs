@@ -63,6 +63,8 @@ pub struct Entity {
     pub delta_base: [f64; 3],
     pub head_yaw: f32,
     pub object_data: i32,
+    /// Native entity tick age, including when item collision presentation is suspended.
+    pub visual_ticks: i32,
     pub on_ground: bool,
     pub revision: u64,
     /// Independent of ordinary updates so coalesced rotations cannot hide a teleport.
@@ -120,6 +122,7 @@ impl Entities {
             })
             .collect::<std::collections::BTreeSet<_>>();
         for entity in self.entries.values_mut() {
+            entity.visual_ticks = entity.visual_ticks.wrapping_add(1);
             entity.visual.swing.tick();
             entity.visual.hurt_ticks = entity.visual.hurt_ticks.saturating_sub(1);
             if let Some(villager) = &mut entity.visual.villager {
@@ -239,6 +242,22 @@ impl Entities {
         }
     }
 
+    /// Reserves a collision-free render identity for a short-lived immutable visual snapshot.
+    pub fn presentation_identity(&mut self, scope: (u64, u64)) -> Result<Identity, &'static str> {
+        if !self.accepts(scope.0, scope.1) {
+            return Err("retired Java presentation scope");
+        }
+        self.next_incarnation = self
+            .next_incarnation
+            .checked_add(1)
+            .ok_or("Java entity incarnation overflow")?;
+        Ok(Identity {
+            session: scope.0,
+            epoch: scope.1,
+            incarnation: self.next_incarnation,
+        })
+    }
+
     /// A repeated network ID replaces its prior lifetime, including every presentation path.
     pub fn spawn(&mut self, scope: (u64, u64), spawn: Spawn) -> Result<bool, &'static str> {
         if !self.accepts(scope.0, scope.1) {
@@ -294,6 +313,7 @@ impl Entities {
                 delta_base: spawn.motion.position,
                 head_yaw: spawn.head_yaw,
                 object_data: spawn.object_data,
+                visual_ticks: 0,
                 on_ground: false,
                 revision,
                 teleport_revision: 1,
