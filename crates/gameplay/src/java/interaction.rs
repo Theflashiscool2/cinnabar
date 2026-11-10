@@ -1,4 +1,4 @@
-//! Native block intent. Shared action sequences never predict terrain or stack changes.
+//! Native block intent. Shared action sequences fence transport and terrain reconciliation.
 use super::item_use::plan::Hand;
 use client_world::java::WorldState;
 use semantic_input::{ActionPhase, identity::InputAuthorityGeneration};
@@ -81,6 +81,7 @@ pub struct Controller {
     pub selected: Option<Hit>,
     pub last_queued: Option<Request>,
     pub queued_actions: u64,
+    pub predicted_blocks: u64,
     pub entity_uses_queued: u64,
     pub blocked: Option<String>,
 }
@@ -169,6 +170,15 @@ impl Controller {
     }
     pub fn pending(&self) -> Option<Request> {
         self.pending
+    }
+    /// Native local destruction happens only on creative/instant START or completed FINISH,
+    /// never on ordinary survival START or ABORT. The existing mining owner decides completion.
+    pub fn pending_destroys_block(&self) -> bool {
+        self.pending.is_some_and(|request| match request.kind {
+            Kind::FinishBreak => true,
+            Kind::Break => self.creative || self.mining.is_none(),
+            _ => false,
+        })
     }
     pub fn queued(&mut self) {
         if let Some(request) = self.pending.take() {

@@ -13,6 +13,7 @@ use sim::java::selection;
 mod entity;
 mod item;
 mod placement;
+mod prediction;
 mod swing;
 
 #[derive(Resource, Default)]
@@ -41,6 +42,10 @@ impl Interaction {
         shapes: Option<&::assets::registry::java::interaction::Table>,
         physics: &::assets::registry::java::physics::Table,
     ) {
+        if !state.block_reconciliations.is_empty() {
+            self.0.blocked = Some("Native block reconciliation requires collision facts".into());
+            return;
+        }
         let placement = Some(placement::Context {
             physics,
             body: movement.0.body,
@@ -168,7 +173,7 @@ impl Interaction {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
-        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"hand":format!("{:?}",r.hand),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) | RequestTarget::Entity(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}), RequestTarget::Entity(e) => serde_json::json!({"entity":e.network_id,"lifetime":e.lifetime,"location":e.location,"secondary":e.secondary}) }})),"queued_actions":self.0.queued_actions,"mining":self.0.mining_progress().map(|(h,p)|serde_json::json!({"hit":hit(h),"progress":p})),"using_item":self.0.using_item(),"using_hand":self.0.using_hand().map(|hand|format!("{hand:?}")),"use_ticks":self.0.use_ticks(),"use_effects":self.0.use_effects().map(|e|serde_json::json!({"speed":e.speed_multiplier,"sprint":e.can_sprint})),"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":false,"scope":"native_mining_both_hand_block_entity_air_use_release_and_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.0.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
+        serde_json::json!({"selected":self.0.selected.map(hit),"last_queued":self.0.last_queued.map(|r|serde_json::json!({"kind":format!("{:?}",r.kind),"hand":format!("{:?}",r.hand),"sequence":r.sequence,"epoch":r.dimension_epoch,"hit":match r.target { RequestTarget::Block(h) => Some(hit(h)), RequestTarget::Air(_) | RequestTarget::Entity(_) => None },"target":match r.target { RequestTarget::Block(h) => serde_json::json!({"block":hit(h)}), RequestTarget::Air(rotation) => serde_json::json!({"air_rotation":rotation}), RequestTarget::Entity(e) => serde_json::json!({"entity":e.network_id,"lifetime":e.lifetime,"location":e.location,"secondary":e.secondary}) }})),"queued_actions":self.0.queued_actions,"mining":self.0.mining_progress().map(|(h,p)|serde_json::json!({"hit":hit(h),"progress":p})),"using_item":self.0.using_item(),"using_hand":self.0.using_hand().map(|hand|format!("{hand:?}")),"use_ticks":self.0.use_ticks(),"use_effects":self.0.use_effects().map(|e|serde_json::json!({"speed":e.speed_multiplier,"sprint":e.can_sprint})),"pending":self.0.pending().is_some(),"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),"prediction":self.0.predicted_blocks>0,"predicted_blocks":self.0.predicted_blocks,"scope":"native_mining_both_hand_block_entity_air_use_release_and_ordinary_melee", "selected_entity":self.1.selected.and_then(|t|match t { Target::Entity { network_id, identity, lifetime, location, secondary, .. } => Some(serde_json::json!({"network_id":network_id,"session":identity.session,"epoch":identity.epoch,"incarnation":identity.incarnation,"transport_lifetime":lifetime,"location":location,"secondary":secondary})), _=>None }),"entity_attacks_queued":self.1.entity_attacks_queued,"entity_uses_queued":self.0.entity_uses_queued,"input_backlog":self.1.backlog(), "input_blocked":self.1.blocked})
     }
 }
 
@@ -221,6 +226,10 @@ pub(crate) fn update(
         *interaction = Default::default();
         return;
     };
+    if !state.block_reconciliations.is_empty() {
+        interaction.0.blocked = Some("Native block reconciliation requires collision facts".into());
+        return;
+    }
     let placement = presentation
         .movement_physics()
         .map(|physics| placement::Context {
@@ -520,6 +529,14 @@ fn send_pending(
     interaction: &mut gameplay::java::interaction::Controller,
     placement: Option<placement::Context<'_>>,
 ) -> bool {
+    if !state.block_reconciliations.is_empty()
+        && interaction
+            .pending()
+            .is_some_and(|request| !matches!(request.kind, Kind::ReleaseUse | Kind::AbortBreak))
+    {
+        interaction.blocked = Some("Native block reconciliation requires collision facts".into());
+        return false;
+    }
     if !interaction.validate_use_entity(state) {
         return true;
     }
@@ -622,9 +639,21 @@ fn send_pending(
         .flatten();
     match java.command(command) {
         Ok(()) => {
+            state.terrain.prediction_sequence(request.sequence);
+            if prediction::apply(
+                state,
+                &request,
+                interaction.pending_destroys_block(),
+                placement,
+            ) {
+                interaction.predicted_blocks = interaction.predicted_blocks.saturating_add(1);
+                if let Some(telemetry) = java.telemetry() {
+                    telemetry.prediction(client_session::java::telemetry::Prediction::Applied, 1);
+                }
+            }
             if let Some(collision) = placement_preview.filter(|p| p.gesture()) {
                 bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand,
-                    ?collision, "Native placement attempt gesture; blocks and stacks remain authoritative");
+                    ?collision, "Native placement attempt gesture");
                 swing::predict_interact(java, state, request.hand);
             }
             if request.kind == Kind::Break {

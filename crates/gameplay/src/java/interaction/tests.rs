@@ -484,6 +484,7 @@ fn survival_start_finish_and_abort_are_ordered_without_local_block_or_item_chang
     c.contact = Some((true, false));
     c.advance(&s, press(), Some(h));
     assert_eq!(c.pending().unwrap().kind, Kind::Break);
+    assert!(!c.pending_destroys_block());
     c.queued();
     let held = ActionPhase {
         held: true,
@@ -498,6 +499,7 @@ fn survival_start_finish_and_abort_are_ordered_without_local_block_or_item_chang
     begin(&mut c, &s, simulation_clock::TICK_DURATION);
     c.advance(&s, held, Some(h));
     assert_eq!(c.pending().unwrap().kind, Kind::FinishBreak);
+    assert!(c.pending_destroys_block());
     assert_eq!(c.pending().unwrap().sequence, 2);
     c.queued();
     assert!(c.mining_progress().is_none());

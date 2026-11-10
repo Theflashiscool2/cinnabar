@@ -182,11 +182,6 @@ pub(super) fn poll_event(
     {
         state.correction_queued(revision);
     }
-    // An unsupported restored collision must resolve through the existing movement
-    // owner before later world events can change the context of that native ACK.
-    if !state.block_reconciliations.is_empty() {
-        return None;
-    }
     java.poll()
 }
 
