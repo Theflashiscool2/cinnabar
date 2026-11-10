@@ -125,19 +125,44 @@ impl Controller {
         if !saved.into_iter().all(f64::is_finite) || !scale.is_finite() || scale <= 0. {
             return Err("Invalid block rollback position or scale".into());
         }
-        if !sim::java::collision::restored_block_collides(
-            &state.terrain,
-            physics,
-            cell,
-            restored,
-            self.body.bounds(motion.position, scale),
-            sim::java::collision::PlayerContext {
-                bottom: motion.position[1],
-                descending: self.body.descending(),
-            },
-        )
-        .map_err(|error| error.to_string())?
-        {
+        let context = sim::java::collision::PlayerContext {
+            bottom: motion.position[1],
+            descending: self.body.descending(),
+        };
+        let powder = physics.registry().is_some_and(|registry| {
+            assets::registry::java::physics::dynamic::kind(registry, restored)
+                == Some(assets::registry::java::physics::dynamic::Kind::PowderSnow)
+        });
+        let collides = if powder {
+            let walkable = self.body.fall_distance
+                <= assets::registry::java::physics::dynamic::POWDER_FALL_DISTANCE
+                && assets::registry::java::physics::dynamic::powder_standing_context(
+                    cell,
+                    context.bottom,
+                    context.descending,
+                )
+                && powder_snow_walkable(state)?;
+            sim::java::collision::restored_living_block_collides(
+                &state.terrain,
+                physics,
+                cell,
+                restored,
+                self.body.bounds(motion.position, scale),
+                context,
+                (self.body.fall_distance, walkable),
+            )
+        } else {
+            sim::java::collision::restored_block_collides(
+                &state.terrain,
+                physics,
+                cell,
+                restored,
+                self.body.bounds(motion.position, scale),
+                context,
+            )
+        }
+        .map_err(|error| error.to_string())?;
+        if !collides {
             return Ok(false);
         }
         // Entity.absSnapTo clamps horizontal coordinates and retains current kinematics.
@@ -379,6 +404,35 @@ impl Controller {
         state.player_pose_revision = revision;
         Ok(true)
     }
+}
+
+/// Native PowderSnowBlock checks the entity-type tag before the leather-boots item identity.
+fn powder_snow_walkable(state: &WorldState) -> Result<bool, String> {
+    let bootstrap = state
+        .bootstrap
+        .as_ref()
+        .ok_or("Powder-snow rollback awaits native tags")?;
+    let player = java_protocol::target::ENTITY_TYPES
+        .iter()
+        .position(|name| *name == "minecraft:player")
+        .ok_or("Pinned native player entity type is missing")? as i32;
+    if bootstrap
+        .configuration
+        .tags
+        .get("minecraft:entity_type")
+        .and_then(|tags| tags.get("minecraft:powder_snow_walkable_mobs"))
+        .is_some_and(|tag| tag.contains(&player))
+    {
+        return Ok(true);
+    }
+    // InventoryMenu's FEET slot is part of the admitted local inventory view.
+    let boots = state
+        .inventory
+        .slot(0, 8)
+        .ok_or("Powder-snow rollback awaits the native feet slot")?;
+    Ok(boots
+        .as_ref()
+        .is_some_and(|stack| stack.item == "minecraft:leather_boots"))
 }
 
 fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
