@@ -29,6 +29,12 @@ pub(super) fn admit(
     let had_swing = state.player_visual.swing.sample(1.).is_some();
     let before = state.player_motion.map(|m| m.position);
     let blocks = state.block_updates;
+    let prediction_counts = (
+        state.block_predictions_confirmed,
+        state.block_predictions_reverted,
+        state.block_predictions_retired,
+    );
+    let predicted_blocks = state.terrain.predicted_blocks();
     let unknown = state.entities.unknown_updates;
     let current = state.terrain.dimension().map(|d| (d.session, d.epoch));
     let local_collision = matches!(&event.event, Event::Entities{dimension_epoch,packet:Packet::Spawn(spawn)} if current==Some((event.generation,*dimension_epoch)) && state.bootstrap.as_ref().is_some_and(|b|b.world.entity_id==spawn.id));
@@ -49,6 +55,39 @@ pub(super) fn admit(
         _ => (0, 0),
     };
     let admitted = state.admit(event);
+    use client_session::java::telemetry::Prediction;
+    for (event, amount) in [
+        (
+            Prediction::Confirmed,
+            state
+                .block_predictions_confirmed
+                .saturating_sub(prediction_counts.0),
+        ),
+        (
+            Prediction::Reverted,
+            state
+                .block_predictions_reverted
+                .saturating_sub(prediction_counts.1),
+        ),
+        (
+            Prediction::Retired,
+            state
+                .block_predictions_retired
+                .saturating_sub(prediction_counts.2),
+        ),
+        (
+            Prediction::Retired,
+            if current != state.terrain.dimension().map(|d| (d.session, d.epoch)) {
+                predicted_blocks as u64
+            } else {
+                0
+            },
+        ),
+    ] {
+        if amount > 0 {
+            t.prediction(event, amount);
+        }
+    }
     if admitted && had_swing && state.player_visual.swing.sample(1.).is_none() {
         t.count(Counter::SwingWorldClear, 1);
     }

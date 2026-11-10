@@ -50,6 +50,13 @@ pub enum Event {
         incarnation: u64,
         packet: inventory::Packet,
     },
+    /// Local serialization receipt for an allocated block prediction sequence.
+    /// This never reports server acceptance; false retires only unsent local prediction.
+    BlockActionWritten {
+        dimension_epoch: u64,
+        sequence: i32,
+        written: bool,
+    },
     BlockAck {
         dimension_epoch: u64,
         sequence: i32,
