@@ -149,7 +149,9 @@ impl WorldState {
             let Some(outcome) = self.terrain.reconcile_block(position, sequence) else {
                 continue;
             };
-            if outcome.changed {
+            if !outcome.observed {
+                self.block_predictions_retired += 1;
+            } else if outcome.changed {
                 self.block_predictions_reverted += 1;
             } else {
                 self.block_predictions_confirmed += 1;

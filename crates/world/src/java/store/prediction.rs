@@ -18,6 +18,8 @@ pub struct Reconciliation {
     pub position: [i32; 3],
     pub state: BlockStateId,
     pub changed: bool,
+    /// False after unload: the current block cannot be observed or called confirmed.
+    pub observed: bool,
     pub player_position: Option<[f64; 3]>,
 }
 
@@ -100,14 +102,14 @@ impl Terrain {
         }
         self.prediction_order.remove(position);
         let retained = self.predictions.remove(&position)?;
-        let changed = self
-            .block(position)
-            .is_some_and(|state| state != retained.state);
+        let visible = self.block(position);
+        let changed = visible.is_some_and(|state| state != retained.state);
         self.set_block(position, retained.state);
         Some(Reconciliation {
             position,
             state: retained.state,
             changed,
+            observed: visible.is_some(),
             player_position: (changed
                 && self
                     .last_teleport_sequence
@@ -210,6 +212,16 @@ mod tests {
         let outcome = terrain.reconcile_blocks(3);
         assert_eq!(outcome[0].state, BlockStateId(7));
         assert_eq!(outcome[0].player_position, Some([1.; 3]));
+    }
+    #[test]
+    fn ack_after_unload_cannot_confirm_an_unobservable_cell() {
+        let mut terrain = terrain();
+        terrain.predict_block(1, [1, -60, 1], BlockStateId(0), [1.; 3]);
+        terrain.unload([0, 0]);
+        let outcome = terrain.reconcile_blocks(1);
+        assert!(!outcome[0].observed);
+        assert!(!outcome[0].changed);
+        assert_eq!(outcome[0].player_position, None);
     }
     #[test]
     fn unwritten_action_does_not_retire_a_newer_prediction_at_the_same_position() {
