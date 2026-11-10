@@ -90,8 +90,27 @@ impl Interaction {
         state: &mut client_world::java::WorldState,
         release: bool,
     ) -> bool {
+        let was_using = self.0.using_item();
         self.0
             .maintain_use(state, state.inventory.cooldowns.client_tick(), release);
+        if was_using
+            && !self.0.using_item()
+            && let Some(t) = java.telemetry()
+        {
+            use client_session::java::telemetry::Counter;
+            let dead =
+                state.death.is_some() || state.vitals.as_ref().is_none_or(|v| v.health <= 0.);
+            t.count(
+                if dead {
+                    Counter::UseStoppedDead
+                } else if release {
+                    Counter::UseStoppedReleased
+                } else {
+                    Counter::UseStoppedOther
+                },
+                1,
+            );
+        }
         if !release && let Some(hand) = self.0.server_use_requested() {
             match item::resume(state, hand) {
                 Ok(plan) => self.0.resume_server_use(state, plan),
@@ -134,7 +153,7 @@ impl Interaction {
         }) {
             Ok(()) => {
                 self.3 = Some(receipt);
-                swing::predict(state);
+                swing::predict(java, state);
             }
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
                 self.0.blocked =
@@ -273,7 +292,7 @@ pub(crate) fn update(
                             }) {
                                 Ok(()) => {
                                     interaction.1.entity_attack_queued();
-                                    swing::predict(state);
+                                    swing::predict(java, state);
                                 }
                                 Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
                                     interaction.0.blocked = Some(
@@ -311,7 +330,7 @@ pub(crate) fn update(
                             correction_sequence: state.motion_sequence(),
                         }) {
                             Ok(()) => {
-                                swing::predict(state);
+                                swing::predict(java, state);
                             }
                             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
                                 interaction.0.blocked =
@@ -606,10 +625,10 @@ fn send_pending(
             if let Some(collision) = placement_preview.filter(|p| p.gesture()) {
                 bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand,
                     ?collision, "Native placement attempt gesture; blocks and stacks remain authoritative");
-                swing::predict_interact(state, request.hand);
+                swing::predict_interact(java, state, request.hand);
             }
             if request.kind == Kind::Break {
-                swing::predict(state);
+                swing::predict(java, state);
             }
             interaction.queued();
             // One captured click has at most four ordered main/offhand target/air stages.

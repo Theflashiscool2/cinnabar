@@ -27,6 +27,12 @@ pub(super) fn connect(
                 .controller
                 .fail_join(menu, format!("Invalid Java fixture address: {error}")),
         }
+        session.controller.java_telemetry = session
+            .controller
+            .java
+            .as_ref()
+            .and_then(|j| j.telemetry())
+            .cloned();
         return;
     }
     let Some(selected) = intent.java_account.map(|account| account.profile) else {
@@ -48,6 +54,12 @@ pub(super) fn connect(
         })
         .with_report_directory(menu.layout().log_dir()),
     );
+    session.controller.java_telemetry = session
+        .controller
+        .java
+        .as_ref()
+        .and_then(|j| j.telemetry())
+        .cloned();
 }
 pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
     let controller = &mut *session.controller;
@@ -71,7 +83,7 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         let previous_inventory_error =
             matches!(event.event, java_protocol::session::Event::Inventory { .. })
                 .then(|| controller.java_world.inventory.error.clone());
-        let admitted = controller.java_world.admit(event);
+        let admitted = super::java_telemetry::admit(java, &mut controller.java_world, event);
         if let Some(previous) = previous_inventory_error
             && controller.java_world.inventory.error != previous
             && let Some(error) = &controller.java_world.inventory.error

@@ -49,6 +49,14 @@ pub(crate) fn update(
         *state = State::default();
         return; // Leave the newly published Bedrock frame untouched.
     };
+    let _telemetry = super::java_telemetry::scope(
+        &controller,
+        client_session::java::telemetry::Stage::HandTexturePublication,
+    );
+    let mut hand_trace = super::java_telemetry::HandTrace::new(
+        &controller,
+        interaction.as_ref().is_some_and(|i| i.0.using_item()),
+    );
     // Shared actor hosts must not require Java-only owners during Bevy's
     // parameter validation. An active Java host still needs the real owners;
     // missing simulation data is never replaced with a fabricated pose/tick.
@@ -82,6 +90,9 @@ pub(crate) fn update(
         preferences.value(SettingId::HideHand) != 0,
         hud.mode == Some(world::java::hud::GameMode::Spectator),
     );
+    if let Some(trace) = &mut hand_trace {
+        trace.hidden = terrain.as_ref().and_then(|t| t.world_ready()) == Some(true);
+    }
     if terrain.as_ref().and_then(|t| t.world_ready()) != Some(true)
         || !client_presentation::camera::hand_first_person(Some(&camera), server_camera.as_deref())
         || menu.is_visible()
@@ -90,6 +101,9 @@ pub(crate) fn update(
     {
         scene.clear();
         return;
+    }
+    if let Some(trace) = &mut hand_trace {
+        trace.hidden = false;
     }
     let stacks = [
         world.inventory.held().and_then(Option::as_ref),
@@ -345,6 +359,9 @@ pub(crate) fn update(
         HAND_FOV_DEGREES.to_radians(),
         serial,
     ) {
+        if let Some(trace) = &mut hand_trace {
+            trace.published = true;
+        }
         scene.set_item_atlases(std::array::from_fn(|i| {
             state.items[i].as_ref().map(|p| p.atlas.clone())
         }));

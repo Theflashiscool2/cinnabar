@@ -37,6 +37,7 @@ mod cache_tests;
 mod client_id;
 mod java;
 pub(crate) mod java_chat;
+pub(crate) mod java_telemetry;
 mod join;
 use join::{attempt_connect, prepare_join};
 pub(crate) mod java_cooldowns;
@@ -67,6 +68,8 @@ use client_state::{JoinIntent, SessionStatus};
 #[derive(Debug, Resource)]
 pub(crate) struct SessionController {
     java: Option<client_session::java::Session>,
+    /// Passive handle survives the existing worker loan; never owns a session/world.
+    java_telemetry: Option<std::sync::Arc<client_session::java::telemetry::Recorder>>,
     java_world: client_world::java::WorldState,
     core: CoreProcessGuard, // declared first: the core stops before the directories below go
     /// Cache mode captured before this connection's core was spawned.
@@ -102,6 +105,11 @@ impl Default for SessionController {
 }
 
 impl SessionController {
+    pub(crate) fn java_telemetry(
+        &self,
+    ) -> Option<&std::sync::Arc<client_session::java::telemetry::Recorder>> {
+        self.java_telemetry.as_ref()
+    }
     /// Read-only native authority for shared presentation; absent outside an active Java session.
     pub(crate) fn java_world_if_active(&self) -> Option<&client_world::java::WorldState> {
         self.java.as_ref().map(|_| &self.java_world)
@@ -110,6 +118,7 @@ impl SessionController {
     pub(crate) fn new(core: CoreProcessGuard) -> Self {
         Self {
             java: None,
+            java_telemetry: None,
             java_world: Default::default(),
             core,
             blob_cache: BlobCache::default(),
@@ -214,6 +223,7 @@ impl SessionController {
     /// Returns a failed join to the menu, keeping only the newest archives for a retry.
     fn fail_join(&mut self, menu: &mut MenuRuntime, message: String) {
         bridge::join_profile::JoinProfile::current().finish("failed");
+        self.java_telemetry = None;
         menu.show_join_failure(message);
         self.connecting = false;
         self.kept_packs.keep_for_rejoin();
@@ -367,6 +377,7 @@ impl SessionResources<'_> {
         }
         let controller = &mut *self.controller;
         controller.java = None;
+        controller.java_telemetry = None;
         let directory = controller.directory.take();
         let join = controller.join.take();
         controller.pending = None;

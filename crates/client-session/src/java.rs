@@ -1,5 +1,6 @@
 //! Native Java task ownership. This path never constructs a Bedrock NetworkHandle.
 mod report;
+pub mod telemetry;
 use java_protocol::session::{self, Command, Envelope, Options};
 use std::{future::Future, sync::OnceLock};
 use tokio::{
@@ -26,6 +27,7 @@ pub struct Session {
     task: JoinHandle<()>,
     commands: mpsc::Sender<Command>,
     report: report::Report,
+    telemetry: Option<std::sync::Arc<telemetry::Recorder>>,
 }
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -66,16 +68,32 @@ impl Session {
             let outcome = runner(tx, input).await;
             let _ = done.send(outcome);
         });
+        let telemetry_flag = std::env::var("CINNABAR_JAVA_TELEMETRY").ok();
+        let telemetry = telemetry::Recorder::configured(
+            telemetry_flag
+                .as_deref()
+                .or(option_env!("CINNABAR_JAVA_TELEMETRY_BUILD")),
+        );
+        let report = report::Report::with_telemetry(telemetry.clone());
         Self {
             events,
             result,
             task,
             commands,
-            report: report::Report::default(),
+            report,
+            telemetry,
         }
+    }
+    /// Absent by default; observation handles never own a connection or mutate gameplay.
+    pub fn telemetry(&self) -> Option<&std::sync::Arc<telemetry::Recorder>> {
+        self.telemetry.as_ref()
     }
     /// Enable bounded, payload-free attempt reports beside the app's normal logs.
     pub fn with_report_directory(mut self, directory: std::path::PathBuf) -> Self {
+        if self.telemetry.is_none() {
+            self.telemetry = telemetry::Recorder::from_directory(&directory);
+            self.report.set_telemetry(self.telemetry.clone());
+        }
         self.report.directory(directory);
         self
     }
@@ -97,7 +115,40 @@ impl Session {
     }
     /// Reports full/retired input queues instead of dropping required intent silently.
     pub fn command(&self, command: Command) -> Result<(), mpsc::error::TrySendError<Command>> {
-        self.commands.try_send(command)
+        if let Some(t) = &self.telemetry {
+            // Do not expose a command as queued until the bounded FIFO accepts it.
+            let permit = match self.commands.try_reserve() {
+                Ok(permit) => permit,
+                Err(error) => {
+                    use telemetry::Counter;
+                    t.count(
+                        match error {
+                            mpsc::error::TrySendError::Full(_)
+                                if matches!(&command, Command::ContainerClick { .. }) =>
+                            {
+                                Counter::ContainerQueueFull
+                            }
+                            mpsc::error::TrySendError::Full(_) => Counter::ActionQueueFull,
+                            mpsc::error::TrySendError::Closed(_) => Counter::CommandClosed,
+                        },
+                        1,
+                    );
+                    return Err(match error {
+                        mpsc::error::TrySendError::Full(_) => {
+                            mpsc::error::TrySendError::Full(command)
+                        }
+                        mpsc::error::TrySendError::Closed(_) => {
+                            mpsc::error::TrySendError::Closed(command)
+                        }
+                    });
+                }
+            };
+            t.command(&command);
+            permit.send(command);
+            Ok(())
+        } else {
+            self.commands.try_send(command)
+        }
     }
     pub async fn next(&mut self) -> Option<Envelope> {
         let event = self.events.recv().await?;

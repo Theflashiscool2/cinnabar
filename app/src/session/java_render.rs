@@ -50,6 +50,15 @@ pub(crate) struct Presentation {
     mesh_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
     resident_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
 }
+impl Presentation {
+    pub(super) fn telemetry_activity(&self) -> [bool; 2] {
+        [
+            self.pending.is_some()
+                || (self.dimension.is_some() && self.world_ready() != Some(true)),
+            self.items_pending.is_some(),
+        ]
+    }
+}
 impl Default for Presentation {
     fn default() -> Self {
         Self {
@@ -247,6 +256,10 @@ pub(crate) fn update(
     else {
         return;
     };
+    let _telemetry = super::java_telemetry::scope(
+        &controller,
+        client_session::java::telemetry::Stage::TerrainPublication,
+    );
     {
         let state = &mut controller.java_world;
         if let Err(error) = state.lighting.update(&mut state.terrain, 4096) {

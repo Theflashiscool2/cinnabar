@@ -29,6 +29,10 @@ pub(crate) fn update(
     else {
         return;
     };
+    let _telemetry = super::super::java_telemetry::scope(
+        &controller,
+        client_session::java::telemetry::Stage::EntitySkinPublication,
+    );
     let p = &mut *presentation;
     let active = controller.java.is_some();
     let state = &mut controller.java_world;

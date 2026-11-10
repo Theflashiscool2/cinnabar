@@ -59,6 +59,11 @@ pub(crate) struct Presentation {
     backlog_ticks: u128,
     ticks: u64,
 }
+impl Presentation {
+    pub(super) fn telemetry_loading(&self) -> bool {
+        self.pending.is_some() || self.custom_skin_pending > 0 || self.item_pending > 0
+    }
+}
 impl Default for Presentation {
     fn default() -> Self {
         Self {

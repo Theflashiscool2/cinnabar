@@ -46,6 +46,13 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
             }
             Err(error) => {
                 bevy::log::warn!(target:"java_session", %error, "Java inventory action refused");
+                if let Some(t) = java.telemetry() {
+                    use client_session::java::telemetry::Counter;
+                    t.count(Counter::ContainerRefused, 1);
+                    if controller.java_world.inventory.active_identity() != Some(input.identity) {
+                        t.count(Counter::ContainerStale, 1);
+                    }
+                }
                 ui.finish_java_inventory_input(Some(error));
                 continue;
             }
@@ -58,6 +65,12 @@ pub(super) fn flush(controller: &mut SessionController, ui: &mut UiRuntime) {
                         .inventory
                         .pickup_queued(plan, input.sequence);
                     if !applied {
+                        if let Some(t) = java.telemetry() {
+                            t.count(
+                                client_session::java::telemetry::Counter::ContainerViewRetired,
+                                1,
+                            );
+                        }
                         bevy::log::warn!(target:"java_session", sequence=input.sequence,
                             "Native pickup view retired after queue admission");
                     }

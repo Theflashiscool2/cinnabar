@@ -31,7 +31,7 @@ impl Authority {
             let Some(event) = super::java::poll_event(&mut self.java, &mut self.world) else {
                 break;
             };
-            if !self.world.admit(event) {
+            if !super::java_telemetry::admit(&self.java, &mut self.world, event) {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
@@ -64,6 +64,15 @@ impl Authority {
             .prepare_movement(&self.java, &mut self.world, release_use)
         {
             return;
+        }
+        if let Some(t) = self.java.telemetry()
+            && let Some(scope) = current
+        {
+            t.action_state(
+                scope,
+                self.interaction.0.using_item(),
+                self.interaction.0.mining_progress().is_some(),
+            );
         }
         self.movement.0.use_effects = self.interaction.0.use_effects();
         if let Some(physics) = physics {

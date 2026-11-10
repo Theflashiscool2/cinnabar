@@ -17,6 +17,7 @@ const FILE: &str = "java-join-latest.json";
 #[derive(Default)]
 pub(super) struct Report {
     directory: Option<PathBuf>,
+    telemetry: Option<std::sync::Arc<super::telemetry::Recorder>>,
     completed: bool,
     menus: BTreeMap<&'static str, u64>,
     menu_slots: BTreeMap<&'static str, [usize; 2]>,
@@ -34,6 +35,20 @@ pub(super) struct Report {
     discarded_notices: u64,
 }
 impl Report {
+    pub(super) fn with_telemetry(
+        telemetry: Option<std::sync::Arc<super::telemetry::Recorder>>,
+    ) -> Self {
+        Self {
+            telemetry,
+            ..Self::default()
+        }
+    }
+    pub(super) fn set_telemetry(
+        &mut self,
+        telemetry: Option<std::sync::Arc<super::telemetry::Recorder>>,
+    ) {
+        self.telemetry = telemetry;
+    }
     pub fn directory(&mut self, directory: PathBuf) {
         self.directory = Some(directory);
     }
@@ -272,10 +287,15 @@ impl Report {
             return;
         }
         self.completed = true;
+        let telemetry = self.telemetry.as_ref().map(|t| t.finish());
         let Some(directory) = &self.directory else {
             return;
         };
-        match write(directory, &self.document(outcome, error)) {
+        let mut document = self.document(outcome, error);
+        if let Some(telemetry) = telemetry {
+            document["telemetry"] = telemetry;
+        }
+        match write(directory, &document) {
             Ok(()) => {
                 tracing::info!(target:"java_session", report=%directory.join(FILE).display(), outcome,
                 observed_events=self.events, deferred_types=self.deferred.len(), metadata_gaps=self.metadata.len(),

@@ -40,32 +40,57 @@ fn describe(held: Option<&inventory::java::Slot>, component: &str) -> Option<(Ki
         .map_or(Some(6), |n| i32::try_from(n.as_i64()?).ok())?;
     Some((kind, duration))
 }
-pub(super) fn predict(state: &mut client_world::java::WorldState) {
+pub(super) fn predict(
+    java: &client_session::java::Session,
+    state: &mut client_world::java::WorldState,
+) {
     let animation = description(state.inventory.held());
-    start(state, false, animation);
+    start(java, state, false, animation);
 }
 
 /// 26.3 startUseItem uses getInteractAnimation, independently of attack gestures.
 /// Ordinary placement feedback follows ordered admission; unresolved entity collision
 /// is cosmetic attempt feedback, never a successful placement prediction.
-pub(super) fn predict_interact(state: &mut client_world::java::WorldState, hand: Hand) {
+pub(super) fn predict_interact(
+    java: &client_session::java::Session,
+    state: &mut client_world::java::WorldState,
+    hand: Hand,
+) {
     let animation = describe(hand.held(&state.inventory), INTERACT);
-    start(state, hand == Hand::Off, animation);
+    start(java, state, hand == Hand::Off, animation);
 }
 
 fn start(
+    java: &client_session::java::Session,
     state: &mut client_world::java::WorldState,
     offhand: bool,
     animation: Option<(Kind, i32)>,
 ) {
+    use client_session::java::telemetry::Counter;
     let Some((kind, duration)) = animation else {
+        if let Some(t) = java.telemetry() {
+            t.count(Counter::SwingUnknown, 1);
+        }
         return;
     };
     let modified = modified_duration(&state.player_dynamics.effects, duration);
-    state
+    let started = state
         .player_visual
         .swing
         .start(offhand, kind, duration, modified);
+    if let Some(t) = java.telemetry() {
+        t.count(
+            if started {
+                Counter::SwingAccepted
+            } else {
+                Counter::SwingGuarded
+            },
+            1,
+        );
+        if started && kind == Kind::None {
+            t.count(Counter::SwingNone, 1);
+        }
+    }
 }
 
 #[cfg(test)]
