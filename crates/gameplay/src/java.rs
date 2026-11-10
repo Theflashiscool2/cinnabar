@@ -98,6 +98,63 @@ impl Controller {
         corrected
     }
 
+    /// Apply an admitted block-prediction rollback only when its restored shape intersects us.
+    /// The caller owns ACK ordering, saved-position admission and later-teleport suppression.
+    pub fn reconcile_block(
+        &mut self,
+        state: &mut WorldState,
+        physics: &Table,
+        cell: [i32; 3],
+        restored: u32,
+        saved: [f64; 3],
+    ) -> Result<bool, String> {
+        let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
+        if scope.is_none() || self.scope != scope {
+            return Err("Block rollback requires the current movement scope".into());
+        }
+        let Some(mut motion) = state.player_motion else {
+            return Ok(false);
+        };
+        let scale = state
+            .player_dynamics
+            .attributes
+            .get("minecraft:scale")
+            .ok_or("Block rollback awaits the native scale attribute")?
+            .value()
+            .map_err(str::to_owned)? as f32;
+        if !saved.into_iter().all(f64::is_finite) || !scale.is_finite() || scale <= 0. {
+            return Err("Invalid block rollback position or scale".into());
+        }
+        if !sim::java::collision::restored_block_collides(
+            &state.terrain,
+            physics,
+            cell,
+            restored,
+            self.body.bounds(motion.position, scale),
+            sim::java::collision::PlayerContext {
+                bottom: motion.position[1],
+                descending: self.body.descending(),
+            },
+        )
+        .map_err(|error| error.to_string())?
+        {
+            return Ok(false);
+        }
+        // Entity.absSnapTo clamps horizontal coordinates and retains current kinematics.
+        motion.position = [
+            saved[0].clamp(-3.0e7, 3.0e7),
+            saved[1],
+            saved[2].clamp(-3.0e7, 3.0e7),
+        ];
+        state.player_motion = Some(motion);
+        self.pending = None;
+        self.view.reset(view::Sample {
+            feet: motion.position,
+            eye_height: self.body.eye_height(scale),
+        });
+        Ok(true)
+    }
+
     /// Input authority release retires both pending taps and sprint continuation.
     pub fn release_input(&mut self) {
         self.sprint.release();
