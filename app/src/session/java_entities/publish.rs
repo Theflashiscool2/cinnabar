@@ -20,6 +20,7 @@ pub(crate) fn update(
     mut prepared: ResMut<PreparedActorPublication>,
     mut scene: ResMut<ActorRenderScene>,
     mut heads: ResMut<super::super::java_items::Heads>,
+    service: Option<Res<super::super::java_service::Slot>>,
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
     time: Res<Time<bevy::time::Real>>,
@@ -30,6 +31,11 @@ pub(crate) fn update(
     else {
         return;
     };
+    if controller.native_java_world().is_none()
+        && !heads.retire_unavailable(service.as_ref().is_some_and(|service| service.is_lent()))
+    {
+        return;
+    }
     let _telemetry = super::super::java_telemetry::scope(
         &controller,
         client_session::java::telemetry::Stage::EntitySkinPublication,

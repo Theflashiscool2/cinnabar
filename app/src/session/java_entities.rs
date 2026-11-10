@@ -132,6 +132,10 @@ impl Presentation {
 pub(crate) mod publish;
 
 /// Only the active edition may replace the shared actor catalog and prepared scene.
-pub(crate) fn uses_bedrock_actor_authority(session: Option<Res<SessionController>>) -> bool {
+pub(crate) fn uses_bedrock_actor_authority(
+    session: Option<Res<SessionController>>,
+    service: Option<Res<super::java_service::Slot>>,
+) -> bool {
     session.is_none_or(|session| session.java.is_none())
+        && !service.as_ref().is_some_and(|service| service.is_lent())
 }

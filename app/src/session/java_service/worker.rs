@@ -51,6 +51,10 @@ impl<T: Work> Worker<T> {
         self.jobs.send(authority).expect("Java service stopped");
         self.active = true;
     }
+    /// True only between handing the actual authority to this worker and reclaiming it.
+    pub(super) fn is_lent(&self) -> bool {
+        self.active
+    }
     pub(super) fn take(&mut self) -> Option<T> {
         if !self.active {
             return None;
@@ -108,8 +112,10 @@ mod tests {
         for _ in 0..32 {
             let before = owner.slices;
             worker.launch(owner);
+            assert!(worker.is_lent());
             assert_eq!(ready.recv().unwrap(), 71);
             owner = worker.take().unwrap();
+            assert!(!worker.is_lent());
             assert!(owner.slices > before);
             assert!(worker.take().is_none());
             assert_eq!(drops.load(Ordering::SeqCst), 0);

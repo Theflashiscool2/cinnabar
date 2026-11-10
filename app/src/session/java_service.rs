@@ -92,7 +92,13 @@ impl Authority {
 }
 
 #[derive(Resource, Default)]
-struct Slot(Mutex<Option<Worker<Authority>>>);
+pub(crate) struct Slot(Mutex<Option<Worker<Authority>>>);
+impl Slot {
+    /// Reads only the existing handoff owner; the mutex is released before any frame work.
+    pub(crate) fn is_lent(&self) -> bool {
+        self.0.lock().unwrap().as_ref().is_some_and(Worker::is_lent)
+    }
+}
 
 pub(crate) fn configure(app: &mut App) {
     app.init_resource::<Slot>()

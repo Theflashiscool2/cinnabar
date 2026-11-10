@@ -8,9 +8,17 @@ pub(crate) fn update(
     ui: Option<ResMut<UiRuntimeResource>>,
     presentation: Option<Res<super::java_render::Presentation>>,
     mut heads: ResMut<super::java_items::Heads>,
+    service: Option<Res<super::java_service::Slot>>,
     time: Res<Time<bevy::time::Real>>,
     mut chat: Local<super::java_chat::Projection>,
 ) {
+    if controller
+        .as_ref()
+        .is_none_or(|controller| controller.native_java_world().is_none())
+        && !heads.retire_unavailable(service.as_ref().is_some_and(|service| service.is_lent()))
+    {
+        return;
+    }
     let Some(mut ui) = ui else {
         return;
     };

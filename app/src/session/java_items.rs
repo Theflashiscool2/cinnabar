@@ -11,6 +11,15 @@ use std::{
 #[derive(bevy::prelude::Resource, Default)]
 pub(crate) struct Heads(std::sync::Mutex<HeadState>);
 impl Heads {
+    /// Returns false while the actual authority is lent, preserving the last ready publication.
+    /// Call only when this frame cannot access its native world; a real close retires resources.
+    pub fn retire_unavailable(&mut self, lent: bool) -> bool {
+        if lent {
+            return false;
+        }
+        self.clear();
+        true
+    }
     pub fn clear(&mut self) {
         self.0.get_mut().unwrap().clear();
     }
@@ -287,13 +296,21 @@ mod tests {
         let mut heads = Heads::default();
         let hud = heads.update((7, 0), &world, Duration::ZERO);
         assert_eq!(hud.textures.len(), 2);
+        // The HUD and entity publishers may temporarily see no world while this SAME owner
+        // is lent. Neither unavailable frame may evict descriptors or the ready revision.
+        assert!(!heads.retire_unavailable(true));
+        assert_eq!(heads.0.get_mut().unwrap().descriptors.len(), 2);
         let actors = heads.update((7, 0), &world, Duration::ZERO);
         assert!(Arc::ptr_eq(&hud, &actors));
+        assert_eq!(hud.revision, actors.revision);
         assert!(
             actors
                 .textures
                 .contains_key(&profile_key(profile(&remote).unwrap()))
         );
+        assert!(heads.retire_unavailable(false));
+        assert!(heads.0.get_mut().unwrap().descriptors.is_empty());
+        assert!(heads.0.get_mut().unwrap().output.textures.is_empty());
         world.begin(8);
         let next = heads.update((8, 0), &world, Duration::ZERO);
         assert!(next.textures.is_empty());
