@@ -9,6 +9,7 @@ use semantic_input::Action;
 #[derive(Resource, Default)]
 pub(crate) struct Movement(pub gameplay::java::Controller, pub(super) ServiceState);
 mod clock;
+mod reconciliation;
 use clock::ServiceState;
 impl Movement {
     pub(super) fn elapsed(
@@ -62,7 +63,17 @@ pub(crate) fn update(
             std::time::Duration::ZERO
         },
     );
-    let corrected = corrected | std::mem::take(&mut movement.1.corrected);
+    let reconciled = match physics {
+        Some(physics) => match movement.reconcile_blocks(java_world, physics) {
+            Ok(reconciled) => reconciled,
+            Err(error) => {
+                movement.0.blocked = Some(error);
+                return;
+            }
+        },
+        None => false,
+    };
+    let corrected = corrected | reconciled | std::mem::take(&mut movement.1.corrected);
     // World publication follows network send. Without this replacement a simulation tick
     // could overwrite an admitted correction with the previous frame's camera rotation.
     if corrected && let Some(motion) = java_world.player_motion {

@@ -52,7 +52,17 @@ impl Authority {
                 Duration::ZERO
             },
         );
-        self.movement.1.corrected |= corrected;
+        let reconciled = match physics {
+            Some(physics) => match self.movement.reconcile_blocks(&mut self.world, physics) {
+                Ok(reconciled) => reconciled,
+                Err(error) => {
+                    self.movement.0.blocked = Some(error);
+                    return;
+                }
+            },
+            None => false,
+        };
+        self.movement.1.corrected |= corrected || reconciled;
         if corrected && let Some(motion) = self.world.player_motion {
             self.movement.1.controls.yaw = motion.yaw;
             self.movement.1.controls.pitch = motion.pitch;
