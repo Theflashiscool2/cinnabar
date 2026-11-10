@@ -357,6 +357,8 @@ pub(super) enum Command {
     JavaMining(super::java_physics::Options),
     /// Verify and regenerate the source-bundled native block/item use dispatch facts.
     JavaUseRules(super::java_physics::Options),
+    /// Verify and regenerate source-bundled native prediction callbacks and fluid replacements.
+    JavaPrediction(super::java_physics::Options),
     /// Export pinned fluid and host-occlusion facts for native Java rendering.
     JavaFluids(super::java_physics::Options),
     /// Prepare all pinned native Java runtime resources, reusing verified local files.
