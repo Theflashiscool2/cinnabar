@@ -24,12 +24,51 @@ pub(super) fn apply(
     let Some(motion) = state.player_motion else {
         return false;
     };
-    state.terrain.predict_block(
+    let consumes = request.kind == Kind::UseOn
+        && state.status.mode != Some(GameMode::Creative)
+        && state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| !abilities.creative);
+    if consumes {
+        let Some(expected) = request
+            .hand
+            .held(&state.inventory)
+            .and_then(Option::as_ref)
+            .cloned()
+        else {
+            return false;
+        };
+        let hand = match request.hand {
+            gameplay::java::item_use::plan::Hand::Main => inventory::java::BlockUseHand::Main,
+            gameplay::java::item_use::plan::Hand::Off => inventory::java::BlockUseHand::Off,
+        };
+        if !state.inventory.predict_block_use(
+            state.generation(),
+            request.dimension_epoch,
+            request.sequence,
+            hand,
+            &expected,
+        ) {
+            return false;
+        }
+    }
+    let applied = state.terrain.predict_block(
         request.sequence,
         position,
         BlockStateId(block),
         motion.position,
-    )
+    );
+    if !applied && consumes {
+        state.inventory.block_use_written(
+            state.generation(),
+            request.dimension_epoch,
+            request.sequence,
+            false,
+        );
+    }
+    applied
 }
 fn mutation(
     state: &WorldState,
@@ -50,10 +89,10 @@ fn mutation(
     let facts = assets::registry::java::prediction::builtin().ok()?;
     let (position, block) = match request.kind {
         Kind::UseOn => {
-            // Native Creative restores its count after useOn. Survival stack consumption
-            // must first join the existing inventory working view before predicting placement.
-            if state.status.mode != Some(GameMode::Creative)
-                || !state.player_dynamics.abilities.as_ref()?.creative
+            if !matches!(
+                state.status.mode,
+                Some(GameMode::Creative | GameMode::Survival)
+            ) || state.player_dynamics.abilities.is_none()
             {
                 return None;
             }
