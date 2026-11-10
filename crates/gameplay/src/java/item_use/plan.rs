@@ -70,7 +70,7 @@ fn boolean(value: &Value, key: &str, default: bool) -> Result<bool, &'static str
         v.as_bool().ok_or("Invalid native use boolean")
     })
 }
-fn effects(stack: &Stack) -> Result<Effects, &'static str> {
+pub(super) fn effects(stack: &Stack) -> Result<Effects, &'static str> {
     let Some(value) = component(stack, "minecraft:use_effects") else {
         return Ok(Effects {
             can_sprint: false,
@@ -89,6 +89,53 @@ fn effects(stack: &Stack) -> Result<Effects, &'static str> {
         speed_multiplier: multiplier,
     })
 }
+/// Native Consumable.consumeTicks uses f32 multiplication followed by Java f2i.
+fn consume_ticks(value: &Value) -> Result<u32, &'static str> {
+    let seconds = value
+        .get("seconds")
+        .or_else(|| value.get("consume_seconds"))
+        .map_or(Ok(1.6), |v| {
+            v.as_f64().ok_or("Invalid native consume duration")
+        })? as f32;
+    if !seconds.is_finite() || seconds < 0. {
+        return Err("Invalid native consume duration");
+    }
+    Ok((seconds * 20.) as i32 as u32)
+}
+
+/// Refreshes only current use properties, without re-running Item.use admission or
+/// resetting the already running remaining-tick countdown (LivingEntity.updatingUsingItem).
+pub(super) fn current_duration(stack: &Stack) -> Result<u32, &'static str> {
+    let rules =
+        assets::registry::java::use_rules::builtin().map_err(|_| "Invalid native use rules")?;
+    let owner = &rules
+        .item(&stack.item)
+        .ok_or("Unknown native item-use identity")?
+        .air_owner;
+    if owner == "Item" {
+        if let Some(value) = component(stack, "minecraft:consumable") {
+            return consume_ticks(value);
+        }
+        return Ok(
+            if component(stack, "minecraft:blocks_attacks").is_some()
+                || component(stack, "minecraft:kinetic_weapon").is_some()
+            {
+                72000
+            } else {
+                0
+            },
+        );
+    }
+    if owner == "BowItem" {
+        let id = java_protocol::target::ITEM_TYPES
+            .iter()
+            .position(|name| *name == stack.item)
+            .ok_or("Unknown native item-use defaults")?;
+        return Ok(java_protocol::target::ITEM_USE_DEFAULTS[id].duration);
+    }
+    Err("Native specialized active item-use semantics are not implemented")
+}
+
 fn cooldown(
     stack: &Stack,
     defaults: Defaults<'_>,
@@ -152,17 +199,7 @@ pub fn prepare(
                     });
                 }
             }
-            let seconds = value
-                .get("seconds")
-                .or_else(|| value.get("consume_seconds"))
-                .map_or(Ok(1.6), |v| {
-                    v.as_f64().ok_or("Invalid native consume duration")
-                })? as f32;
-            if !seconds.is_finite() || seconds < 0. {
-                return Err("Invalid native consume duration");
-            }
-            // Consumable.consumeTicks: f32*20, then Java int conversion (saturating f2i).
-            let ticks = (seconds * 20.) as i32 as u32;
+            let ticks = consume_ticks(value)?;
             return Ok(Plan {
                 send: true,
                 result: ResultKind::Consume(if ticks == 0 {
