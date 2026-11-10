@@ -42,7 +42,7 @@ pub(super) fn predicates(r: &mut Reader<'_>, depth: usize) -> Result<Value, Erro
         "properties":optional(r,|r|list(r,3,|r| {
             let name=text(r)?;
             if r.bool()? {Ok(json!({"name":name,"value":text(r)?}))}
-            else {Ok(json!({"name":name,"min":text(r)?,"max":text(r)?}))}
+            else {Ok(json!({"name":name,"min":optional(r,text)?,"max":optional(r,text)?}))}
         }))?,"nbt":optional(r,compound)?,"components":matchers(r,depth)?}))
     })
 }
