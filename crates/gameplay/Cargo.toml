@@ -9,6 +9,7 @@ publish = false
 reads = [
     "assets/bedrock-target.json",
     "crates/assets/data/*",
+    "crates/java-protocol/data/target.json",
 ]
 
 [features]
