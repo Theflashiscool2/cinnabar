@@ -612,6 +612,7 @@ async fn air_use_transport_fences_loading_and_scope_and_orders_slot_use_slot() {
         options.commands = Some(input);
         let client = tokio::spawn(session::run(options, tx, cancel.clone()));
         let mut verified = false;
+        let mut write_receipts = Vec::new();
         while let Some(e) = rx.recv().await {
             match e.event {
                 Event::Bootstrap(_) => {
@@ -665,6 +666,13 @@ async fn air_use_transport_fences_loading_and_scope_and_orders_slot_use_slot() {
                         .await
                         .unwrap();
                 }
+                Event::BlockActionWritten {
+                    dimension_epoch,
+                    sequence,
+                    written,
+                } => {
+                    write_receipts.push((dimension_epoch, sequence, written));
+                }
                 Event::SelectionSent { sequence: 2, .. } => {
                     verified = true;
                     break;
@@ -676,6 +684,10 @@ async fn air_use_transport_fences_loading_and_scope_and_orders_slot_use_slot() {
         server.await.unwrap();
         let _ = client.await.unwrap();
         assert!(verified);
+        assert_eq!(
+            write_receipts,
+            [(1, 129, false), (0, 129, false), (1, 129, true)]
+        );
     })
     .await
     .unwrap();

@@ -233,6 +233,11 @@ async fn game_thread_ping_must_not_discard_already_ordered_player_actions() {
                         .await
                         .unwrap();
                 }
+                Event::BlockActionWritten {
+                    dimension_epoch: 1,
+                    sequence: 1,
+                    written: true,
+                } => {}
                 Event::KeepAlive(543) => break,
                 Event::Phase(_) | Event::Bootstrap(_) => {}
                 other => panic!("unexpected {other:?}"),
