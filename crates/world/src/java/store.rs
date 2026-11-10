@@ -24,6 +24,7 @@ pub struct Terrain {
     dimension: Option<Dimension>,
     predictions: BTreeMap<[i32; 3], RetainedBlock>,
     prediction_sequence: i32,
+    prediction_order: prediction::Order,
     last_teleport_sequence: Option<i32>,
     biome_seed: Option<i64>,
     columns: BTreeMap<[i32; 2], Arc<Column>>,
