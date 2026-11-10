@@ -6,9 +6,11 @@ public final class VanillaDebugServer {
     public static void main(String[] args) throws Exception {
         net.minecraft.SharedConstants.IS_RUNNING_IN_IDE = true;
         net.minecraft.server.Main.main(args);
-        if (Boolean.getBoolean("cinnabar.acceptance.entityCommands")) {
+        if (Boolean.getBoolean("cinnabar.acceptance.entityCommands")
+                || Boolean.getBoolean("cinnabar.acceptance.shop")) {
             var server = findServer();
             server.execute(() -> {
+                if (Boolean.getBoolean("cinnabar.acceptance.shop")) VanillaShopFixture.register(server);
                 register(server, "acceptance_unlist", false);
                 register(server, "acceptance_relist", true);
                 var traceRoot = System.getProperty("cinnabar.acceptance.trace");

@@ -61,6 +61,14 @@ closes no gate and provides no new runtime or performance evidence.
 
 ## Native Java Edition support — experimental
 
+The opt-in [gameplay telemetry](docs/java-gameplay-telemetry.md) and
+[local capture/replay harness](tools/java-replay/README.md) share the existing native
+session/admission owners. Controlled Linux graphical vanilla evidence covers a real
+NPC chest-menu purchase, loopback transfer and input-driven replay with world-count,
+inventory, HUD and functional-anomaly comparisons. This is test infrastructure;
+full-world equality, skins, authoritative combat, online/Hypixel and iPhone acceptance
+remain separate. [STATUS.md](STATUS.md) tracks the scoped Gap/Check gates.
+
 Native player chat, commands/system messages/actionbars share the existing chat UI and
 connection owner. Two-client unsigned conversations, server announcements, normal-player
 trigger commands, cancellation and reconnect pass controlled Linux/lavapipe acceptance.
