@@ -3,6 +3,7 @@ mod bubbles;
 mod climbing;
 mod current_reference;
 mod liquid;
+mod rollback;
 mod swimming;
 mod terrain;
 

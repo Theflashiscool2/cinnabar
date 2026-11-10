@@ -38,6 +38,7 @@ pub struct Body {
     pub swimming: bool,
     pub low_profile: bool,
     pub last_climbable_position: Option<[i32; 3]>,
+    descending: bool,
     eyes_in_water: bool,
     pub fall_distance: f64,
     pub water_height: f64,
@@ -45,6 +46,10 @@ pub struct Body {
     jump_delay: u8,
 }
 impl Body {
+    /// The last simulated shift-key state used by native entity collision contexts.
+    pub fn descending(self) -> bool {
+        self.descending
+    }
     pub fn eyes_in_water(self) -> bool {
         self.eyes_in_water
     }
@@ -151,6 +156,7 @@ pub fn step(
     }
     let mut next = *motion;
     let mut next_body = *body;
+    next_body.descending = input.crouch;
     let cells = liquid::Cells { terrain, physics };
     // Entity.baseTick samples the previous pose and sprint state before LocalPlayer.aiStep.
     let previous_shape = body.bounds(next.position, p.scale);
