@@ -118,7 +118,10 @@ impl WorldState {
             {
                 return false;
             }
-            return self.reconcile_block_ack(dimension_epoch, sequence, reconcile);
+            // The ACK packet is admitted even when its local collision query is
+            // incomplete. Keep that rollback explicit; it is not a stale server event.
+            self.reconcile_block_ack(dimension_epoch, sequence, reconcile);
+            return true;
         }
         self.admit(envelope)
     }
