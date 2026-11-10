@@ -87,6 +87,8 @@ impl Target {
 }
 
 pub(super) fn prepare(options: Options) -> Result<(), Box<dyn Error>> {
+    // These source-bundled facts ship in the executable; users need no extra carrier/export step.
+    assets::registry::java::prediction::builtin().map_err(|error| error.to_string())?;
     prepare_target(options, serde_json::from_str(java_runtime::TARGET)?)
 }
 

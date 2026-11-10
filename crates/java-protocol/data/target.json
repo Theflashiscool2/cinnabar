@@ -198,5 +198,14 @@
     "sha256": "1a0f07b9c776f84abcc36589f225b3e38b4daf8d009712fdc4a613e412e4e172",
     "generator": "data/CommandArguments.java against verified pinned server libraries",
     "registry": "BuiltInRegistries.COMMAND_ARGUMENT_TYPE"
+  },
+  "block_prediction_report": {
+    "sha256": "1e5b96383872ed40b61e4341d0cfad4c2d5e5b7bc0578bb12fe0f5843031aece",
+    "bytes": 1104167,
+    "source_sha256": "5e773ce5eb8784e0bbb14365d893262b143db3fd923ccb3947907f6173603491",
+    "states": 35723,
+    "blocks": 1286,
+    "items": 1658,
+    "generator": "assetc java-prediction (ExportPrediction.java); exact declaring classes and FluidState.createLegacyBlock state IDs"
   }
 }

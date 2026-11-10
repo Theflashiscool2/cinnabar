@@ -14,6 +14,7 @@ pub mod models;
 pub mod physics;
 pub mod piston;
 pub mod pot;
+pub mod prediction;
 pub mod selectors;
 pub mod skull;
 pub mod source;
