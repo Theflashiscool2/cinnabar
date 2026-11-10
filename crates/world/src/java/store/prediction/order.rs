@@ -1,7 +1,7 @@
 //! Native FastUtil 8.5.18 long-map key order, used when rollback order is observable.
 //! Values stay in the terrain prediction owner; this index contains only cell keys.
 #[derive(Debug)]
-pub(super) struct Order {
+pub(in crate::java::store) struct Order {
     slots: Vec<Option<[i32; 3]>>,
     zero: bool,
     len: usize,
