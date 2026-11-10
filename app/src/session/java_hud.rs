@@ -7,7 +7,7 @@ pub(crate) fn update(
     mut controller: Option<ResMut<SessionController>>,
     ui: Option<ResMut<UiRuntimeResource>>,
     presentation: Option<Res<super::java_render::Presentation>>,
-    mut heads: Local<super::java_items::Heads>,
+    mut heads: ResMut<super::java_items::Heads>,
     time: Res<Time<bevy::time::Real>>,
     mut chat: Local<super::java_chat::Projection>,
 ) {
@@ -62,7 +62,12 @@ pub(crate) fn update(
         }
         None => {
             ui.clear_java_hud();
-            heads.clear();
+            if controller
+                .as_ref()
+                .is_none_or(|c| c.java.is_none() || c.java_world.terrain.dimension().is_none())
+            {
+                heads.clear();
+            }
         }
     }
 }

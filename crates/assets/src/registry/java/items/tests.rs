@@ -432,3 +432,61 @@ fn ground_models_use_their_own_display_transform_instead_of_gui_or_hand() {
     let (min, max) = extent(View::Gui);
     assert!((max[0] - min[0] - 1.).abs() < 1e-6);
 }
+
+#[test]
+fn worn_player_heads_use_raw_skull_geometry_and_authoritative_profile() {
+    let Some(c) = native_catalog() else {
+        return;
+    };
+    let mut head = Stack {
+        item: "minecraft:player_head".into(),
+        ..stack()
+    };
+    let profile = serde_json::json!({"id":"00112233-4455-6677-8899-aabbccddeeff","properties":[]});
+    head.added
+        .insert("minecraft:profile".into(), profile.clone());
+    assert!(c.worn_player_head(&head, &HeadTextures::default()).is_err());
+    let image = Arc::new(Image {
+        width: 64,
+        height: 64,
+        rgba: vec![20, 240, 70, 255].repeat(64 * 64),
+    });
+    let heads = HeadTextures {
+        revision: 1,
+        textures: [(profile_key(&profile), HeadTexture::Image(image.clone()))].into(),
+    };
+    let raw = c.worn_player_head(&head, &heads).unwrap().unwrap();
+    assert_eq!(raw.len(), 12, "native head and hat cubes");
+    assert!(raw.iter().all(|quad| Arc::ptr_eq(&quad.image, &image)));
+    // 26.3 SkullModel.createHumanoidHeadLayer: [-4,-8,-4], size 8, hat deformation .25.
+    let low: [f32; 3] = std::array::from_fn(|axis| {
+        raw.iter()
+            .flat_map(|q| q.positions.iter())
+            .map(|p| p[axis])
+            .fold(f32::INFINITY, f32::min)
+    });
+    let high: [f32; 3] = std::array::from_fn(|axis| {
+        raw.iter()
+            .flat_map(|q| q.positions.iter())
+            .map(|p| p[axis])
+            .fold(f32::NEG_INFINITY, f32::max)
+    });
+    assert_eq!(low, [-4.25 / 16., -8.25 / 16., -4.25 / 16.]);
+    assert_eq!(high, [4.25 / 16., 0.25 / 16., 4.25 / 16.]);
+    // A custom item-model component must not replace the native skull worn-head branch.
+    head.added.insert(
+        "minecraft:item_model".into(),
+        serde_json::json!("minecraft:diamond_sword"),
+    );
+    assert_eq!(
+        c.worn_player_head(&head, &heads).unwrap().unwrap()[0].positions,
+        raw[0].positions
+    );
+    head.removed.insert("minecraft:profile".into());
+    assert!(
+        c.worn_player_head(&head, &HeadTextures::default())
+            .unwrap()
+            .is_some()
+    );
+    assert!(c.worn_player_head(&stack(), &heads).unwrap().is_none());
+}

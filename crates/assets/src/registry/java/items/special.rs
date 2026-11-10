@@ -137,6 +137,53 @@ impl Resources {
             .and_then(|m| m.get(name))
             .ok_or_else(|| invalid(&format!("special renderer model unavailable: {name}")))
     }
+    /// Raw native SkullModel, before item-model display or block mounting transforms.
+    pub(super) fn player_head(
+        &self,
+        argument: &Value,
+        heads: &super::HeadTextures,
+    ) -> Result<Vec<Quad>, Error> {
+        let mut out = Vec::new();
+        if !argument.is_null() {
+            let texture = heads
+                .textures
+                .get(&super::profile_key(argument))
+                .ok_or_else(|| invalid("unresolved item head profile"))?;
+            let image = match texture {
+                super::HeadTexture::Image(image) => image.clone(),
+                super::HeadTexture::Pack(path) => {
+                    let id = Identifier::parse(path)?;
+                    let path = id.path().strip_prefix("textures/").unwrap_or(id.path());
+                    let path = path.strip_suffix(".png").unwrap_or(path);
+                    self.image(&format!("{}:{path}", id.namespace()))?
+                }
+            };
+            emit(
+                self.part("item/player_head/main")?,
+                Mat4::IDENTITY,
+                &none,
+                image,
+                u32::MAX,
+                &mut out,
+            );
+            return Ok(out);
+        }
+        let texture = format!(
+            "minecraft:{}",
+            skull::defaults::unprofiled()
+                .strip_prefix("textures/")
+                .ok_or_else(|| invalid("native default skin path"))?
+        );
+        emit(
+            self.part("item/player_head/main")?,
+            Mat4::IDENTITY,
+            &none,
+            self.image(&texture)?,
+            u32::MAX,
+            &mut out,
+        );
+        Ok(out)
+    }
     pub fn geometry(
         &self,
         model: &SpecialModel,
@@ -197,39 +244,7 @@ impl Resources {
                     .unwrap_or_else(|| skin.into());
                 draw(layer, &texture, u32::MAX, &skull_pose(kind, *animation))?;
             }
-            SpecialKind::PlayerHead => {
-                if !argument.is_null() {
-                    let texture = heads
-                        .textures
-                        .get(&super::profile_key(argument))
-                        .ok_or_else(|| invalid("unresolved item head profile"))?;
-                    let image = match texture {
-                        super::HeadTexture::Image(image) => image.clone(),
-                        super::HeadTexture::Pack(path) => {
-                            let id = Identifier::parse(path)?;
-                            let path = id.path().strip_prefix("textures/").unwrap_or(id.path());
-                            let path = path.strip_suffix(".png").unwrap_or(path);
-                            self.image(&format!("{}:{path}", id.namespace()))?
-                        }
-                    };
-                    emit(
-                        self.part("item/player_head/main")?,
-                        Mat4::IDENTITY,
-                        &none,
-                        image,
-                        u32::MAX,
-                        &mut out,
-                    );
-                    return Ok(out);
-                }
-                let texture = format!(
-                    "minecraft:{}",
-                    skull::defaults::unprofiled()
-                        .strip_prefix("textures/")
-                        .ok_or_else(|| invalid("native default skin path"))?
-                );
-                draw("item/player_head/main", &texture, u32::MAX, &none)?;
-            }
+            SpecialKind::PlayerHead => return self.player_head(argument, heads),
             SpecialKind::CopperGolemStatue { texture, pose } => {
                 let name = match pose.as_str() {
                     "standing" => "statue_standing",

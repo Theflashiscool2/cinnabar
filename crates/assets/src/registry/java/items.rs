@@ -278,6 +278,19 @@ impl Catalog {
     pub fn geometry(&self, stack: &Stack) -> Result<Vec<Quad>, Error> {
         self.geometry_with_heads(stack, &HeadTextures::default())
     }
+    /// LivingEntityRenderer's player-skull branch bypasses item models and their display transforms.
+    pub fn worn_player_head(
+        &self,
+        stack: &Stack,
+        heads: &HeadTextures,
+    ) -> Result<Option<Vec<Quad>>, Error> {
+        if stack.item != "minecraft:player_head" {
+            return Ok(None);
+        }
+        let profile =
+            super::equipment::component(stack, "minecraft:profile").unwrap_or(&Value::Null);
+        self.special.player_head(profile, heads).map(Some)
+    }
     pub fn geometry_with_heads(
         &self,
         stack: &Stack,

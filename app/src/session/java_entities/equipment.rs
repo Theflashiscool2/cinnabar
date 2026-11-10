@@ -46,11 +46,16 @@ impl Signature {
                 && self.left == next.left)
     }
 }
+#[derive(Clone, Copy)]
+pub(super) enum Attachment {
+    Hand(bool),
+    Skull,
+}
 pub(super) struct Draw {
     pub source: Option<SlotSource>,
     pub model: Option<Arc<render_model::actor::java_geometry::Model>>,
     pub rig: render_model::EntityRigId,
-    pub hand: Option<bool>,
+    pub attachment: Option<Attachment>,
     pub bounds: ::assets::SkinGeometryBounds,
     pub artwork: render_model::ActorArtworkLocation,
     pub alpha: render_model::HandItemAlphaMode,
@@ -72,6 +77,7 @@ struct Request {
     revision: u64,
     players: Vec<Player>,
     grounds: Vec<Ground>,
+    heads: Arc<::assets::registry::java::items::HeadTextures>,
 }
 #[derive(Default)]
 struct Shared {
@@ -85,7 +91,7 @@ pub(super) struct State {
     shared: Arc<(Mutex<Shared>, Condvar)>,
     installed: Option<Output>,
     error: Option<String>,
-    desired_source: Option<(u64, Vec<(Identity, bool)>)>,
+    desired_source: Option<(u64, Vec<(Identity, bool)>, u64)>,
     sequence: u64,
 }
 impl Drop for State {
@@ -141,12 +147,17 @@ impl State {
         state: &client_world::java::WorldState,
         scene: &mut ActorRenderScene,
         skins: &super::skins::Players,
+        heads: Arc<::assets::registry::java::items::HeadTextures>,
     ) {
         if self.error.is_some() {
             return;
         }
         let mut work = self.shared.0.lock().unwrap();
-        let source = (state.equipment.revision(), skins.model_key());
+        let source = (
+            state.equipment.revision(),
+            skins.model_key(),
+            heads.revision,
+        );
         if self.desired_source.as_ref() != Some(&source) {
             let Some(revision) = self.sequence.checked_add(1) else {
                 self.error = Some("Native equipment publication exhausted".into());
@@ -185,6 +196,7 @@ impl State {
                 revision,
                 players,
                 grounds,
+                heads,
             });
             work.result = None;
             self.shared.1.notify_one();

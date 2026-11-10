@@ -13,7 +13,7 @@ impl Writer<'_> {
         id: Identity,
         draws: &mut Vec<Draw>,
         hand: &java_item::Prepared,
-        attachment: Option<bool>,
+        attachment: Option<Attachment>,
         glint: bool,
     ) -> Result<(), String> {
         let bytes = usize::from(hand.atlas.width) * usize::from(hand.atlas.height) * 4;
@@ -41,7 +41,7 @@ impl Writer<'_> {
                 source: None,
                 model: None,
                 rig,
-                hand: attachment,
+                attachment,
                 bounds: hand.bounds,
                 artwork: placeholder(),
                 alpha: hand.alpha_modes[i],

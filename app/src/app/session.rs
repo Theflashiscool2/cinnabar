@@ -44,6 +44,7 @@ pub(crate) fn configure_finish_system(app: &mut App) {
                 .after(drive_session)
                 .in_set(ClientFrameSet::NetworkSend),
         )
+        .init_resource::<crate::session::java_items::Heads>()
         .init_resource::<crate::session::java_entities::Presentation>()
         .init_resource::<crate::session::java_render::Presentation>()
         .init_resource::<crate::session::java_movement::Movement>()

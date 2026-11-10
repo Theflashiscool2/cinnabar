@@ -3,7 +3,7 @@ use super::*;
 mod item;
 use ::assets::registry::java::{
     equipment,
-    items::{self, HeadTextures, View},
+    items::{self, View},
     source::Jar,
 };
 use render_model::{EquipmentRaster, actor::java_equipment_rig_id, equipment::java_item};
@@ -13,6 +13,7 @@ use std::path::PathBuf;
 enum Piece {
     Armor(equipment::Armor),
     Hand(java_item::Prepared),
+    Skull(java_item::Prepared),
 }
 fn stack(s: &inventory::java::Stack) -> Stack {
     Stack {
@@ -97,14 +98,19 @@ fn prepare(
             let Some(s) = s else { continue };
             let s = stack(s);
             let left = (slot == 0) == player.signature.left;
-            let key = format!("{}:{slot}:{}:{left}", s.key(), player.signature.slim);
+            let key = format!(
+                "{}:{slot}:{}:{left}:{}",
+                s.key(),
+                player.signature.slim,
+                request.heads.revision
+            );
             used.insert(key.clone());
             let piece = cache.entry(key).or_insert_with(|| {
                 if slot < 2 {
                     catalog
                         .geometry_in(
                             &s,
-                            &HeadTextures::default(),
+                            &request.heads,
                             if left {
                                 View::ThirdPersonLeft
                             } else {
@@ -118,6 +124,16 @@ fn prepare(
                             })
                         })
                         .map(|p| p.map(Piece::Hand))
+                } else if slot == 5 && s.item == "minecraft:player_head" {
+                    catalog
+                        .worn_player_head(&s, &request.heads)
+                        .map_err(|e| e.to_string())
+                        .and_then(|q| {
+                            java_item::prepare_with_ids(q.unwrap_or_default(), |i| {
+                                java_equipment_rig_id(65536 + i as u32)
+                            })
+                        })
+                        .map(|p| p.map(Piece::Skull))
                 } else {
                     equipment::armor(jar, &s, slot as u8, player.signature.slim)
                         .map(|p| p.map(Piece::Armor))
@@ -167,7 +183,7 @@ fn prepare(
                             source: None,
                             model: Some(model.clone()),
                             rig: model.geometry.id,
-                            hand: None,
+                            attachment: None,
                             bounds: model.bounds,
                             artwork: placeholder(),
                             alpha: render_model::HandItemAlphaMode::Cutout,
@@ -175,7 +191,7 @@ fn prepare(
                         });
                     }
                 }
-                Piece::Hand(hand) => {
+                Piece::Hand(hand) | Piece::Skull(hand) => {
                     item::Writer {
                         output: &mut output,
                         rasters: &mut rasters,
@@ -183,7 +199,17 @@ fn prepare(
                         pixels: &mut pixels,
                         vertices: &mut vertices,
                     }
-                    .append(player.id, &mut draws, hand, Some(left), glint)?;
+                    .append(
+                        player.id,
+                        &mut draws,
+                        hand,
+                        Some(if matches!(piece, Piece::Skull(_)) {
+                            Attachment::Skull
+                        } else {
+                            Attachment::Hand(left)
+                        }),
+                        glint && !matches!(piece, Piece::Skull(_)),
+                    )?;
                 }
             }
             for draw in &mut draws[start..] {
@@ -214,11 +240,11 @@ fn prepare(
             }
         }
         let s = stack(&ground.stack);
-        let key = format!("ground:{}", s.key());
+        let key = format!("ground:{}:{}", s.key(), request.heads.revision);
         used.insert(key.clone());
         let piece = cache.entry(key).or_insert_with(|| {
             catalog
-                .geometry_in(&s, &HeadTextures::default(), View::Ground)
+                .geometry_in(&s, &request.heads, View::Ground)
                 .map_err(|e| e.to_string())
                 .and_then(|quads| {
                     java_item::prepare_with_ids(quads, |i| java_equipment_rig_id(65536 + i as u32))
@@ -242,7 +268,9 @@ fn prepare(
                 items::glint(&s.item, &s.added, &s.removed),
             )?,
             Ok(None) => {}
-            Ok(Some(Piece::Armor(_))) => return Err("invalid native ground cache context".into()),
+            Ok(Some(Piece::Armor(_) | Piece::Skull(_))) => {
+                return Err("invalid native ground cache context".into());
+            }
             Err(e) => {
                 note(&mut output.errors, format!("{} ground: {e}", s.item));
                 continue;

@@ -19,6 +19,7 @@ pub(crate) fn update(
     presentation: Option<ResMut<Presentation>>,
     mut prepared: ResMut<PreparedActorPublication>,
     mut scene: ResMut<ActorRenderScene>,
+    mut heads: ResMut<super::super::java_items::Heads>,
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
     time: Res<Time<bevy::time::Real>>,
@@ -137,7 +138,12 @@ pub(crate) fn update(
             p.equipment = Some(equipment::State::new(catalog, assets));
         }
         if let Some(equipment) = &mut p.equipment {
-            equipment.update(state, &mut scene, &p.skins);
+            equipment.update(
+                state,
+                &mut scene,
+                &p.skins,
+                heads.update(scope, state, time.elapsed()),
+            );
         }
     }
     let mut batch = empty();

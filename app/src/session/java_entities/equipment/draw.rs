@@ -40,24 +40,33 @@ pub(in crate::session::java_entities) fn append(
             let bounds = model.posed_bounds(&bones).map_err(|e| e.to_string())?;
             (bones, bounds)
         } else {
-            let left = draw.hand.ok_or("native held item arm missing")?;
-            let hand = body_model
-                .bone(if left {
-                    "root/left_arm"
-                } else {
-                    "root/right_arm"
-                })
-                .ok_or("native player arm bone missing")?;
-            let root = body_model
-                .bone("root")
-                .ok_or("native player root missing")?;
-            let bone = java_item::held_bone(
-                body.input.current_bones[hand],
-                body.input.current_bones[root],
-                left,
-                entry.signature.slim,
-            )
-            .ok_or("invalid native held attachment")?;
+            let bone = match draw.attachment.ok_or("native item attachment missing")? {
+                Attachment::Skull => {
+                    let head = body_model
+                        .bone("root/head")
+                        .ok_or("native player head bone missing")?;
+                    java_item::skull_bone(body.input.current_bones[head])
+                }
+                Attachment::Hand(left) => {
+                    let hand = body_model
+                        .bone(if left {
+                            "root/left_arm"
+                        } else {
+                            "root/right_arm"
+                        })
+                        .ok_or("native player arm bone missing")?;
+                    let root = body_model
+                        .bone("root")
+                        .ok_or("native player root missing")?;
+                    java_item::held_bone(
+                        body.input.current_bones[hand],
+                        body.input.current_bones[root],
+                        left,
+                        entry.signature.slim,
+                    )
+                }
+            }
+            .ok_or("invalid native item attachment")?;
             let bounds =
                 java_item::posed_bounds(draw.bounds, &bone).ok_or("invalid native held bounds")?;
             (Arc::from([bone]), bounds)
@@ -78,7 +87,7 @@ pub(in crate::session::java_entities) fn append(
         });
         if draw.glint {
             draw_call.material.kind = ::assets::EntityRenderMaterial::Glint;
-            draw_call.material.glint = if draw.hand.is_some() {
+            draw_call.material.glint = if matches!(draw.attachment, Some(Attachment::Hand(_))) {
                 ActorGlint::item(seconds, [1.; 2])
             } else {
                 ActorGlint {
