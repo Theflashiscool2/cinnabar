@@ -86,6 +86,8 @@ impl WorldState {
         &mut self,
         registry: std::sync::Arc<assets::registry::java::BlockRegistry>,
     ) -> Result<(), &'static str> {
+        assets::registry::java::prediction::builtin()
+            .map_err(|_| "Invalid pinned Java block prediction facts")?;
         self.terrain.install_block_types(registry.block_types());
         piston::initialize(&mut self.terrain, &registry, None)?;
         self.piston_registry = Some(registry);
@@ -278,6 +280,12 @@ impl WorldState {
                 if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
                     return false;
                 }
+                self.inventory.block_use_written(
+                    self.generation,
+                    dimension_epoch,
+                    sequence,
+                    written,
+                );
                 if !written {
                     self.block_predictions_retired +=
                         self.terrain.discard_prediction(sequence) as u64;

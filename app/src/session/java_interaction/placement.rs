@@ -378,7 +378,7 @@ mod tests {
         });
         assert!(
             !apply(&mut state, &request, false, context),
-            "survival placement awaits native inventory consumption"
+            "unknown native abilities cannot establish consumption behavior"
         );
         state.status.mode = Some(GameMode::Creative);
         state.player_dynamics.abilities = Some(Abilities {
@@ -432,6 +432,114 @@ mod tests {
             !apply(&mut state, &request, true, context),
             "SnowyBlock.updateShape is not an inert neighbor callback"
         );
+    }
+    #[test]
+    fn survival_prediction_uses_existing_hand_working_view_and_receipts_do_not_accept_items() {
+        use super::super::prediction::apply;
+        use gameplay::java::item_use::plan::Hand;
+        use inventory::java::{Stack, Update};
+        use java_protocol::session::{Envelope, Event};
+        use world::java::{BlockStateId, dynamics::Abilities};
+        for hand in [Hand::Main, Hand::Off] {
+            let (mut state, physics, mut request) = fixture();
+            state.player_dynamics.abilities = Some(Abilities {
+                invulnerable: false,
+                flying: false,
+                may_fly: false,
+                creative: false,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            });
+            let slot = if hand == Hand::Main { 0 } else { 40 };
+            let stack = Stack {
+                item: "minecraft:white_wool".into(),
+                count: 1,
+                added: Default::default(),
+                removed: Default::default(),
+            };
+            state
+                .inventory
+                .admit(
+                    7,
+                    1,
+                    Update::PlayerSlot {
+                        slot,
+                        stack: Some(stack.clone()),
+                    },
+                )
+                .unwrap();
+            request.hand = hand;
+            let context = Some(Context {
+                physics: &physics,
+                body: Body::default(),
+            });
+            assert!(apply(&mut state, &request, false, context));
+            assert_eq!(hand.held(&state.inventory), Some(&None));
+            if hand == Hand::Off {
+                assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 4);
+            }
+            let mut repeat = request;
+            repeat.sequence = 2;
+            let Target::Block(mut hit) = repeat.target else {
+                unreachable!()
+            };
+            hit.face = Face::North;
+            hit.position = [-15.5, -59.5, 1.];
+            repeat.target = Target::Block(hit);
+            assert!(
+                !apply(&mut state, &repeat, false, context),
+                "count1 cannot predict a second cell"
+            );
+            assert_eq!(state.terrain.block([-16, -60, 0]), Some(BlockStateId(0)));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockActionWritten {
+                    dimension_epoch: 1,
+                    sequence: 1,
+                    written: false,
+                }
+            }));
+            assert_eq!(hand.held(&state.inventory), Some(&Some(stack.clone())));
+            assert_eq!(state.terrain.block([-16, -59, 1]), Some(BlockStateId(0)));
+            request.sequence = 3;
+            assert!(apply(&mut state, &request, false, context));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockActionWritten {
+                    dimension_epoch: 1,
+                    sequence: 3,
+                    written: true,
+                }
+            }));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockAck {
+                    dimension_epoch: 1,
+                    sequence: 3,
+                }
+            }));
+            assert_eq!(
+                hand.held(&state.inventory),
+                Some(&None),
+                "ACK does not restore or grant an inventory stack"
+            );
+            state
+                .inventory
+                .admit(
+                    7,
+                    1,
+                    Update::PlayerSlot {
+                        slot,
+                        stack: Some(stack.clone()),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                hand.held(&state.inventory),
+                Some(&Some(stack)),
+                "server inventory denial is authoritative"
+            );
+        }
     }
     #[test]
     fn ordinary_placement_predicts_only_the_gesture_with_current_known_authority() {
