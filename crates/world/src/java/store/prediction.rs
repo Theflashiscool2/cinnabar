@@ -1,6 +1,8 @@
 //! Protocol 777 ClientLevel / BlockStatePredictionHandler reconciliation.
 //! The ACK ends a prediction; only the retained server state determines the result.
 use super::*;
+mod order;
+pub(super) use order::Order;
 
 #[derive(Clone, Copy, Debug)]
 pub struct RetainedBlock {
@@ -40,6 +42,7 @@ impl Terrain {
             return false;
         }
         self.set_block(position, state);
+        self.prediction_order.insert(position);
         self.predictions
             .entry(position)
             .and_modify(|retained| retained.sequence = sequence)
@@ -77,13 +80,14 @@ impl Terrain {
             return Vec::new();
         }
         let positions: Vec<_> = self
-            .predictions
-            .iter()
-            .filter_map(|(position, retained)| (retained.sequence <= sequence).then_some(*position))
+            .prediction_order
+            .positions()
+            .filter(|position| self.predictions[position].sequence <= sequence)
             .collect();
         positions
             .into_iter()
             .map(|position| {
+                self.prediction_order.remove(position);
                 let retained = self
                     .predictions
                     .remove(&position)
@@ -110,12 +114,13 @@ impl Terrain {
     /// cancellation, never an ACK or a server rejection; newer predictions survive.
     pub fn discard_prediction(&mut self, sequence: i32) -> usize {
         let positions: Vec<_> = self
-            .predictions
-            .iter()
-            .filter_map(|(position, retained)| (retained.sequence == sequence).then_some(*position))
+            .prediction_order
+            .positions()
+            .filter(|position| self.predictions[position].sequence == sequence)
             .collect();
         let retired = positions.len();
         for position in positions {
+            self.prediction_order.remove(position);
             let retained = self
                 .predictions
                 .remove(&position)
