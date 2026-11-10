@@ -1,6 +1,9 @@
 //! Entity item appearances (equipment and ground stacks). Reuses inventory's stack model; this is not a
 //! second transactional inventory. Keys are admitted entity incarnations.
+mod pickup;
 use inventory::java::Slot;
+pub(super) use pickup::take;
+pub use pickup::{Collector, Pickup};
 use std::collections::BTreeMap;
 use world::java::entities::Identity;
 #[derive(Clone, Debug, Default)]
@@ -19,6 +22,7 @@ pub struct State {
     ground: BTreeMap<Identity, Ground>,
     entries: BTreeMap<Identity, Equipment>,
     revision: u64,
+    pickups: Vec<Pickup>,
 }
 impl State {
     pub fn revision(&self) -> u64 {
@@ -61,6 +65,7 @@ impl State {
         }
     }
     pub(super) fn clear(&mut self) {
+        self.pickups.clear();
         self.entries.clear();
         self.ground.clear();
         self.revision = self.revision.saturating_add(1);

@@ -35,7 +35,8 @@ impl Authority {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
-        let visual_ticks = self.clock.service(&mut self.world, now);
+        let eye = self.movement.0.eye_height(&self.world);
+        let visual_ticks = self.clock.service_with_eye(&mut self.world, now, Some(eye));
         let elapsed = self.movement.elapsed(&self.world, now);
         let current = self.world.terrain.dimension().map(|d| (d.session, d.epoch));
         // A replacement world requires its own real PlayerLoaded/publication admission.

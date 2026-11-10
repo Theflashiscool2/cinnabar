@@ -25,6 +25,21 @@ pub(super) fn admit(
         .entity_id;
     let damage_event = matches!(&packet, wire::Packet::Damage { .. });
     match packet {
+        wire::Packet::TakeItem {
+            item,
+            item_lifetime,
+            collector,
+            collector_lifetime,
+            amount,
+        } => super::equipment::take(
+            state,
+            scope,
+            item,
+            item_lifetime,
+            collector,
+            collector_lifetime,
+            amount,
+        ),
         wire::Packet::Hurt { lifetime, id } | wire::Packet::Damage { lifetime, id, .. } => {
             if id == own {
                 state.player_visual.hurt_ticks = domain::visual::HURT_TICKS;
@@ -108,6 +123,7 @@ pub(super) fn admit(
                 || player.is_some()
                 || villager.is_some()
                 || s.kind == java_protocol::target::ENTITY_ARMOR_STAND;
+            state.equipment.retire_pickup_network(&[s.id], true);
             let previous = state.entities.get(s.id).map(|e| e.identity);
             let admitted = state.entities.spawn(
                 scope,
@@ -164,6 +180,7 @@ pub(super) fn admit(
             Ok(admitted)
         }
         wire::Packet::Remove(ids) => {
+            state.equipment.retire_pickup_network(&ids, false);
             let removed = ids
                 .iter()
                 .filter_map(|id| state.entities.get(*id).map(|e| e.identity))

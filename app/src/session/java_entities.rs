@@ -41,6 +41,7 @@ pub(crate) struct Presentation {
     villagers: BTreeMap<(Identity, bool), villager::Pose>,
     ground_births: BTreeMap<Identity, u64>,
     published_items: usize,
+    published_pickups: usize,
     item_pending: usize,
     serial: u64,
     failure: Option<String>,
@@ -76,6 +77,7 @@ impl Default for Presentation {
             villagers: BTreeMap::new(),
             ground_births: BTreeMap::new(),
             published_items: 0,
+            published_pickups: 0,
             item_pending: 0,
             serial: 0,
             failure: None,
@@ -124,7 +126,7 @@ impl Presentation {
     }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len()+self.villagers.len(),"error":self.failure,"presentation":"native_living_interpolation","published_players":self.published_players,"published_villagers":self.published_villagers,"published_items":self.published_items,"item_pending":self.item_pending,"item_motion":"native_dry_ticks_or_explicit_server_fallback","custom_skin_pending":self.custom_skin_pending,"skin_frame_capacity_exhausted":self.skin_layers_full,"skins":self.skins.diagnostic(),"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.backlog_ticks,"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
+        serde_json::json!({"scope":self.scope,"preparing":self.pending.is_some(),"published":self.published,"unsupported":self.unsupported,"unknown_light":self.unknown_light,"glow_pending":self.glow_pending,"retained_poses":self.poses.len()+self.villagers.len(),"error":self.failure,"presentation":"native_living_interpolation","published_players":self.published_players,"published_villagers":self.published_villagers,"published_items":self.published_items,"published_pickups":self.published_pickups,"item_pending":self.item_pending,"item_motion":"native_dry_ticks_or_explicit_server_fallback","custom_skin_pending":self.custom_skin_pending,"skin_frame_capacity_exhausted":self.skin_layers_full,"skins":self.skins.diagnostic(),"interpolation":true,"gait_animation":true,"ticks":self.ticks,"backlog_ticks":self.backlog_ticks,"light_probe":"feet","equipment":self.equipment.as_ref().map(|e|e.diagnostic()),"visual_parity":false})
     }
 }
 pub(crate) mod publish;
