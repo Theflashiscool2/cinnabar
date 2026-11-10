@@ -6,6 +6,7 @@ mod bubbles;
 mod climbing;
 mod liquid;
 mod slime;
+mod sticky;
 mod swimming;
 use super::collision::{self, QueryError};
 use assets::registry::java::physics::{Bounds, State, Table};
@@ -43,6 +44,7 @@ pub struct Body {
     pub water_height: f64,
     pub lava_height: f64,
     jump_delay: u8,
+    stuck_speed_multiplier: [f64; 3],
 }
 impl Body {
     pub fn eyes_in_water(self) -> bool {
@@ -74,6 +76,8 @@ pub struct Parameters<'a> {
     pub friction_modifier: f32,
     pub air_drag_modifier: f32,
     pub gravity: f64,
+    pub bounciness: f64,
+    pub weaving: bool,
     pub jump_strength: f32,
     pub step_height: f32,
     pub scale: f32,
@@ -144,6 +148,7 @@ pub fn step(
         .into_iter()
         .all(f32::is_finite)
         || !p.gravity.is_finite()
+        || !p.bounciness.is_finite()
         || p.scale <= 0.
         || p.step_height < 0.
     {
@@ -330,7 +335,9 @@ pub fn step(
             climbing::is_scaffolding(next.position, terrain, physics)?,
         );
     }
-    let mut sweep = collision::expanded(shape, next.velocity);
+    let was_falling = next.velocity[1] <= 0.;
+    let movement = sticky::consume(&mut next.velocity, &mut next_body.stuck_speed_multiplier);
+    let mut sweep = collision::expanded(shape, movement);
     sweep.max[1] += f64::from(p.step_height);
     sweep.min[1] -= f64::from(p.step_height) + 1.0e-7;
     let colliders = collision::collect_player(
@@ -340,18 +347,11 @@ pub fn step(
         sweep,
         climbing::context(next.position, input.crouch),
     )?;
-    let was_falling = next.velocity[1] <= 0.;
     let old_y = next.position[1];
-    let desired = if input.crouch && next.velocity[1] <= 0. {
-        backed_off(
-            shape,
-            next.velocity,
-            next_body,
-            p.step_height,
-            &colliders.boxes,
-        )
+    let desired = if input.crouch && movement[1] <= 0. {
+        backed_off(shape, movement, next_body, p.step_height, &colliders.boxes)
     } else {
-        next.velocity
+        movement
     };
     let actual = collision::stepped(
         shape,
@@ -389,7 +389,7 @@ pub fn step(
     };
     for i in [0, 2] {
         if (desired[i] - actual[i]).abs() >= f64::from(1.0e-5_f32) {
-            next.velocity[i] = 0.;
+            next.velocity[i] *= if input.crouch { 0. } else { -p.bounciness };
         }
     }
     if desired[1] != actual[1] {
@@ -411,8 +411,12 @@ pub fn step(
             next.velocity[1],
             actual[1],
             next_body.on_ground,
-            input.crouch || tagged,
-            floor.bounce_restitution,
+            input.crouch || (next_body.on_ground && tagged),
+            if next_body.on_ground {
+                p.bounciness.max(f64::from(floor.bounce_restitution))
+            } else {
+                p.bounciness
+            },
             p.gravity,
             modified_friction(0.98, p.air_drag_modifier),
         );
@@ -509,6 +513,7 @@ pub fn step(
         &mut next_body,
         travel_pose,
         p.scale,
+        p.weaving,
         terrain,
         physics,
     )?;
@@ -609,6 +614,7 @@ fn surface_on<'a>(
         && !bubbles::is_column(physics, id)
         && !bubbles::server_damage(physics, id)
         && !slime::is_slime(physics, id)
+        && !sticky::supported(physics, id)
     {
         return Err(Error::Unsupported {
             behavior: "special block movement callbacks",
@@ -632,6 +638,7 @@ fn ensure_contacts(terrain: &Terrain, physics: &Table, shape: Bounds) -> Result<
                     && !bubbles::is_column(physics, id)
                     && !bubbles::server_damage(physics, id)
                     && !slime::is_slime(physics, id)
+                    && !sticky::supported(physics, id)
                 {
                     return Err(Error::Unsupported {
                         behavior: "special block contact behavior",

@@ -13,5 +13,11 @@
   ],
   "slime": [
     "minecraft:slime_block"
+  ],
+  "honey": [
+    "minecraft:honey_block"
+  ],
+  "cobweb": [
+    "minecraft:cobweb"
   ]
 }
