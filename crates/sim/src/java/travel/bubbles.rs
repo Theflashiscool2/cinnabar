@@ -1,4 +1,4 @@
-//! Native BubbleColumnBlock.entityInside and Entity bubble-column impulses.
+//! Ordered entity-inside sweeps for bubble columns, honey and cobweb contacts.
 use super::*;
 use std::collections::HashSet;
 
@@ -23,6 +23,7 @@ pub(super) fn apply(
     body: &mut Body,
     pose: Body,
     scale: f32,
+    weaving: bool,
     terrain: &Terrain,
     physics: &Table,
 ) -> Result<(), Error> {
@@ -45,6 +46,8 @@ pub(super) fn apply(
                 &mut seen,
                 motion,
                 body,
+                scale,
+                weaving,
                 terrain,
                 physics,
             )?;
@@ -59,6 +62,8 @@ pub(super) fn apply(
             &mut seen,
             motion,
             body,
+            scale,
+            weaving,
             terrain,
             physics,
         )?;
@@ -72,6 +77,8 @@ pub(super) fn apply(
             &mut seen,
             motion,
             body,
+            scale,
+            weaving,
             terrain,
             physics,
         )?;
@@ -86,6 +93,8 @@ fn segment(
     seen: &mut HashSet<[i32; 3]>,
     motion: &mut Motion,
     body: &mut Body,
+    scale: f32,
+    weaving: bool,
     terrain: &Terrain,
     physics: &Table,
 ) -> Result<i32, Error> {
@@ -102,21 +111,34 @@ fn segment(
             break;
         }
         steps = step;
-        // BubbleColumnBlock only applies its impulse on precise entity-inside contact.
-        if !precise
-            && !(0..3).all(|i| {
-                bounds.max[i] > f64::from(pos[i]) && bounds.min[i] < f64::from(pos[i]) + 1.
-            })
+        let Some(id) = cell(terrain, pos)? else {
+            continue;
+        };
+        match sticky::kind(physics, id) {
+            Some(assets::registry::java::physics::callbacks::Kind::Honey) => {
+                if seen.insert(pos) {
+                    sticky::honey(motion, body, pos, scale);
+                }
+                continue;
+            }
+            Some(assets::registry::java::physics::callbacks::Kind::Cobweb) => {
+                if seen.insert(pos) {
+                    sticky::web(body, weaving);
+                }
+                continue;
+            }
+            _ => {}
+        }
+        // BubbleColumnBlock alone requires precise entity-inside contact.
+        if !is_column(physics, id)
+            || (!precise
+                && !(0..3).all(|i| {
+                    bounds.max[i] > f64::from(pos[i]) && bounds.min[i] < f64::from(pos[i]) + 1.
+                }))
         {
             continue;
         }
         if !seen.insert(pos) {
-            continue;
-        }
-        let Some(id) = cell(terrain, pos)? else {
-            continue;
-        };
-        if !is_column(physics, id) {
             continue;
         }
         let state = physics

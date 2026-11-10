@@ -1,4 +1,4 @@
-//! Pinned SlimeBlock.stepOn and Entity collision restitution; damage stays server-owned.
+//! Pinned SlimeBlock.stepOn and entity/block collision restitution; damage stays server-owned.
 use super::*;
 
 pub(super) fn is_slime(physics: &Table, id: u32) -> bool {
@@ -39,18 +39,18 @@ pub(super) fn suppressed(
     Ok(tags.contains(&block))
 }
 /// Fractional contact compensates gravity/drag for the untraveled portion of the tick.
-/// Called only on a vertical collision; ordinary ceilings/floors retain zero restitution.
+/// Called only on a vertical collision; the caller selects entity/block restitution.
 pub(super) fn restitute_y(
     incoming: f64,
     actual: f64,
     below: bool,
     suppress: bool,
-    restitution: f32,
+    restitution: f64,
     gravity: f64,
     air_drag: f32,
 ) -> f64 {
-    let bounce = if below && -incoming > gravity && !suppress {
-        f64::from(restitution)
+    let bounce = if (!below || -incoming > gravity) && !suppress {
+        restitution
     } else {
         0.
     };

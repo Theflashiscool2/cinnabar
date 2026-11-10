@@ -333,9 +333,6 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
             .ok_or_else(|| format!("Missing pinned Java player attribute {name}"))
     };
     let value = |name| -> Result<f64, String> { get(name)?.value().map_err(str::to_owned) };
-    if value("minecraft:bounciness")? != 0. {
-        return Err("Native Java attribute-driven bouncing is not implemented".into());
-    }
     let (base_speed, sprint_speed) = movement_speeds(state)?;
     let climbable = state
         .bootstrap
@@ -357,6 +354,11 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         friction_modifier: value("minecraft:friction_modifier")? as f32,
         air_drag_modifier: value("minecraft:air_drag_modifier")? as f32,
         gravity: value("minecraft:gravity")?,
+        bounciness: value("minecraft:bounciness")?,
+        weaving: state
+            .player_dynamics
+            .effects
+            .contains_key("minecraft:weaving"),
         jump_strength: value("minecraft:jump_strength")? as f32,
         step_height: value("minecraft:step_height")? as f32,
         scale: value("minecraft:scale")? as f32,
