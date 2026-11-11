@@ -36,6 +36,7 @@ pub(crate) struct Presentation {
     skulls: BTreeMap<[i32; 3], (u64, sim::java::skull::Motion)>,
     heads: BTreeMap<[i32; 3], super::java_heads::Head>,
     bound_base: Option<[u8; 32]>,
+    bound_graphics: Option<Arc<Graphics>>,
     bound_skins: BTreeSet<String>,
     elapsed: std::time::Duration,
 }
@@ -256,6 +257,7 @@ pub(crate) fn update(
             p.pending = None;
             p.identity = None;
             p.bound_base = None;
+            p.bound_graphics = None;
         }
         p.banners.clear();
         p.pots.clear();
@@ -475,6 +477,7 @@ pub(crate) fn update(
                             p.scene.install_prepared_assets(&artwork);
                             p.identity = Some(identity);
                             p.bound_base = Some(atlas.identity());
+                            p.bound_graphics = Some(Arc::clone(&graphics));
                             p.bound_skins = keys;
                         }
                         Err(error) => {
@@ -527,12 +530,16 @@ pub(crate) fn update(
                 terrain_presentation.special_failure(error.to_string());
             }
         }
-        // Never publish geometry against an atlas from an obsolete resource generation.
-        if p.bound_base != Some(atlas.identity()) {
-            frame.0 = BlockEntityFrame::default();
-            return;
-        }
     }
+    if p.bound_base == Some(atlas.identity()) {
+        p.bound_graphics = Some(Arc::clone(&graphics));
+    }
+    // During append-only preparation, rebuild from current world facts through the last
+    // coherent catalog/atlas pair. New types wait; removals still retire immediately.
+    let Some(graphics) = p.bound_graphics.as_ref().cloned() else {
+        frame.0 = BlockEntityFrame::default();
+        return;
+    };
     let mut submissions = Vec::new();
     let mut alive = BTreeSet::new();
     let partial =
@@ -734,6 +741,12 @@ pub(crate) fn update(
         }
     }
     for (position, model) in &p.banners {
+        if !terrain
+            .block(*position)
+            .is_some_and(|id| graphics.banners.contains_key(&id.0))
+        {
+            continue;
+        }
         let Some([block, sky]) = terrain.light(*position) else {
             continue;
         };
@@ -744,6 +757,12 @@ pub(crate) fn update(
         });
     }
     for (position, model) in &p.pots {
+        if !terrain
+            .block(*position)
+            .is_some_and(|id| graphics.pots.contains_key(&id.0))
+        {
+            continue;
+        }
         let Some([block, sky]) = terrain.light(*position) else {
             continue;
         };
