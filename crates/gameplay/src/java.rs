@@ -412,16 +412,13 @@ fn powder_snow_walkable(state: &WorldState) -> Result<bool, String> {
         .bootstrap
         .as_ref()
         .ok_or("Powder-snow rollback awaits native tags")?;
-    let player = java_protocol::target::ENTITY_TYPES
-        .iter()
-        .position(|name| *name == "minecraft:player")
-        .ok_or("Pinned native player entity type is missing")? as i32;
+    let rules = assets::registry::java::physics::dynamic::powder_snow_rules();
     if bootstrap
         .configuration
         .tags
         .get("minecraft:entity_type")
-        .and_then(|tags| tags.get("minecraft:powder_snow_walkable_mobs"))
-        .is_some_and(|tag| tag.contains(&player))
+        .and_then(|tags| tags.get(rules.walkable_tag))
+        .is_some_and(|tag| tag.contains(&rules.player_type))
     {
         return Ok(true);
     }
@@ -432,7 +429,7 @@ fn powder_snow_walkable(state: &WorldState) -> Result<bool, String> {
         .ok_or("Powder-snow rollback awaits the native feet slot")?;
     Ok(boots
         .as_ref()
-        .is_some_and(|stack| stack.item == "minecraft:leather_boots"))
+        .is_some_and(|stack| stack.item == rules.boots_item))
 }
 
 fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
