@@ -42,6 +42,22 @@ Disk cleanup reclaimed9,596,280,892bytes of rebuildable metadata/alternate libra
 
 Scope: native Java26.3/protocol777, Linux hidden Xvfb/Mesa lavapipe controlled vanilla and inbound replay. No new authenticated-online, Hypixel, Mac, simulator or physical-iPhone acceptance. No new IPA. Full app/workspace/MCP suite remains incomplete. Full unfiltered client-ui test on ffef:1,760passed,0failed,4ignored,0filtered; named missing-fixture returns limit its coverage as listed below.
 
+## Owner Hypixel Mac observation — combined candidate284101dfd
+
+Owner reports lobby, NPC/game menus, backend transitions, Bed Wars shops, ordinary inventory, placement/mining, combat and return/reconnect working. Entered/played Bed Wars, regular iron1v1 Duels and Dropper. These are owner-reported Mac observations after the candidate build instructions, without a new diagnostic archive or independent frame/server trace yet; they do not establish all match mechanics, death/respawn, or physical-iPhone acceptance. Death/respawn remains unverified. This report is not explicit gameplay merge approval.
+
+| Reported defect | Owning lane | State / required evidence |
+| --- | --- | --- |
+| Empty-hand block-contact swing absent; air swing works | B/C | Open: compare mining admission and native startAttack/continueAttack animation behavior; do not bypass server restrictions. |
+| Shift-click makes an item disappear | C/UI | Open: reproduce quick-move with authoritative source/destination/cursor state, then close/reopen. Current observed-action path does not predict movement; actual loss versus stale display is unknown. |
+| Placed heads and End portal surface flicker | D/render publication | Open: distinguish alternating geometry/material publication from server state changes; preserve entity lifetimes and supported specialized dispatch. |
+| Bow and fishing rod do not work | C/D | Open: determine use press/hold/release, selected item/ammo and real server response from diagnostics; no cause yet established. |
+| Duels launch pressure plate leaves player stuck | A | Open: capture impulse/corrections/collision and mode/flight state; no inferred anti-cheat cause. |
+| Dropper portal transition leaves player floating/stuck | A/C/session | Open: separate collision, server transfer and loading gates from portal-surface rendering. |
+| Map loading remains very slow | streaming/presentation | Open: measure stages on owner's Mac; Linux lavapipe timings do not establish the Mac or iPhone cause. |
+
+Next: obtain private diagnostic archive for this run, reproduce safe controlled-server counterparts (inventory first), and propose fixes on unmerged candidate branches. No public automated gameplay. Gameplay merges retain owner approval gate; D remains parked pending that approval.
+
 ## Open handoff residuals
 
 | ID | Type | Lane | State | Remaining behavior | Evidence / next gate |
