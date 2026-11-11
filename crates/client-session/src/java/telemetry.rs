@@ -1,4 +1,5 @@
 //! Opt-in, bounded observation only. A write/ACK is never evidence of server acceptance.
+pub mod inventory;
 use java_protocol::session::{Command, interaction::Action};
 use serde_json::{Value, json};
 use std::{
@@ -140,6 +141,7 @@ struct State {
     recent: VecDeque<Value>,
     recent_spikes: VecDeque<Value>,
     recent_hand_issues: VecDeque<Value>,
+    recent_inventory_refusals: VecDeque<Value>,
     input_bits: Option<u8>,
     on_ground: Option<bool>,
     sprinting: Option<bool>,
@@ -374,7 +376,7 @@ impl Recorder {
         }
         let counts=Counter::ALL.iter().map(|c|(c.key().to_owned(),json!({"count":s.counts.get(c.key()).copied().unwrap_or(0),"checklist":c.items()}))).collect::<serde_json::Map<_,_>>();
         let times=Stage::ALL.iter().map(|stage| { let t=s.timings.get(stage.key());(stage.key().to_owned(),json!({"samples":t.map_or(0,|t|t.samples),"total_us":t.map_or(0,|t|t.total_us),"max_us":t.map_or(0,|t|t.max_us),"spikes":t.map_or(0,|t|t.spikes),"checklist":stage.items()})) }).collect::<serde_json::Map<_,_>>();
-        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"recent_hand_issues":s.recent_hand_issues,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
+        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"recent_hand_issues":s.recent_hand_issues,"recent_inventory_refusals":s.recent_inventory_refusals,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
     }
 }
 /// CPU wall scope only; GPU submission/presentation time needs separate GPU evidence.

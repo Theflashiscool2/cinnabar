@@ -42,6 +42,26 @@ fn admit_using(
     };
     let teleport = matches!(event.event, Event::Teleport { .. });
     let inventory = matches!(event.event, Event::Inventory { .. });
+    let inventory_context = match &event.event {
+        Event::Inventory {
+            dimension_epoch,
+            incarnation,
+            packet,
+            ..
+        } => Some(
+            client_session::java::telemetry::inventory::Refusal::observe(
+                packet,
+                state.inventory.accepts(event.generation, *dimension_epoch),
+                *incarnation,
+                state
+                    .inventory
+                    .active_identity()
+                    .map_or(0, |id| id.incarnation),
+                state.inventory.opened.as_ref().map(|m| m.container),
+            ),
+        ),
+        _ => None,
+    };
     let ack = matches!(event.event, Event::BlockAck { .. });
     let receipt = match &event.event {
         Event::InventorySent {
@@ -131,6 +151,9 @@ fn admit_using(
     }
     if inventory && !admitted {
         t.count(Counter::ContainerAuthorityRefused, 1);
+        if let Some(context) = inventory_context {
+            t.inventory_refused(context, state.inventory.error.is_some());
+        }
     }
     if ack && admitted {
         t.count(Counter::BlockAcks, 1);
