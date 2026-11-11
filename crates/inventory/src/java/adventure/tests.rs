@@ -14,7 +14,7 @@ fn target<'a>(block: &'a BlockState, tags: &'a BTreeMap<String, Vec<i32>>) -> Ta
     Target {
         state: 1,
         block,
-        tags,
+        tags: Ok(tags),
         tag_revision: 0,
     }
 }
@@ -348,5 +348,73 @@ fn unwritten_pickup_retires_permission_cache_derived_from_the_provisional_item()
             .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap(),
         "restored slot must not inherit the provisional item's true cache"
+    );
+}
+
+#[test]
+fn tag_names_follow_native_identifier_aliases_and_cache_hits_do_not_need_fresh_tags() {
+    let facts = assets::registry::java::adventure::builtin().unwrap();
+    let id = facts.block("minecraft:stone").unwrap().0;
+    let stone = block("minecraft:stone", &[]);
+    let tags = [("minecraft:allow/../stone".into(), vec![id as i32])].into();
+    assert!(
+        evaluate(
+            &serde_json::json!([{"blocks":{"tag":":allow/../stone"}}]),
+            &target(&stone, &tags)
+        )
+        .unwrap()
+    );
+    let ambiguous = [
+        ("minecraft:allow".into(), vec![id as i32]),
+        ("allow".into(), vec![]),
+    ]
+    .into();
+    assert!(
+        evaluate(
+            &serde_json::json!([{"blocks":{"tag":"allow"}}]),
+            &target(&stone, &ambiguous)
+        )
+        .unwrap_err()
+        .contains("wire ordering")
+    );
+    let mut state = State::default();
+    state.begin(7, 1);
+    let stack = permission_stack(serde_json::json!([{"blocks":{"tag":"allow/../stone"}}]));
+    state
+        .admit(
+            7,
+            1,
+            Update::PlayerSlot {
+                slot: 0,
+                stack: Some(stack),
+            },
+        )
+        .unwrap();
+    assert!(
+        state
+            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .unwrap()
+    );
+    assert!(
+        state
+            .test_adventure(
+                BlockUseHand::Main,
+                Permission::Break,
+                Target {
+                    tags: Err("new tag bindings unavailable"),
+                    ..target(&stone, &tags)
+                }
+            )
+            .unwrap()
+    );
+    assert!(
+        evaluate(
+            &serde_json::json!([{"blocks":{"ids":[id]}}]),
+            &Target {
+                tags: Err("unused"),
+                ..target(&stone, &tags)
+            }
+        )
+        .unwrap()
     );
 }

@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import java.util.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.properties.*;
@@ -54,6 +55,14 @@ public final class ExportAdventure {
             digitStarts.add(c); c+=9;
         }
         root.add("integer_digit_starts", digitStarts);
+        root.addProperty("default_namespace", Identifier.DEFAULT_NAMESPACE);
+        var namespace = new StringBuilder(); var path = new StringBuilder();
+        for (int c=0; c<128; c++) {
+            if (Identifier.isValidNamespace(String.valueOf((char)c))) namespace.append((char)c);
+            if (Identifier.validPathChar((char)c)) path.append((char)c);
+        }
+        root.addProperty("namespace_characters", namespace.toString());
+        root.addProperty("path_characters", path.toString());
         Files.writeString(Path.of(args[0]), new GsonBuilder().disableHtmlEscaping().create().toJson(root)+"\n", StandardCharsets.UTF_8);
     }
 }
