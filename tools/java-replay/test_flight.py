@@ -1,6 +1,6 @@
 """Acceptance-runner parsing/timing checks; no client/server or movement simulation."""
 import unittest
-from run_flight import parse_abilities, parse_position, toggle_timing
+from run_flight import parse_abilities, parse_position, toggle_timing, StableTerminal, full_terminal, scalar_receipt
 
 
 class FlightEvidenceTests(unittest.TestCase):
@@ -63,6 +63,39 @@ class FlightCaptureTests(unittest.TestCase):
             self.assertFalse(recorder.finish(False)['complete'])
             with self.assertRaisesRegex(ValueError, 'incomplete'):
                 load(path)
+
+
+class TerminalBaselineTests(unittest.TestCase):
+    def snapshot(self, tick=0):
+        return {'native_java': {'phase': 'Play', 'columns': 49,
+                'inventory': {'storage': [], 'opened': None, 'selected': 0},
+                'entities': {'count': 0}, 'vitals': {'health': 20., 'food': 20}},
+                'native_java_hud': {'alive': True, 'health': [20, 20, 1],
+                                    'food': [20, 20, 1], 'inventory_ui_error': None},
+                'native_java_render': {'loading_stage': 'ready'}, 'sidebar': None,
+                'native_java_movement': {'ticks': tick, 'on_ground': True, 'blocked': None}}
+
+    def test_ready_spawn_column_and_rounded_health_do_not_close_terminal(self):
+        snapshot = self.snapshot()
+        self.assertTrue(full_terminal(snapshot, 49))
+        snapshot['native_java']['columns'] = 1
+        self.assertFalse(full_terminal(snapshot, 49))
+        snapshot['native_java']['columns'] = 49
+        snapshot['native_java']['vitals']['health'] = 19.5
+        self.assertFalse(full_terminal(snapshot, 49))
+        self.assertEqual(scalar_receipt('Fixture has the following entity data: 20.0f'), 20.)
+
+    def test_projection_must_remain_full_and_stable_for_twenty_ticks(self):
+        stable = StableTerminal(49)
+        self.assertFalse(stable.observe(self.snapshot(0), 20.))
+        self.assertFalse(stable.observe(self.snapshot(19), 20.))
+        changed = self.snapshot(20)
+        changed['native_java']['entities']['count'] = 1
+        self.assertFalse(stable.observe(changed, 20.))
+        changed['native_java_movement']['ticks'] = 40
+        self.assertTrue(stable.observe(changed, 20.))
+        self.assertFalse(stable.observe(changed, 19.))
+        self.assertFalse(stable.observe(changed, 20.))
 
 
 if __name__ == '__main__':

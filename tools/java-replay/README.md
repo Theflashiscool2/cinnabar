@@ -177,3 +177,18 @@ completion trailer. Failed/interrupted captures remain incomplete and the normal
 rejects them. `flight-evidence.json.capture.complete` records that distinction. A valid tape
 also requires later real-input replay and comparison; capture completion alone is not replay
 acceptance. Driver source bytes and source hashes are saved before the first connection.
+
+Flight terminal baselines wait for the full `(2 * fixture view-distance + 1)^2` loaded
+columns; renderer `ready` alone can mean only the spawn column. Initial setup and both
+terminal segments also normalize health/food with logged native saturation/instant-health
+fixture effects. This prepares a stable fixture, and is not client-healing acceptance.
+Terminal capture requires full raw health (not rounded HUD health), a matching native
+`data get entity ... Health` receipt, full food, grounded movement and an unchanged complete
+replay-comparator projection for 20 client ticks. Screenshots precede baseline sampling;
+post-screenshot and immediately-before-close guards reject changed functional facts.
+
+These observations do not make state sampling and socket retirement atomic. A later functional
+delta in the tape still fails the unchanged replay comparator; never edit a failed tape or
+relax comparisons to make this runner pass. Keep the failed capture/replay evidence alongside
+any rerun. There is no claimed acceptance of the full loading/healing timeline from a terminal
+baseline, and a manual double-tap with ambiguous timing remains inconclusive.

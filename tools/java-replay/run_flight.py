@@ -11,8 +11,9 @@ import json
 import re
 import time
 from pathlib import Path
-from check import private_json, rpc
+from check import private_json, rpc, pointer
 from harness import rcon
+from compare import PATHS
 from flight_capture import FlightCapture
 from run_fixture import until
 from wire import FIXTURE_NAME, loopback
@@ -43,6 +44,44 @@ def toggle_timing(first, second):
             'verdict': 'within-window' if 2 <= minimum <= maximum <= 6 else 'inconclusive'}
 
 
+def terminal_projection(snapshot):
+    return {path: pointer(snapshot, path) for path in PATHS}
+
+
+def full_terminal(snapshot, columns):
+    native = snapshot.get('native_java') or {}
+    hud = snapshot.get('native_java_hud') or {}
+    movement = snapshot.get('native_java_movement') or {}
+    vitals = native.get('vitals') or {}
+    health, food = hud.get('health'), hud.get('food')
+    return bool((snapshot.get('native_java_render') or {}).get('loading_stage') == 'ready'
+                and native.get('columns') == columns and hud.get('alive')
+                and health and food and health[0] == health[1]
+                and vitals.get('health') == health[1] and food[0] == food[1]
+                and vitals.get('food') == food[1] and movement.get('on_ground')
+                and not movement.get('blocked'))
+
+
+class StableTerminal:
+    """Require full native facts and unchanged comparator projection for 20 client ticks."""
+    def __init__(self, columns):
+        self.columns, self.since, self.previous = columns, None, None
+
+    def observe(self, snapshot, server_health):
+        if not full_terminal(snapshot, self.columns) or server_health != snapshot['native_java']['vitals']['health']:
+            self.since, self.previous = None, None
+            return False
+        tick = snapshot['native_java_movement']['ticks']
+        projection = terminal_projection(snapshot)
+        if projection != self.previous or self.since is None or tick < self.since:
+            self.since, self.previous = tick, projection
+        return tick - self.since >= 20
+
+
+def scalar_receipt(text):
+    return float(text.rsplit(':', 1)[-1].strip().removesuffix('f'))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--endpoint', required=True, type=Path)
@@ -58,6 +97,10 @@ def main():
                       if '=' in line and not line.startswith('#'))
     if properties.get('online-mode') != 'false' or properties.get('server-ip') != '127.0.0.1':
         raise ValueError('requires harness offline loopback server properties')
+    view_distance = int(properties['view-distance'])
+    if not 1 <= view_distance <= 32:
+        raise ValueError('fixture view-distance outside supported vanilla range')
+    columns = (2 * view_distance + 1) ** 2
     output = args.out.resolve()
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
     command = lambda value: rpc(args.endpoint, value)
@@ -118,6 +161,43 @@ def main():
     def picture(label):
         command({'cmd': 'screenshot', 'path': str(output / (label + '.png'))})
 
+    def settle(label):
+        command({'cmd': 'input', 'release_all': True})
+        # Fixture normalization via native effects; never claimed as client healing behavior.
+        for effect in ['saturation', 'instant_health']:
+            text = f'effect give {FIXTURE_NAME} minecraft:{effect} 1 10 true'
+            events.append({'fixture_normalization': text, 'response': console(text), 'label': label})
+        stable = StableTerminal(columns)
+
+        def read():
+            snapshot = state()
+            raw = console(f'data get entity {FIXTURE_NAME} Health')
+            return snapshot, raw
+
+        snapshot, raw = until(read, lambda row: stable.observe(row[0], scalar_receipt(row[1])),
+                              'full fixture grid and stable authoritative full health: ' + label)
+        events.append({'terminal_stable': label, 'expected_columns': columns,
+                       'stable_client_ticks': 20, 'server_health_raw': raw,
+                       'tick': snapshot['native_java_movement']['ticks']})
+        return snapshot
+
+    def terminal_sample(label, screenshot):
+        settled = settle(label)
+        picture(screenshot)
+        row = sample(label)
+        expected = terminal_projection(settled)
+        if not full_terminal(row['client'], columns) or terminal_projection(row['client']) != expected:
+            raise ValueError('functional state changed during terminal screenshot: ' + label)
+        # RCON sampling may consume time; verify once more immediately before disconnect.
+        native_health = console(f'data get entity {FIXTURE_NAME} Health')
+        final = state()
+        if (not full_terminal(final, columns) or terminal_projection(final) != expected
+                or scalar_receipt(native_health) != final['native_java']['vitals']['health']):
+            raise ValueError('functional state changed before connection close: ' + label)
+        events.append({'terminal_close_guard': label, 'tick': final['native_java_movement']['ticks'],
+                       'projection': expected, 'server_health_raw': native_health})
+        return row
+
     try:
         if args.capture:
             recorder = FlightCapture(output / 'session.jsonl', args.listen, address)
@@ -132,7 +212,7 @@ def main():
                      f'tp {FIXTURE_NAME} 114.5 69 114.5 0 0',
                      f'gamemode creative {FIXTURE_NAME}']:
             events.append({'console': text, 'response': console(text)})
-        advance(4)
+        settle('initial-fixture-grid')
         initial = sample('native-mayfly-grant')
         check('creative native grant is mayfly-only', initial['server_abilities']['mayfly'] and not initial['server_abilities']['flying'])
         first = key('key.jump', True)
@@ -189,17 +269,14 @@ def main():
         until(state, lambda s: s['native_java_movement']['on_ground'], 'legal creative landing', timeout=20)
         key('key.sneak', False)
         server_flight(False)
-        landed = sample('native-auto-land')
+        landed = terminal_sample('native-auto-land', 'landing')
         check('landing retains native mayfly', landed['server_abilities']['mayfly'])
-        picture('landing')
         command({'cmd': 'disconnect'})
         until(state, lambda s: s.get('native_java') is None, 'disconnect retirement')
         command({'cmd': 'connect_java_fixture', 'address': address})
         until(state, lambda s: (s.get('native_java_render') or {}).get('loading_stage') == 'ready', 'reconnected renderer')
-        advance(3)
-        reconnected = sample('reconnected-native-authority')
+        reconnected = terminal_sample('reconnected-native-authority', 'reconnect')
         check('reconnect receives native creative permission', reconnected['server_abilities']['mayfly'])
-        picture('reconnect')
         complete = True
     finally:
         cleanup_errors = []
@@ -217,6 +294,7 @@ def main():
                 capture_result = {'complete': False, 'error': str(error)}
         private_json(output / 'flight-evidence.json', {'checks': checks, 'events': events,
                      'scope': 'authored private fixture; inspect screenshots; no public-server acceptance',
+                     'terminal_limit': 'Full grid/full native health +20stable client ticks and post-screenshot/pre-close comparator projection guards; not an atomic snapshot of socket retirement. Any later functional tape delta must still fail unchanged replay comparison. Native healing/saturation are fixture normalization only.',
                      'capture': capture_result, 'cleanup_errors': cleanup_errors,
                      'complete': complete and not cleanup_errors and (capture_result is None or capture_result['complete'])})
     if cleanup_errors or (capture_result is not None and not capture_result['complete']):
