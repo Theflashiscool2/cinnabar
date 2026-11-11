@@ -349,12 +349,13 @@ pub(crate) fn update(
                 held
             };
             let posture = is_player.then(|| {
-                sampled.player_posture_with_swing(
+                sampled.player_posture_with_use(
                     crouching,
                     right,
                     left,
                     e.visual.swing.sample(fraction),
                     e.visual.left_handed,
+                    client_world::java::equipment::player_use_pose(&e.visual, gear),
                 )
             });
             let angles = if let Some(posture) = posture {

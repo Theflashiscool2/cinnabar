@@ -123,6 +123,13 @@ impl Entities {
             .collect::<std::collections::BTreeSet<_>>();
         for entity in self.entries.values_mut() {
             entity.visual_ticks = entity.visual_ticks.wrapping_add(1);
+            if let Some(using) = &mut entity.visual.remote_use {
+                if using.observed_item.as_ref() != Some(&using.item) {
+                    entity.visual.remote_use = None;
+                } else if let Some(remaining) = &mut using.remaining {
+                    *remaining = remaining.wrapping_sub(1);
+                }
+            }
             entity.visual.swing.tick();
             entity.visual.hurt_ticks = entity.visual.hurt_ticks.saturating_sub(1);
             if let Some(villager) = &mut entity.visual.villager {

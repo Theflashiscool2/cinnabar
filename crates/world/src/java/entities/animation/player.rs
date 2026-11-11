@@ -94,10 +94,27 @@ impl Sample {
         swing: Option<super::swing::Sample>,
         left_handed: bool,
     ) -> super::PlayerPosture {
-        let mut p = self.player_posture_with_items(crouching, right_item, left_item);
-        let Some(swing) = swing else {
-            return p;
+        self.player_posture_with_use(crouching, right_item, left_item, swing, left_handed, None)
+    }
+
+    /// HumanoidModel order: arm use, attack, crouch, then arm bobbing. A bow controls both arms.
+    pub fn player_posture_with_use(
+        self,
+        crouching: bool,
+        right_item: bool,
+        left_item: bool,
+        swing: Option<super::swing::Sample>,
+        left_handed: bool,
+        using: Option<super::PlayerUse>,
+    ) -> super::PlayerPosture {
+        let mut p = if using.is_some() {
+            self.player_posture(crouching)
+        } else {
+            self.player_posture_with_items(crouching, right_item, left_item)
         };
+        if swing.is_none() && using.is_none() {
+            return p;
+        }
         let bob_x = trig(self.age_in_ticks * 0.067)[0] as f32 * 0.05;
         let bob_z = trig(self.age_in_ticks * 0.09)[1] as f32 * 0.05 + 0.05;
         let crouch = if crouching { 0.4 } else { 0. };
@@ -105,7 +122,36 @@ impl Sample {
         p.rotations[3][0] -= -bob_x + crouch;
         p.rotations[2][2] -= bob_z;
         p.rotations[3][2] += bob_z;
-        p.attack(swing, left_handed);
+        if let Some(using) = using {
+            let raw = [p.rotations[2][0], p.rotations[3][0]];
+            if right_item {
+                p.rotations[2][0] = raw[0] * 0.5 - std::f32::consts::PI / 10.;
+            }
+            if left_item {
+                p.rotations[3][0] = raw[1] * 0.5 - std::f32::consts::PI / 10.;
+            }
+            match using {
+                super::PlayerUse::Bow { left } => {
+                    p.rotations[2][1] = -0.1 + p.rotations[0][1] - if left { 0.4 } else { 0. };
+                    p.rotations[3][1] = 0.1 + p.rotations[0][1] + if left { 0. } else { 0.4 };
+                    p.rotations[2][0] = -std::f32::consts::FRAC_PI_2 + p.rotations[0][0];
+                    p.rotations[3][0] = p.rotations[2][0];
+                }
+                super::PlayerUse::Block { left } => {
+                    let arm = if left { 3 } else { 2 };
+                    p.rotations[arm][0] = raw[usize::from(left)] * 0.5 - 0.9424779
+                        + p.rotations[0][0].clamp(-1.3962634, 0.43633232);
+                    p.rotations[arm][1] = if left {
+                        30_f32.to_radians()
+                    } else {
+                        -30_f32.to_radians()
+                    } + p.rotations[0][1].clamp(-0.5235988, 0.5235988);
+                }
+            }
+        }
+        if let Some(swing) = swing {
+            p.attack(swing, left_handed);
+        }
         p.rotations[2][0] += bob_x + crouch;
         p.rotations[3][0] += -bob_x + crouch;
         p.rotations[2][2] += bob_z;
@@ -305,6 +351,69 @@ mod tests {
                             "{name}/{field}: {row}"
                         );
                     }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod use_tests {
+    use super::*;
+    #[test]
+    fn native_bow_and_block_vectors_preserve_swing_crouch_bob_and_both_arm_sides() {
+        // ProbePlayerArmUse.java calls the verified 26.3 PlayerModel.setupAnim directly.
+        let rows: serde_json::Value =
+            serde_json::from_str(include_str!("arm_use_vectors.json")).unwrap();
+        assert_eq!(rows.as_array().unwrap().len(), 64);
+        for row in rows.as_array().unwrap() {
+            let sample = super::super::Sample {
+                pose: super::super::Pose {
+                    pitch: 75.,
+                    ..Default::default()
+                },
+                body_yaw: 0.,
+                head_yaw: -65.,
+                walk_position: 2.2,
+                walk_speed: 0.4,
+                age_in_ticks: 20.5,
+            };
+            let left = row["left"].as_bool().unwrap();
+            let using = match row["use"].as_str().unwrap() {
+                "bow" => super::super::PlayerUse::Bow { left },
+                "block" => super::super::PlayerUse::Block { left },
+                _ => panic!("unknown native probe arm pose"),
+            };
+            let swing = row["swing"]
+                .as_bool()
+                .unwrap()
+                .then_some(super::super::swing::Sample {
+                    offhand: true,
+                    kind: super::super::swing::Kind::Whack,
+                    progress: 0.35,
+                });
+            let pose = sample.player_posture_with_use(
+                row["crouching"].as_bool().unwrap(),
+                true,
+                true,
+                swing,
+                row["main_left"].as_bool().unwrap(),
+                Some(using),
+            );
+            for part in 0..6 {
+                for axis in 0..3 {
+                    let rotation = row["parts"][part][axis].as_f64().unwrap() as f32;
+                    let offset = row["parts"][part][axis + 3].as_f64().unwrap() as f32;
+                    assert!(
+                        (pose.rotations[part][axis] - rotation).abs() < 0.00002,
+                        "rotation part{part} axis{axis}: {} != {rotation}; {row}",
+                        pose.rotations[part][axis]
+                    );
+                    assert!(
+                        (pose.offsets[part][axis] - offset).abs() < 0.00002,
+                        "offset part{part} axis{axis}: {} != {offset}; {row}",
+                        pose.offsets[part][axis]
+                    );
                 }
             }
         }
