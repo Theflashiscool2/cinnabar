@@ -108,7 +108,9 @@ def main():
         if before.get('native_java_telemetry') is None:
             raise ValueError('enable CINNABAR_JAVA_TELEMETRY=1 before starting this client')
         setup_receipts = []
-        for text in [f'tp {FIXTURE_NAME} 104.5 69 104.5 0 0', f'clear {FIXTURE_NAME}',
+        # Fixture-area drops must not change the seeded purchase preconditions through pickup.
+        for text in ['kill @e[type=minecraft:item,x=96,y=64,z=96,dx=31,dy=11,dz=31]',
+                     f'tp {FIXTURE_NAME} 104.5 69 104.5 0 0', f'clear {FIXTURE_NAME}',
                      f'give {FIXTURE_NAME} minecraft:iron_ingot 8',
                      f'give {FIXTURE_NAME} minecraft:shears', f'give {FIXTURE_NAME} minecraft:white_wool 16',
                      'scoreboard players set Fixture fixture 7', 'acceptance_shop']:
