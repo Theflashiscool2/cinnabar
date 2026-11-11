@@ -91,7 +91,7 @@ fn mutation(
         Kind::UseOn => {
             if !matches!(
                 state.status.mode,
-                Some(GameMode::Creative | GameMode::Survival)
+                Some(GameMode::Creative | GameMode::Survival | GameMode::Adventure)
             ) || state.player_dynamics.abilities.is_none()
             {
                 return None;
@@ -105,8 +105,18 @@ fn mutation(
         Kind::Break | Kind::FinishBreak if completed_break => {
             if !matches!(
                 state.status.mode,
-                Some(GameMode::Creative | GameMode::Survival)
+                Some(GameMode::Creative | GameMode::Survival | GameMode::Adventure)
             ) {
+                return None;
+            }
+            if !gameplay::java::interaction::permission::check(
+                state,
+                hit,
+                gameplay::java::item_use::plan::Hand::Main,
+                assets::registry::java::adventure::Permission::Break,
+            )
+            .ok()?
+            {
                 return None;
             }
             if let Some(stack) = state.inventory.held()?.as_ref()
