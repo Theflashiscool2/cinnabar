@@ -44,7 +44,7 @@ fn tagged(value: &Value) -> bool {
 impl State {
     /// Tests the current hand's decoded component, preserving native same-state cache hits.
     /// Authoritative stack replacements invalidate the component cache; count-only projections do not.
-    pub fn test_adventure(
+    pub fn adventure_permission(
         &self,
         hand: BlockUseHand,
         permission: Permission,

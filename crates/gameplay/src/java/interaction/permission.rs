@@ -66,7 +66,7 @@ pub fn check(
         Hand::Main => inventory::java::BlockUseHand::Main,
         Hand::Off => inventory::java::BlockUseHand::Off,
     };
-    state.inventory.test_adventure(
+    state.inventory.adventure_permission(
         hand,
         permission,
         inventory::java::adventure::Target {
