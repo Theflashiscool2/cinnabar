@@ -35,6 +35,7 @@ pub struct Terrain {
     block_types: Option<Arc<[u32]>>,
     block_generations: BTreeMap<[i32; 3], u64>,
     block_entity_revisions: BTreeMap<[i32; 3], u64>,
+    pub shulkers: BTreeMap<[i32; 3], super::shulker::State>,
     pub pending_pistons: BTreeMap<[i32; 3], super::piston::Pending>,
     light_changes: BTreeSet<[i32; 3]>,
     pub pistons: BTreeMap<[i32; 3], super::piston::Moving>,
@@ -158,6 +159,8 @@ impl Terrain {
             return false;
         }
         column.revision = self.next_revision();
+        self.shulkers
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.pistons
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.pending_pistons
@@ -176,6 +179,8 @@ impl Terrain {
         true
     }
     pub fn unload(&mut self, key: [i32; 2]) {
+        self.shulkers
+            .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.pistons
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.pending_pistons
@@ -225,8 +230,12 @@ impl Terrain {
         let same_type = self.block_types.as_ref().is_some_and(|types| {
             let before = old.and_then(|id| types.get(id.0 as usize));
             before.is_some() && before == types.get(state.0 as usize)
+        }) || self.shulkers.get(&[x, y, z]).is_some_and(|box_state| {
+            old.is_some_and(|id| box_state.states.contains(&id.0))
+                && box_state.states.contains(&state.0)
         });
         if !same_type {
+            self.shulkers.remove(&[x, y, z]);
             self.pistons.remove(&[x, y, z]);
         }
         let revision = self.next_revision();
