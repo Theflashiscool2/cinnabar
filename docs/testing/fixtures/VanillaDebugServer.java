@@ -10,7 +10,10 @@ public final class VanillaDebugServer {
                 || Boolean.getBoolean("cinnabar.acceptance.shop")) {
             var server = findServer();
             server.execute(() -> {
-                if (Boolean.getBoolean("cinnabar.acceptance.shop")) VanillaShopFixture.register(server);
+                if (Boolean.getBoolean("cinnabar.acceptance.shop")) {
+                    VanillaShopFixture.register(server);
+                    VanillaEntityFixture.register(server);
+                }
                 register(server, "acceptance_unlist", false);
                 register(server, "acceptance_relist", true);
                 var traceRoot = System.getProperty("cinnabar.acceptance.trace");
