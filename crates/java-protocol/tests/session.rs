@@ -34,6 +34,8 @@ async fn through_configuration_intent(
     intent: u8,
 ) -> Stream<tokio::net::TcpStream> {
     let (socket, _) = listener.accept().await.unwrap();
+    // Pinned native client/server channel initializers both enable TCP_NODELAY.
+    socket.set_nodelay(true).unwrap();
     let mut wire = Stream::new(socket);
     let handshake = wire.read().await.unwrap();
     assert_eq!(&handshake[..3], &[0, 0x89, 0x06]);

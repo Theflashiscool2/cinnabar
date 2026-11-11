@@ -196,3 +196,13 @@ client grounded Survival pose, with native flying/mayfly flags false, and record
 receipts. This exercises the grounded old-mode-to-Spectator grant race even if the earlier
 manual toggle happened to fly. It does not teleport into air to evade that transition;
 manual timing bounds and their inconclusive verdict remain independent.
+
+Capture configures `TCP_NODELAY` on both TCP legs; replay configures it on the accepted
+client TCP socket. The independent Rust fixture's common accepted-socket helper uses the
+same policy. Pinned native `Connection$1` and `ServerConnectionListener$1` channel initializers
+enable this option, as does the production client. Unix socket test streams are unchanged.
+Earlier fixture/proxy defaults could insert Nagle delays between small capability/mode
+packets. Tape timestamps are proxy frame-recording times before forwarding, not proof of
+client delivery, readability or admission. Even with NODELAY, a peer write/flush does not
+establish an atomic received batch. Preserve earlier failed evidence and compare original
+and repaired binaries using the corrected transport; never reinterpret it as arrival proof.
