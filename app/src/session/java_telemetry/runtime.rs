@@ -3,7 +3,7 @@
 use crate::session::{
     SessionController, java_entities, java_interaction, java_movement, java_render, java_special,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 use std::time::Duration;
 use web_time::Instant;
 

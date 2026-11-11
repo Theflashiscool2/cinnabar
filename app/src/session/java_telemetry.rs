@@ -41,6 +41,13 @@ fn admit_using(
     let Some(t) = java.telemetry() else {
         return apply(state, event);
     };
+    if let Event::DeferredPlay { name, bytes } = &event.event
+        && name == "ClientboundExplodePacket"
+    {
+        bevy::log::debug!(target:"java_session", packet_bytes=bytes.len(),
+            scope=?state.terrain.dimension().map(|d|(d.session,d.epoch)),
+            "Java deferred explosion received; no explosion impulse is implemented");
+    }
     let teleport = matches!(event.event, Event::Teleport { .. });
     let inventory = matches!(event.event, Event::Inventory { .. });
     let inventory_context = match &event.event {

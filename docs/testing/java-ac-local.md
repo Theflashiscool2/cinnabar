@@ -137,3 +137,39 @@ open "$TEST_DIR"
 ```
 
 Also retain the disposable server console output (or its `logs/latest.log`) showing the requested data/block checks. Return both test folders and a short recording of any jitter, ghost block, incorrect stack, or missed gesture. Expected denial reverts and deliberate server teleports are not automatic failures. Do not approve based solely on a swing or local block appearance: compare the server state. Stop the disposable server with its `stop` command afterward. No candidate is merged until your approval.
+
+
+## Cached Mac diagnostic run for the integrated repair candidate
+
+On the Mac with existing prepared assets and companion binaries, after checking out the
+reviewed candidate and mounting its existing cache volume:
+
+```sh
+bash packaging/macos/test-java.sh
+```
+
+The helper keeps the play profile and existing Cargo cache configuration, builds only
+`cinnabar` (no asset downloads or regeneration), then runs the existing dev bundle. It
+refuses missing external mounts, missing inputs/companions, and build volumes below6GiB
+free. It enables the passive telemetry and bounded once-per-second `Java runtime diagnostic`
+rows. These correlate loading workers/residency, skin preparation, special geometry cache
+readiness, movement/service ticks, velocity, collision probes, held item/revision, use-stop,
+server impulse and inventory refusal observations. Positions, names, chat and item-component
+payloads are not included in these new progress rows. Existing logs remain private diagnostic
+files; the collector never copies account/credential stores.
+
+For the already authorized normal Hypixel owner run, note the approximate time of each:
+Shift-click the affected item and inspect its destination; hold/release a bow with arrows;
+cast/retrieve a rod; use the problem launch pad; enter the problem Dropper portal; watch
+heads/portal surfaces as new chunks load. Record which worked, and whether stuck movement
+recovers. No automated public-server gameplay is supplied. These observations do not prove
+a successful server action until the server's response agrees.
+
+Disconnect and quit normally. The helper collects current allowlisted logs and produces
+`~/Desktop/cinnabar-hypixel.XXXXXX.zip`; its exact folder is also recorded in
+`~/Desktop/cinnabar-last-test.txt`. Send that ZIP and the short timed observations. The
+join report is normally flushed on disconnect. If the process crashes, the console/client
+logs can still supply progress even when the join report could not finish. Missing data
+is unobserved, never a passing test. Do not run `cargo clean`, move the checkout, change
+profiles, or change Rust compilation flags between incremental diagnostic runs. A changed
+dependency may still rebuild; this helper cannot promise a fixed compilation duration.
