@@ -22,6 +22,7 @@ pub(crate) struct Interaction(
     pub Actions,
     Option<web_time::Instant>,
     Option<((u64, u64), u64)>,
+    Option<((u64, u64), u64)>,
 );
 impl Interaction {
     pub(super) fn elapsed(&mut self) -> std::time::Duration {
@@ -54,6 +55,9 @@ impl Interaction {
         self.0.service_frame(state, elapsed);
         self.0.contact = Some((movement.0.body.on_ground, movement.0.body.eyes_in_water()));
         if !send_pending(java, state, &mut self.0, placement) {
+            return;
+        }
+        if !self.finish_contact(java, state) {
             return;
         }
         if self.0.mining_progress().is_none() {
@@ -170,6 +174,45 @@ impl Interaction {
         }
     }
 
+    /// startAttack sends Punch after startDestroyBlock, even when destruction is denied.
+    /// Retain that ordered tail through backpressure before accepting another item action.
+    fn finish_contact(
+        &mut self,
+        java: &client_session::java::Session,
+        state: &mut client_world::java::WorldState,
+    ) -> bool {
+        let Some((scope, correction)) = self.4 else {
+            return true;
+        };
+        if state.terrain.dimension().map(|d| (d.session, d.epoch)) != Some(scope)
+            || state.motion_sequence() != correction
+            || state.death.is_some()
+        {
+            self.4 = None;
+            return true;
+        }
+        match java.command(Command::Punch {
+            dimension_epoch: scope.1,
+            correction_sequence: correction,
+        }) {
+            Ok(()) => {
+                self.4 = None;
+                self.3 = Some((scope, state.inventory.cooldowns.client_tick()));
+                swing::predict(java, state);
+                true
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
+                self.0.blocked =
+                    Some("Java contact gesture is waiting for transport capacity".into());
+                false
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                self.0.blocked = Some("Java contact gesture transport closed".into());
+                false
+            }
+        }
+    }
+
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         let hit = |h: selection::Hit| serde_json::json!({"block":h.block,"state":h.state,"position":h.position,"face":format!("{:?}",h.face),"inside":h.inside});
@@ -269,6 +312,9 @@ pub(crate) fn update(
         if !send_pending(java, state, &mut interaction.0, placement) {
             return;
         }
+        if !interaction.finish_contact(java, state) {
+            return;
+        }
         match interaction.1.front(state) {
             Some(Intent::Attack(pressed)) => {
                 if interaction.0.using_item() {
@@ -353,8 +399,27 @@ pub(crate) fn update(
                         }
                     }
                 }
+                let contact = pressed
+                    && matches!(interaction.1.target(), Some(Target::Block { .. }))
+                    && !released
+                    && state.inventory.opened.is_none()
+                    && presentation.world_ready() == Some(true)
+                    && !state.awaiting_correction_ack()
+                    && state.status.mode != Some(world::java::hud::GameMode::Spectator)
+                    && state.vitals.as_ref().is_some_and(|v| v.health > 0.);
+                if contact && let Err(error) = entity::ordinary_attack(state.inventory.held()) {
+                    interaction.0.blocked = Some(error.into());
+                    interaction.1.consume_attack(pressed);
+                    continue;
+                }
                 let (phase, captured_hit) = interaction.1.consume_attack(pressed);
                 interaction.0.advance(state, phase, captured_hit);
+                if contact && let Some(dimension) = state.terrain.dimension() {
+                    interaction.4 = Some((
+                        (dimension.session, dimension.epoch),
+                        state.motion_sequence(),
+                    ));
+                }
             }
             Some(Intent::Use(pressed)) => {
                 if !interaction.0.cancel_mining()
@@ -655,9 +720,6 @@ fn send_pending(
                 bevy::log::debug!(target: "java_session", sequence=request.sequence, hand=?request.hand,
                     ?collision, "Native placement attempt gesture");
                 swing::predict_interact(java, state, request.hand);
-            }
-            if request.kind == Kind::Break {
-                swing::predict(java, state);
             }
             interaction.queued();
             // One captured click has at most four ordered main/offhand target/air stages.
