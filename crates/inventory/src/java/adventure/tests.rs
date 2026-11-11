@@ -109,7 +109,7 @@ fn nbt_requires_real_block_entity_serialization_never_latest_packet_nbt() {
 }
 fn permission_stack(value: Value) -> Stack {
     Stack {
-        item: "minecraft:iron_pickaxe".into(),
+        item: "minecraft:white_wool".into(),
         count: 2,
         added: [
             (Permission::Break.component().into(), value.clone()),
@@ -290,5 +290,63 @@ fn copied_tag_predicate_after_rebinding_is_explicit_until_server_replaces_the_st
                 }
             )
             .unwrap()
+    );
+}
+
+#[test]
+fn unwritten_pickup_retires_permission_cache_derived_from_the_provisional_item() {
+    let stone = block("minecraft:stone", &[]);
+    let tags = BTreeMap::new();
+    let allow = permission_stack(serde_json::json!([{}]));
+    let deny = permission_stack(serde_json::json!([]));
+    let mut state = State::default();
+    state.begin(7, 1);
+    let mut slots = vec![None; PLAYER_MENU_SIZE];
+    slots[HOTBAR_START] = Some(allow);
+    slots[HOTBAR_START + 1] = Some(deny);
+    state
+        .admit(
+            7,
+            1,
+            Update::Content {
+                container: 0,
+                state: 1,
+                slots,
+                carried: None,
+            },
+        )
+        .unwrap();
+    let identity = state.active_identity().unwrap();
+    let take = state
+        .plan_pickup(identity, HOTBAR_START, pickup::Button::Left, |_| Ok(64))
+        .unwrap();
+    assert!(state.pickup_queued(take, 1));
+    assert!(state.record_receipt(pickup::Receipt {
+        identity,
+        sequence: 1,
+        written: true,
+        closed: false
+    }));
+    let swap = state
+        .plan_pickup(identity, HOTBAR_START + 1, pickup::Button::Left, |_| Ok(64))
+        .unwrap();
+    assert!(state.pickup_queued(swap, 2));
+    state.admit(7, 1, Update::Selected(1)).unwrap();
+    assert!(
+        state
+            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .unwrap()
+    );
+    assert!(state.record_receipt(pickup::Receipt {
+        identity,
+        sequence: 2,
+        written: false,
+        closed: false
+    }));
+    assert!(
+        !state
+            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .unwrap(),
+        "restored slot must not inherit the provisional item's true cache"
     );
 }

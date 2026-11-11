@@ -85,6 +85,16 @@ impl State {
             .insert((slot, permission), (target.state, result));
         Ok(result)
     }
+    pub(super) fn retire_adventure_pickup_view(&mut self) {
+        let entries = &mut self
+            .adventure_cache
+            .get_mut()
+            .expect("Adventure cache poisoned")
+            .entries;
+        for slot in self.pickup_player_view.keys() {
+            entries.retain(|(index, _), _| index != slot);
+        }
+    }
     pub(super) fn replace_adventure_slot(&mut self, slot: usize) {
         self.adventure_cache
             .get_mut()
