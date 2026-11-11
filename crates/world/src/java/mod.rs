@@ -8,6 +8,7 @@ mod palette;
 pub mod piston;
 pub mod player;
 pub mod roster;
+pub mod shulker;
 mod store;
 pub use store::{ChangedRegion, PublicationKey, Terrain};
 #[cfg(test)]

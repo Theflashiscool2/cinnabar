@@ -15,7 +15,7 @@ pub struct PlayerContext {
     pub descending: bool,
 }
 
-const CONTACT: f64 = 1.0e-7;
+pub(super) const CONTACT: f64 = 1.0e-7;
 /// Explicit foreground-work budget; exceeding it is an incomplete query, never empty terrain.
 pub(super) const MAX_QUERY_CELLS: u64 = 32768;
 
@@ -382,16 +382,26 @@ fn block_shape<'a>(
                             .ok_or(QueryError::Dynamic { id, position });
                     }
                     Some(Kind::Shulker) => {
-                        // NBT loading does not restore lid progress. Opening/closing events
-                        // need authoritative tick progress, never the renderer's clock.
-                        if !terrain.block_event(position).is_some_and(|event| {
+                        let (block, facing) = dynamic::shulker_identity(id)
+                            .ok_or(QueryError::Dynamic { id, position })?;
+                        if let Some(state) = terrain.shulkers.get(&position) {
+                            if state.block_id != block
+                                || terrain.block_generation(position) != Some(state.generation)
+                            {
+                                return Err(QueryError::Dynamic { id, position });
+                            }
+                            let shape = super::shulker::outline(state.motion.sample(1.), facing)
+                                .ok_or(QueryError::Dynamic { id, position })?;
+                            return Ok(std::borrow::Cow::Owned(vec![shape]));
+                        }
+                        if terrain.block_event(position).is_some_and(|event| {
                             event.action == 1 && registry.block_id(id) == Some(event.block)
                         }) {
-                            return dynamic::missing_block_entity(registry, id)
-                                .map(std::borrow::Cow::Borrowed)
-                                .ok_or(QueryError::Dynamic { id, position });
+                            return Err(QueryError::Dynamic { id, position });
                         }
-                        return Err(QueryError::Dynamic { id, position });
+                        return dynamic::missing_block_entity(registry, id)
+                            .map(std::borrow::Cow::Borrowed)
+                            .ok_or(QueryError::Dynamic { id, position });
                     }
                     Some(Kind::Moving)
                         if !terrain.pistons.contains_key(&position)
