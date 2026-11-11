@@ -241,10 +241,13 @@ pub(crate) fn update(
         .as_ref()
         .is_none_or(|old| !Arc::ptr_eq(old, &graphics))
     {
-        p.columns.clear();
+        // Extensions may admit new special states in an otherwise unchanged column.
+        // Rescan them without discarding validated positions or world-owned head profiles.
+        for (revision, _) in p.columns.values_mut() {
+            *revision = 0;
+        }
         p.banners.clear();
         p.pots.clear();
-        p.heads.clear();
         p.graphics = Some(Arc::clone(&graphics));
     }
     let controller = controller.as_ref().expect("active session");
@@ -660,8 +663,11 @@ pub(crate) fn update(
             let (block_id, half, partner) = if let Some(chest) = chest {
                 let (half, partner) = half(terrain, &graphics, position, chest);
                 (chest.block_id, half, partner)
+            } else if let Some(shulker) = graphics.shulkers.get(&id) {
+                (shulker.block_id, ChestHalf::Single, None)
             } else {
-                (graphics.shulkers[&id].block_id, ChestHalf::Single, None)
+                // A resource replacement can retire an old catalog's state classification.
+                continue;
             };
             let open = |pos| {
                 terrain
