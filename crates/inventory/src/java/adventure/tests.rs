@@ -418,3 +418,55 @@ fn tag_names_follow_native_identifier_aliases_and_cache_hits_do_not_need_fresh_t
         .unwrap()
     );
 }
+
+#[test]
+fn unsupported_new_state_cannot_leave_an_older_permissive_cache_hit() {
+    let facts = assets::registry::java::adventure::builtin().unwrap();
+    let id = facts.block("minecraft:stone").unwrap().0;
+    let stone = block("minecraft:stone", &[]);
+    let chest = block("minecraft:chest", &[]);
+    let tags = [("fixture:allowed".into(), vec![id as i32])].into();
+    let empty = BTreeMap::new();
+    let stack = permission_stack(serde_json::json!([
+        {"blocks":{"tag":"fixture:allowed"}}, {"nbt":{"Compound":{}}}
+    ]));
+    let mut state = State::default();
+    state.begin(7, 1);
+    state
+        .admit(
+            7,
+            1,
+            Update::PlayerSlot {
+                slot: 0,
+                stack: Some(stack),
+            },
+        )
+        .unwrap();
+    assert!(
+        state
+            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .unwrap()
+    );
+    assert!(
+        state
+            .test_adventure(
+                BlockUseHand::Main,
+                Permission::Break,
+                Target {
+                    state: 2,
+                    ..target(&chest, &empty)
+                }
+            )
+            .is_err()
+    );
+    assert!(
+        !state
+            .test_adventure(
+                BlockUseHand::Main,
+                Permission::Break,
+                target(&stone, &empty)
+            )
+            .unwrap(),
+        "native lastCheckedBlock changed even when local evaluation could not finish"
+    );
+}
