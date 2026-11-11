@@ -6,6 +6,8 @@ use std::sync::OnceLock;
 pub enum Kind {
     BubbleColumn,
     Slime,
+    Honey,
+    Cobweb,
     ServerDamage,
     Other,
 }
@@ -19,6 +21,8 @@ struct Facts {
     bubble: Vec<String>,
     server_damage: Vec<String>,
     slime: Vec<String>,
+    honey: Vec<String>,
+    cobweb: Vec<String>,
     suppresses_bounce: String,
 }
 fn facts() -> &'static Facts {
@@ -47,6 +51,10 @@ pub fn kind(registry: &BlockRegistry, state: u32) -> Option<Kind> {
         Kind::BubbleColumn
     } else if f.slime.iter().any(|n| n == name) {
         Kind::Slime
+    } else if f.honey.iter().any(|n| n == name) {
+        Kind::Honey
+    } else if f.cobweb.iter().any(|n| n == name) {
+        Kind::Cobweb
     } else if f.server_damage.iter().any(|n| n == name) {
         Kind::ServerDamage
     } else {

@@ -346,7 +346,10 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                     assert_eq!((progress, level, total), (0.5, 12, 300));
                     hud.push("experience");
                 }
-                Event::Hud(session::hud::Packet::GameMode(mode)) => {
+                Event::Abilities {
+                    update: session::abilities::Update::Mode(mode),
+                    ..
+                } => {
                     assert_eq!(mode, session::hud::GameMode::Adventure);
                     hud.push("mode");
                 }
@@ -519,15 +522,21 @@ async fn login_configuration_play_keepalives_and_cancellation() {
                             .unwrap();
                     }
                 }
+                Event::Abilities {
+                    dimension_epoch,
+                    update: session::abilities::Update::Values(a),
+                    ..
+                } => {
+                    assert_eq!(dimension_epoch, 1);
+                    assert!(!a.flying && !a.creative);
+                    dynamics += 1;
+                }
                 Event::Dynamics {
                     dimension_epoch,
                     packet,
                 } => {
                     assert_eq!(dimension_epoch, 1);
                     match packet {
-                        session::dynamics::Packet::Abilities(a) => {
-                            assert!(!a.flying && !a.creative)
-                        }
                         session::dynamics::Packet::Velocity { entity, velocity } => {
                             assert_eq!(entity, 42);
                             assert_eq!(velocity, [1., 0., -1.]);
@@ -712,3 +721,6 @@ mod transfer;
 
 #[path = "session/cancellation.rs"]
 mod cancellation;
+
+#[path = "session/abilities.rs"]
+mod abilities;

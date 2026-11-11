@@ -1,4 +1,5 @@
 use super::*;
+mod flight;
 
 fn world(epoch: u64) -> WorldState {
     let mut state = WorldState::default();
@@ -239,4 +240,140 @@ fn native_camera_history_is_read_only_and_retires_on_world_change() {
         controller.view_sample(&state).is_none(),
         "old dimension cannot publish a camera"
     );
+}
+
+#[test]
+fn block_rollback_snaps_only_intersecting_body_and_preserves_kinematics() {
+    let Some(physics) = rollback_physics() else {
+        return;
+    };
+    let registry = physics.registry().unwrap();
+    let stone = registry
+        .state_id("minecraft:stone", &Default::default())
+        .unwrap();
+    let air = registry
+        .state_id("minecraft:air", &Default::default())
+        .unwrap();
+    let mut state = world(1);
+    state.player_dynamics.attributes.insert(
+        "minecraft:scale".into(),
+        Attribute {
+            base: 1.,
+            minimum: 0.0625,
+            maximum: 16.,
+            modifiers: vec![],
+        },
+    );
+    let initial = Motion {
+        position: [0.5, 0.25, 0.5],
+        velocity: [0.1, -0.2, 0.3],
+        yaw: 30.,
+        pitch: -10.,
+    };
+    state.player_motion = Some(initial);
+    let mut controller = Controller::default();
+    controller.begin_frame(&state, TICK);
+    controller.body.low_profile = true;
+    controller.body.fall_distance = 3.;
+    controller.body.water_height = 4.;
+    controller.last_position = Some([0., 0., 0.]);
+    controller.pending = Some(frame());
+    let sequence = state.motion_sequence();
+    let before_ack = state.awaiting_correction_ack();
+    assert!(
+        !controller
+            .reconcile_block(&mut state, &physics, [0; 3], air, [2., 3., 4.])
+            .unwrap()
+    );
+    assert_eq!(state.player_motion, Some(initial));
+    assert!(controller.pending().is_some());
+    assert!(
+        controller
+            .reconcile_block(&mut state, &physics, [0; 3], stone, [4.0e7, 64., -4.0e7])
+            .unwrap()
+    );
+    let result = state.player_motion.unwrap();
+    assert_eq!(result.position, [3.0e7, 64., -3.0e7]);
+    assert_eq!(result.velocity, initial.velocity);
+    assert_eq!([result.yaw, result.pitch], [initial.yaw, initial.pitch]);
+    assert_eq!(state.motion_sequence(), sequence);
+    assert_eq!(state.awaiting_correction_ack(), before_ack);
+    assert!(controller.body.low_profile);
+    assert_eq!(controller.body.fall_distance, 3.);
+    assert_eq!(controller.body.water_height, 4.);
+    assert!(controller.pending().is_none());
+    assert_eq!(controller.last_position, Some([0., 0., 0.]));
+    assert_eq!(controller.backlog_ticks(), 1);
+    assert_eq!(
+        controller.view_sample(&state).unwrap().feet,
+        result.position
+    );
+}
+
+fn rollback_physics() -> Option<Table> {
+    let Some(root) = std::env::var_os("CINNABAR_JAVA_ASSETS").map(std::path::PathBuf::from) else {
+        eprintln!("SKIP block rollback: CINNABAR_JAVA_ASSETS verified runtime missing");
+        return None;
+    };
+    let pin: serde_json::Value =
+        serde_json::from_str(include_str!("../../../java-protocol/data/target.json")).unwrap();
+    let registry = std::sync::Arc::new(
+        assets::registry::java::BlockRegistry::load(
+            &std::fs::read(root.join("blocks.json")).unwrap(),
+            pin["block_registry_report"]["sha256"].as_str().unwrap(),
+        )
+        .unwrap(),
+    );
+    let physics = Table::load(
+        &std::fs::read(root.join("physics.bin")).unwrap(),
+        pin["physics_report"]["sha256"].as_str().unwrap(),
+        pin["block_registry_report"]["states"].as_u64().unwrap() as usize,
+    )
+    .unwrap()
+    .with_registry(registry.clone())
+    .unwrap();
+    Some(physics)
+}
+
+#[test]
+fn powder_rollback_uses_current_fall_distance_without_guessing_unknown_equipment() {
+    let Some(physics) = rollback_physics() else {
+        return;
+    };
+    let powder = physics
+        .registry()
+        .unwrap()
+        .state_id("minecraft:powder_snow", &Default::default())
+        .unwrap();
+    let mut state = world(1);
+    state.player_dynamics.attributes.insert(
+        "minecraft:scale".into(),
+        Attribute {
+            base: 1.,
+            minimum: 0.0625,
+            maximum: 16.,
+            modifiers: vec![],
+        },
+    );
+    state.player_motion = Some(Motion {
+        position: [0.5, 0.25, 0.5],
+        velocity: [0.1, -0.2, 0.3],
+        ..Default::default()
+    });
+    let mut controller = Controller::default();
+    controller.begin_frame(&state, TICK);
+    controller.body.fall_distance = 2.5;
+    assert!(
+        !controller
+            .reconcile_block(&mut state, &physics, [0; 3], powder, [5., 6., 7.])
+            .unwrap()
+    );
+    controller.body.fall_distance = 3.;
+    assert!(
+        controller
+            .reconcile_block(&mut state, &physics, [0; 3], powder, [5., 6., 7.])
+            .unwrap()
+    );
+    assert_eq!(state.player_motion.unwrap().position, [5., 6., 7.]);
+    assert_eq!(state.player_motion.unwrap().velocity, [0.1, -0.2, 0.3]);
 }

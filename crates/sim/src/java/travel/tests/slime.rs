@@ -94,7 +94,7 @@ fn native_restitution_and_step_callbacks_match_independent_runtime_vectors() {
             actual[1],
             true,
             row["shift"].as_bool().unwrap(),
-            row["restitution"].as_f64().unwrap() as f32,
+            f64::from(row["restitution"].as_f64().unwrap() as f32),
             row["gravity"].as_f64().unwrap(),
             row["air_drag"].as_f64().unwrap() as f32,
         );
@@ -198,7 +198,11 @@ fn authoritative_suppression_tags_override_slime_and_unimplemented_callbacks_sta
     assert!(motion.velocity[1] < 0.);
     terrain.set_block(
         [8, 1, 8],
-        BlockStateId(climbing::id(registry, "minecraft:cobweb", &[])),
+        BlockStateId(climbing::id(
+            registry,
+            "minecraft:sweet_berry_bush",
+            &[("age", "0")],
+        )),
     );
     let before = motion;
     assert!(matches!(

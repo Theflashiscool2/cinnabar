@@ -1,97 +1,61 @@
-//! Java ShulkerBoxBlockEntity's tick progress and selection bounds.
+//! Native box bounds derived from the world's single logical lid-progress owner.
 use assets::registry::java::physics::Bounds;
 
-#[derive(Clone, Debug, Default)]
-pub struct Motion {
-    old: f32,
-    current: f32,
-    opening: bool,
-}
-impl Motion {
-    /// Counts above one retain the previous animation direction in vanilla.
-    pub fn event(&mut self, transition: Option<u8>) {
-        match transition {
-            Some(0) => self.opening = false,
-            Some(1) => self.opening = true,
-            _ => {}
+/// Native getBoundingBox followed by Shapes.create, without shell render scaling.
+pub fn outline(progress: f32, facing: u8) -> Option<Bounds> {
+    if !progress.is_finite() || !(0. ..=1.).contains(&progress) {
+        return None;
+    }
+    let step = world::java::piston::step(facing)?;
+    let mut bounds = Bounds {
+        min: [0.; 3],
+        max: [1.; 3],
+    };
+    let extension = f64::from(0.5 * progress);
+    for i in 0..3 {
+        if step[i] > 0 {
+            let end = 1. + extension;
+            if end - 1. >= super::collision::CONTACT {
+                bounds.max[i] = end;
+            }
+        }
+        if step[i] < 0 && extension >= super::collision::CONTACT {
+            bounds.min[i] = -extension;
         }
     }
-    pub fn tick(&mut self) {
-        self.old = self.current;
-        self.current = (self.current + if self.opening { 0.1 } else { -0.1 }).clamp(0., 1.);
-    }
-    pub fn sample(&self, partial: f32) -> f32 {
-        self.old + (self.current - self.old) * partial.clamp(0., 1.)
-    }
-    /// Picking uses getProgress(1), not the render interpolation or shell's 0.9995 scale.
-    pub fn outline(&self, facing: u8) -> Option<Bounds> {
-        let (axis, positive) = match facing {
-            0 => (1, false),
-            1 => (1, true),
-            2 => (2, false),
-            3 => (2, true),
-            4 => (0, false),
-            5 => (0, true),
-            _ => return None,
-        };
-        let mut bounds = Bounds {
-            min: [0.; 3],
-            max: [1.; 3],
-        };
-        let extension = f64::from(0.5 * self.current);
-        if positive {
-            bounds.max[axis] += extension;
-        } else {
-            bounds.min[axis] -= extension;
-        }
-        Some(bounds)
-    }
+    Some(bounds)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
-    fn viewer_transitions_and_native_ten_tick_bounds() {
-        let mut motion = Motion::default();
-        motion.event(Some(2));
-        motion.tick();
-        assert_eq!(motion.sample(1.), 0.);
-        motion.event(Some(1));
-        for _ in 0..5 {
-            motion.tick();
-        }
-        assert!((motion.sample(1.) - 0.5).abs() < 1e-6);
-        assert!((motion.sample(0.5) - 0.45).abs() < 1e-6);
-        motion.event(Some(3));
-        for _ in 0..5 {
-            motion.tick();
-        }
-        for (facing, axis, positive) in [
-            (0, 1, false),
-            (1, 1, true),
-            (2, 2, false),
-            (3, 2, true),
-            (4, 0, false),
-            (5, 0, true),
-        ] {
-            let b = motion.outline(facing).unwrap();
-            let mut min = [0.; 3];
-            let mut max = [1.; 3];
-            if positive {
-                max[axis] = 1.5;
-            } else {
-                min[axis] = -0.5;
+    fn bounds_follow_native_tick_progress_in_all_six_directions() {
+        let data: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../world/tests/fixtures/java-shulker-progress.json"
+        ))
+        .unwrap();
+        let mut motion = world::java::shulker::Motion::default();
+        for row in data["ticks"].as_array().unwrap() {
+            let event = row["event"].as_i64().unwrap();
+            if event >= 0 {
+                motion.event(event as u8);
             }
-            assert_eq!(b.min, min);
-            assert_eq!(b.max, max);
-        }
-        motion.event(Some(0));
-        for _ in 0..10 {
             motion.tick();
+            for facing in 0..6 {
+                let actual = outline(motion.sample(1.), facing).unwrap();
+                let expected = &row["bounds"][facing as usize];
+                assert_eq!(
+                    actual.min.map(f64::to_bits),
+                    std::array::from_fn(|i| expected[i].as_f64().unwrap().to_bits()),
+                    "{row}"
+                );
+                assert_eq!(
+                    actual.max.map(f64::to_bits),
+                    std::array::from_fn(|i| expected[i + 3].as_f64().unwrap().to_bits()),
+                    "{row}"
+                );
+            }
         }
-        assert_eq!(motion.sample(1.), 0.);
-        assert_eq!(motion.outline(1).unwrap().max, [1.; 3]);
-        assert!(motion.outline(6).is_none());
     }
 }

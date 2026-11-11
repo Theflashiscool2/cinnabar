@@ -53,7 +53,12 @@ fn abilities_and_rotation_have_version_specific_field_order() {
     assert!(relative_yaw && !relative_pitch);
     r.finish().unwrap();
     assert!(decode("ClientboundPlayerRotationPacket", &mut Reader(&[0; 9])).is_err());
-    assert!(decode("ClientboundPlayerAbilitiesPacket", &mut Reader(&[16; 9])).is_err());
+    let Some(Packet::Abilities(reserved)) =
+        decode("ClientboundPlayerAbilitiesPacket", &mut Reader(&[16; 9])).unwrap()
+    else {
+        panic!()
+    };
+    assert!(!reserved.invulnerable && !reserved.flying && !reserved.may_fly && !reserved.creative);
 }
 
 #[test]
@@ -142,4 +147,19 @@ fn effect_updates_and_removal_use_pinned_ids_and_reject_truncation() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn abilities_retain_signed_native_speed_values_without_an_invented_lower_bound() {
+    let mut bytes = vec![6];
+    bytes.extend((-0.05_f32).to_be_bytes());
+    bytes.extend((-0.1_f32).to_be_bytes());
+    let Some(Packet::Abilities(abilities)) =
+        decode("ClientboundPlayerAbilitiesPacket", &mut Reader(&bytes)).unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(abilities.flying_speed.to_bits(), (-0.05_f32).to_bits());
+    assert_eq!(abilities.walking_speed.to_bits(), (-0.1_f32).to_bits());
+    assert!(abilities.flying && abilities.may_fly);
 }

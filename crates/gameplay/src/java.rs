@@ -9,7 +9,7 @@ pub mod view;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 use world::java::{
     dynamics::{Attribute, Modifier, Operation},
     player::Motion,
@@ -47,6 +47,7 @@ pub struct Controller {
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
+    pending_abilities: VecDeque<(u64, bool)>,
     last_position: Option<[f64; 3]>,
     last_rotation: Option<[f32; 2]>,
     last_input: Option<u8>,
@@ -66,6 +67,20 @@ impl Controller {
                 scope,
                 ..Default::default()
             };
+        }
+        // Native in-place capability updates replace every older local flag choice,
+        // including repeated grants. Position corrections alone retain these edges.
+        self.pending_abilities
+            .retain(|(revision, _)| *revision == state.player_ability_revision);
+        // A not-yet-handed-off enable cannot outlive a server permission revocation.
+        // Disable edges remain valid and cannot be retired with kinematic prediction.
+        if !state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| abilities.may_fly)
+        {
+            self.pending_abilities.retain(|(_, flying)| !*flying);
         }
         let corrected = self.sequence != state.motion_sequence();
         if corrected {
@@ -96,6 +111,88 @@ impl Controller {
             self.elapsed = self.elapsed.saturating_add(elapsed);
         }
         corrected
+    }
+
+    /// Apply an admitted block-prediction rollback only when its restored shape intersects us.
+    /// The caller owns ACK ordering, saved-position admission and later-teleport suppression.
+    pub fn reconcile_block(
+        &mut self,
+        state: &mut WorldState,
+        physics: &Table,
+        cell: [i32; 3],
+        restored: u32,
+        saved: [f64; 3],
+    ) -> Result<bool, String> {
+        let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
+        if scope.is_none() || self.scope != scope {
+            return Err("Block rollback requires the current movement scope".into());
+        }
+        let Some(mut motion) = state.player_motion else {
+            return Ok(false);
+        };
+        let scale = state
+            .player_dynamics
+            .attributes
+            .get("minecraft:scale")
+            .ok_or("Block rollback awaits the native scale attribute")?
+            .value()
+            .map_err(str::to_owned)? as f32;
+        if !saved.into_iter().all(f64::is_finite) || !scale.is_finite() || scale <= 0. {
+            return Err("Invalid block rollback position or scale".into());
+        }
+        let context = sim::java::collision::PlayerContext {
+            bottom: motion.position[1],
+            descending: self.body.descending(),
+        };
+        let powder = physics.registry().is_some_and(|registry| {
+            assets::registry::java::physics::dynamic::kind(registry, restored)
+                == Some(assets::registry::java::physics::dynamic::Kind::PowderSnow)
+        });
+        let collides = if powder {
+            let walkable = self.body.fall_distance
+                <= assets::registry::java::physics::dynamic::POWDER_FALL_DISTANCE
+                && assets::registry::java::physics::dynamic::powder_standing_context(
+                    cell,
+                    context.bottom,
+                    context.descending,
+                )
+                && powder_snow_walkable(state)?;
+            sim::java::collision::restored_living_block_collides(
+                &state.terrain,
+                physics,
+                cell,
+                restored,
+                self.body.bounds(motion.position, scale),
+                context,
+                (self.body.fall_distance, walkable),
+            )
+        } else {
+            sim::java::collision::restored_block_collides(
+                &state.terrain,
+                physics,
+                cell,
+                restored,
+                self.body.bounds(motion.position, scale),
+                context,
+            )
+        }
+        .map_err(|error| error.to_string())?;
+        if !collides {
+            return Ok(false);
+        }
+        // Entity.absSnapTo clamps horizontal coordinates and retains current kinematics.
+        motion.position = [
+            saved[0].clamp(-3.0e7, 3.0e7),
+            saved[1],
+            saved[2].clamp(-3.0e7, 3.0e7),
+        ];
+        state.player_motion = Some(motion);
+        self.pending = None;
+        self.view.reset(view::Sample {
+            feet: motion.position,
+            eye_height: self.body.eye_height(scale),
+        });
+        Ok(true)
     }
 
     /// Input authority release retires both pending taps and sprint continuation.
@@ -129,6 +226,16 @@ impl Controller {
         } else {
             walking
         })
+    }
+
+    /// Irreversible native ability edges survive same-world correction/frame retirement.
+    /// Queue handoff is transport ownership transfer, never a wire/server acknowledgement.
+    pub fn pending_ability(&self) -> Option<(u64, u64, bool)> {
+        let &(revision, flying) = self.pending_abilities.front()?;
+        Some((self.scope?.1, revision, flying))
+    }
+    pub fn ability_queued(&mut self) {
+        self.pending_abilities.pop_front();
     }
 
     pub fn pending(&self) -> Option<&Frame> {
@@ -251,11 +358,13 @@ impl Controller {
         if state.death.is_some() || state.vitals.as_ref().is_some_and(|v| v.health <= 0.) {
             return Ok(false);
         }
-        if abilities.flying {
-            return Err("Native Java flying movement is not implemented".into());
-        }
         if state.entities.local_vehicle().is_some() {
             return Err("Native Java mounted movement is not implemented".into());
+        }
+        let spectator = state.status.mode == Some(world::java::hud::GameMode::Spectator);
+        let flying = abilities.flying;
+        if spectator && !flying && !abilities.may_fly {
+            return Err("Native spectator travel awaits granted flight abilities".into());
         }
         let mut input = controls.travel;
         let possible = (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6))
@@ -264,8 +373,9 @@ impl Controller {
                 .effects
                 .contains_key("minecraft:blindness");
         let slow = self.use_effects.is_some_and(|e| !e.can_sprint);
-        let can_start = (!input.crouch && !self.body.low_profile || self.body.eyes_in_water())
-            && (self.body.water_height <= 0. || self.body.eyes_in_water());
+        let can_start = ((!input.crouch || flying) && !self.body.low_profile
+            || self.body.eyes_in_water())
+            && (flying || self.body.water_height <= 0. || self.body.eyes_in_water());
         let mut sprint = self.sprint;
         input.sprint = sprint.select(
             input,
@@ -287,7 +397,7 @@ impl Controller {
             feet: motion.position,
             eye_height: self.eye_height(state),
         };
-        travel::step(
+        let updates = travel::step(
             &mut motion,
             &mut body,
             input,
@@ -308,6 +418,16 @@ impl Controller {
             body,
             controls.buttons,
         ));
+        for flying in [updates.input, updates.landing].into_iter().flatten() {
+            self.pending_abilities
+                .push_back((state.player_ability_revision, flying));
+            state
+                .player_dynamics
+                .abilities
+                .as_mut()
+                .expect("admitted player abilities")
+                .flying = flying;
+        }
         self.reminder = self.reminder.saturating_add(1);
         self.body = body;
         self.view.tick(
@@ -324,6 +444,32 @@ impl Controller {
     }
 }
 
+/// Native PowderSnowBlock checks the entity-type tag before the leather-boots item identity.
+fn powder_snow_walkable(state: &WorldState) -> Result<bool, String> {
+    let bootstrap = state
+        .bootstrap
+        .as_ref()
+        .ok_or("Powder-snow rollback awaits native tags")?;
+    let rules = assets::registry::java::physics::dynamic::powder_snow_rules();
+    if bootstrap
+        .configuration
+        .tags
+        .get("minecraft:entity_type")
+        .and_then(|tags| tags.get(rules.walkable_tag))
+        .is_some_and(|tag| tag.contains(&rules.player_type))
+    {
+        return Ok(true);
+    }
+    // InventoryMenu's FEET slot is part of the admitted local inventory view.
+    let boots = state
+        .inventory
+        .slot(0, 8)
+        .ok_or("Powder-snow rollback awaits the native feet slot")?;
+    Ok(boots
+        .as_ref()
+        .is_some_and(|stack| stack.item == rules.boots_item))
+}
+
 fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
     let get = |name: &str| -> Result<&Attribute, String> {
         state
@@ -333,9 +479,6 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
             .ok_or_else(|| format!("Missing pinned Java player attribute {name}"))
     };
     let value = |name| -> Result<f64, String> { get(name)?.value().map_err(str::to_owned) };
-    if value("minecraft:bounciness")? != 0. {
-        return Err("Native Java attribute-driven bouncing is not implemented".into());
-    }
     let (base_speed, sprint_speed) = movement_speeds(state)?;
     let climbable = state
         .bootstrap
@@ -357,6 +500,11 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         friction_modifier: value("minecraft:friction_modifier")? as f32,
         air_drag_modifier: value("minecraft:air_drag_modifier")? as f32,
         gravity: value("minecraft:gravity")?,
+        bounciness: value("minecraft:bounciness")?,
+        weaving: state
+            .player_dynamics
+            .effects
+            .contains_key("minecraft:weaving"),
         jump_strength: value("minecraft:jump_strength")? as f32,
         step_height: value("minecraft:step_height")? as f32,
         scale: value("minecraft:scale")? as f32,
@@ -364,6 +512,18 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         sneaking_speed: value("minecraft:sneaking_speed")? as f32,
         movement_efficiency: value("minecraft:movement_efficiency")? as f32,
         water_movement_efficiency: value("minecraft:water_movement_efficiency")? as f32,
+        flying_speed: state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .filter(|a| a.flying)
+            .map(|a| a.flying_speed),
+        granted_flying_speed: state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .map_or(0., |a| a.flying_speed),
+        spectator: state.status.mode == Some(world::java::hud::GameMode::Spectator),
         may_fly: state
             .player_dynamics
             .abilities

@@ -9,12 +9,14 @@ publish = false
 reads = [
     "assets/bedrock-target.json",
     "crates/assets/data/*",
+    "crates/java-protocol/data/target.json",
 ]
 
 [features]
 test-support = []
 
 [dependencies]
+java-protocol = { path = "../java-protocol" }
 web-time.workspace = true
 protocol-ids = { path = "../protocol-ids" }
 env-compat = { path = "../env-compat" }
@@ -38,7 +40,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-java-protocol = { path = "../java-protocol" }
 meshing = { path = "../meshing" }
 protocol = { path = "../protocol", features = ["test-support"] }
 

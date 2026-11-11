@@ -6,6 +6,21 @@ impl Connection {
     pub(super) async fn command(&mut self, command: Command) -> Result<bool, Error> {
         // Queued input from a retired level cannot be serialized before its replacement login.
         if !self.bootstrapped {
+            if let Command::Abilities {
+                dimension_epoch,
+                authority_revision,
+                flying,
+            } = command
+            {
+                self.emit(Event::AbilitiesWritten(abilities::Written {
+                    dimension_epoch,
+                    authority_revision,
+                    flying,
+                    written: false,
+                }))
+                .await?;
+                return Ok(false);
+            }
             if let Command::ChatCommand { sequence, .. } | Command::ChatMessage { sequence, .. } =
                 command
             {
@@ -369,6 +384,31 @@ impl Connection {
                 tracing::debug!(target: "java_session", dimension_epoch, sequence=action.sequence, "Native item use written; awaiting server authority");
             }
             Command::UseItem { .. } => {}
+            Command::Abilities {
+                dimension_epoch,
+                authority_revision,
+                flying,
+            } => {
+                // PacketProcessor applies ready capability updates before native aiStep.
+                // Our split owners must not write an edge derived from replaced authority.
+                // Kinematic correction fences do not change capability authority.
+                let written = dimension_epoch == self.dimension_epoch
+                    && authority_revision == self.ability_revision;
+                if written {
+                    self.send(
+                        "ServerboundPlayerAbilitiesPacket",
+                        &movement::abilities(flying),
+                    )
+                    .await?;
+                }
+                self.emit(Event::AbilitiesWritten(abilities::Written {
+                    dimension_epoch,
+                    authority_revision,
+                    flying,
+                    written,
+                }))
+                .await?;
+            }
             Command::Move {
                 dimension_epoch,
                 sequence,

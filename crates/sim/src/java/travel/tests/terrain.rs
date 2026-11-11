@@ -67,6 +67,8 @@ pub(super) fn parameters() -> Parameters<'static> {
         friction_modifier: 1.,
         air_drag_modifier: 1.,
         gravity: 0.08,
+        bounciness: 0.,
+        weaving: false,
         jump_strength: 0.42,
         step_height: 0.6,
         scale: 1.,
@@ -76,6 +78,9 @@ pub(super) fn parameters() -> Parameters<'static> {
         water_movement_efficiency: 0.,
         fast_lava: false,
         may_fly: false,
+        flying_speed: None,
+        granted_flying_speed: 0.05,
+        spectator: false,
         climbable: &[],
         suppresses_bounce: &[],
     }

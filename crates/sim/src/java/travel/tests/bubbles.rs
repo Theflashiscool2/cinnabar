@@ -201,6 +201,8 @@ fn opposing_columns_apply_once_per_block_in_native_axis_order_at_a_chunk_seam() 
                 &mut b,
                 Body::default(),
                 1.,
+                false,
+                false,
                 &t,
                 &p,
             )

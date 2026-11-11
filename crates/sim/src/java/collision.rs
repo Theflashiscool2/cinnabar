@@ -15,7 +15,7 @@ pub struct PlayerContext {
     pub descending: bool,
 }
 
-const CONTACT: f64 = 1.0e-7;
+pub(super) const CONTACT: f64 = 1.0e-7;
 /// Explicit foreground-work budget; exceeding it is an incomplete query, never empty terrain.
 pub(super) const MAX_QUERY_CELLS: u64 = 32768;
 
@@ -174,30 +174,7 @@ fn collect_with_context(
                     .block(position)
                     .ok_or(QueryError::Missing(position))?
                     .0;
-                let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
-                let shape: std::borrow::Cow<'_, [Bounds]> = match &state.collision {
-                    Collision::Dynamic => {
-                        let scaffold = physics.registry().filter(|r| {
-                            assets::registry::java::physics::climbing::kind(r, id)
-                                == Some(
-                                    assets::registry::java::physics::climbing::Kind::Scaffolding,
-                                )
-                        });
-                        if let Some(registry) = scaffold {
-                            let context = context.ok_or(QueryError::Dynamic { id, position })?;
-                            std::borrow::Cow::Borrowed(
-                                scaffolding::shape(registry, id, position, context)
-                                    .ok_or(QueryError::Dynamic { id, position })?,
-                            )
-                        } else {
-                            std::borrow::Cow::Owned(
-                                super::piston::collision::shape(terrain, physics, position)
-                                    .ok_or(QueryError::Dynamic { id, position })?,
-                            )
-                        }
-                    }
-                    Collision::Static(shape) => std::borrow::Cow::Borrowed(shape),
-                };
+                let shape = block_shape(terrain, physics, position, id, context)?;
                 for &bounds in shape.iter() {
                     let bounds = translated(bounds, position.map(f64::from));
                     if intersects(bounds, region) {
@@ -317,6 +294,148 @@ pub fn stepped(
         }
     }
     clipped
+}
+
+/// Test one restored block with native shape-AND contact tolerance and player context.
+pub fn restored_block_collides(
+    terrain: &Terrain,
+    physics: &Table,
+    position: [i32; 3],
+    state: u32,
+    body: Bounds,
+    context: PlayerContext,
+) -> Result<bool, QueryError> {
+    if !context.bottom.is_finite()
+        || (0..3).any(|i| {
+            !body.min[i].is_finite() || !body.max[i].is_finite() || body.min[i] >= body.max[i]
+        })
+    {
+        return Err(QueryError::Bounds);
+    }
+    Ok(
+        block_shape(terrain, physics, position, state, Some(context))?
+            .iter()
+            .any(|shape| {
+                let shape = translated(*shape, position.map(f64::from));
+                (0..3).all(|i| {
+                    shape.min[i].max(body.min[i]) < shape.max[i].min(body.max[i]) - CONTACT
+                })
+            }),
+    )
+}
+
+/// Restored-state query with the extra native LivingEntity powder-snow facts.
+pub fn restored_living_block_collides(
+    terrain: &Terrain,
+    physics: &Table,
+    position: [i32; 3],
+    state: u32,
+    body: Bounds,
+    context: PlayerContext,
+    powder: (f64, bool),
+) -> Result<bool, QueryError> {
+    let registry = physics.registry().ok_or(QueryError::Dynamic {
+        id: state,
+        position,
+    })?;
+    let Some(shape) = assets::registry::java::physics::dynamic::powder_shape(
+        registry,
+        state,
+        position,
+        context.bottom,
+        context.descending,
+        powder.0,
+        powder.1,
+    ) else {
+        return restored_block_collides(terrain, physics, position, state, body, context);
+    };
+    if !context.bottom.is_finite()
+        || !powder.0.is_finite()
+        || (0..3).any(|i| {
+            !body.min[i].is_finite() || !body.max[i].is_finite() || body.min[i] >= body.max[i]
+        })
+    {
+        return Err(QueryError::Bounds);
+    }
+    Ok(shape.iter().any(|shape| {
+        let shape = translated(*shape, position.map(f64::from));
+        (0..3).all(|i| shape.min[i].max(body.min[i]) < shape.max[i].min(body.max[i]) - CONTACT)
+    }))
+}
+
+fn block_shape<'a>(
+    terrain: &Terrain,
+    physics: &'a Table,
+    position: [i32; 3],
+    id: u32,
+    context: Option<PlayerContext>,
+) -> Result<std::borrow::Cow<'a, [Bounds]>, QueryError> {
+    let state = physics.state(id).ok_or(QueryError::Unknown(id))?;
+    match &state.collision {
+        Collision::Dynamic => {
+            use assets::registry::java::physics::dynamic::{self, Kind};
+            if let Some(registry) = physics.registry() {
+                match dynamic::kind(registry, id) {
+                    Some(Kind::Offset) => {
+                        return dynamic::offset_shape(registry, id, position)
+                            .map(std::borrow::Cow::Owned)
+                            .ok_or(QueryError::Dynamic { id, position });
+                    }
+                    Some(Kind::Shulker) => {
+                        let (block, facing) = dynamic::shulker_identity(id)
+                            .ok_or(QueryError::Dynamic { id, position })?;
+                        if let Some(state) = terrain.shulkers.get(&position) {
+                            if state.block_id != block
+                                || terrain.block_generation(position) != Some(state.generation)
+                            {
+                                return Err(QueryError::Dynamic { id, position });
+                            }
+                            let shape = super::shulker::outline(state.motion.sample(1.), facing)
+                                .ok_or(QueryError::Dynamic { id, position })?;
+                            return Ok(std::borrow::Cow::Owned(vec![shape]));
+                        }
+                        if terrain.block_event(position).is_some_and(|event| {
+                            event.action == 1 && registry.block_id(id) == Some(event.block)
+                        }) {
+                            return Err(QueryError::Dynamic { id, position });
+                        }
+                        return dynamic::missing_block_entity(registry, id)
+                            .map(std::borrow::Cow::Borrowed)
+                            .ok_or(QueryError::Dynamic { id, position });
+                    }
+                    Some(Kind::Moving)
+                        if !terrain.pistons.contains_key(&position)
+                            && !terrain.pending_pistons.contains_key(&position)
+                            && terrain.block_entity_revision(position).is_none() =>
+                    {
+                        return dynamic::missing_block_entity(registry, id)
+                            .map(std::borrow::Cow::Borrowed)
+                            .ok_or(QueryError::Dynamic { id, position });
+                    }
+                    _ => {}
+                }
+            }
+            let scaffold = physics.registry().filter(|r| {
+                assets::registry::java::physics::climbing::kind(r, id)
+                    == Some(assets::registry::java::physics::climbing::Kind::Scaffolding)
+            });
+            if let Some(registry) = scaffold {
+                let context = context.ok_or(QueryError::Dynamic { id, position })?;
+                Ok(std::borrow::Cow::Borrowed(
+                    scaffolding::shape(registry, id, position, context)
+                        .ok_or(QueryError::Dynamic { id, position })?,
+                ))
+            } else if terrain.block(position).is_some_and(|state| state.0 == id) {
+                Ok(std::borrow::Cow::Owned(
+                    super::piston::collision::shape(terrain, physics, position)
+                        .ok_or(QueryError::Dynamic { id, position })?,
+                ))
+            } else {
+                Err(QueryError::Dynamic { id, position })
+            }
+        }
+        Collision::Static(shape) => Ok(std::borrow::Cow::Borrowed(shape)),
+    }
 }
 
 #[cfg(test)]

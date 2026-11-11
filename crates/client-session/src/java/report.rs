@@ -201,6 +201,14 @@ impl Report {
             Event::BlockAck { .. } => "block_ack",
             Event::Roster(_) => "roster",
             Event::Hud(_) => "hud",
+            Event::Abilities { .. } => "ability_authority",
+            Event::AbilitiesWritten(receipt) => {
+                if receipt.written {
+                    "ability_written"
+                } else {
+                    "ability_not_written"
+                }
+            }
             Event::Bootstrap(_) => {
                 self.active_menu = None;
                 self.world_logins = self.world_logins.saturating_add(1);

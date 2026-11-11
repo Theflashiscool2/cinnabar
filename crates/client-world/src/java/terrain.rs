@@ -75,9 +75,12 @@ fn begin_inner(
         .begin(state.generation, state.dimension_epoch);
     state.removed_player_modes.clear();
     state.equipment.clear();
-    state.status.mode = Some(super::hud::mode(
-        java_protocol::session::hud::GameMode::from_id(i32::from(spawn.game_mode)),
-    ));
+    super::hud::admit(
+        state,
+        java_protocol::session::hud::Packet::GameMode(
+            java_protocol::session::hud::GameMode::from_id(i32::from(spawn.game_mode)),
+        ),
+    );
     state.status.experience = None;
     state.block_ack = None;
     state.teleport = None;
@@ -179,6 +182,7 @@ pub(super) fn admit(
             value,
         } => {
             super::piston::event(&mut state.terrain, position, block, action, value)?;
+            super::shulker::event(&mut state.terrain, position, block, action, value);
             state
                 .terrain
                 .set_block_event(position, block, action, value);
