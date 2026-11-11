@@ -51,6 +51,17 @@ pub(crate) struct Presentation {
     resident_keys: BTreeMap<[i32; 3], world::java::PublicationKey>,
 }
 impl Presentation {
+    pub(super) fn telemetry_progress(&self) -> serde_json::Value {
+        serde_json::json!({"stage":self.waiting,"spawn_uploaded":self.opened,
+            "submitted_sections":self.published.len(),"resident_sections":self.resident_keys.len(),
+            "nonempty_sections":self.uploaded.len(),"preparing":self.pending.is_some(),
+            "backlog":self.stream.as_ref().map(|s|s.backlog()),
+            "workers":self.stream.as_ref().map(|s|serde_json::json!({"dispatched":s.metrics.dispatched,
+                "completed":s.metrics.completed,"obsolete":s.metrics.obsolete,"waiting_light":s.metrics.waiting_light})),
+            "extensions":self.growth.completed,"extension_pending":self.growth.busy(),
+            "items_ready":self.items.is_some(),"items_pending":self.items_pending.is_some(),
+            "error_present":self.failure.is_some()||self.items_error.is_some()})
+    }
     pub(super) fn telemetry_activity(&self) -> [bool; 2] {
         [
             self.pending.is_some()

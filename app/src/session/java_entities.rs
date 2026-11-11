@@ -60,6 +60,13 @@ pub(crate) struct Presentation {
     ticks: u64,
 }
 impl Presentation {
+    pub(super) fn telemetry_progress(&self) -> serde_json::Value {
+        serde_json::json!({"preparing":self.pending.is_some(),"players":self.published_players,
+            "villagers":self.published_villagers,"items":self.published_items,
+            "unsupported":self.unsupported,"awaiting_light":self.unknown_light,
+            "skins_pending":self.custom_skin_pending,"skin_capacity_exhausted":self.skin_layers_full,
+            "items_pending":self.item_pending,"error_present":self.failure.is_some()})
+    }
     pub(super) fn telemetry_loading(&self) -> bool {
         self.pending.is_some() || self.custom_skin_pending > 0 || self.item_pending > 0
     }

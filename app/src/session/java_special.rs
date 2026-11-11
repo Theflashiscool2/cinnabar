@@ -837,6 +837,11 @@ impl Presentation {
         })?;
         sim::java::shulker::outline(progress, state.facing)
     }
+    pub(super) fn telemetry_progress(&self) -> serde_json::Value {
+        serde_json::json!({"cached_columns":self.columns.len(),"heads":self.heads.len(),
+            "artwork_pending":self.pending.is_some(),"bound_resources":self.bound_graphics.is_some(),
+            "extensions":self.graphics_extensions})
+    }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"session":self.scope.as_ref().map(|s|s.session),"artwork_pending":self.pending.is_some(),"bound_graphics_ready":self.bound_graphics.is_some(),"graphics_extensions":self.graphics_extensions,

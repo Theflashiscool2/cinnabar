@@ -8,6 +8,7 @@ use client_session::java::{
 use java_protocol::session::{Envelope, Event, entities::Packet};
 use std::sync::Arc;
 use web_time::Instant;
+mod runtime;
 
 pub(super) fn admit(
     java: &Session,
@@ -247,6 +248,7 @@ impl Drop for HandTrace {
 
 #[derive(Resource, Default)]
 struct Frame {
+    runtime: runtime::Trace,
     recorder: Option<Arc<Recorder>>,
     previous: Option<Instant>,
     start: Option<Instant>,
@@ -292,6 +294,8 @@ fn end(
     interaction: Option<Res<super::java_interaction::Interaction>>,
     terrain: Option<Res<super::java_render::Presentation>>,
     entities: Option<Res<super::java_entities::Presentation>>,
+    movement: Option<Res<super::java_movement::Movement>>,
+    special: Option<Res<super::java_special::Presentation>>,
 ) {
     let next = controller
         .as_ref()
@@ -330,6 +334,14 @@ fn end(
             );
         }
     }
+    frame.runtime.sample(
+        controller.as_deref(),
+        interaction.as_deref(),
+        movement.as_deref(),
+        terrain.as_deref(),
+        entities.as_deref(),
+        special.as_deref(),
+    );
 }
 
 #[cfg(test)]
