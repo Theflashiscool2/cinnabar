@@ -4,6 +4,7 @@
 //! the observable rules. Context-dependent block callbacks remain explicit gaps.
 mod bubbles;
 mod climbing;
+mod flight;
 mod liquid;
 mod slime;
 mod sticky;
@@ -92,6 +93,10 @@ pub struct Parameters<'a> {
     pub water_movement_efficiency: f32,
     pub fast_lava: bool,
     pub may_fly: bool,
+    /// Some only while native abilities currently grant active flight.
+    pub flying_speed: Option<f32>,
+    /// Native game-mode authority selects Entity.noPhysics independently of may_fly.
+    pub spectator: bool,
     /// Current server block-tag members, never client fixture defaults.
     pub climbable: &'a [i32],
     pub suppresses_bounce: &'a [i32],
@@ -154,6 +159,7 @@ pub fn step(
         .all(f32::is_finite)
         || !p.gravity.is_finite()
         || !p.bounciness.is_finite()
+        || p.flying_speed.is_some_and(|speed| !speed.is_finite())
         || p.scale <= 0.
         || p.step_height < 0.
     {
@@ -162,28 +168,40 @@ pub fn step(
     let mut next = *motion;
     let mut next_body = *body;
     next_body.descending = input.crouch;
+    let flying = p.flying_speed.is_some();
+    if p.spectator {
+        next_body.on_ground = false;
+    }
     let cells = liquid::Cells { terrain, physics };
     // Entity.baseTick samples the previous pose and sprint state before LocalPlayer.aiStep.
     let previous_shape = body.bounds(next.position, p.scale);
-    ensure_contacts(terrain, physics, previous_shape)?;
+    if !p.spectator {
+        ensure_contacts(terrain, physics, previous_shape)?;
+    }
     let contact = cells.contact(previous_shape)?;
-    next_body.swimming = body.sprinting
+    next_body.swimming = !flying
+        && body.sprinting
         && contact.water > 0.
         && (body.swimming || (body.eyes_in_water && cells.water_at(next.position)?));
     next_body.eyes_in_water = cells.water_at_eye(next.position, body.eye_height(p.scale))?;
     let standing = bounds(next.position, false, p.scale);
-    let nearby = collision::collect_player(
-        terrain,
-        physics,
-        scope,
-        standing,
-        climbing::context(next.position, input.crouch),
-    )?;
-    let blocked = nearby
-        .boxes
-        .iter()
-        .any(|b| collision::intersects(standing, *b));
-    next_body.crouched = !next_body.swimming
+    let blocked = if p.spectator {
+        false
+    } else {
+        let nearby = collision::collect_player(
+            terrain,
+            physics,
+            scope,
+            standing,
+            climbing::context(next.position, input.crouch),
+        )?;
+        nearby
+            .boxes
+            .iter()
+            .any(|b| collision::intersects(standing, *b))
+    };
+    next_body.crouched = !flying
+        && !next_body.swimming
         && (input.crouch || blocked)
         && swimming::fits(
             next.position,
@@ -199,8 +217,8 @@ pub fn step(
         && (!next_body.crouched || body.eyes_in_water)
         && (!next_body.low_profile || contact.water > 0. || body.eyes_in_water)
         && (!body.horizontal_collision || next_body.swimming)
-        && (p.may_fly || contact.water <= 0. || body.eyes_in_water || next_body.swimming);
-    let travel_pose = if next_body.swimming || body.low_profile {
+        && (flying || p.may_fly || contact.water <= 0. || body.eyes_in_water || next_body.swimming);
+    let travel_pose = if flying || next_body.swimming || body.low_profile {
         *body
     } else {
         next_body
@@ -208,12 +226,16 @@ pub fn step(
     let shape = travel_pose.bounds(next.position, p.scale);
     next_body.water_height = contact.water;
     next_body.lava_height = contact.lava;
-    let wet = contact.water > 0. || contact.lava > 0.;
+    let in_water = !flying && contact.water > 0.;
+    let in_lava = !flying && contact.lava > 0.;
+    let wet = in_water || in_lava;
     if contact.water > 0. {
         next_body.fall_distance = 0.;
-        liquid::push(&mut next.velocity, contact.water_current, 0.014);
+        if !flying {
+            liquid::push(&mut next.velocity, contact.water_current, 0.014);
+        }
     }
-    if contact.lava > 0. {
+    if in_lava {
         liquid::push(
             &mut next.velocity,
             contact.lava_current,
@@ -237,14 +259,26 @@ pub fn step(
     } else {
         None
     };
-    let feet = surface_on(terrain, physics, next.position, -0.5, support)?;
-    let inside = surface(terrain, physics, next.position, 0.)?;
+    let feet = if p.spectator {
+        physics.air().ok_or(Error::Invalid)?
+    } else {
+        surface_on(terrain, physics, next.position, -0.5, support)?
+    };
+    let inside = if p.spectator {
+        feet
+    } else {
+        surface(terrain, physics, next.position, 0.)?
+    };
     let block_friction = if next_body.on_ground {
         modified_friction(feet.friction, p.friction_modifier)
     } else {
         1.
     };
     next_body.jump_delay = next_body.jump_delay.saturating_sub(1);
+    if let Some(speed) = p.flying_speed {
+        next_body.fall_distance = 0.;
+        flight::lift(&mut next.velocity[1], input, speed);
+    }
     if next.velocity[0] * next.velocity[0] + next.velocity[2] * next.velocity[2] < 9.0e-6 {
         next.velocity[0] = 0.;
         next.velocity[2] = 0.;
@@ -259,10 +293,12 @@ pub fn step(
     };
     let fluid_jump = (contact.water > 0. && (!next_body.on_ground || contact.water > threshold))
         || (contact.lava > 0. && (!next_body.on_ground || contact.lava > threshold));
-    if input.crouch && contact.water > 0. {
+    if input.crouch && in_water {
         next.velocity[1] -= f64::from(0.04_f32);
     }
-    if input.jump && fluid_jump {
+    if flying {
+        next_body.jump_delay = 0;
+    } else if input.jump && fluid_jump {
         next.velocity[1] += f64::from(0.04_f32);
     } else if input.jump && next_body.on_ground && next_body.jump_delay == 0 {
         let factor = if inside.jump_factor == 1. {
@@ -286,6 +322,7 @@ pub fn step(
     if next_body.swimming {
         swimming::steer(&mut next, input.jump, &cells)?;
     }
+    let flight_y = next.velocity[1];
     let ground_speed = if next_body.sprinting {
         p.sprint_speed
     } else {
@@ -311,6 +348,8 @@ pub fn step(
         } else {
             ground_speed
         }
+    } else if let Some(speed) = p.flying_speed {
+        flight::speed(speed, next_body.sprinting)
     } else if next_body.sprinting {
         0.025999999
     } else {
@@ -333,7 +372,10 @@ pub fn step(
     for (v, a) in next.velocity.iter_mut().zip(acceleration) {
         *v += a;
     }
-    if !wet && climbing::at(next.position, &mut next_body, p.climbable, terrain, physics)? {
+    if !flying
+        && !wet
+        && climbing::at(next.position, &mut next_body, p.climbable, terrain, physics)?
+    {
         next_body.fall_distance = 0.;
         climbing::clamp(
             &mut next.velocity,
@@ -342,19 +384,30 @@ pub fn step(
         );
     }
     let was_falling = next.velocity[1] <= 0.;
-    let movement = sticky::consume(&mut next.velocity, &mut next_body.stuck_speed_multiplier);
+    let movement = if p.spectator {
+        next.velocity
+    } else {
+        sticky::consume(&mut next.velocity, &mut next_body.stuck_speed_multiplier)
+    };
     let mut sweep = collision::expanded(shape, movement);
     sweep.max[1] += f64::from(p.step_height);
     sweep.min[1] -= f64::from(p.step_height) + 1.0e-7;
-    let colliders = collision::collect_player(
-        terrain,
-        physics,
-        scope,
-        sweep,
-        climbing::context(next.position, input.crouch),
-    )?;
+    let colliders = if p.spectator {
+        collision::Query {
+            boxes: vec![],
+            cells: 0,
+        }
+    } else {
+        collision::collect_player(
+            terrain,
+            physics,
+            scope,
+            sweep,
+            climbing::context(next.position, input.crouch),
+        )?
+    };
     let old_y = next.position[1];
-    let desired = if input.crouch && movement[1] <= 0. {
+    let desired = if !flying && !p.spectator && input.crouch && movement[1] <= 0. {
         backed_off(shape, movement, next_body, p.step_height, &colliders.boxes)
     } else {
         movement
@@ -375,7 +428,9 @@ pub fn step(
     next_body.horizontal_collision = (desired[0] - actual[0]).abs() >= f64::from(1.0e-5_f32)
         || (desired[2] - actual[2]).abs() >= f64::from(1.0e-5_f32);
     next_body.on_ground = desired[1] != actual[1] && desired[1] < 0.;
-    next_body.fall_distance = if next_body.on_ground {
+    next_body.fall_distance = if p.spectator {
+        next_body.fall_distance
+    } else if next_body.on_ground {
         0.
     } else {
         next_body.fall_distance + (-actual[1]).max(0.)
@@ -427,15 +482,26 @@ pub fn step(
             modified_friction(0.98, p.air_drag_modifier),
         );
     }
-    if ((!wet && (next_body.horizontal_collision || input.jump))
-        || (contact.water > 0. && next_body.horizontal_collision))
+    if !flying
+        && ((!wet && (next_body.horizontal_collision || input.jump))
+            || (contact.water > 0. && next_body.horizontal_collision))
         && climbing::at(next.position, &mut next_body, p.climbable, terrain, physics)?
     {
         next.velocity[1] = 0.2;
     }
-    let feet = surface_on(terrain, physics, next.position, -0.5, support)?;
-    let inside = surface(terrain, physics, next.position, 0.)?;
-    ensure_contacts(terrain, physics, travel_pose.bounds(next.position, p.scale))?;
+    let feet = if p.spectator {
+        physics.air().ok_or(Error::Invalid)?
+    } else {
+        surface_on(terrain, physics, next.position, -0.5, support)?
+    };
+    let inside = if p.spectator {
+        feet
+    } else {
+        surface(terrain, physics, next.position, 0.)?
+    };
+    if !p.spectator {
+        ensure_contacts(terrain, physics, travel_pose.bounds(next.position, p.scale))?;
+    }
     let cell = next.position.map(|n| n.floor() as i32);
     let water_block = physics
         .registry()
@@ -450,13 +516,17 @@ pub fn step(
     } else {
         inside.speed_factor
     };
-    let speed_factor = surface_speed + p.movement_efficiency * (1. - surface_speed);
+    let speed_factor = if flying || p.spectator {
+        1.
+    } else {
+        surface_speed + p.movement_efficiency * (1. - surface_speed)
+    };
     let horizontal = block_friction * modified_friction(0.91, p.air_drag_modifier);
     for i in [0, 2] {
         next.velocity[i] *= f64::from(speed_factor);
-        next.velocity[i] *= if contact.water > 0. {
+        next.velocity[i] *= if in_water {
             f64::from(water_drag)
-        } else if contact.lava > 0. {
+        } else if in_lava {
             0.5
         } else {
             f64::from(horizontal)
@@ -501,10 +571,13 @@ pub fn step(
         next.velocity[1] = (next.velocity[1] - p.gravity)
             * f64::from(modified_friction(0.98, p.air_drag_modifier));
     }
+    if flying {
+        next.velocity[1] = flight::damp(flight_y);
+    }
     if !next.is_finite() {
         return Err(Error::Invalid);
     }
-    if next_body.on_ground {
+    if next_body.on_ground && !p.spectator {
         let cell = slime::contact_cell(next.position, support);
         if let Some(id) = climbing::cell(terrain, cell)?
             && slime::is_slime(physics, id)
@@ -512,26 +585,38 @@ pub fn step(
             slime::step_on(&mut next.velocity, input.crouch);
         }
     }
-    bubbles::apply(
-        motion.position,
-        desired,
-        &mut next,
-        &mut next_body,
-        travel_pose,
-        p.scale,
-        p.weaving,
-        terrain,
-        physics,
-    )?;
-    swimming::finish_pose(
-        &mut next_body,
-        next.position,
-        input.crouch,
-        p.scale,
-        terrain,
-        physics,
-        scope,
-    )?;
+    if !p.spectator {
+        bubbles::apply(
+            motion.position,
+            desired,
+            &mut next,
+            &mut next_body,
+            travel_pose,
+            p.scale,
+            p.weaving,
+            flying,
+            terrain,
+            physics,
+        )?;
+    }
+    if p.spectator {
+        next_body.low_profile = false;
+        next_body.crouched = false;
+    } else {
+        let pose_input = swimming::PoseInput {
+            shift: input.crouch,
+            crouch: input.crouch && (!flying || next_body.on_ground),
+        };
+        swimming::finish_pose(
+            &mut next_body,
+            next.position,
+            pose_input,
+            p.scale,
+            terrain,
+            physics,
+            scope,
+        )?;
+    }
     *motion = next;
     *body = next_body;
     Ok(())

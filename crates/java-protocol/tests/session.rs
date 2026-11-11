@@ -712,3 +712,6 @@ mod transfer;
 
 #[path = "session/cancellation.rs"]
 mod cancellation;
+
+#[path = "session/abilities.rs"]
+mod abilities;

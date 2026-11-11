@@ -88,14 +88,8 @@ pub(super) fn decode(name: &str, r: &mut Reader<'_>) -> Result<Option<Packet>, E
         }
         "ClientboundPlayerAbilitiesPacket" => {
             let flags = r.byte()?;
-            if flags & !15 != 0 {
-                return Err(Error::Invalid("Java player ability flags"));
-            }
             let flying_speed = r.f32()?;
             let walking_speed = r.f32()?;
-            if flying_speed < 0. || walking_speed < 0. {
-                return Err(Error::Invalid("negative Java ability speed"));
-            }
             Packet::Abilities(Abilities {
                 invulnerable: flags & 1 != 0,
                 flying: flags & 2 != 0,

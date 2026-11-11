@@ -15,6 +15,11 @@ pub struct Frame {
     pub sprinting: Option<bool>,
 }
 
+/// ServerboundPlayerAbilitiesPacket carries only native FLAG_FLYING (bit one).
+pub(super) fn abilities(flying: bool) -> [u8; 1] {
+    [u8::from(flying) << 1]
+}
+
 /// Validates the entire frame before serializing any required packet in its ordered batch.
 pub(super) fn encode(frame: Frame) -> Result<Vec<(&'static str, Vec<u8>)>, ProtocolError> {
     if frame

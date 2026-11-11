@@ -1,4 +1,5 @@
 use super::*;
+mod flight;
 
 fn world(epoch: u64) -> WorldState {
     let mut state = WorldState::default();

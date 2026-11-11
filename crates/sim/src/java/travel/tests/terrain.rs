@@ -78,6 +78,8 @@ pub(super) fn parameters() -> Parameters<'static> {
         water_movement_efficiency: 0.,
         fast_lava: false,
         may_fly: false,
+        flying_speed: None,
+        spectator: false,
         climbable: &[],
         suppresses_bounce: &[],
     }

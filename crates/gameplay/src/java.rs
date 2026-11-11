@@ -9,7 +9,7 @@ pub mod view;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
 use sim::java::travel::{self, Body, Input, Parameters};
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 use world::java::{
     dynamics::{Attribute, Modifier, Operation},
     player::Motion,
@@ -47,6 +47,7 @@ pub struct Controller {
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
+    pending_abilities: VecDeque<bool>,
     last_position: Option<[f64; 3]>,
     last_rotation: Option<[f32; 2]>,
     last_input: Option<u8>,
@@ -66,6 +67,16 @@ impl Controller {
                 scope,
                 ..Default::default()
             };
+        }
+        // A not-yet-handed-off enable cannot outlive a server permission revocation.
+        // Disable edges remain valid and cannot be retired with kinematic prediction.
+        if !state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| abilities.may_fly)
+        {
+            self.pending_abilities.retain(|flying| !*flying);
         }
         let corrected = self.sequence != state.motion_sequence();
         if corrected {
@@ -213,6 +224,15 @@ impl Controller {
         })
     }
 
+    /// Irreversible native ability edges survive same-world correction/frame retirement.
+    /// Queue handoff is transport ownership transfer, never a wire/server acknowledgement.
+    pub fn pending_ability(&self) -> Option<(u64, bool)> {
+        Some((self.scope?.1, *self.pending_abilities.front()?))
+    }
+    pub fn ability_queued(&mut self) {
+        self.pending_abilities.pop_front();
+    }
+
     pub fn pending(&self) -> Option<&Frame> {
         self.pending.as_ref()
     }
@@ -333,12 +353,16 @@ impl Controller {
         if state.death.is_some() || state.vitals.as_ref().is_some_and(|v| v.health <= 0.) {
             return Ok(false);
         }
-        if abilities.flying {
-            return Err("Native Java flying movement is not implemented".into());
-        }
         if state.entities.local_vehicle().is_some() {
             return Err("Native Java mounted movement is not implemented".into());
         }
+        let spectator = state.status.mode == Some(world::java::hud::GameMode::Spectator);
+        let auto_start = spectator && abilities.may_fly && !abilities.flying;
+        let flying = abilities.flying || auto_start;
+        if spectator && !flying {
+            return Err("Native spectator travel awaits granted flight abilities".into());
+        }
+        let flying_speed = abilities.flying_speed;
         let mut input = controls.travel;
         let possible = (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6))
             && !state
@@ -346,8 +370,9 @@ impl Controller {
                 .effects
                 .contains_key("minecraft:blindness");
         let slow = self.use_effects.is_some_and(|e| !e.can_sprint);
-        let can_start = (!input.crouch && !self.body.low_profile || self.body.eyes_in_water())
-            && (self.body.water_height <= 0. || self.body.eyes_in_water());
+        let can_start = ((!input.crouch || flying) && !self.body.low_profile
+            || self.body.eyes_in_water())
+            && (flying || self.body.water_height <= 0. || self.body.eyes_in_water());
         let mut sprint = self.sprint;
         input.sprint = sprint.select(
             input,
@@ -358,6 +383,7 @@ impl Controller {
             controls.buttons & 2 != 0,
         );
         let mut parameters = parameters(state)?;
+        parameters.flying_speed = flying.then_some(flying_speed);
         if let Some(effects) = self.use_effects {
             input.sprint &= effects.can_sprint;
             parameters.use_speed_multiplier = effects.speed_multiplier;
@@ -390,6 +416,17 @@ impl Controller {
             body,
             controls.buttons,
         ));
+        let landed = flying && body.on_ground && !spectator;
+        let final_flying = flying && !landed;
+        if auto_start || landed {
+            self.pending_abilities.push_back(final_flying);
+            state
+                .player_dynamics
+                .abilities
+                .as_mut()
+                .expect("admitted player abilities")
+                .flying = final_flying;
+        }
         self.reminder = self.reminder.saturating_add(1);
         self.body = body;
         self.view.tick(
@@ -474,6 +511,13 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
         sneaking_speed: value("minecraft:sneaking_speed")? as f32,
         movement_efficiency: value("minecraft:movement_efficiency")? as f32,
         water_movement_efficiency: value("minecraft:water_movement_efficiency")? as f32,
+        flying_speed: state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .filter(|a| a.flying)
+            .map(|a| a.flying_speed),
+        spectator: state.status.mode == Some(world::java::hud::GameMode::Spectator),
         may_fly: state
             .player_dynamics
             .abilities
