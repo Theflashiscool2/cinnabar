@@ -8,6 +8,7 @@ impl State {
             return;
         }
         self.retire_pending_block_uses();
+        self.retire_adventure_pickup_view();
         let adventure_cache = std::mem::take(&mut self.adventure_cache);
         let adventure_copied = std::mem::take(&mut self.adventure_copied);
         let storage = std::mem::take(&mut self.storage);

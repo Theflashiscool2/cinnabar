@@ -139,6 +139,7 @@ impl State {
         if !written {
             // Later pickup plans may depend on this unsent decrement. Retire those
             // provisional views through the same resync path as an unwritten pickup.
+            self.retire_adventure_pickup_view();
             self.pickup_player_view.clear();
             self.clear_pickup_menu_view();
         }
