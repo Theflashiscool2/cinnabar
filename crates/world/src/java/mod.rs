@@ -60,6 +60,7 @@ pub struct Column {
     pub heightmaps: Vec<(u32, Vec<u64>)>,
     pub block_entities: Vec<BlockEntity>,
     revision: u64,
+    contents_revision: u64,
     incarnation: u64,
 }
 impl Column {
@@ -75,11 +76,16 @@ impl Column {
             heightmaps,
             block_entities,
             revision: 0,
+            contents_revision: 0,
             incarnation: 0,
         }
     }
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+    /// Block states and block-entity data only; lighting and biome changes keep this catalog valid.
+    pub fn contents_revision(&self) -> u64 {
+        self.contents_revision
     }
 }
 

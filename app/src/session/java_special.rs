@@ -260,7 +260,7 @@ pub(crate) fn update(
     for (key, column) in terrain.columns() {
         if p.columns
             .get(&key)
-            .is_some_and(|(revision, _)| *revision == column.revision())
+            .is_some_and(|(revision, _)| *revision == column.contents_revision())
         {
             continue;
         }
@@ -390,7 +390,7 @@ pub(crate) fn update(
                 }
             }
         }
-        p.columns.insert(key, (column.revision(), chests));
+        p.columns.insert(key, (column.contents_revision(), chests));
     }
     let queries = p.heads.values().filter_map(|h| h.query.clone()).collect();
     profiles.update(

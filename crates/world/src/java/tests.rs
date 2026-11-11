@@ -213,3 +213,45 @@ fn chest_property_changes_keep_authority_but_reused_positions_get_new_lifetimes(
     terrain.replace([0, 0], column());
     assert_ne!(terrain.block_generation(pos), reused);
 }
+
+#[test]
+fn light_and_biome_updates_preserve_block_entity_catalog_revision() {
+    let mut terrain = Terrain::default();
+    terrain.begin(dimension(1));
+    terrain.replace([0, 0], column());
+    let contents = terrain.column([0, 0]).unwrap().contents_revision();
+    let mesh = terrain.publication_key([0, 0]).unwrap();
+    assert!(terrain.update_light(
+        [0, 0],
+        Light {
+            sky: vec![None, Some(Arc::from(vec![255; 2048])), None],
+            block: vec![None; 3],
+        }
+    ));
+    assert!(
+        !terrain.is_current(&mesh),
+        "terrain lighting still invalidates its mesh"
+    );
+    assert_eq!(
+        terrain.column([0, 0]).unwrap().contents_revision(),
+        contents
+    );
+    assert!(terrain.update_biomes([0, 0], vec![Palette::uniform(BiomeId(1), 64)]));
+    assert_eq!(
+        terrain.column([0, 0]).unwrap().contents_revision(),
+        contents
+    );
+    assert!(terrain.set_block([0, -64, 0], BlockStateId(8)));
+    let block = terrain.column([0, 0]).unwrap().contents_revision();
+    assert!(block > contents);
+    assert!(terrain.set_block_entity(BlockEntity {
+        position: [0, -64, 0],
+        kind: 1,
+        data: None
+    }));
+    let entity = terrain.column([0, 0]).unwrap().contents_revision();
+    assert!(entity > block);
+    terrain.unload([0, 0]);
+    terrain.replace([0, 0], column());
+    assert!(terrain.column([0, 0]).unwrap().contents_revision() > entity);
+}

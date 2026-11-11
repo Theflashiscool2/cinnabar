@@ -159,6 +159,7 @@ impl Terrain {
             return false;
         }
         column.revision = self.next_revision();
+        column.contents_revision = column.revision;
         self.shulkers
             .retain(|p, _| [p[0].div_euclid(16), p[2].div_euclid(16)] != key);
         self.pistons
@@ -248,6 +249,7 @@ impl Terrain {
             state,
         );
         column.revision = revision;
+        column.contents_revision = revision;
         // The next full chunk supplies replacement heightmaps/block-entity data. Retaining these
         // across an authoritative block replacement would expose facts about the previous block.
         column.heightmaps.clear();
@@ -352,6 +354,7 @@ impl Terrain {
             column.block_entities.push(entity);
         }
         column.revision = revision;
+        column.contents_revision = revision;
         self.mark_dirty(key);
         true
     }
