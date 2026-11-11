@@ -173,7 +173,18 @@ pub(super) fn steps(
                 break;
             }
         }
-        let plan = plan_for(state, hand, false)?;
+        let plan = match plan_for(state, hand, false) {
+            Ok(plan) => plan,
+            Err(error) if hand == Hand::Off && !steps.is_empty() => {
+                // Native useItem sends the main-hand packet before trying the offhand,
+                // even when its local result is PASS. A later unsupported local plan
+                // cannot erase that already resolved prefix of the ordered click.
+                bevy::log::debug!(target: "java_session", error, retained_steps=steps.len(),
+                    "Native offhand local-use planning unavailable; retaining resolved use requests");
+                break;
+            }
+            Err(error) => return Err(error),
+        };
         if plan.send {
             steps.push(UseStep::air(
                 rotation.ok_or("Native captured use rotation unknown")?,
@@ -332,6 +343,45 @@ mod tests {
             )),
             (vec![Main], None),
             "unknown specialized result is never guessed PASS"
+        );
+    }
+    #[test]
+    fn fire_charge_air_pass_preserves_its_request_when_offhand_local_planning_is_unsupported() {
+        use gameplay::java::item_use::plan::{Hand, ResultKind};
+        for offhand in [None, Some("minecraft:trident"), Some("minecraft:crossbow")] {
+            let mut state = use_state(Some("minecraft:fire_charge"), offhand, 20);
+            let before = state.inventory.held().cloned();
+            for cooldown in [0, 7] {
+                state
+                    .inventory
+                    .cooldowns
+                    .set("minecraft:fire_charge".into(), cooldown)
+                    .unwrap();
+                let plan = super::plan_for(&state, Hand::Main, false).unwrap();
+                assert!(
+                    plan.send,
+                    "native useItem sends even for local PASS/cooldown"
+                );
+                assert_eq!(plan.result, ResultKind::Pass);
+                assert_eq!(requests(&state), (vec![Hand::Main], None));
+                assert_eq!(state.inventory.held().cloned(), before);
+                assert_eq!(
+                    state.entities.iter().count(),
+                    0,
+                    "vanilla fire-charge air PASS creates no projectile"
+                );
+            }
+        }
+        let mut unknown_main =
+            use_state(Some("minecraft:fire_charge"), Some("minecraft:trident"), 20);
+        unknown_main.inventory.begin(7, 1);
+        assert!(
+            super::steps(
+                &unknown_main,
+                Some(gameplay::java::actions::Target::Air { rotation: [0.; 2] })
+            )
+            .is_err(),
+            "an unknown main hand still cannot manufacture an action"
         );
     }
     #[test]
