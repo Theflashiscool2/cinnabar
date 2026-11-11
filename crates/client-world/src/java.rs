@@ -18,6 +18,7 @@ pub mod player;
 mod reconfiguration_tests;
 mod roster;
 pub mod scoreboard;
+mod shulker;
 #[cfg(test)]
 mod tags_tests;
 mod terrain;
@@ -162,6 +163,12 @@ impl WorldState {
             }
         }
         true
+    }
+    /// Shulker collision progress shares the existing logical world service tick.
+    pub fn tick_shulkers(&mut self) {
+        for state in self.terrain.shulkers.values_mut() {
+            state.motion.tick();
+        }
     }
     pub fn tick_pistons(&mut self) -> Result<(), &'static str> {
         piston::tick(&mut self.terrain, self.piston_registry.as_deref())

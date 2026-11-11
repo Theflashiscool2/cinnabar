@@ -2,7 +2,10 @@
 use super::Bounds;
 use crate::registry::java::BlockRegistry;
 use serde::Deserialize;
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, OnceLock},
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -18,6 +21,8 @@ struct Entry {
     base: Vec<[f64; 6]>,
     #[serde(default)]
     max_offset: f32,
+    block_id: Option<u32>,
+    facing: Option<u8>,
 }
 #[derive(Deserialize)]
 struct Report {
@@ -33,6 +38,7 @@ struct Report {
 struct Facts {
     report: Report,
     base: BTreeMap<u32, Box<[Bounds]>>,
+    shulker_states: BTreeMap<u32, Arc<[u32]>>,
     powder_falling: Box<[Bounds]>,
     powder_standing: Box<[Bounds]>,
 }
@@ -52,7 +58,21 @@ fn facts() -> &'static Facts {
                 .expect("generated native dynamic collision facts");
         assert_eq!(report.schema, 1);
         assert!(!report.game_version.is_empty() && report.protocol > 0);
+        let mut shulker_states: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+        for (&id, entry) in &report.dynamic {
+            if entry.kind == Kind::Shulker {
+                assert!(entry.facing.is_some_and(|facing| facing < 6));
+                shulker_states
+                    .entry(entry.block_id.expect("native shulker block identity"))
+                    .or_default()
+                    .push(id);
+            }
+        }
         Facts {
+            shulker_states: shulker_states
+                .into_iter()
+                .map(|(block, states)| (block, Arc::from(states)))
+                .collect(),
             base: report
                 .dynamic
                 .iter()
@@ -74,6 +94,18 @@ fn entry(registry: &BlockRegistry, id: u32) -> Option<&'static Entry> {
 /// Native class classification is admitted only for the exact report registry.
 pub fn kind(registry: &BlockRegistry, id: u32) -> Option<Kind> {
     Some(entry(registry, id)?.kind)
+}
+
+/// Compile-target shulker identity for synchronous events before runtime graphics admission.
+/// The report's complete registry identity is checked against the protocol target in tests.
+pub fn shulker_identity(id: u32) -> Option<(u32, u8)> {
+    let entry = facts().report.dynamic.get(&id)?;
+    (entry.kind == Kind::Shulker).then_some((entry.block_id?, entry.facing?))
+}
+
+/// All facing variants of a native box share one block entity across state updates.
+pub fn shulker_states(block: u32) -> Option<Arc<[u32]>> {
+    facts().shulker_states.get(&block).cloned()
 }
 
 /// Native defaults queried with a BlockGetter that contains no block entity.
@@ -184,5 +216,15 @@ mod tests {
                 .count(),
             102
         );
+        assert_eq!(f.shulker_states.len(), 17);
+        for states in f.shulker_states.values() {
+            assert_eq!(states.len(), 6);
+            let mut facings: Vec<_> = states
+                .iter()
+                .map(|id| shulker_identity(*id).unwrap().1)
+                .collect();
+            facings.sort_unstable();
+            assert_eq!(facings, [0, 1, 2, 3, 4, 5]);
+        }
     }
 }
