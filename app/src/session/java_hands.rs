@@ -5,6 +5,7 @@ use client_presentation::{
     actor_publication::{HAND_FOV_DEGREES, hand_motion_matrix, java_light_matrix},
     camera::{CameraSettingsAuthority, FirstPersonHandMotion},
 };
+use client_session::java::telemetry::HandIssue;
 use client_shell::{menu::MenuRuntime, ui_resources::UiRuntimeResource};
 use render_model::{
     ActorMaterial, ActorRenderIdentity, ActorRigFrameBuilder, ActorRigRenderInput, ActorRigRoute,
@@ -72,6 +73,9 @@ pub(crate) fn update(
     };
     state.missing_owners = false;
     let world = &controller.java_world;
+    if let Some(trace) = &mut hand_trace {
+        trace.cause = HandIssue::Hud;
+    }
     let Some(hud) = ui.java_hud() else {
         scene.clear();
         return;
@@ -92,6 +96,11 @@ pub(crate) fn update(
     );
     if let Some(trace) = &mut hand_trace {
         trace.hidden = terrain.as_ref().and_then(|t| t.world_ready()) == Some(true);
+        trace.cause = if trace.hidden {
+            HandIssue::Visibility
+        } else {
+            HandIssue::Loading
+        };
     }
     if terrain.as_ref().and_then(|t| t.world_ready()) != Some(true)
         || !client_presentation::camera::hand_first_person(Some(&camera), server_camera.as_deref())
@@ -104,6 +113,7 @@ pub(crate) fn update(
     }
     if let Some(trace) = &mut hand_trace {
         trace.hidden = false;
+        trace.cause = HandIssue::Geometry;
     }
     let stacks = [
         world.inventory.held().and_then(Option::as_ref),
@@ -166,6 +176,9 @@ pub(crate) fn update(
             }
         }
     }
+    if let Some(trace) = &mut hand_trace {
+        trace.cause = HandIssue::Position;
+    }
     let Some(position) = world.player_motion.as_ref() else {
         scene.clear();
         return;
@@ -175,6 +188,9 @@ pub(crate) fn update(
         position.position[1] + movement.0.eye_height(world),
         position.position[2],
     ];
+    if let Some(trace) = &mut hand_trace {
+        trace.cause = HandIssue::Light;
+    }
     let Some([block, sky]) = world.terrain.light(eye.map(|v| v.floor() as i32)) else {
         scene.clear();
         return;
@@ -349,6 +365,13 @@ pub(crate) fn update(
             uv_anim: [0., 0., 1., 1.],
             light: render_model::pack_actor_light(block, sky),
         });
+    }
+    if let Some(trace) = &mut hand_trace {
+        trace.cause = if submissions.is_empty() {
+            HandIssue::EmptyFrame
+        } else {
+            HandIssue::Publication
+        };
     }
     let frame = state.builder.as_mut().unwrap().build(0., None, submissions);
     // The native empty arm uses the skin sampler; held items keep their own atlas bindings.

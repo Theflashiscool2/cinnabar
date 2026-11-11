@@ -8,6 +8,34 @@ use std::{
 };
 
 const RECENT: usize = 32;
+/// Fixed publication stages only; never includes item, profile or server content.
+#[derive(Clone, Copy, Debug)]
+pub enum HandIssue {
+    Owners,
+    Hud,
+    Loading,
+    Visibility,
+    Geometry,
+    Position,
+    Light,
+    EmptyFrame,
+    Publication,
+}
+impl HandIssue {
+    fn key(self) -> &'static str {
+        match self {
+            Self::Owners => "missing_hand_owners",
+            Self::Hud => "missing_hud",
+            Self::Loading => "world_not_ready",
+            Self::Visibility => "visibility_gate",
+            Self::Geometry => "geometry_rejected",
+            Self::Position => "missing_position",
+            Self::Light => "missing_light",
+            Self::EmptyFrame => "empty_geometry_frame",
+            Self::Publication => "publication_rejected",
+        }
+    }
+}
 /// Diagnostic threshold, not a vanilla physics constant or a release performance gate.
 const SPIKE: Duration = Duration::from_millis(50);
 macro_rules! counters {
@@ -111,6 +139,7 @@ struct State {
     timings: std::collections::BTreeMap<&'static str, Timing>,
     recent: VecDeque<Value>,
     recent_spikes: VecDeque<Value>,
+    recent_hand_issues: VecDeque<Value>,
     input_bits: Option<u8>,
     on_ground: Option<bool>,
     sprinting: Option<bool>,
@@ -268,7 +297,7 @@ impl Recorder {
         s.mining = mining;
     }
     /// `hidden` means an intentional visibility/context gate, not an unexplained missing frame.
-    pub fn hand_frame(&self, active: bool, published: bool, hidden: bool) {
+    pub fn hand_frame(&self, active: bool, published: bool, hidden: bool, cause: HandIssue) {
         let mut s = self.state();
         if s.finished {
             return;
@@ -284,6 +313,11 @@ impl Recorder {
             );
             if s.hand_published && !hidden {
                 s.count(Counter::AnimationLostPublication, 1);
+                if s.recent_hand_issues.len() == RECENT {
+                    s.recent_hand_issues.pop_front();
+                }
+                s.recent_hand_issues
+                    .push_back(json!({"kind":"hand_publication_lost","cause":cause.key()}));
             }
         }
         s.hand_published = active && published;
@@ -340,7 +374,7 @@ impl Recorder {
         }
         let counts=Counter::ALL.iter().map(|c|(c.key().to_owned(),json!({"count":s.counts.get(c.key()).copied().unwrap_or(0),"checklist":c.items()}))).collect::<serde_json::Map<_,_>>();
         let times=Stage::ALL.iter().map(|stage| { let t=s.timings.get(stage.key());(stage.key().to_owned(),json!({"samples":t.map_or(0,|t|t.samples),"total_us":t.map_or(0,|t|t.total_us),"max_us":t.map_or(0,|t|t.max_us),"spikes":t.map_or(0,|t|t.spikes),"checklist":stage.items()})) }).collect::<serde_json::Map<_,_>>();
-        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
+        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"recent_hand_issues":s.recent_hand_issues,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
     }
 }
 /// CPU wall scope only; GPU submission/presentation time needs separate GPU evidence.

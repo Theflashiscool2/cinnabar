@@ -107,6 +107,7 @@ pub(super) struct HandTrace {
     active: bool,
     pub published: bool,
     pub hidden: bool,
+    pub cause: client_session::java::telemetry::HandIssue,
 }
 impl HandTrace {
     pub fn new(controller: &SessionController, using: bool) -> Option<Self> {
@@ -123,13 +124,14 @@ impl HandTrace {
             active,
             published: false,
             hidden: false,
+            cause: client_session::java::telemetry::HandIssue::Owners,
         })
     }
 }
 impl Drop for HandTrace {
     fn drop(&mut self) {
         self.recorder
-            .hand_frame(self.active, self.published, self.hidden);
+            .hand_frame(self.active, self.published, self.hidden, self.cause);
     }
 }
 
