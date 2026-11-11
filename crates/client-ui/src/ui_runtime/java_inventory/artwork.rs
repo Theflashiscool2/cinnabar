@@ -7,6 +7,7 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 pub(super) mod continuity;
+mod hand_resources;
 mod work;
 use work::{Request, Shared, worker};
 pub(in crate::ui_runtime) struct State {
@@ -104,6 +105,11 @@ impl State {
                     item: stacks.get(key)?.item.clone(),
                 })
             });
+            let geometry = hand_resources::priority(
+                &hands,
+                projection.hotbar.iter().flatten().flatten().map(stack_key),
+            );
+            work.resources.begin(ticket, geometry.iter().cloned());
             work.begin(ticket, sources);
             work.inventory_sources.clear();
             let personal = projection
@@ -135,6 +141,7 @@ impl State {
                 stacks,
                 heads,
                 hands,
+                geometry,
             });
             work.result = None;
             self.shared.1.notify_one();
@@ -199,8 +206,8 @@ fn normalize_registry_components(stack: &mut Stack, world: &client_world::java::
     }
 }
 impl UiRuntime {
-    /// Current same-item graphics may bridge a pending revision in the same resource/world scope.
-    /// Empty/replaced hands, failed publication and retired scopes never reuse a different item.
+    /// Exact current held resources publish independently of inventory icons.
+    /// Same-item continuity only applies while the exact model is still unprepared.
     pub fn java_held_item(
         &self,
         key: &str,
@@ -217,6 +224,14 @@ impl UiRuntime {
             return None;
         }
         let hand = usize::from(offhand);
+        if work.desired_sources[hand].as_ref()?.key != key {
+            return None;
+        }
+        // Exact current geometry is independent of the slower inventory icon publication.
+        // A known empty/failed model never falls back to an older item.
+        if let Some(prepared) = work.resources.get(&(key.to_owned(), offhand)) {
+            return prepared.as_ref().ok()?.clone();
+        }
         if !work.can_hold(hand, key) {
             return None;
         }
