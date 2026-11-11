@@ -163,3 +163,14 @@ The private evidence includes native server receipts, client states, source hash
 screenshots for spectator/rise/correction/landing/reconnect. Inspect the screenshots and
 `flight-evidence.json` (`complete` must be true). This is authored graphical/vanilla evidence;
 it does not replay client actions or establish Hypixel, mobile, collision, or all-flight parity.
+
+Add `--capture --listen 127.0.0.1:25587` to the flight runner to route its initial
+connection and reconnect through the existing fixture capture protocol. The target remains
+the real server port from the private config. The in-process listener accepts exactly two
+connections and writes `session.jsonl` under the new private output directory; it launches
+no client/server subprocess. Existing offline identity, encryption and transcript bounds
+still apply. Only a completed authored run with both real connections retired receives a
+completion trailer. Failed/interrupted captures remain incomplete and the normal tape loader
+rejects them. `flight-evidence.json.capture.complete` records that distinction. A valid tape
+also requires later real-input replay and comparison; capture completion alone is not replay
+acceptance. Driver source bytes and source hashes are saved before the first connection.

@@ -28,9 +28,11 @@ def stop(stream):
     stream.close()
 
 
-def capture(client, target, writer, segment, port):
+def capture(client, target, writer, segment, port, server_opened=None):
     handshake, hello = login(client)
     with socket.create_connection(target, timeout=10) as server:
+        if server_opened is not None:
+            server_opened(server)
         server.settimeout(None)
         _capture(client, server, handshake, hello, writer, segment, port)
 

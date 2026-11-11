@@ -50,6 +50,13 @@ class Writer:
         self.append({'type': 'packet', 'segment': segment, 'direction': direction, 'phase': phase,
                      'ns': time.monotonic_ns() - self.started, 'body': encoded(body)})
 
+    def abort(self):
+        """Retire an interrupted capture without an integrity/completion trailer."""
+        with self.lock:
+            self.file.flush()
+            os.fsync(self.file.fileno())
+            self.file.close()
+
     def close(self):
         with self.lock:
             line = json.dumps({'type': 'complete', 'events': self.events,
