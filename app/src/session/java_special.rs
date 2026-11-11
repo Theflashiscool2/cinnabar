@@ -25,6 +25,7 @@ pub(crate) struct Presentation {
     pending: Option<Pending>,
     scene: BlockEntityScene,
     graphics: Option<Arc<Graphics>>,
+    graphics_extensions: usize,
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
     banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     pots: BTreeMap<[i32; 3], render_model::block_entity::java_pot::Model>,
@@ -241,10 +242,20 @@ pub(crate) fn update(
         .as_ref()
         .is_none_or(|old| !Arc::ptr_eq(old, &graphics))
     {
-        // Extensions may admit new special states in an otherwise unchanged column.
-        // Rescan them without discarding validated positions or world-owned head profiles.
-        for (revision, _) in p.columns.values_mut() {
-            *revision = 0;
+        let extensions = terrain_presentation.graphics_extension_count();
+        let append_only = p.graphics.is_some() && extensions > p.graphics_extensions;
+        p.graphics_extensions = extensions;
+        if append_only {
+            // New states require rescanning, but old geometry and profiles remain valid.
+            for (revision, _) in p.columns.values_mut() {
+                *revision = 0;
+            }
+        } else {
+            p.columns.clear();
+            p.heads.clear();
+            p.pending = None;
+            p.identity = None;
+            p.bound_base = None;
         }
         p.banners.clear();
         p.pots.clear();
