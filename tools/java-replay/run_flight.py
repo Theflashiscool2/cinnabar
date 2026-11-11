@@ -26,6 +26,13 @@ def parse_abilities(text):
     return {key: value == '1' for key, value in values.items()}
 
 
+def parse_grounded(text):
+    match = re.search(r': ([01])b$', text.strip())
+    if not match:
+        raise ValueError('native OnGround response missing byte flag: ' + text)
+    return match[1] == '1'
+
+
 def parse_position(text):
     match = re.search(r'\[([^\[\]]+)\]', text)
     if not match:
@@ -227,7 +234,29 @@ def main():
             check('in-window manual double Jump reaches server', toggled['server_abilities']['flying'])
         else:
             checks.append({'label': 'manual double Jump', 'passed': None, 'status': 'inconclusive', 'timing': timing})
-        # Remaining cases use a native spectator grant, independent of a mistimed double tap.
+        # Reproduce the grounded, nonflying transition regardless of manual-toggle outcome.
+        # Native authority resets to the authored landing pad; never teleport into air to
+        # avoid the old-mode auto-land race while the Spectator grant is being admitted.
+        for text in [f'gamemode survival {FIXTURE_NAME}', f'tp {FIXTURE_NAME} 114.5 69 114.5 0 0']:
+            events.append({'grounded_spectator_setup': text, 'response': console(text)})
+
+        def grounded_source():
+            snapshot = state()
+            raw = console(f'data get entity {FIXTURE_NAME} OnGround')
+            abilities = parse_abilities(console(f'data get entity {FIXTURE_NAME} abilities'))
+            position = parse_position(console(f'data get entity {FIXTURE_NAME} Pos'))
+            return {'client': snapshot, 'server_on_ground_raw': raw,
+                    'server_on_ground': parse_grounded(raw), 'server_abilities': abilities,
+                    'server_position': position}
+
+        grounded = until(grounded_source, lambda row: row['server_on_ground']
+                         and row['server_position'][1] == 69.
+                         and row['client']['native_java_movement']['on_ground']
+                         and row['client']['native_java_hud']['mode'] == 'Survival'
+                         and row['client']['native_java']['motion']['position'][1] == 69.
+                         and not row['server_abilities']['flying'] and not row['server_abilities']['mayfly'],
+                         'actual grounded nonflying native source before Spectator', timeout=20)
+        events.append({'grounded_before_spectator': grounded})
         console(f'gamemode spectator {FIXTURE_NAME}')
         server_flight(True)
         advance(2)

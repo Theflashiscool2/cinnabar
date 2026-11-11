@@ -1,6 +1,6 @@
 """Acceptance-runner parsing/timing checks; no client/server or movement simulation."""
 import unittest
-from run_flight import parse_abilities, parse_position, toggle_timing, StableTerminal, full_terminal, scalar_receipt
+from run_flight import parse_abilities, parse_position, parse_grounded, toggle_timing, StableTerminal, full_terminal, scalar_receipt
 
 
 class FlightEvidenceTests(unittest.TestCase):
@@ -13,6 +13,12 @@ class FlightEvidenceTests(unittest.TestCase):
             parse_abilities('Unknown entity')
         with self.assertRaises(ValueError):
             parse_position('[1.0d, 2.0d]')
+
+    def test_grounded_source_uses_native_byte_flag(self):
+        self.assertTrue(parse_grounded('Fixture has the following entity data: 1b'))
+        self.assertFalse(parse_grounded('Fixture has the following entity data: 0b'))
+        with self.assertRaises(ValueError):
+            parse_grounded('Unknown entity')
 
     def test_native_window_is_not_widened_by_rpc_latency(self):
         self.assertEqual(toggle_timing({'before': 10, 'after': 11}, {'before': 13, 'after': 14})['verdict'], 'within-window')
