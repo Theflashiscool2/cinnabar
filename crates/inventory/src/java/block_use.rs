@@ -48,6 +48,12 @@ impl Journal {
     }
 }
 impl State {
+    pub(super) fn hand_slot(&self, hand: BlockUseHand) -> Option<usize> {
+        match hand {
+            BlockUseHand::Main => self.selected.filter(|slot| *slot < HOTBAR_SIZE),
+            BlockUseHand::Off => player_storage_slot(OFFHAND_MENU_SLOT),
+        }
+    }
     /// Predict one validated successful BlockItem result at queue admission, never an attempt.
     /// The hand, selected storage slot, count and component patch must still match that result.
     pub fn predict_block_use(
@@ -64,14 +70,8 @@ impl State {
         {
             return false;
         }
-        let slot = match hand {
-            BlockUseHand::Main => match self.selected.filter(|slot| *slot < HOTBAR_SIZE) {
-                Some(slot) => slot,
-                None => return false,
-            },
-            BlockUseHand::Off => {
-                player_storage_slot(OFFHAND_MENU_SLOT).expect("native offhand binding")
-            }
+        let Some(slot) = self.hand_slot(hand) else {
+            return false;
         };
         if expected.count == 0
             || self
