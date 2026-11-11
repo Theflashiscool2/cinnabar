@@ -5,6 +5,7 @@ use semantic_input::{ActionPhase, identity::InputAuthorityGeneration};
 use sim::java::selection::Hit;
 use std::{collections::VecDeque, time::Duration};
 mod chain;
+pub mod permission;
 pub use chain::UseStep;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -138,7 +139,11 @@ impl Controller {
         let invalid_break = state.inventory.held().is_none()
             || !matches!(
                 state.status.mode,
-                Some(world::java::hud::GameMode::Survival | world::java::hud::GameMode::Creative)
+                Some(
+                    world::java::hud::GameMode::Survival
+                        | world::java::hud::GameMode::Creative
+                        | world::java::hud::GameMode::Adventure
+                )
             );
         if self.pending.is_some_and(|request| match request.kind {
             Kind::Break | Kind::FinishBreak => invalid_break,
@@ -393,19 +398,46 @@ impl Controller {
             self.blocked = Some("Native held inventory is not known".into());
             return;
         };
-        self.creative = state.status.mode == Some(world::java::hud::GameMode::Creative)
-            && state
-                .player_dynamics
-                .abilities
-                .as_ref()
-                .is_some_and(|a| a.creative);
-        if !self.creative && state.status.mode != Some(world::java::hud::GameMode::Survival) {
-            if attack.pressed || attack.held {
-                self.blocked =
-                    Some("Native Adventure can_break predicates are not implemented".into());
-            }
+        self.creative = state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .is_some_and(|abilities| abilities.creative);
+        if !matches!(
+            state.status.mode,
+            Some(
+                world::java::hud::GameMode::Survival
+                    | world::java::hud::GameMode::Creative
+                    | world::java::hud::GameMode::Adventure
+            )
+        ) {
             self.elapsed = Duration::ZERO;
             return;
+        }
+        // Native startDestroyBlock checks restriction once. Continuing a captured
+        // target does not repeat it; destroyBlock checks again inside FINISH prediction.
+        if self.mining.is_none() {
+            match permission::check(
+                state,
+                hit,
+                Hand::Main,
+                assets::registry::java::adventure::Permission::Break,
+            ) {
+                Ok(true) => {}
+                Ok(false) => {
+                    if attack.pressed || attack.held {
+                        self.blocked =
+                            Some("Native Adventure can_break does not match the target".into());
+                    }
+                    self.elapsed = Duration::ZERO;
+                    return;
+                }
+                Err(error) => {
+                    self.blocked = Some(error.into());
+                    self.elapsed = Duration::ZERO;
+                    return;
+                }
+            }
         }
         if self.creative {
             match super::mining::creative_allowed(held.as_ref()) {

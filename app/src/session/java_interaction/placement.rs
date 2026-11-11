@@ -62,7 +62,7 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
     use world::java::hud::GameMode;
     if !matches!(
         state.status.mode,
-        Some(GameMode::Survival | GameMode::Creative)
+        Some(GameMode::Survival | GameMode::Creative | GameMode::Adventure)
     ) {
         return None;
     }
@@ -105,6 +105,16 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
     // their existing request path, without inventing an ordinary placement result.
     if !target.item_default || !target.empty_default || !target.placement_surface {
         return None;
+    }
+    if !gameplay::java::interaction::permission::check(
+        state,
+        hit,
+        request.hand,
+        assets::registry::java::adventure::Permission::PlaceOn,
+    )
+    .ok()?
+    {
+        return Some(Outcome::Blocked);
     }
     let block = rules.item(&stack.item)?.placement_block.as_deref()?;
     if !rules.block(block)?.placement_default {
@@ -728,4 +738,5 @@ mod tests {
         assert!(!rules.never_obstructs("minecraft:armor_stand"));
         assert!(!rules.never_obstructs("unknown:entity"));
     }
+    mod adventure;
 }
