@@ -47,12 +47,18 @@ struct Report {
     state_count: usize,
     blocks: Vec<Block>,
     integer_digit_starts: Vec<u16>,
+    default_namespace: String,
+    namespace_characters: String,
+    path_characters: String,
 }
 #[derive(Debug)]
 pub struct Table {
     blocks: Vec<Block>,
     names: BTreeMap<String, usize>,
     digits: Vec<u16>,
+    default_namespace: String,
+    namespace_characters: String,
+    path_characters: String,
 }
 impl Table {
     pub fn load(bytes: &[u8]) -> Result<Self, Error> {
@@ -70,6 +76,7 @@ impl Table {
             || Some(report.version.as_str()) != target["game_version"].as_str()
             || Some(i64::from(report.protocol)) != target["protocol"].as_i64()
             || Some(report.source_sha256.as_str()) != pin["source_sha256"].as_str()
+            || Some(report.state_count as u64) != pin["states"].as_u64()
             || Some(report.state_count as u64) != target["block_registry_report"]["states"].as_u64()
             || Some(report.blocks.len() as u64) != pin["blocks"].as_u64()
         {
@@ -101,11 +108,38 @@ impl Table {
             blocks: report.blocks,
             names,
             digits: report.integer_digit_starts,
+            default_namespace: report.default_namespace,
+            namespace_characters: report.namespace_characters,
+            path_characters: report.path_characters,
         })
     }
     pub fn block(&self, name: &str) -> Option<(u32, &Block)> {
         let id = *self.names.get(name)?;
         Some((u32::try_from(id).ok()?, &self.blocks[id]))
+    }
+    /// Native Identifier.parse normalization for logical registry/tag names. These
+    /// names are not filesystem paths, so valid repeated or dot path segments remain valid.
+    pub fn identifier<'a>(&self, value: &'a str) -> Option<std::borrow::Cow<'a, str>> {
+        let (namespace, path, explicit) = match value.split_once(':') {
+            Some((namespace, path)) if !namespace.is_empty() => (namespace, path, true),
+            Some((_, path)) => (self.default_namespace.as_str(), path, false),
+            None => (self.default_namespace.as_str(), value, false),
+        };
+        if namespace == ".."
+            || !namespace
+                .bytes()
+                .all(|byte| self.namespace_characters.as_bytes().contains(&byte))
+            || !path
+                .bytes()
+                .all(|byte| self.path_characters.as_bytes().contains(&byte))
+        {
+            return None;
+        }
+        Some(if explicit {
+            std::borrow::Cow::Borrowed(value)
+        } else {
+            std::borrow::Cow::Owned(format!("{namespace}:{path}"))
+        })
     }
     /// Native Integer.parseInt reads UTF-16 char digits, not ASCII-only or code-point digits.
     fn integer(&self, value: &str) -> Option<i32> {
@@ -151,6 +185,25 @@ pub fn builtin() -> Result<&'static Table, &'static Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn logical_tag_identifiers_use_native_defaults_without_asset_path_restrictions() {
+        let facts = builtin().unwrap();
+        assert_eq!(
+            facts.identifier(":mineable/pickaxe").unwrap(),
+            "minecraft:mineable/pickaxe"
+        );
+        assert_eq!(
+            facts.identifier("mineable/pickaxe").unwrap(),
+            "minecraft:mineable/pickaxe"
+        );
+        assert_eq!(
+            facts.identifier("fixture:a//../b").unwrap(),
+            "fixture:a//../b"
+        );
+        assert_eq!(facts.identifier("minecraft:").unwrap(), "minecraft:");
+        assert!(facts.identifier("..:name").is_none());
+        assert!(facts.identifier("UPPER:name").is_none());
+    }
     #[test]
     fn property_matching_preserves_native_integer_parser_and_enum_comparable_order() {
         let facts = builtin().unwrap();

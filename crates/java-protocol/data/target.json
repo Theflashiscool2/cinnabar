@@ -209,9 +209,9 @@
     "generator": "assetc java-prediction (ExportPrediction.java); exact declaring classes and FluidState.createLegacyBlock state IDs"
   },
   "adventure_report": {
-    "sha256": "c80469ef0db073a1e99876744cf741d673297a7df2fbb7b1a6b198bc57637a91",
-    "bytes": 407730,
-    "source_sha256": "ff3cbeaa0abda37d6af6453598a744d3510632cdd0d6f8dafa6d5781235071a1",
+    "sha256": "644f444bdb14dcfd49df3fe45ea9535241d845a866c52031cda12e49f6699ebf",
+    "bytes": 407888,
+    "source_sha256": "f7ad61a89048a21a556ff7ad126ff7eb2cfb18a6dc72eb1e80b03b93b9e6b72d",
     "states": 35723,
     "blocks": 1286,
     "generator": "assetc java-adventure (ExportAdventure.java); native property types/Comparable order and Integer.parseInt digit ranges"
