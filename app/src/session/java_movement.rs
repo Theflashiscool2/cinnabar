@@ -25,7 +25,7 @@ impl Movement {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"ticks":self.0.ticks,"between_frame_ticks":self.1.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
-            "pending_frame":self.0.pending().is_some(),"pending_ability_update":self.0.pending_ability().map(|(_, flying)| flying),"on_ground":self.0.body.on_ground,
+            "pending_frame":self.0.pending().is_some(),"pending_ability_update":self.0.pending_ability().map(|(_, _, flying)| flying),"on_ground":self.0.body.on_ground,
             "last_climbable_position":self.0.body.last_climbable_position,
             "swimming":self.0.body.swimming,"low_profile":self.0.body.low_profile,
             "eye_height":self.0.body.eye_height(1.),
@@ -136,9 +136,10 @@ pub(super) fn flush_abilities(
     java: &client_session::java::Session,
     movement: &mut Movement,
 ) -> bool {
-    while let Some((dimension_epoch, flying)) = movement.0.pending_ability() {
+    while let Some((dimension_epoch, authority_revision, flying)) = movement.0.pending_ability() {
         match java.command(Command::Abilities {
             dimension_epoch,
+            authority_revision,
             flying,
         }) {
             Ok(()) => movement.0.ability_queued(),

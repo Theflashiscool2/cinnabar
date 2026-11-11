@@ -11,6 +11,7 @@ pub mod hud;
 pub mod interaction;
 pub mod inventory;
 pub use events::{Envelope, Event};
+pub mod abilities;
 mod ingress;
 mod login;
 mod motion;
@@ -159,6 +160,7 @@ pub enum Command {
     /// Native ability edge; it is independent of movement correction acknowledgements.
     Abilities {
         dimension_epoch: u64,
+        authority_revision: u64,
         flying: bool,
     },
     Move {
@@ -235,6 +237,7 @@ struct Connection {
     terrain: Option<crate::terrain::Context>,
     dimensions: Vec<crate::terrain::Context>,
     dimension_epoch: u64,
+    ability_revision: u64,
     commands: Option<mpsc::Receiver<Command>>,
     dead: bool,
     loaded_epoch: Option<u64>,
@@ -337,6 +340,7 @@ async fn run_inner(mut options: Options, events: mpsc::Sender<Envelope>) -> Resu
             terrain: None,
             dimensions: Vec::new(),
             dimension_epoch,
+            ability_revision: 0,
             menu_lifetime: Default::default(),
             drop_fence: Default::default(),
             entity_lifetimes: Default::default(),

@@ -3,6 +3,7 @@ use super::*;
 impl Connection {
     pub(super) async fn play(&mut self) -> Result<(), Error> {
         let mut deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+        let mut pending_ability = None;
         loop {
             let now = auth::chat::now_millis_protocol()?;
             if self.bootstrapped
@@ -28,50 +29,68 @@ impl Connection {
                 || self.pending_rotation.is_some()
                 || self.pending_ping.is_some();
             let preparing_chat = self.chat_preparation.is_some() && !self.chat.has_roots();
-            let (packet, chat_replay) = tokio::select! {
-                result = async {
-                    if !awaiting_authority && !preparing_chat && let Some(frame)=self.chat_pending.pop(){
-                        return Ok((frame,true));
-                    }
-                    if !awaiting_authority && let Some(frame) = self.ingress.pop() {
-                        return Ok((frame,false));
-                    }
-                    tokio::time::timeout_at(deadline, self.stream.read()).await
-                        .map_err(|_| Error::Timeout(Phase::Play))?
-                        .map(|bytes| (ingress::Frame::new(bytes),false)).map_err(Error::from)
-                }, if (!awaiting_authority || self.ingress.can_read()) && (!preparing_chat || self.chat_pending.can_read()) => {
-                    deadline = tokio::time::Instant::now() + Duration::from_secs(120);
-                    result?
-                },
-                material=async {
-                    match self.chat_preparation.as_mut(){Some(future)=>future.await,None=>std::future::pending().await}
-                }=>{
-                    self.chat_preparation=None;
-                    match material {
-                        Ok(material)=>{
-                            self.chat_announcement=self.chat.install(material,auth::chat::now_millis_protocol()?)?;
-                            tracing::info!(target:"java_auth", signing_ready=self.chat.signing_ready(),"Java chat trust preparation completed");
+            let ready = if pending_ability.is_some() && !awaiting_authority && !preparing_chat {
+                self.ready_ability_packet().await?
+            } else {
+                None
+            };
+            let (packet, chat_replay) = if let Some(packet) = ready {
+                deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                packet
+            } else if let Some(command) = pending_ability.take() {
+                self.command(command).await?;
+                continue;
+            } else {
+                tokio::select! {
+                    result = async {
+                        if !awaiting_authority && !preparing_chat && let Some(frame)=self.chat_pending.pop(){
+                            return Ok((frame,true));
                         }
-                        Err(error)=>tracing::warn!(target:"java_auth",%error,"Java chat trust preparation unavailable; authenticated game connection retained"),
-                    }
-                    continue;
-                },
-                command = async {
-                    match &mut self.commands {
-                        Some(commands) => commands.recv().await,
-                        None => std::future::pending().await,
-                    }
-                } => {
-                    match command {
-                        Some(command) => {
-                            if self.command(command).await? {
-                                deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                        if !awaiting_authority && let Some(frame) = self.ingress.pop() {
+                            return Ok((frame,false));
+                        }
+                        tokio::time::timeout_at(deadline, self.stream.read()).await
+                            .map_err(|_| Error::Timeout(Phase::Play))?
+                            .map(|bytes| (ingress::Frame::new(bytes),false)).map_err(Error::from)
+                    }, if (!awaiting_authority || self.ingress.can_read()) && (!preparing_chat || self.chat_pending.can_read()) => {
+                        deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                        result?
+                    },
+                    material=async {
+                        match self.chat_preparation.as_mut(){Some(future)=>future.await,None=>std::future::pending().await}
+                    }=>{
+                        self.chat_preparation=None;
+                        match material {
+                            Ok(material)=>{
+                                self.chat_announcement=self.chat.install(material,auth::chat::now_millis_protocol()?)?;
+                                tracing::info!(target:"java_auth", signing_ready=self.chat.signing_ready(),"Java chat trust preparation completed");
                             }
+                            Err(error)=>tracing::warn!(target:"java_auth",%error,"Java chat trust preparation unavailable; authenticated game connection retained"),
                         }
-                        None if self.pending_teleport.is_some() || self.pending_rotation.is_some() || self.pending_ping.is_some() => return Err(Error::ConsumerClosed),
-                        None => self.commands = None,
+                        continue;
+                    },
+                    command = async {
+                        match &mut self.commands {
+                            Some(commands) => commands.recv().await,
+                            None => std::future::pending().await,
+                        }
+                    } => {
+                        match command {
+                            Some(command @ Command::Abilities { .. }) => {
+                                // Retain command FIFO order while giving ready incoming capability
+                                // replacements their native task-drain boundary before eligibility.
+                                pending_ability = Some(command);
+                            }
+                            Some(command) => {
+                                if self.command(command).await? {
+                                    deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+                                }
+                            }
+                            None if self.pending_teleport.is_some() || self.pending_rotation.is_some() || self.pending_ping.is_some() => return Err(Error::ConsumerClosed),
+                            None => self.commands = None,
+                        }
+                        continue;
                     }
-                    continue;
                 }
             };
             let mut r = Reader(&packet.bytes);
@@ -245,10 +264,12 @@ impl Connection {
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("status before Java world login").into());
                 }
-                if let hud::Packet::GameMode(mode) = &packet {
-                    self.drop_fence.mode(*mode);
+                if let hud::Packet::GameMode(mode) = packet {
+                    self.drop_fence.mode(mode);
+                    self.ability_update(abilities::Update::Mode(mode)).await?;
+                } else {
+                    self.emit(Event::Hud(packet)).await?;
                 }
-                self.emit(Event::Hud(packet)).await?;
                 continue;
             }
             if let Some(mut packet) = entities::decode(name, &mut r).map_err(packet_error)? {
@@ -271,7 +292,10 @@ impl Connection {
                 if !self.bootstrapped {
                     return Err(ProtocolError::Invalid("player dynamics before world login").into());
                 }
-                if let dynamics::Packet::Rotation {
+                if let dynamics::Packet::Abilities(values) = packet {
+                    self.ability_update(abilities::Update::Values(values))
+                        .await?;
+                } else if let dynamics::Packet::Rotation {
                     yaw,
                     relative_yaw,
                     pitch,
@@ -333,6 +357,7 @@ impl Connection {
                         .dimension_epoch
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
+                    self.ability_revision = 0;
                     let old_online = self.chat.online();
                     self.chat_announcement = self.chat.world_login(
                         world.online_mode,
@@ -432,6 +457,7 @@ impl Connection {
                         .dimension_epoch
                         .checked_add(1)
                         .ok_or(ProtocolError::Invalid("Java dimension epoch overflow"))?;
+                    self.ability_revision = 0;
                     // This is the server's new player/world, not proof from a sent respawn request.
                     self.loaded_epoch = None;
                     self.cancelled_use.clear();

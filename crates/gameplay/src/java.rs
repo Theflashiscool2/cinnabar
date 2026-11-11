@@ -47,7 +47,7 @@ pub struct Controller {
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
-    pending_abilities: VecDeque<bool>,
+    pending_abilities: VecDeque<(u64, bool)>,
     last_position: Option<[f64; 3]>,
     last_rotation: Option<[f32; 2]>,
     last_input: Option<u8>,
@@ -68,6 +68,10 @@ impl Controller {
                 ..Default::default()
             };
         }
+        // Native in-place capability updates replace every older local flag choice,
+        // including repeated grants. Position corrections alone retain these edges.
+        self.pending_abilities
+            .retain(|(revision, _)| *revision == state.player_ability_revision);
         // A not-yet-handed-off enable cannot outlive a server permission revocation.
         // Disable edges remain valid and cannot be retired with kinematic prediction.
         if !state
@@ -76,7 +80,7 @@ impl Controller {
             .as_ref()
             .is_some_and(|abilities| abilities.may_fly)
         {
-            self.pending_abilities.retain(|flying| !*flying);
+            self.pending_abilities.retain(|(_, flying)| !*flying);
         }
         let corrected = self.sequence != state.motion_sequence();
         if corrected {
@@ -226,8 +230,9 @@ impl Controller {
 
     /// Irreversible native ability edges survive same-world correction/frame retirement.
     /// Queue handoff is transport ownership transfer, never a wire/server acknowledgement.
-    pub fn pending_ability(&self) -> Option<(u64, bool)> {
-        Some((self.scope?.1, *self.pending_abilities.front()?))
+    pub fn pending_ability(&self) -> Option<(u64, u64, bool)> {
+        let &(revision, flying) = self.pending_abilities.front()?;
+        Some((self.scope?.1, revision, flying))
     }
     pub fn ability_queued(&mut self) {
         self.pending_abilities.pop_front();
@@ -414,7 +419,8 @@ impl Controller {
             controls.buttons,
         ));
         for flying in [updates.input, updates.landing].into_iter().flatten() {
-            self.pending_abilities.push_back(flying);
+            self.pending_abilities
+                .push_back((state.player_ability_revision, flying));
             state
                 .player_dynamics
                 .abilities
