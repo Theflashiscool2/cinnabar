@@ -241,7 +241,8 @@ fn light_and_biome_updates_preserve_block_entity_catalog_revision() {
         terrain.column([0, 0]).unwrap().contents_revision(),
         contents
     );
-    assert!(terrain.set_block([0, -64, 0], BlockStateId(8)));
+    terrain.set_block([0, -64, 0], BlockStateId(8));
+    assert_eq!(terrain.block([0, -64, 0]), Some(BlockStateId(8)));
     let block = terrain.column([0, 0]).unwrap().contents_revision();
     assert!(block > contents);
     assert!(terrain.set_block_entity(BlockEntity {
