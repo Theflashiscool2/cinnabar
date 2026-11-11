@@ -112,7 +112,10 @@ replies and recorded gameplay/menu requests are gated by phase and packet body. 
 the original normal input actions at those gates; otherwise replay fails with the missing
 request. No client requests are fabricated by the replay server. Multiple connections and
 server-directed transfers are supported; external hosts are never followed by this fixture.
-Replay holds final state until explicit disconnect so assertions do not race an artificial EOF.
+Replay holds final state until explicit disconnect, sending normal fixture-server keepalives
+at the pinned vanilla 15-second interval and requiring real native replies. This avoids
+inspection-time idle disconnects without changing client timeouts. Pending gated replies
+are bounded by count and bytes; neither heartbeat nor overflow fabricates a client reply.
 
 `check.py` takes an explicit expectation list (`path`, `op: eq|min|contains`, `value`) and
 reads ordinary developer state without copying its endpoint token to results:
