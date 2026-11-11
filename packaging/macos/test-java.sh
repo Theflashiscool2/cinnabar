@@ -19,6 +19,16 @@ for cache_path in "${CARGO_BUILD_BUILD_DIR:-}" "${CARGO_TARGET_DIR:-}" "${GOCACH
       ;;
   esac
 done
+python3 - "$PWD" "${CARGO_BUILD_BUILD_DIR:-}" "${CARGO_TARGET_DIR:-}" <<'PYSPACE'
+from pathlib import Path
+import shutil,sys
+for value in filter(None,sys.argv[1:]):
+    path=Path(value).absolute()
+    while not path.exists():path=path.parent
+    free=shutil.disk_usage(path).free
+    if free<6*1024**3:
+        raise SystemExit(f"STOP: only {free/1024**3:.1f} GiB free at {path}; need at least 6 GiB before building.")
+PYSPACE
 export CINNABAR_JAVA_ASSETS="${CINNABAR_JAVA_ASSETS:-$PWD/.local/assets/java/26.3}"
 for asset in client.jar blocks.json models.json physics.bin interaction.bin; do
   if [ ! -f "$CINNABAR_JAVA_ASSETS/$asset" ]; then
