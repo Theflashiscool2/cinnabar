@@ -7,7 +7,7 @@ pub(crate) fn update(
     mut controller: Option<ResMut<SessionController>>,
     ui: Option<ResMut<UiRuntimeResource>>,
     presentation: Option<Res<super::java_render::Presentation>>,
-    mut heads: ResMut<super::java_items::Heads>,
+    mut heads: Option<ResMut<super::java_items::Heads>>,
     time: Res<Time<bevy::time::Real>>,
     mut chat: Local<super::java_chat::Projection>,
 ) {
@@ -22,6 +22,15 @@ pub(crate) fn update(
         .and_then(|c| c.java.as_ref().and(c.java_world.hud_snapshot()))
     {
         Some(snapshot) => {
+            let Some(heads) = heads.as_deref_mut() else {
+                if let Some(java) = controller
+                    .as_mut()
+                    .and_then(|controller| controller.java.as_mut())
+                {
+                    java.diagnostic_notice("native_item_head_resource_owner_unavailable");
+                }
+                return;
+            };
             ui.publish_java_hud(snapshot);
             if let Some(names) = presentation
                 .as_ref()
@@ -65,6 +74,7 @@ pub(crate) fn update(
             if controller
                 .as_ref()
                 .is_none_or(|c| c.java.is_none() || c.java_world.terrain.dimension().is_none())
+                && let Some(heads) = heads.as_deref_mut()
             {
                 heads.clear();
             }
