@@ -236,3 +236,18 @@ fn use_stop_history_records_exact_static_branch_context_and_is_bounded() {
     assert_eq!(recent[0]["reason"], "server_using_flag_cleared");
     assert_eq!(recent[0]["held_known"], true);
 }
+
+#[test]
+fn local_impulse_history_is_bounded_and_does_not_include_identity_or_position() {
+    let t = recorder();
+    for _ in 0..RECENT + 2 {
+        t.server_impulse([0.4, 0.5, -0.1], true, true, false);
+    }
+    let value = t.snapshot();
+    let list = value["recent_server_impulses"].as_array().unwrap();
+    assert_eq!(list.len(), RECENT);
+    assert_eq!(list[0]["velocity"], json!([0.4, 0.5, -0.1]));
+    assert!(list[0].get("entity").is_none());
+    assert!(list[0].get("position").is_none());
+    assert_eq!(list[0]["admitted"], true);
+}

@@ -62,6 +62,19 @@ fn admit_using(
         ),
         _ => None,
     };
+    let local_impulse = match &event.event {
+        Event::Dynamics {
+            packet: java_protocol::session::dynamics::Packet::Velocity { entity, velocity },
+            ..
+        } if state
+            .bootstrap
+            .as_ref()
+            .is_some_and(|b| b.world.entity_id == *entity) =>
+        {
+            Some(*velocity)
+        }
+        _ => None,
+    };
     let ack = matches!(event.event, Event::BlockAck { .. });
     let receipt = match &event.event {
         Event::InventorySent {
@@ -102,6 +115,13 @@ fn admit_using(
         bevy::log::debug!(target:"java_session", ?context, admitted,
             inventory_error_present=state.inventory.error.is_some(),
             "Native Java inventory update admission");
+    }
+    if let Some(velocity) = local_impulse {
+        let positioned = state.player_motion.is_some();
+        let awaiting_ack = state.awaiting_correction_ack();
+        t.server_impulse(velocity, admitted, positioned, awaiting_ack);
+        bevy::log::debug!(target:"java_session", ?velocity, admitted, positioned, awaiting_ack,
+            "Native Java local velocity admission");
     }
     use client_session::java::telemetry::Prediction;
     for (event, amount) in [

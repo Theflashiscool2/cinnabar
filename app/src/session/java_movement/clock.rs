@@ -8,6 +8,7 @@ pub(in crate::session) struct ServiceState {
     pub(in crate::session) controls: gameplay::java::Controls,
     pub(in crate::session) ticks: u64,
     pub(in crate::session) corrected: bool,
+    pub(super) reported_block: Option<String>,
 }
 impl ServiceState {
     pub(super) fn elapsed(&mut self, scope: Option<(u64, u64)>, now: Instant) -> Duration {
