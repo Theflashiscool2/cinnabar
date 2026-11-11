@@ -48,13 +48,21 @@ pub(in crate::java) fn observe(state: &State, identity: Identity, visual: &mut V
         visual.remote_use = None;
         return;
     }
-    let stack = held(state.get(identity), visual);
+    let gear = state.get(identity);
+    let stack = held(gear, visual);
+    let token = gear.zip(stack).map(|(gear, _)| {
+        let slot = u8::from(visual.use_flags & 2 != 0);
+        (slot, gear.slot_revisions[usize::from(slot)])
+    });
     if let Some(using) = &mut visual.remote_use {
         using.observed_item = stack.map(|stack| Arc::from(stack.item.as_str()));
+        using.observed_token = token;
     } else if let Some(stack) = stack {
         let item = Arc::from(stack.item.as_str());
         visual.remote_use = Some(RemoteUse {
             observed_item: Some(Arc::clone(&item)),
+            observed_token: token,
+            item_token: token.expect("nonempty native use stack has a slot receipt"),
             item,
             remaining: duration(stack),
         });
@@ -82,6 +90,46 @@ pub fn pose(visual: &Visual, gear: Option<&Equipment>) -> Option<PlayerUse> {
         }
         _ => None,
     }
+}
+
+/// Native using_item property compares the captured ItemStack reference, not merely item type.
+pub fn model_using(visual: &Visual, gear: &Equipment, slot: u8) -> bool {
+    let Some(using) = &visual.remote_use else {
+        return false;
+    };
+    let used_slot = u8::from(visual.use_flags & 2 != 0);
+    visual.use_flags & 1 != 0
+        && slot == used_slot
+        && gear
+            .slot_revisions
+            .get(usize::from(slot))
+            .is_some_and(|revision| using.item_token == (slot, *revision))
+        && held(Some(gear), visual).is_some_and(|stack| stack.item.as_str() == using.item.as_ref())
+}
+/// Only native bow/default shield owner-use dispatch is currently known; other specialized
+/// contexts retain the existing ownerless path instead of inventing duration observations.
+pub fn model_owner(
+    visual: &Visual,
+    gear: &Equipment,
+    slot: u8,
+    entity_type: Arc<str>,
+) -> Option<assets::registry::java::items::OwnerObservations> {
+    let stack = gear.slots.get(usize::from(slot))?.as_ref()?;
+    if !matches!(stack.item.as_str(), "minecraft:bow" | "minecraft:shield") {
+        return None;
+    }
+    let using_this_item = model_using(visual, gear, slot);
+    Some(assets::registry::java::items::OwnerObservations {
+        entity_type,
+        main_arm_left: visual.left_handed,
+        using_this_item,
+        use_duration: duration(stack),
+        use_item_remaining_ticks: if using_this_item {
+            visual.remote_use.as_ref().and_then(|using| using.remaining)
+        } else {
+            None
+        },
+    })
 }
 
 #[cfg(test)]

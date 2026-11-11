@@ -45,7 +45,10 @@ pub struct PlayerLayers {
 #[derive(Clone, Debug)]
 pub struct RemoteUse {
     pub item: Arc<str>,
+    /// Slot plus appearance receipt identifies the captured native ItemStack reference.
+    pub item_token: (u8, u64),
     pub observed_item: Option<Arc<str>>,
+    pub observed_token: Option<(u8, u64)>,
     pub remaining: Option<i32>,
 }
 #[derive(Clone, Debug)]

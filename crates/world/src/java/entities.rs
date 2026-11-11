@@ -126,8 +126,13 @@ impl Entities {
             if let Some(using) = &mut entity.visual.remote_use {
                 if using.observed_item.as_ref() != Some(&using.item) {
                     entity.visual.remote_use = None;
-                } else if let Some(remaining) = &mut using.remaining {
-                    *remaining = remaining.wrapping_sub(1);
+                } else {
+                    if let Some(token) = using.observed_token {
+                        using.item_token = token;
+                    }
+                    if let Some(remaining) = &mut using.remaining {
+                        *remaining = remaining.wrapping_sub(1);
+                    }
                 }
             }
             entity.visual.swing.tick();

@@ -490,3 +490,211 @@ fn worn_player_heads_use_raw_skull_geometry_and_authoritative_profile() {
     );
     assert!(c.worn_player_head(&stack(), &heads).unwrap().is_none());
 }
+
+fn owner(using: bool, remaining: Option<i32>) -> OwnerObservations {
+    OwnerObservations {
+        entity_type: "minecraft:player".into(),
+        main_arm_left: false,
+        using_this_item: using,
+        use_duration: Some(72000),
+        use_item_remaining_ticks: remaining,
+    }
+}
+#[test]
+fn owner_selection_preserves_legacy_geometry_and_rejects_unknown_use_or_other_catalog() {
+    let definition = serde_json::json!({"type":"minecraft:condition","property":"minecraft:using_item",
+        "on_false":leaf("red"),"on_true":{"type":"minecraft:range_dispatch","property":"minecraft:use_duration",
+        "fallback":leaf("blue"),"entries":[{"threshold":7,"model":leaf("red")}]}});
+    let c = catalog(definition.clone());
+    let stack = stack();
+    let plain = c.select_in(&stack, View::ThirdPersonRight, None).unwrap();
+    let inactive = c
+        .select_in(&stack, View::ThirdPersonRight, Some(&owner(false, None)))
+        .unwrap();
+    assert_eq!(
+        plain, inactive,
+        "ownerless local callers keep their existing selection"
+    );
+    let early = c
+        .select_in(
+            &stack,
+            View::ThirdPersonRight,
+            Some(&owner(true, Some(72000))),
+        )
+        .unwrap();
+    let same = c
+        .select_in(
+            &stack,
+            View::ThirdPersonRight,
+            Some(&owner(true, Some(71995))),
+        )
+        .unwrap();
+    let later = c
+        .select_in(
+            &stack,
+            View::ThirdPersonRight,
+            Some(&owner(true, Some(71992))),
+        )
+        .unwrap();
+    assert_eq!(
+        early, same,
+        "remaining ticks alone cannot force a geometry rebuild"
+    );
+    assert_ne!(early, later);
+    let blue = c
+        .geometry_selected(&early, &HeadTextures::default())
+        .unwrap();
+    assert!(blue.iter().any(|quad| {
+        quad.image
+            .rgba
+            .chunks_exact(4)
+            .any(|pixel| pixel[2] > pixel[0])
+    }));
+    let unknown = OwnerObservations {
+        use_duration: None,
+        ..owner(true, Some(72000))
+    };
+    assert!(
+        c.select_in(&stack, View::ThirdPersonRight, Some(&unknown))
+            .is_err()
+    );
+    assert!(
+        c.select_in(&stack, View::ThirdPersonRight, Some(&owner(true, None)))
+            .is_err()
+    );
+    let other = catalog(definition);
+    assert_ne!(
+        early,
+        other
+            .select_in(
+                &stack,
+                View::ThirdPersonRight,
+                Some(&owner(true, Some(72000)))
+            )
+            .unwrap()
+    );
+    assert!(
+        other
+            .geometry_selected(&early, &HeadTextures::default())
+            .is_err(),
+        "a new/reloaded catalog cannot consume old selections"
+    );
+    let legacy = c
+        .geometry_in(&stack, &HeadTextures::default(), View::ThirdPersonRight)
+        .unwrap();
+    let prepared = c
+        .geometry_selected(&plain, &HeadTextures::default())
+        .unwrap();
+    assert_eq!(legacy.len(), prepared.len());
+    for (legacy, prepared) in legacy.iter().zip(&prepared) {
+        assert_eq!(legacy.positions, prepared.positions);
+        assert_eq!(legacy.uv, prepared.uv);
+        assert_eq!(legacy.color, prepared.color);
+        assert_eq!(legacy.image.rgba, prepared.image.rgba);
+    }
+}
+#[test]
+fn refreshing_model_resources_retires_selections_from_the_previous_catalog_generation() {
+    let catalog = catalog(leaf("red"));
+    let selection = catalog
+        .select_in(&stack(), View::ThirdPersonRight, None)
+        .unwrap();
+    let bytes = br#"{"fixture":{"name":"root","offset":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1],"visible":true,"skip_draw":false,"faces":[],"children":[]}}"#;
+    let models = crate::entity::java::Models::load(
+        bytes,
+        &format!("{:x}", Sha256::digest(bytes)),
+        bytes.len() as u64,
+    )
+    .unwrap();
+    let catalog = catalog.with_entity_models(Arc::new(models));
+    assert!(
+        catalog
+            .geometry_selected(&selection, &HeadTextures::default())
+            .is_err()
+    );
+    assert_ne!(
+        selection,
+        catalog
+            .select_in(&stack(), View::ThirdPersonRight, None)
+            .unwrap()
+    );
+}
+#[test]
+fn owner_main_hand_and_display_remain_distinct_selection_inputs() {
+    let c = catalog(
+        serde_json::json!({"type":"minecraft:select","property":"minecraft:main_hand",
+        "cases":[{"when":"left","model":leaf("blue")}],"fallback":leaf("red")}),
+    );
+    let right = owner(false, None);
+    let left = OwnerObservations {
+        main_arm_left: true,
+        ..right.clone()
+    };
+    let a = c
+        .select_in(&stack(), View::ThirdPersonRight, Some(&right))
+        .unwrap();
+    assert_ne!(
+        a,
+        c.select_in(&stack(), View::ThirdPersonRight, Some(&left))
+            .unwrap()
+    );
+    assert_ne!(
+        a,
+        c.select_in(&stack(), View::ThirdPersonLeft, Some(&right))
+            .unwrap()
+    );
+}
+#[test]
+fn native_remote_bow_models_follow_pinned_resource_selection_and_release() {
+    let Some(c) = native_catalog() else {
+        return;
+    };
+    let bow = Stack {
+        item: "minecraft:bow".into(),
+        ..stack()
+    };
+    let model = |selection: &Selection| match &selection.selected.layers[0].content {
+        LayerContent::Model { model } => model.clone(),
+        _ => panic!("native bow resource must select a model"),
+    };
+    let mut previous = None;
+    for (elapsed, wanted) in [
+        (0, "bow_pulling_0"),
+        (12, "bow_pulling_0"),
+        (13, "bow_pulling_1"),
+        (17, "bow_pulling_1"),
+        (18, "bow_pulling_2"),
+        (60, "bow_pulling_2"),
+    ] {
+        // Thresholds and scale are read from the verified native bow.json by the resolver.
+        let selected = c
+            .select_in(
+                &bow,
+                View::ThirdPersonRight,
+                Some(&owner(true, Some(72000 - elapsed))),
+            )
+            .unwrap();
+        assert_eq!(model(&selected), format!("minecraft:item/{wanted}"));
+        assert!(
+            !c.geometry_selected(&selected, &HeadTextures::default())
+                .unwrap()
+                .is_empty()
+        );
+        if let Some((old_model, old_selection)) = previous {
+            assert_eq!(
+                old_selection == selected,
+                old_model == wanted,
+                "only actual selected resource changes invalidate artwork"
+            );
+        }
+        previous = Some((wanted, selected));
+    }
+    let released = c
+        .select_in(&bow, View::ThirdPersonRight, Some(&owner(false, None)))
+        .unwrap();
+    assert_eq!(model(&released), "minecraft:item/bow");
+    assert_eq!(
+        released,
+        c.select_in(&bow, View::ThirdPersonRight, None).unwrap()
+    );
+}

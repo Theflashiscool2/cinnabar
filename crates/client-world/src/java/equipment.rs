@@ -6,7 +6,7 @@ use inventory::java::Slot;
 pub(super) use pickup::take;
 pub use pickup::{Collector, Pickup};
 pub(in crate::java) use remote_use::observe as observe_remote_use;
-pub use remote_use::pose as player_use_pose;
+pub use remote_use::{model_owner, model_using, pose as player_use_pose};
 use std::collections::BTreeMap;
 use world::java::entities::Identity;
 #[derive(Clone, Debug, Default)]
@@ -14,6 +14,7 @@ pub struct Equipment {
     /// Native MAINHAND, OFFHAND, FEET, LEGS, CHEST, HEAD, BODY, SADDLE order.
     pub slots: [Slot; 8],
     pub revision: u64,
+    slot_revisions: [u64; 8],
 }
 #[derive(Clone, Debug)]
 pub struct Ground {
@@ -91,6 +92,7 @@ impl State {
         let entry = self.entries.entry(identity).or_default();
         for (slot, stack) in slots {
             entry.slots[usize::from(slot)] = stack;
+            entry.slot_revisions[usize::from(slot)] = revision;
         }
         entry.revision = revision;
         self.revision = revision;
@@ -120,14 +122,21 @@ pub(super) fn admit(
             gear.slots[slot]
                 .as_ref()
                 .filter(|stack| stack.count > 0)
-                .map(|stack| std::sync::Arc::<str>::from(stack.item.as_str()))
+                .map(|stack| {
+                    (
+                        std::sync::Arc::<str>::from(stack.item.as_str()),
+                        (slot as u8, gear.slot_revisions[slot]),
+                    )
+                })
         })
     });
     state.entities.update(scope, packet.id, |entity| {
         if let Some(using) = &mut entity.visual.remote_use {
-            using.observed_item = observed
+            let current = observed
                 .as_ref()
-                .and_then(|items| items[usize::from(entity.visual.use_flags & 2 != 0)].clone());
+                .and_then(|items| items[usize::from(entity.visual.use_flags & 2 != 0)].as_ref());
+            using.observed_item = current.map(|(item, _)| item.clone());
+            using.observed_token = current.map(|(_, token)| *token);
         }
         Ok(())
     })
