@@ -97,8 +97,8 @@ pub fn offset_shape(registry: &BlockRegistry, id: u32, position: [i32; 3]) -> Op
         .wrapping_mul(42_317_861)
         .wrapping_add(seed.wrapping_mul(11))
         >> 16;
-    let axis = |shift| {
-        ((f64::from(((seed >> shift) & 15) as f32 / 15.) - 0.5) * 0.5)
+    let axis = |shift: u32| {
+        ((f64::from(((seed >> shift) & 15_i64) as f32 / 15.) - 0.5) * 0.5)
             .clamp(-f64::from(entry.max_offset), f64::from(entry.max_offset))
     };
     let delta = [axis(0), 0., axis(8)];
