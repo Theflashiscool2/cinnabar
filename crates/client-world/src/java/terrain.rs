@@ -179,6 +179,7 @@ pub(super) fn admit(
             value,
         } => {
             super::piston::event(&mut state.terrain, position, block, action, value)?;
+            super::shulker::event(&mut state.terrain, position, block, action, value);
             state
                 .terrain
                 .set_block_event(position, block, action, value);
