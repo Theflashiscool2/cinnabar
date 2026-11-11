@@ -32,6 +32,9 @@ struct Report {
     blocks_sha256: String,
     states: usize,
     dynamic: BTreeMap<u32, Entry>,
+    powder_walkable_tag: String,
+    powder_player_type: i32,
+    powder_boots: String,
     powder_falling: Vec<[f64; 6]>,
     powder_standing: Vec<[f64; 6]>,
 }
@@ -145,6 +148,22 @@ pub fn offset_shape(registry: &BlockRegistry, id: u32, position: [i32; 3]) -> Op
             })
             .collect(),
     )
+}
+
+/// Registered identities read by PowderSnowBlock.canEntityWalkOnPowderSnow.
+pub struct PowderSnowRules {
+    pub walkable_tag: &'static str,
+    pub player_type: i32,
+    pub boots_item: &'static str,
+}
+/// Native registry/tag identities from the same verified collision report.
+pub fn powder_snow_rules() -> PowderSnowRules {
+    let f = facts();
+    PowderSnowRules {
+        walkable_tag: &f.report.powder_walkable_tag,
+        player_type: f.report.powder_player_type,
+        boots_item: &f.report.powder_boots,
+    }
 }
 
 /// PowderSnowBlock prioritizes the falling shape only above this native distance.
