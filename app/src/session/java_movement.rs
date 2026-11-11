@@ -210,4 +210,10 @@ pub(super) fn advance(
             }
         }
     }
+    if java.telemetry().is_some() && movement.1.reported_block != movement.0.blocked {
+        bevy::log::debug!(target:"java_session", reason=?movement.0.blocked,
+            backlog_ticks=movement.0.backlog_ticks(), sequence=java_world.motion_sequence(),
+            "Native Java movement admission changed");
+        movement.1.reported_block = movement.0.blocked.clone();
+    }
 }
