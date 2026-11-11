@@ -271,3 +271,75 @@ fn grounded_toggle_jumps_before_flight_lift_and_preserves_ordered_landing_edges(
         assert_eq!(motion.velocity[1], expected_y * 0.6);
     }
 }
+
+#[test]
+fn native_water_and_lava_contacts_select_air_travel_while_flying() {
+    let Some(physics) = current_reference::native_physics() else {
+        return;
+    };
+    let data: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../tests/fixtures/java-flight-fluids.json"
+    ))
+    .unwrap();
+    for row in data["cases"].as_array().unwrap() {
+        let fluid = row["fluid"].as_str().unwrap();
+        let id = climbing::id(
+            physics.registry().unwrap(),
+            &format!("minecraft:{fluid}"),
+            &[("level", "0")],
+        );
+        let mut terrain = climbing::scene([0; 3]);
+        for x in 6..=10 {
+            for z in 6..=10 {
+                for y in 6..=11 {
+                    terrain.set_block([x, y, z], BlockStateId(id));
+                }
+            }
+        }
+        let mut p = terrain::parameters();
+        p.flying_speed = Some(row["speed"].as_f64().unwrap() as f32);
+        p.may_fly = true;
+        let mut motion = Motion {
+            position: [8.5, 8., 8.5],
+            velocity: [0.125, row["initial_y"].as_f64().unwrap(), -0.25],
+            ..Default::default()
+        };
+        let mut body = Body::default();
+        let updates = step(
+            &mut motion,
+            &mut body,
+            Input {
+                forward: 1.,
+                jump: row["jump"].as_bool().unwrap(),
+                crouch: row["shift"].as_bool().unwrap(),
+                sprint: row["sprint"].as_bool().unwrap(),
+                ..Default::default()
+            },
+            p,
+            &terrain,
+            &physics,
+            (7, 1),
+        )
+        .unwrap();
+        assert_eq!(row["selected_fluid"], false);
+        assert!(
+            if fluid == "water" {
+                body.water_height
+            } else {
+                body.lava_height
+            } > 0.
+        );
+        assert!(!body.swimming);
+        assert_eq!(updates.input, None);
+        assert_eq!(updates.landing, None);
+        let expected = std::array::from_fn::<_, 3, _>(|i| row["velocity"][i].as_f64().unwrap());
+        assert_eq!(
+            motion.velocity.map(f64::to_bits),
+            expected.map(f64::to_bits),
+            "{row}"
+        );
+        let expected_position =
+            std::array::from_fn(|i| [8.5, 8., 8.5][i] + row["move"][i].as_f64().unwrap());
+        assert_eq!(motion.position, expected_position, "{row}");
+    }
+}
