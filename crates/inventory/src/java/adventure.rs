@@ -79,6 +79,9 @@ impl State {
         {
             return Ok(*result);
         }
+        // Native updates lastCheckedBlock before evaluating a different state. An
+        // unavailable local result must not leave an older cached permission usable.
+        cache.entries.remove(&(slot, permission));
         let result = evaluate(value, &target)?;
         cache
             .entries
