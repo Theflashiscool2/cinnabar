@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from check import private_json, rpc
 from harness import rcon
+from flight_capture import FlightCapture
 from run_fixture import until
 from wire import FIXTURE_NAME, loopback
 
@@ -47,6 +48,8 @@ def main():
     parser.add_argument('--endpoint', required=True, type=Path)
     parser.add_argument('--fixture', required=True, type=Path)
     parser.add_argument('--out', required=True, type=Path, help='new private evidence directory')
+    parser.add_argument('--capture', action='store_true', help='capture exactly initial connection and reconnect')
+    parser.add_argument('--listen', default='127.0.0.1:25587', help='private loopback capture listener')
     args = parser.parse_args()
     config = json.loads(args.fixture.read_text())
     address = f"127.0.0.1:{config['port']}"
@@ -64,6 +67,12 @@ def main():
         raise ValueError('client must start at its menu')
     events, checks = [], []
     connected, complete = False, False
+    recorder, capture_result = None, None
+    sources = [Path(__file__), *[Path(__file__).with_name(name) for name in
+               ['check.py', 'harness.py', 'wire.py', 'run_fixture.py', 'session.py', 'tape.py', 'flight_capture.py']]]
+    source_bytes = {path.name: path.read_bytes() for path in sources}
+    private_json(output / 'source-hashes.json', {name: hashlib.sha256(data).hexdigest() for name, data in source_bytes.items()})
+    (output / 'driver-source.py').write_bytes(source_bytes[Path(__file__).name])
 
     def sample(label):
         snapshot = state()
@@ -110,6 +119,9 @@ def main():
         command({'cmd': 'screenshot', 'path': str(output / (label + '.png'))})
 
     try:
+        if args.capture:
+            recorder = FlightCapture(output / 'session.jsonl', args.listen, address)
+            address = args.listen
         command({'cmd': 'connect_java_fixture', 'address': address})
         connected = True
         until(state, lambda s: (s.get('native_java_render') or {}).get('loading_stage') == 'ready', 'spawn renderer')
@@ -190,15 +202,25 @@ def main():
         picture('reconnect')
         complete = True
     finally:
+        cleanup_errors = []
         if connected:
-            command({'cmd': 'input', 'release_all': True})
-        sources = [Path(__file__), *[Path(__file__).with_name(name) for name in ['check.py', 'harness.py', 'wire.py', 'run_fixture.py']]]
-        private_json(output / 'source-hashes.json', {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in sources})
+            try:
+                command({'cmd': 'input', 'release_all': True})
+                command({'cmd': 'disconnect'})
+                until(state, lambda s: s.get('native_java') is None, 'final connection retirement')
+            except Exception as error:
+                cleanup_errors.append(str(error))
+        if recorder is not None:
+            try:
+                capture_result = recorder.finish(complete and not cleanup_errors)
+            except Exception as error:
+                capture_result = {'complete': False, 'error': str(error)}
         private_json(output / 'flight-evidence.json', {'checks': checks, 'events': events,
                      'scope': 'authored private fixture; inspect screenshots; no public-server acceptance',
-                     'complete': complete})
-        if connected:
-            command({'cmd': 'disconnect'})
+                     'capture': capture_result, 'cleanup_errors': cleanup_errors,
+                     'complete': complete and not cleanup_errors and (capture_result is None or capture_result['complete'])})
+    if cleanup_errors or (capture_result is not None and not capture_result['complete']):
+        raise ValueError('flight run/capture did not retire completely; inspect evidence')
     inconclusive = any(row.get('status') == 'inconclusive' for row in checks)
     print('INCONCLUSIVE: double-Jump timing; inspect private evidence.' if inconclusive else 'PASS: authored flight authority checks; inspect screenshots.')
     return 2 if inconclusive else 0
