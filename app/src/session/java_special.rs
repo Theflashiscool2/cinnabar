@@ -264,8 +264,8 @@ pub(crate) fn update(
         {
             continue;
         }
-        // Changed positions cannot retain old geometry while a bounded rescan is pending.
-        p.columns.remove(&key);
+        // Metadata-owned models retire immediately. Keep the position catalog until its
+        // replacement is complete; every cached state is validated again at submission.
         p.banners
             .retain(|pos, _| [pos[0].div_euclid(16), pos[2].div_euclid(16)] != key);
         p.pots
@@ -324,28 +324,6 @@ pub(crate) fn update(
                         );
                     }
                     chests.push((position, id.0));
-                } else if graphics
-                    .skulls
-                    .get(&id.0)
-                    .is_some_and(|s| s.shape == assets::registry::java::skull::Shape::Player)
-                {
-                    if !p.heads.contains_key(&position) {
-                        let data = column
-                            .block_entities
-                            .iter()
-                            .find(|e| e.position == position)
-                            .and_then(|e| e.data.as_ref());
-                        match super::java_heads::Head::new(terrain, position, data) {
-                            Ok(head) => {
-                                p.heads.insert(position, head);
-                            }
-                            Err(error) => {
-                                terrain_presentation.special_failure(error);
-                                return;
-                            }
-                        }
-                    }
-                    chests.push((position, id.0));
                 } else if let Some(state) = graphics.pots.get(&id.0) {
                     let data = column
                         .block_entities
@@ -391,6 +369,38 @@ pub(crate) fn update(
             }
         }
         p.columns.insert(key, (column.contents_revision(), chests));
+    }
+    // Refresh known player heads even if their column awaits the bounded position scan.
+    // A profile receipt may change without changing the block state or its geometry.
+    for (&key, (_, positions)) in &p.columns {
+        let Some(column) = terrain.column(key) else {
+            continue;
+        };
+        for &(position, _) in positions {
+            if p.heads.contains_key(&position)
+                || !terrain.block(position).is_some_and(|id| {
+                    graphics.skulls.get(&id.0).is_some_and(|state| {
+                        state.shape == assets::registry::java::skull::Shape::Player
+                    })
+                })
+            {
+                continue;
+            }
+            let data = column
+                .block_entities
+                .iter()
+                .find(|entity| entity.position == position)
+                .and_then(|entity| entity.data.as_ref());
+            match super::java_heads::Head::new(terrain, position, data) {
+                Ok(head) => {
+                    p.heads.insert(position, head);
+                }
+                Err(error) => {
+                    terrain_presentation.special_failure(error);
+                    return;
+                }
+            }
+        }
     }
     let queries = p.heads.values().filter_map(|h| h.query.clone()).collect();
     profiles.update(
@@ -516,6 +526,12 @@ pub(crate) fn update(
     let step = time.delta_secs().min(0.25) * 2.; // ChestLidController: 0.1 per 20Hz tick.
     for (_, positions) in p.columns.values() {
         for &(position, id) in positions {
+            if !terrain
+                .block(position)
+                .is_some_and(|current| current.0 == id)
+            {
+                continue;
+            }
             if graphics.gateways.contains(&id) {
                 if let Some(resources) = &graphics.portal {
                     let offsets = [
