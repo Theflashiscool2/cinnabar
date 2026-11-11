@@ -4,8 +4,11 @@ use java_protocol::session::inventory::Packet;
 use serde_json::{Value, json};
 
 /// Context captured before admission; error presence afterwards is an observation, not a cause.
+#[derive(Debug)]
 pub struct Refusal {
     packet: &'static str,
+    items: Vec<Option<(u32, u32)>>,
+    items_truncated: bool,
     container: Option<i32>,
     slot: Option<i32>,
     slots: Option<usize>,
@@ -23,6 +26,22 @@ impl Refusal {
         current_incarnation: u64,
         active_container: Option<i32>,
     ) -> Self {
+        // Diagnostic sample budget only; never truncates or rejects gameplay admission.
+        const ITEM_SAMPLES: usize = 128;
+        let (items, items_truncated) = match packet {
+            Packet::Content { slots, .. } => (
+                slots
+                    .iter()
+                    .take(ITEM_SAMPLES)
+                    .map(|s| s.as_ref().map(|s| (s.item, s.count)))
+                    .collect(),
+                slots.len() > ITEM_SAMPLES,
+            ),
+            Packet::Slot { stack, .. }
+            | Packet::PlayerSlot { stack, .. }
+            | Packet::Cursor(stack) => (vec![stack.as_ref().map(|s| (s.item, s.count))], false),
+            _ => (Vec::new(), false),
+        };
         let (packet, container, slot, slots, revision) = match packet {
             Packet::Content {
                 container,
@@ -61,6 +80,8 @@ impl Refusal {
         };
         Self {
             packet,
+            items,
+            items_truncated,
             container,
             slot,
             slots,
@@ -72,7 +93,8 @@ impl Refusal {
         }
     }
     fn value(self, inventory_error_present: bool) -> Value {
-        json!({"packet":self.packet,"container":self.container,"slot":self.slot,
+        json!({"packet":self.packet,"items":self.items,"items_truncated":self.items_truncated,
+            "container":self.container,"slot":self.slot,
             "slots":self.slots,"revision":self.revision,"scope_matches":self.scope_matches,
             "incarnation":self.incarnation,"current_incarnation":self.current_incarnation,
             "active_container":self.active_container,"inventory_error_present":inventory_error_present})
