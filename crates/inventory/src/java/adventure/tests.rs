@@ -145,7 +145,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
         .unwrap();
     assert!(
         state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 target(&stone, &allowed)
@@ -154,7 +154,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
     );
     assert!(
         !state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::PlaceOn,
                 target(&stone, &allowed)
@@ -169,7 +169,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
     };
     assert!(
         state
-            .test_adventure(BlockUseHand::Main, Permission::Break, rebound)
+            .adventure_permission(BlockUseHand::Main, Permission::Break, rebound)
             .unwrap(),
         "native cache does not recheck changed tags for identical state"
     );
@@ -185,7 +185,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
         .unwrap();
     assert!(
         !state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 Target {
@@ -198,7 +198,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
     );
     assert!(
         !state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::PlaceOn,
                 target(&stone, &empty)
@@ -209,7 +209,7 @@ fn native_same_state_cache_survives_tag_rebind_and_count_but_authority_replaces_
     state.rebind_player(7, 2);
     assert!(
         !state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 target(&stone, &allowed)
@@ -244,7 +244,7 @@ fn copied_tag_predicate_after_rebinding_is_explicit_until_server_replaces_the_st
         .unwrap();
     assert!(
         state
-            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .adventure_permission(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap()
     );
     let plan = state
@@ -258,7 +258,7 @@ fn copied_tag_predicate_after_rebinding_is_explicit_until_server_replaces_the_st
     assert!(state.pickup_queued(plan, 1));
     assert!(
         state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 Target {
@@ -281,7 +281,7 @@ fn copied_tag_predicate_after_rebinding_is_explicit_until_server_replaces_the_st
         .unwrap();
     assert!(
         state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 Target {
@@ -334,7 +334,7 @@ fn unwritten_pickup_retires_permission_cache_derived_from_the_provisional_item()
     state.admit(7, 1, Update::Selected(1)).unwrap();
     assert!(
         state
-            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .adventure_permission(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap()
     );
     assert!(state.record_receipt(pickup::Receipt {
@@ -345,7 +345,7 @@ fn unwritten_pickup_retires_permission_cache_derived_from_the_provisional_item()
     }));
     assert!(
         !state
-            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .adventure_permission(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap(),
         "restored slot must not inherit the provisional item's true cache"
     );
@@ -392,12 +392,12 @@ fn tag_names_follow_native_identifier_aliases_and_cache_hits_do_not_need_fresh_t
         .unwrap();
     assert!(
         state
-            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .adventure_permission(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap()
     );
     assert!(
         state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 Target {
@@ -444,12 +444,12 @@ fn unsupported_new_state_cannot_leave_an_older_permissive_cache_hit() {
         .unwrap();
     assert!(
         state
-            .test_adventure(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
+            .adventure_permission(BlockUseHand::Main, Permission::Break, target(&stone, &tags))
             .unwrap()
     );
     assert!(
         state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 Target {
@@ -461,7 +461,7 @@ fn unsupported_new_state_cannot_leave_an_older_permissive_cache_hit() {
     );
     assert!(
         !state
-            .test_adventure(
+            .adventure_permission(
                 BlockUseHand::Main,
                 Permission::Break,
                 target(&stone, &empty)
