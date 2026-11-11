@@ -161,6 +161,52 @@ class TapeTests(unittest.TestCase):
         self.assertFalse(worker.is_alive())
         self.assertEqual(errors, ['client ended before replay response: ServerboundInteractPacket'])
 
+    def test_final_inspection_hold_services_heartbeat_until_disconnect(self):
+        class Finished:
+            def __init__(self):
+                self.calls = 0
+            def wait(self, interval):
+                self.calls += 1
+                return self.calls == 3
+        done = Finished()
+        beats = []
+        session.hold(done, lambda: beats.append('real server request'))
+        self.assertEqual(beats, ['real server request', 'real server request'])
+
+    def test_inspection_heartbeat_uses_native_request_and_reply_frames(self):
+        finish_config = vi(CLIENTBOUND['configuration'].index('ClientboundFinishConfigurationPacket'))
+        ack = vi(SERVERBOUND['configuration'].index('ServerboundFinishConfigurationPacket'))
+        segment = {'login_finish': finish(), 'packets': [
+            {'direction': 'server', 'phase': 'configuration', 'body': finish_config, 'ns': 0},
+            {'direction': 'client', 'phase': 'configuration', 'body': ack, 'ns': 0}]}
+        client, replay = socket.socketpair()
+        errors = []
+        def inspection(finished, heartbeat):
+            heartbeat()
+            finished.wait()
+        def run():
+            try:
+                session.replay(replay, segment, 25587, 1)
+            except Exception as error:
+                errors.append(error)
+        with patch('session.hold', inspection):
+            worker = threading.Thread(target=run)
+            worker.start()
+            with client:
+                client.sendall(connect_bytes())
+                receive(client)
+                client.sendall(frame(vi(SERVERBOUND['login'].index('ServerboundLoginAcknowledgedPacket'))))
+                receive(client)
+                client.sendall(frame(ack))
+                _, request = receive(client)
+                self.assertEqual(name(request, 'play'), 'ClientboundKeepAlivePacket')
+                _, payload = read_vi(request)
+                self.assertEqual(len(request[payload:]), 8)
+                client.sendall(frame(vi(SERVERBOUND['play'].index('ServerboundKeepAlivePacket')) + request[payload:]))
+            worker.join(timeout=5)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
+
 
 class StateComparisonTests(unittest.TestCase):
     def state(self):
