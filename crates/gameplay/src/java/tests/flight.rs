@@ -248,3 +248,70 @@ fn block_rollback_retains_a_generated_native_landing_update() {
     assert!(controller.pending().is_none());
     assert_eq!(controller.pending_ability(), Some((1, false)));
 }
+
+#[test]
+fn restored_body_position_does_not_release_or_rearm_manual_flight_jump() {
+    let Some((mut state, physics)) = flight_world() else {
+        return;
+    };
+    state.player_dynamics.abilities.as_mut().unwrap().flying = false;
+    state.player_motion.as_mut().unwrap().position = [8.5, 8., 8.5];
+    let mut controller = Controller::default();
+    let controls = |jump| Controls {
+        travel: Input {
+            jump,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    controller.begin_frame(&state, TICK);
+    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(controller.pending_ability().is_none());
+    let stone = physics
+        .registry()
+        .unwrap()
+        .state_id("minecraft:stone", &Default::default())
+        .unwrap();
+    state.terrain.set_block([8, 8, 8], BlockStateId(stone));
+    assert!(
+        controller
+            .reconcile_block(&mut state, &physics, [8, 8, 8], stone, [8.5, 10., 8.5])
+            .unwrap()
+    );
+    controller.begin_frame(&state, TICK);
+    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(
+        controller.pending_ability().is_none(),
+        "held Jump is not a second edge after rollback"
+    );
+    assert!(state.admit(java_protocol::session::Envelope {
+        generation: 7,
+        event: java_protocol::session::Event::Teleport {
+            dimension_epoch: 1,
+            sequence: 1,
+            correction: facts::Teleport {
+                id: 1,
+                position: [8.5, 12., 8.5],
+                velocity: [0.; 3],
+                yaw: 0.,
+                pitch: 0.,
+                relative: 0,
+            },
+        },
+    }));
+    state.correction_queued(1);
+    assert!(controller.begin_frame(&state, TICK));
+    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(
+        controller.pending_ability().is_none(),
+        "held Jump survives an ordinary teleport"
+    );
+    controller.queued();
+    controller.begin_frame(&state, TICK);
+    assert!(controller.tick(&mut state, &physics, controls(false)));
+    controller.queued();
+    controller.begin_frame(&state, TICK);
+    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert_eq!(controller.pending_ability(), Some((1, true)));
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+}

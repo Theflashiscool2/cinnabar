@@ -79,6 +79,7 @@ pub(super) fn parameters() -> Parameters<'static> {
         fast_lava: false,
         may_fly: false,
         flying_speed: None,
+        granted_flying_speed: 0.05,
         spectator: false,
         climbable: &[],
         suppresses_bounce: &[],

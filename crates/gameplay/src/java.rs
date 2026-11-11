@@ -357,12 +357,10 @@ impl Controller {
             return Err("Native Java mounted movement is not implemented".into());
         }
         let spectator = state.status.mode == Some(world::java::hud::GameMode::Spectator);
-        let auto_start = spectator && abilities.may_fly && !abilities.flying;
-        let flying = abilities.flying || auto_start;
-        if spectator && !flying {
+        let flying = abilities.flying;
+        if spectator && !flying && !abilities.may_fly {
             return Err("Native spectator travel awaits granted flight abilities".into());
         }
-        let flying_speed = abilities.flying_speed;
         let mut input = controls.travel;
         let possible = (abilities.may_fly || state.vitals.as_ref().is_some_and(|v| v.food > 6))
             && !state
@@ -383,7 +381,6 @@ impl Controller {
             controls.buttons & 2 != 0,
         );
         let mut parameters = parameters(state)?;
-        parameters.flying_speed = flying.then_some(flying_speed);
         if let Some(effects) = self.use_effects {
             input.sprint &= effects.can_sprint;
             parameters.use_speed_multiplier = effects.speed_multiplier;
@@ -395,7 +392,7 @@ impl Controller {
             feet: motion.position,
             eye_height: self.eye_height(state),
         };
-        travel::step(
+        let updates = travel::step(
             &mut motion,
             &mut body,
             input,
@@ -416,16 +413,14 @@ impl Controller {
             body,
             controls.buttons,
         ));
-        let landed = flying && body.on_ground && !spectator;
-        let final_flying = flying && !landed;
-        if auto_start || landed {
-            self.pending_abilities.push_back(final_flying);
+        for flying in [updates.input, updates.landing].into_iter().flatten() {
+            self.pending_abilities.push_back(flying);
             state
                 .player_dynamics
                 .abilities
                 .as_mut()
                 .expect("admitted player abilities")
-                .flying = final_flying;
+                .flying = flying;
         }
         self.reminder = self.reminder.saturating_add(1);
         self.body = body;
@@ -517,6 +512,11 @@ fn parameters(state: &WorldState) -> Result<Parameters<'_>, String> {
             .as_ref()
             .filter(|a| a.flying)
             .map(|a| a.flying_speed),
+        granted_flying_speed: state
+            .player_dynamics
+            .abilities
+            .as_ref()
+            .map_or(0., |a| a.flying_speed),
         spectator: state.status.mode == Some(world::java::hud::GameMode::Spectator),
         may_fly: state
             .player_dynamics
