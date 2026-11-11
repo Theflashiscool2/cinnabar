@@ -1,4 +1,6 @@
-# Mac play-test before A/C merge approval
+# Optional Mac controlled-server debugging
+
+The assistant has completed combined controlled-server acceptance. Repeating this run is optional; use [Hypixel candidate testing](java-hypixel-candidate.md) for the next owner test. Gameplay merges still require owner approval.
 
 Candidates (each contains the approved handoff, neither contains the other lane):
 - A: `origin/candidate/java-lane-a`, `e88830a4451b72db718b0f016ffa34feee777697`.
