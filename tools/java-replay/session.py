@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from tape import Writer, encoded, load
 from wire import (CLIENTBOUND, SERVERBOUND, MAX_FRAME, FIXTURE_NAME, frame, login, loopback,
-                  name, read_vi, receive, transfer, validate_finish, vi)
+                  name, read_vi, receive, transfer, validate_finish, vi, tcp_nodelay)
 
 
 def advance(phase, packet):
@@ -30,8 +30,10 @@ def stop(stream):
 
 
 def capture(client, target, writer, segment, port, server_opened=None):
+    tcp_nodelay(client)
     handshake, hello = login(client)
     with socket.create_connection(target, timeout=10) as server:
+        tcp_nodelay(server)
         if server_opened is not None:
             server_opened(server)
         server.settimeout(None)
@@ -119,6 +121,7 @@ def hold(finished, heartbeat):
 
 
 def replay(client, segment, port, speed):
+    tcp_nodelay(client)
     login(client)
     client.sendall(frame(segment['login_finish']))
     _, ack = receive(client)

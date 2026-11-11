@@ -27,6 +27,12 @@ def tables(direction):
 CLIENTBOUND, SERVERBOUND = tables('Clientbound'), tables('Serverbound')
 
 
+def tcp_nodelay(stream):
+    """Match pinned native client/server channels; AF_UNIX test streams have no TCP policy."""
+    if stream.family in (socket.AF_INET, socket.AF_INET6):
+        stream.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+
 def vi(value):
     if not 0 <= value <= 0x7fffffff:
         raise ValueError('fixture VarInt out of range')
