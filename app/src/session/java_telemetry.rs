@@ -295,6 +295,10 @@ fn begin(mut frame: ResMut<Frame>, controller: Option<Res<SessionController>>) {
     frame.previous = Some(now);
     frame.start = Some(now);
 }
+#[allow(
+    clippy::too_many_arguments,
+    reason = "Passive sampling reads existing Bevy-owned resources"
+)]
 fn end(
     mut frame: ResMut<Frame>,
     controller: Option<Res<SessionController>>,
@@ -303,6 +307,7 @@ fn end(
     entities: Option<Res<super::java_entities::Presentation>>,
     movement: Option<Res<super::java_movement::Movement>>,
     special: Option<Res<super::java_special::Presentation>>,
+    special_frame: Option<Res<render_scene::BlockEntityFrameResource>>,
 ) {
     let next = controller
         .as_ref()
@@ -348,6 +353,7 @@ fn end(
         terrain.as_deref(),
         entities.as_deref(),
         special.as_deref(),
+        special_frame.as_deref(),
     );
 }
 

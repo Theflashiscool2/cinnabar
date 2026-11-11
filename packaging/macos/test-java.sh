@@ -12,7 +12,7 @@ for cache_path in "${CARGO_BUILD_BUILD_DIR:-}" "${CARGO_TARGET_DIR:-}" "${GOCACH
     /Volumes/*)
       volume_name=${cache_path#/Volumes/}
       volume_name=${volume_name%%/*}
-      if ! mount | grep -Fq " on /Volumes/$volume_name ("; then
+      if ! mount | grep -F " on /Volumes/$volume_name (" >/dev/null; then
         echo "STOP: /Volumes/$volume_name is not mounted." >&2
         exit 1
       fi

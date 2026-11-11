@@ -14,6 +14,10 @@ pub(super) struct Trace {
     last: Option<(Instant, Option<[f64; 3]>, u64, u64)>,
 }
 impl Trace {
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "Read-only view of independently owned diagnostic resources"
+    )]
     pub(super) fn sample(
         &mut self,
         controller: Option<&SessionController>,
@@ -22,6 +26,7 @@ impl Trace {
         terrain: Option<&java_render::Presentation>,
         entities: Option<&java_entities::Presentation>,
         special: Option<&java_special::Presentation>,
+        special_frame: Option<&render_scene::BlockEntityFrameResource>,
     ) {
         let Some(c) = controller.filter(|c| c.java.is_some() && c.java_telemetry.is_some()) else {
             *self = Self::default();
@@ -68,9 +73,12 @@ impl Trace {
         let telemetry = c.java_telemetry.as_ref().expect("enabled above").snapshot();
         let last = |key: &str| telemetry[key].as_array().and_then(|v| v.last()).cloned();
         let row = json!({"schema":1,"elapsed_ms":elapsed.as_millis(),"scope":scope,"delta":delta,
+            "keepalives":c.java_world.keepalives,"awaiting_correction_ack":c.java_world.awaiting_correction_ack(),
             "columns":c.java_world.terrain.columns().count(),"block_updates":c.java_world.block_updates,
             "loading":terrain.map(|p|p.telemetry_progress()),"entities":entities.map(|p|p.telemetry_progress()),
-            "special":special.map(|p|p.telemetry_progress()),"block_probes_below_feet_above":probes,
+            "special":special.map(|p|p.telemetry_progress()),
+            "special_frame":special_frame.map(|f|json!({"solid_vertices":f.0.solid.len(),
+                "translucent_vertices":f.0.translucent.len(),"portal_vertices":f.0.portal.len(),"has_atlas":f.0.atlas.is_some()})),"block_probes_below_feet_above":probes,
             "movement":movement.map(|m|json!({"ticks":ticks,"between_frame_ticks":service_ticks,"input_bits":m.1.controls.buttons,
                 "on_ground":m.0.body.on_ground,"horizontal_collision":m.0.body.horizontal_collision,
                 "crouched":m.0.body.crouched,"sprinting":m.0.body.sprinting,"swimming":m.0.body.swimming,
