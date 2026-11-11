@@ -182,3 +182,92 @@ fn held_shift_selects_crouching_on_the_native_auto_land_tick() {
     );
     assert!(!body.low_profile);
 }
+
+#[test]
+fn manual_flight_requires_a_new_jump_edge_within_the_native_window() {
+    for idle_ticks in 1..=6 {
+        let mut trigger = flight::Trigger::default();
+        assert_eq!(trigger.tick(true, true, false, false, false), None);
+        for _ in 0..idle_ticks {
+            assert_eq!(trigger.tick(false, true, false, false, false), None);
+        }
+        assert_eq!(
+            trigger.tick(true, true, false, false, false),
+            (idle_ticks < 6).then_some(true),
+            "{idle_ticks} intervening released ticks"
+        );
+    }
+    let mut trigger = flight::Trigger::default();
+    for _ in 0..20 {
+        assert_eq!(trigger.tick(true, true, false, false, false), None);
+    }
+    assert_eq!(trigger.tick(false, true, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), None);
+    assert_eq!(trigger.tick(false, true, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), Some(true));
+    assert_eq!(trigger.tick(false, true, false, true, false), None);
+    assert_eq!(trigger.tick(true, true, false, true, false), None);
+    assert_eq!(trigger.tick(false, true, false, true, false), None);
+    assert_eq!(trigger.tick(true, true, false, true, false), Some(false));
+}
+
+#[test]
+fn swimming_and_permission_use_physical_edges_without_resetting_the_timer() {
+    let mut trigger = flight::Trigger::default();
+    assert_eq!(trigger.tick(true, true, false, false, false), None);
+    assert_eq!(trigger.tick(false, true, false, false, true), None);
+    assert_eq!(trigger.tick(true, true, false, false, true), None);
+    assert_eq!(trigger.tick(false, true, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), Some(true));
+    let mut trigger = flight::Trigger::default();
+    assert_eq!(trigger.tick(true, false, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), None);
+    assert_eq!(trigger.tick(false, true, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), None);
+    assert_eq!(trigger.tick(false, false, false, false, false), None);
+    assert_eq!(trigger.tick(true, true, false, false, false), Some(true));
+}
+
+#[test]
+fn grounded_toggle_jumps_before_flight_lift_and_preserves_ordered_landing_edges() {
+    for jump_strength in [0.42_f32, 0.] {
+        let (terrain, physics) = terrain::scene();
+        let mut p = terrain::parameters();
+        p.may_fly = true;
+        p.jump_strength = jump_strength;
+        let mut body = Body {
+            on_ground: true,
+            ..Default::default()
+        };
+        body.flight_trigger.tick(true, true, false, false, false);
+        body.flight_trigger.tick(false, true, false, false, false);
+        let mut motion = Motion {
+            position: [8.5, 0., 8.5],
+            velocity: [0., -0.2, 0.],
+            ..Default::default()
+        };
+        let expected_y = if jump_strength > 0. {
+            f64::from(jump_strength)
+        } else {
+            -0.2
+        } + f64::from(p.granted_flying_speed * 3.);
+        let updates = step(
+            &mut motion,
+            &mut body,
+            Input {
+                jump: true,
+                ..Default::default()
+            },
+            p,
+            &terrain,
+            &physics,
+            (7, 1),
+        )
+        .unwrap();
+        assert_eq!(updates.input, Some(true));
+        assert_eq!(updates.landing, (jump_strength == 0.).then_some(false));
+        assert_eq!(body.on_ground, jump_strength == 0.);
+        assert_eq!(motion.position[1], expected_y.max(0.));
+        assert_eq!(motion.velocity[1], expected_y * 0.6);
+    }
+}

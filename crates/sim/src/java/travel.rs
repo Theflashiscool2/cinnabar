@@ -47,6 +47,7 @@ pub struct Body {
     pub lava_height: f64,
     jump_delay: u8,
     stuck_speed_multiplier: [f64; 3],
+    flight_trigger: flight::Trigger,
 }
 impl Body {
     /// The last simulated shift-key state used by native entity collision contexts.
@@ -95,12 +96,21 @@ pub struct Parameters<'a> {
     pub may_fly: bool,
     /// Some only while native abilities currently grant active flight.
     pub flying_speed: Option<f32>,
+    /// Received speed also applies when a permitted native Jump edge starts flight.
+    pub granted_flying_speed: f32,
     /// Native game-mode authority selects Entity.noPhysics independently of may_fly.
     pub spectator: bool,
     /// Current server block-tag members, never client fixture defaults.
     pub climbable: &'a [i32],
     pub suppresses_bounce: &'a [i32],
 }
+/// Ordered native ability changes around travel; the WorldState owner applies these facts.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FlightUpdates {
+    pub input: Option<bool>,
+    pub landing: Option<bool>,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -138,7 +148,7 @@ pub fn step(
     terrain: &Terrain,
     physics: &Table,
     scope: (u64, u64),
-) -> Result<(), Error> {
+) -> Result<FlightUpdates, Error> {
     if !motion.is_finite()
         || ![
             input.sideways,
@@ -154,6 +164,7 @@ pub fn step(
             p.use_speed_multiplier,
             p.movement_efficiency,
             p.water_movement_efficiency,
+            p.granted_flying_speed,
         ]
         .into_iter()
         .all(f32::is_finite)
@@ -168,7 +179,9 @@ pub fn step(
     let mut next = *motion;
     let mut next_body = *body;
     next_body.descending = input.crouch;
-    let flying = p.flying_speed.is_some();
+    let mut flying = p.flying_speed.is_some();
+    let flying_speed = p.flying_speed.unwrap_or(p.granted_flying_speed);
+    let mut updates = FlightUpdates::default();
     if p.spectator {
         next_body.on_ground = false;
     }
@@ -226,16 +239,13 @@ pub fn step(
     let shape = travel_pose.bounds(next.position, p.scale);
     next_body.water_height = contact.water;
     next_body.lava_height = contact.lava;
-    let in_water = !flying && contact.water > 0.;
-    let in_lava = !flying && contact.lava > 0.;
-    let wet = in_water || in_lava;
     if contact.water > 0. {
         next_body.fall_distance = 0.;
         if !flying {
             liquid::push(&mut next.velocity, contact.water_current, 0.014);
         }
     }
-    if in_lava {
+    if !flying && contact.lava > 0. {
         liquid::push(
             &mut next.velocity,
             contact.lava_current,
@@ -274,10 +284,32 @@ pub fn step(
     } else {
         1.
     };
+    let jump_power = p.jump_strength
+        * if inside.jump_factor == 1. {
+            feet.jump_factor
+        } else {
+            inside.jump_factor
+        };
+    updates.input = next_body.flight_trigger.tick(
+        input.jump,
+        p.may_fly,
+        p.spectator,
+        flying,
+        next_body.swimming,
+    );
+    if let Some(enabled) = updates.input {
+        flying = enabled;
+        if enabled && next_body.on_ground && !p.spectator {
+            jump_from_ground(&mut next, next_body.sprinting, jump_power);
+        }
+    }
+    let in_water = !flying && contact.water > 0.;
+    let in_lava = !flying && contact.lava > 0.;
+    let wet = in_water || in_lava;
     next_body.jump_delay = next_body.jump_delay.saturating_sub(1);
-    if let Some(speed) = p.flying_speed {
+    if flying {
         next_body.fall_distance = 0.;
-        flight::lift(&mut next.velocity[1], input, speed);
+        flight::lift(&mut next.velocity[1], input, flying_speed);
     }
     if next.velocity[0] * next.velocity[0] + next.velocity[2] * next.velocity[2] < 9.0e-6 {
         next.velocity[0] = 0.;
@@ -301,20 +333,7 @@ pub fn step(
     } else if input.jump && fluid_jump {
         next.velocity[1] += f64::from(0.04_f32);
     } else if input.jump && next_body.on_ground && next_body.jump_delay == 0 {
-        let factor = if inside.jump_factor == 1. {
-            feet.jump_factor
-        } else {
-            inside.jump_factor
-        };
-        let jump = p.jump_strength * factor;
-        if jump > 1.0e-5 {
-            next.velocity[1] = next.velocity[1].max(f64::from(jump));
-            if next_body.sprinting {
-                let [sin, cos] = trig(next.yaw * (std::f32::consts::PI / 180.));
-                next.velocity[0] -= sin * 0.2;
-                next.velocity[2] += cos * 0.2;
-            }
-        }
+        jump_from_ground(&mut next, next_body.sprinting, jump_power);
         next_body.jump_delay = 10;
     } else if !input.jump {
         next_body.jump_delay = 0;
@@ -348,8 +367,8 @@ pub fn step(
         } else {
             ground_speed
         }
-    } else if let Some(speed) = p.flying_speed {
-        flight::speed(speed, next_body.sprinting)
+    } else if flying {
+        flight::speed(flying_speed, next_body.sprinting)
     } else if next_body.sprinting {
         0.025999999
     } else {
@@ -599,13 +618,17 @@ pub fn step(
             physics,
         )?;
     }
+    if flying && next_body.on_ground && !p.spectator {
+        updates.landing = Some(false);
+        flying = false;
+    }
     if p.spectator {
         next_body.low_profile = false;
         next_body.crouched = false;
     } else {
         let pose_input = swimming::PoseInput {
             shift: input.crouch,
-            crouch: input.crouch && (!flying || next_body.on_ground),
+            crouch: input.crouch && !flying,
         };
         swimming::finish_pose(
             &mut next_body,
@@ -619,7 +642,19 @@ pub fn step(
     }
     *motion = next;
     *body = next_body;
-    Ok(())
+    Ok(updates)
+}
+
+/// The same native jump applies to ordinary ground input and grounded flight takeoff.
+fn jump_from_ground(motion: &mut Motion, sprinting: bool, power: f32) {
+    if power > 1.0e-5 {
+        motion.velocity[1] = motion.velocity[1].max(f64::from(power));
+        if sprinting {
+            let [sin, cos] = trig(motion.yaw * (std::f32::consts::PI / 180.));
+            motion.velocity[0] -= sin * 0.2;
+            motion.velocity[2] += cos * 0.2;
+        }
+    }
 }
 
 fn modified_friction(friction: f32, modifier: f32) -> f32 {
