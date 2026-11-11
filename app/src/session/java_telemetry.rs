@@ -98,6 +98,11 @@ fn admit_using(
         _ => (0, 0),
     };
     let admitted = apply(state, event);
+    if let Some(context) = inventory_context.as_ref() {
+        bevy::log::debug!(target:"java_session", ?context, admitted,
+            inventory_error_present=state.inventory.error.is_some(),
+            "Native Java inventory update admission");
+    }
     use client_session::java::telemetry::Prediction;
     for (event, amount) in [
         (
