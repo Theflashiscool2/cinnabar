@@ -189,3 +189,10 @@ delta in the tape still fails the unchanged replay comparator; never edit a fail
 relax comparisons to make this runner pass. Keep the failed capture/replay evidence alongside
 any rerun. There is no claimed acceptance of the full loading/healing timeline from a terminal
 baseline, and a manual double-tap with ambiguous timing remains inconclusive.
+
+Before the Spectator grant, the flight driver always issues native Survival and a teleport
+onto the authored pad at Y69. It waits for both server `OnGround`/position and the current
+client grounded Survival pose, with native flying/mayfly flags false, and records those
+receipts. This exercises the grounded old-mode-to-Spectator grant race even if the earlier
+manual toggle happened to fly. It does not teleport into air to evade that transition;
+manual timing bounds and their inconclusive verdict remain independent.
