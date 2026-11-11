@@ -60,6 +60,9 @@ IPA or physical-device verification is established by documenting this command.
   descriptions, world-boundary clears, intentionally hidden hand frames, and missing
   hand publication are distinct. CPU publication does not prove GPU execution; inspect
   captured frames for visible behavior. A queued swing or published hand is not a hit.
+  `recent_hand_issues` records fixed pipeline-stage causes for lost publication,
+  such as unavailable world, light or geometry. A stage is diagnostic context;
+  recording it does not change the counters or the renderer's visibility gates.
 - Use-stop context reports observed input/death/state conditions; “other” can mean
   normal completion or a server/item change and is not automatically a lost use.
 - Entity collisions mean a spawn targeted an already resident ID. Missing-ID
@@ -73,7 +76,7 @@ IPA or physical-device verification is established by documenting this command.
 - The 50 ms spike threshold is a diagnostic threshold, **not a vanilla constant or
   performance acceptance budget**. Spikes include sampled pending chunk/skin/item
   loading flags for correlation; correlation does not establish the cause.
-- Correction and timing-spike histories each retain at most 32 observations, so
+- Correction, timing-spike and hand-issue histories each retain at most 32 observations, so
   frame spikes cannot evict the correction context. Fixed-key counters/timings aggregate
   the whole attempt. No arbitrary server strings, chat, item components, account
   identities, credentials, skin URLs, or packet payloads enter the telemetry object.

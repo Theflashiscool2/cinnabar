@@ -82,16 +82,16 @@ fn prediction_zero_is_unobserved_until_real_hooks_are_connected() {
 #[test]
 fn intentional_hiding_and_unavailable_publication_are_distinct() {
     let t = recorder();
-    t.hand_frame(true, true, false);
-    t.hand_frame(true, false, true);
+    t.hand_frame(true, true, false, HandIssue::Publication);
+    t.hand_frame(true, false, true, HandIssue::Publication);
     assert_eq!(count(&t, Counter::AnimationHiddenFrames), 1);
     assert_eq!(count(&t, Counter::AnimationLostPublication), 0);
-    t.hand_frame(true, true, false);
-    t.hand_frame(true, false, false);
-    t.hand_frame(true, false, false);
+    t.hand_frame(true, true, false, HandIssue::Publication);
+    t.hand_frame(true, false, false, HandIssue::Publication);
+    t.hand_frame(true, false, false, HandIssue::Publication);
     assert_eq!(count(&t, Counter::AnimationUnavailableFrames), 2);
     assert_eq!(count(&t, Counter::AnimationLostPublication), 1);
-    t.hand_frame(false, false, false);
+    t.hand_frame(false, false, false, HandIssue::Publication);
     assert_eq!(count(&t, Counter::AnimationUnavailableFrames), 2);
 }
 #[test]
@@ -183,4 +183,42 @@ fn enabled_session_summary_uses_existing_private_report_and_omits_payloads() {
         serde_json::from_slice(&std::fs::read(off.path().join("java-join-latest.json")).unwrap())
             .unwrap();
     assert!(value.get("telemetry").is_none());
+}
+
+#[test]
+fn lost_hand_stage_is_bounded_and_does_not_change_anomaly_classification() {
+    let t = recorder();
+    t.hand_frame(true, true, false, HandIssue::Publication);
+    t.hand_frame(true, false, false, HandIssue::Loading);
+    assert_eq!(count(&t, Counter::AnimationLostPublication), 1);
+    assert_eq!(count(&t, Counter::AnimationUnavailableFrames), 1);
+    let snapshot = t.snapshot();
+    assert_eq!(
+        snapshot["recent_hand_issues"][0],
+        json!({"kind":"hand_publication_lost", "cause":"world_not_ready"})
+    );
+    t.hand_frame(true, true, false, HandIssue::Publication);
+    t.hand_frame(true, false, true, HandIssue::Visibility);
+    assert_eq!(count(&t, Counter::AnimationLostPublication), 1);
+    assert_eq!(
+        t.snapshot()["recent_hand_issues"].as_array().unwrap().len(),
+        1
+    );
+}
+
+#[test]
+fn hand_loss_history_is_bounded_without_evicting_correction_context() {
+    let t = recorder();
+    t.correction(Some(2.5), false, false);
+    for _ in 0..100 {
+        t.hand_frame(true, true, false, HandIssue::Publication);
+        t.hand_frame(true, false, false, HandIssue::EmptyFrame);
+    }
+    let snapshot = t.snapshot();
+    assert_eq!(
+        snapshot["recent_hand_issues"].as_array().unwrap().len(),
+        RECENT
+    );
+    assert_eq!(snapshot["recent"].as_array().unwrap().len(), 1);
+    assert_eq!(count(&t, Counter::AnimationLostPublication), 100);
 }
