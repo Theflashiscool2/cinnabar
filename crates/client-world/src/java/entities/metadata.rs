@@ -120,12 +120,20 @@ pub(super) fn admit(
             Ok(())
         });
     };
+    let use_receipt = packet.entries.iter().any(|entry| {
+        schema
+            .iter()
+            .any(|spec| spec.index == entry.index && spec.name == "DATA_LIVING_ENTITY_FLAGS")
+    });
     let id = packet.id;
     let identity = entity.identity;
     let left_handed = entity.visual.left_handed;
     let mut visual = entity.visual.clone();
     if let Some(item) = apply(state, &mut visual, schema, packet)? {
         state.equipment.set_ground(identity, item)?;
+    }
+    if use_receipt {
+        super::super::equipment::observe_remote_use(&state.equipment, identity, &mut visual);
     }
     if left_handed != visual.left_handed {
         state.equipment.appearance_changed(identity);

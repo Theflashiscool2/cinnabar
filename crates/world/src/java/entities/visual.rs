@@ -40,6 +40,14 @@ pub struct PlayerLayers {
     pub right_pants: bool,
     pub cape: bool,
 }
+/// Remote LivingEntity's captured used item and remaining client ticks. Unknown specialized
+/// durations stay absent; they are never guessed from the active-use flag or item count.
+#[derive(Clone, Debug)]
+pub struct RemoteUse {
+    pub item: Arc<str>,
+    pub observed_item: Option<Arc<str>>,
+    pub remaining: Option<i32>,
+}
 #[derive(Clone, Debug)]
 pub struct Visual {
     pub flags: u8,
@@ -56,6 +64,7 @@ pub struct Visual {
     /// LivingEntity use/offhand/spin bits, admitted only from native authoritative updates.
     pub use_flags: u8,
     pub use_revision: u64,
+    pub remote_use: Option<RemoteUse>,
     pub scale: f32,
     pub pose: Arc<str>,
     pub baby: bool,
@@ -86,6 +95,7 @@ impl Default for Visual {
             effects: Default::default(),
             use_flags: 0,
             use_revision: 0,
+            remote_use: None,
             scale: 1.,
             pose: "standing".into(),
             baby: false,
@@ -106,6 +116,9 @@ impl Visual {
             .checked_add(1)
             .ok_or("Java use revision exhausted")?;
         self.use_flags = flags;
+        if flags & 1 == 0 {
+            self.remote_use = None;
+        }
         self.use_revision = revision;
         Ok(())
     }

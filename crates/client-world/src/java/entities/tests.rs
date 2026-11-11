@@ -936,3 +936,5 @@ fn nonfinite_sync_during_interpolation_preserves_native_sampled_angle() {
 }
 
 mod pickup;
+
+mod use_pose;

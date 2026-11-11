@@ -106,6 +106,11 @@ log prefixes. Set `CINNABAR_JAVA_PLAYER_POSTURES` to that file for the owning wo
 posture test. These are CPU reference vectors, not rendered acceptance. The unit-scale
 crouch world offset (-2/16) comes separately from the verified `AvatarRenderer.getRenderOffset`.
 
+`ProbePlayerArmUse.java OUTPUT` uses the same verified classpath to capture bow/block arm
+poses with both main arms, both used arms, wide/slim models, crouching and simultaneous
+native swings. Its 64 CPU model vectors back `world`'s arm-use regression; they do not
+establish held-item charge geometry or rendered/network acceptance.
+
 `ProbeEntityTargeting.java` encodes the pinned native attack packet, reads standing/
 crouching avatar dimensions, and samples `AABB.clip`/`contains` with original synthetic
 rays. Compile with that verified classpath and run

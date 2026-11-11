@@ -1,9 +1,12 @@
 //! Entity item appearances (equipment and ground stacks). Reuses inventory's stack model; this is not a
 //! second transactional inventory. Keys are admitted entity incarnations.
 mod pickup;
+mod remote_use;
 use inventory::java::Slot;
 pub(super) use pickup::take;
 pub use pickup::{Collector, Pickup};
+pub(in crate::java) use remote_use::observe as observe_remote_use;
+pub use remote_use::pose as player_use_pose;
 use std::collections::BTreeMap;
 use world::java::entities::Identity;
 #[derive(Clone, Debug, Default)]
@@ -112,5 +115,20 @@ pub(super) fn admit(
         .map(|(slot, stack)| super::inventory::stack(stack).map(|stack| (slot, stack)))
         .collect::<Result<BTreeMap<_, _>, _>>()?;
     state.equipment.apply(identity, slots)?;
-    state.entities.update(scope, packet.id, |_| Ok(()))
+    let observed = state.equipment.get(identity).map(|gear| {
+        [0, 1].map(|slot| {
+            gear.slots[slot]
+                .as_ref()
+                .filter(|stack| stack.count > 0)
+                .map(|stack| std::sync::Arc::<str>::from(stack.item.as_str()))
+        })
+    });
+    state.entities.update(scope, packet.id, |entity| {
+        if let Some(using) = &mut entity.visual.remote_use {
+            using.observed_item = observed
+                .as_ref()
+                .and_then(|items| items[usize::from(entity.visual.use_flags & 2 != 0)].clone());
+        }
+        Ok(())
+    })
 }

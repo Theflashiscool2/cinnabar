@@ -17,6 +17,12 @@ pub struct Sample {
     pub walk_speed: f32,
     pub age_in_ticks: f32,
 }
+/// Native active arm poses implemented by the remote player renderer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlayerUse {
+    Bow { left: bool },
+    Block { left: bool },
+}
 /// Native model-space posture: head, body, right/left arm, right/left leg.
 /// Offsets use Java pixels, rotations radians; rendering never changes world authority.
 #[derive(Clone, Copy, Debug, PartialEq)]
