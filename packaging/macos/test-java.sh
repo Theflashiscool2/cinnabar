@@ -47,14 +47,36 @@ export CINNABAR_LOG='warn,java_session=debug,java_auth=info,client_shell::menu=i
 unset CINNABAR_JAVA_OFFLINE_FIXTURE
 export CINNABAR_BUILD_COMMIT
 CINNABAR_BUILD_COMMIT=$(git rev-parse HEAD)
+if ! git diff --quiet HEAD --; then
+  CINNABAR_BUILD_COMMIT="$CINNABAR_BUILD_COMMIT-dirty"
+fi
 JAVA_TEST_DIR=$(mktemp -d "$HOME/Desktop/cinnabar-hypixel.XXXXXX")
 touch "$JAVA_TEST_DIR/started"
 printf '%s\n' "$CINNABAR_BUILD_COMMIT" > "$JAVA_TEST_DIR/source-commit.txt"
 printf '%s\n' "$JAVA_TEST_DIR" > "$HOME/Desktop/cinnabar-last-test.txt"
 echo "Build and run logs: $JAVA_TEST_DIR"
+stage_compiled_client() {
+  python3 - <<'PYCLIENT'
+import json,os,shutil,subprocess,tempfile
+from pathlib import Path
+metadata=json.loads(subprocess.check_output(['cargo','metadata','--locked','--no-deps','--format-version','1']))
+source=Path(metadata['target_directory'])/'play/cinnabar'
+destination=Path('target/play/cinnabar')
+if source.resolve()!=destination.resolve():
+    destination.parent.mkdir(parents=True,exist_ok=True)
+    fd,temporary=tempfile.mkstemp(prefix='.cinnabar-stage-',dir=destination.parent)
+    os.close(fd)
+    try:
+        shutil.copy2(source,temporary)
+        os.replace(temporary,destination)
+    finally:
+        if os.path.exists(temporary):os.unlink(temporary)
+print('Using compiled client:',source)
+PYCLIENT
+}
 set +e
 {
-  cargo build --profile play --locked -p cinnabar && make PROFILE=play play-run
+  cargo build --profile play --locked -p cinnabar && stage_compiled_client && make PROFILE=play play-run
 } 2>&1 | tee "$JAVA_TEST_DIR/console.log"
 run_status=${PIPESTATUS[0]}
 set -e
