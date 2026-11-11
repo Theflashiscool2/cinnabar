@@ -42,6 +42,7 @@ public final class ProbeDynamicCollision {
    if(kind==null)continue;
    for(var state:block.getStateDefinition().getPossibleStates()) {
     int id=Block.getId(state);var fact=new JsonObject();fact.addProperty("kind",kind);
+    if(kind.equals("shulker")){fact.addProperty("block_id",BuiltInRegistries.BLOCK.getId(block));fact.addProperty("facing",state.getValue(ShulkerBoxBlock.FACING).get3DDataValue());}
     var offset=state.getOffset(BlockPos.ZERO);var shape=state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,CollisionContext.empty());
     fact.add("base",boxes(shape.move(-offset.x,-offset.y,-offset.z)));
     if(kind.equals("offset"))fact.addProperty("max_offset",(float)maxOffset(block).invoke(block));

@@ -104,6 +104,26 @@ fn restored_dynamic_shapes_distinguish_offsets_missing_entities_and_open_lids() 
         collision::restored_block_collides(&terrain, &physics, [8, 0, 8], shulker, shape, context),
         Err(collision::QueryError::Dynamic { .. })
     ));
+    let mut lid = world::java::shulker::Motion::default();
+    lid.event(1);
+    for _ in 0..5 {
+        lid.tick();
+    }
+    terrain.shulkers.insert(
+        [8, 0, 8],
+        world::java::shulker::State {
+            generation: terrain.block_generation([8, 0, 8]).unwrap(),
+            block_id: registry.block_id(shulker).unwrap(),
+            states: dynamic::shulker_states(registry.block_id(shulker).unwrap()).unwrap(),
+            motion: lid,
+        },
+    );
+    let above = Body::default().bounds([8.5, 1.1, 8.5], 1.);
+    assert!(
+        collision::restored_block_collides(&terrain, &physics, [8, 0, 8], shulker, above, context)
+            .unwrap(),
+        "canonical logical progress expands the active lid collision"
+    );
     let powder = climbing::id(registry, "minecraft:powder_snow", &[]);
     assert!(
         collision::restored_living_block_collides(

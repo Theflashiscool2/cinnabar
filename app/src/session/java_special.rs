@@ -32,18 +32,11 @@ pub(crate) struct Presentation {
     conduits: BTreeMap<[i32; 3], (u64, sim::java::conduit::Motion)>,
     pot_motion: BTreeMap<[i32; 3], (u64, sim::java::pot::Motion)>,
     lids: BTreeMap<[i32; 3], (u64, f32)>,
-    boxes: BTreeMap<[i32; 3], BoxMotion>,
     skulls: BTreeMap<[i32; 3], (u64, sim::java::skull::Motion)>,
     heads: BTreeMap<[i32; 3], super::java_heads::Head>,
     bound_base: Option<[u8; 32]>,
     bound_skins: BTreeSet<String>,
     elapsed: std::time::Duration,
-}
-
-struct BoxMotion {
-    generation: u64,
-    block_id: u32,
-    motion: sim::java::shulker::Motion,
 }
 
 /// Resolves the target's half model only with a resident compatible partner. Both halves draw
@@ -85,7 +78,6 @@ pub(crate) fn advance(
         .map(|c| &c.java_world.terrain);
     let Some(terrain) = terrain.filter(|t| p.scope.is_some() && p.scope.as_ref() == t.dimension())
     else {
-        p.boxes.clear();
         p.skulls.clear();
         p.pot_motion.clear();
         p.conduits.clear();
@@ -106,8 +98,6 @@ pub(crate) fn advance(
     }
     p.conduits
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
-    p.boxes
-        .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
     p.skulls
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     p.pot_motion
@@ -196,32 +186,6 @@ pub(crate) fn advance(
                 }
                 continue;
             }
-            let Some(state) = graphics.shulkers.get(&id) else {
-                continue;
-            };
-            if terrain.block(position).map(|id| id.0) != Some(id) {
-                continue;
-            }
-            let Some(generation) = terrain.block_generation(position) else {
-                continue;
-            };
-            p.boxes.entry(position).or_insert_with(|| BoxMotion {
-                generation,
-                block_id: state.block_id,
-                motion: Default::default(),
-            });
-        }
-    }
-    // Known hosts keep ticking while a newly received facing awaits graphics admission.
-    for (position, state) in &mut p.boxes {
-        if let Some(event) = terrain
-            .block_event(*position)
-            .filter(|e| e.block == state.block_id && e.action == 1)
-        {
-            state.motion.event(event.binary_transition);
-        }
-        for _ in 0..ticks {
-            state.motion.tick();
         }
     }
 }
@@ -237,6 +201,7 @@ pub(crate) fn update(
     mut presentation: ResMut<Presentation>,
     frame: Option<ResMut<render_scene::BlockEntityFrameResource>>,
     time: Res<Time<Real>>,
+    clock: Option<Res<super::java_cooldowns::Clock>>,
     camera: Option<Res<client_presentation::local_player::CameraPose>>,
     mut skins: Local<client_shell::player_skin::java::cache::Cache>,
     mut profiles: Local<client_shell::player_skin::java::profiles::Cache>,
@@ -695,13 +660,17 @@ pub(crate) fn update(
             if entry.0 != generation {
                 *entry = (generation, 0.);
             }
-            entry.1 += (target - entry.1).clamp(-step, step);
-            if chest.is_none() {
-                entry.1 = p
-                    .boxes
+            if chest.is_some() {
+                entry.1 += (target - entry.1).clamp(-step, step);
+            } else {
+                entry.1 = terrain
+                    .shulkers
                     .get(&position)
                     .filter(|m| m.generation == generation)
-                    .map_or(0., |m| m.motion.sample(partial));
+                    .map_or(0., |m| {
+                        m.motion
+                            .sample(clock.as_ref().map_or(1., |clock| clock.fraction()))
+                    });
             }
             alive.insert(position);
             let Some(mut light) = terrain.light(position) else {
@@ -757,8 +726,6 @@ pub(crate) fn update(
         });
     }
     p.lids.retain(|pos, _| alive.contains(pos));
-    p.boxes
-        .retain(|pos, motion| terrain.block_generation(*pos) == Some(motion.generation));
     p.skulls
         .retain(|pos, (generation, _)| terrain.block_generation(*pos) == Some(*generation));
     if let Some(camera) = camera {
@@ -812,11 +779,11 @@ impl Presentation {
             return None;
         }
         let state = self.graphics.as_ref()?.shulkers.get(&id)?;
-        let state_motion = self.boxes.get(&position)?;
-        if terrain.block_generation(position) != Some(state_motion.generation) {
-            return None;
-        }
-        state_motion.motion.outline(state.facing)
+        let progress = terrain.shulkers.get(&position).map_or(Some(0.), |motion| {
+            (terrain.block_generation(position) == Some(motion.generation))
+                .then(|| motion.motion.sample(1.))
+        })?;
+        sim::java::shulker::outline(progress, state.facing)
     }
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
