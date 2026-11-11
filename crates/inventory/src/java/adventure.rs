@@ -13,7 +13,7 @@ pub(super) struct Cache {
 pub struct Target<'a> {
     pub state: u32,
     pub block: &'a BlockState,
-    pub tags: &'a BTreeMap<String, Vec<i32>>,
+    pub tags: Result<&'a BTreeMap<String, Vec<i32>>, &'static str>,
     pub tag_revision: u64,
 }
 fn component(stack: &Stack, permission: Permission) -> Option<&Value> {
@@ -182,10 +182,7 @@ fn evaluate(value: &Value, target: &Target<'_>) -> Result<bool, &'static str> {
     {
         if let Some(blocks) = predicate.get("blocks").filter(|value| !value.is_null()) {
             let matches = if let Some(tag) = blocks.get("tag").and_then(Value::as_str) {
-                target
-                    .tags
-                    .get(tag)
-                    .is_some_and(|ids| ids.contains(&(id as i32)))
+                tag_matches(facts, target.tags?, tag, id)?
             } else if let Some(ids) = blocks.get("ids").and_then(Value::as_array) {
                 ids.iter()
                     .any(|candidate| candidate.as_u64() == Some(u64::from(id)))
@@ -216,6 +213,31 @@ fn evaluate(value: &Value, target: &Target<'_>) -> Result<bool, &'static str> {
         return Ok(true);
     }
     Ok(false)
+}
+fn tag_matches(
+    facts: &Table,
+    tags: &BTreeMap<String, Vec<i32>>,
+    tag: &str,
+    id: u32,
+) -> Result<bool, &'static str> {
+    let expected = facts
+        .identifier(tag)
+        .ok_or("Invalid native Adventure tag identifier")?;
+    let mut matched = None;
+    for (name, ids) in tags {
+        let name = facts
+            .identifier(name)
+            .ok_or("Invalid native block tag identifier")?;
+        if name != expected {
+            continue;
+        }
+        let contains = ids.contains(&(id as i32));
+        if matched.is_some_and(|previous| previous != contains) {
+            return Err("Native Adventure tag aliases require unavailable decoded wire ordering");
+        }
+        matched = Some(contains);
+    }
+    Ok(matched.unwrap_or(false))
 }
 fn properties_match(
     facts: &Table,
