@@ -127,7 +127,7 @@ fn real_landing_disables_flight_without_changing_mayfly_and_held_jump_can_repeat
     let ability = state.player_dynamics.abilities.as_ref().unwrap();
     assert!(!ability.flying);
     assert!(ability.may_fly);
-    assert_eq!(controller.pending_ability(), Some((1, false)));
+    assert_eq!(controller.pending_ability(), Some((1, 0, false)));
     assert_eq!(state.player_motion.unwrap().velocity[1], -0.12);
     controller.ability_queued();
     controller.queued();
@@ -168,7 +168,7 @@ fn spectator_uses_noclip_keeps_flight_and_auto_enables_only_with_server_permissi
     assert!(!controller.body.on_ground);
     assert_eq!(state.player_motion.unwrap().position[1], 1.1 - 0.2);
     assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
-    assert_eq!(controller.pending_ability(), Some((1, true)));
+    assert_eq!(controller.pending_ability(), Some((1, 0, true)));
     controller.ability_queued();
     controller.queued();
     controller.begin_frame(&state, TICK);
@@ -189,7 +189,7 @@ fn disable_edges_survive_corrections_but_unsent_enables_retire_on_revocation_or_
     });
     let mut controller = Controller::default();
     controller.begin_frame(&state, TICK);
-    controller.pending_abilities.extend([false, true]);
+    controller.pending_abilities.extend([(0, false), (0, true)]);
     controller.pending = Some(frame());
     assert!(state.admit(java_protocol::session::Envelope {
         generation: 7,
@@ -208,11 +208,11 @@ fn disable_edges_survive_corrections_but_unsent_enables_retire_on_revocation_or_
     }));
     controller.begin_frame(&state, TICK);
     assert!(controller.pending().is_none());
-    assert_eq!(controller.pending_ability(), Some((1, false)));
+    assert_eq!(controller.pending_ability(), Some((1, 0, false)));
     controller.ability_queued();
     assert_eq!(
         controller.pending_ability(),
-        Some((1, true)),
+        Some((1, 0, true)),
         "valid enable survived the correction"
     );
     state.player_dynamics.abilities.as_mut().unwrap().may_fly = false;
@@ -221,7 +221,7 @@ fn disable_edges_survive_corrections_but_unsent_enables_retire_on_revocation_or_
         controller.pending_ability().is_none(),
         "unpermitted unsent enable was retired"
     );
-    controller.pending_abilities.push_back(false);
+    controller.pending_abilities.push_back((0, false));
     controller.begin_frame(&world(2), TICK);
     assert!(controller.pending_ability().is_none());
 }
@@ -246,7 +246,7 @@ fn block_rollback_retains_a_generated_native_landing_update() {
             .unwrap()
     );
     assert!(controller.pending().is_none());
-    assert_eq!(controller.pending_ability(), Some((1, false)));
+    assert_eq!(controller.pending_ability(), Some((1, 0, false)));
 }
 
 #[test]
@@ -312,6 +312,81 @@ fn restored_body_position_does_not_release_or_rearm_manual_flight_jump() {
     controller.queued();
     controller.begin_frame(&state, TICK);
     assert!(controller.tick(&mut state, &physics, controls(true)));
-    assert_eq!(controller.pending_ability(), Some((1, true)));
+    assert_eq!(controller.pending_ability(), Some((1, 0, true)));
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+}
+
+#[test]
+fn decoded_repeated_grants_retire_obsolete_landing_edges_but_new_jump_is_live() {
+    use java_protocol::session::{
+        Envelope, Event, abilities::Update, dynamics::Abilities, hud::GameMode,
+    };
+    let Some((mut state, physics)) = flight_world() else {
+        return;
+    };
+    state.status.mode = Some(world::java::hud::GameMode::Creative);
+    let grant = || {
+        Update::Values(Abilities {
+            invulnerable: true,
+            flying: true,
+            may_fly: true,
+            creative: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        })
+    };
+    let admit = |state: &mut WorldState, authority_revision, update| {
+        assert!(state.admit(Envelope {
+            generation: 7,
+            event: Event::Abilities {
+                dimension_epoch: 1,
+                authority_revision,
+                update,
+            }
+        }));
+    };
+    // Actual capture order: first flags7 can be admitted while the old mode is Creative.
+    admit(&mut state, 1, grant());
+    let mut controller = Controller::default();
+    controller.begin_frame(&state, TICK);
+    assert!(controller.tick(&mut state, &physics, Controls::default()));
+    assert_eq!(controller.pending_ability(), Some((1, 1, false)));
+    // Mode3 and another flags7 overwrite capabilities before this old edge is written.
+    admit(&mut state, 2, Update::Mode(GameMode::Spectator));
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+    admit(&mut state, 3, grant());
+    controller.begin_frame(&state, TICK);
+    assert!(controller.pending_ability().is_none());
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+    controller.pending_abilities.push_back((3, false));
+    // Identical values are a fresh in-place native overwrite, not a no-op revision.
+    admit(&mut state, 4, grant());
+    controller.begin_frame(&state, TICK);
+    assert!(controller.pending_ability().is_none());
+    admit(&mut state, 5, Update::Mode(GameMode::Survival));
+    let abilities = state.player_dynamics.abilities.as_ref().unwrap();
+    assert!(
+        !abilities.may_fly && !abilities.flying && !abilities.invulnerable && !abilities.creative
+    );
+    admit(&mut state, 6, Update::Mode(GameMode::Creative));
+    assert!(!state.player_dynamics.abilities.as_ref().unwrap().flying);
+    state.player_motion.as_mut().unwrap().position = [8.5, 8., 8.5];
+    controller.queued();
+    for jump in [true, false, true] {
+        controller.begin_frame(&state, TICK);
+        assert!(controller.tick(
+            &mut state,
+            &physics,
+            Controls {
+                travel: Input {
+                    jump,
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        ));
+        controller.queued();
+    }
+    assert_eq!(controller.pending_ability(), Some((1, 6, true)));
     assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
 }

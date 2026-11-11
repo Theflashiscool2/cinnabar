@@ -515,6 +515,9 @@ pub(super) fn snapshot(world: &World) -> Value {
         snapshot["native_java"]["motion"] = json!(state.player_motion.map(
             |m| json!({"position":m.position,"velocity":m.velocity,"yaw":m.yaw,"pitch":m.pitch})
         ));
+        snapshot["native_java"]["ability_authority_revision"] =
+            json!(state.player_ability_revision);
+        snapshot["native_java"]["ability_write"] = json!(state.last_ability_write);
         snapshot["native_java"]["pose_revision"] = json!(state.player_pose_revision);
         snapshot["native_java"]["player_swing"] = json!(state.player_visual.swing.sample(1.).map(
             |s| json!({"offhand":s.offhand,"kind":format!("{:?}",s.kind),"progress":s.progress})

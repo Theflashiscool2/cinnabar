@@ -13,7 +13,13 @@ pub(super) fn mode(mode: wire::GameMode) -> GameMode {
 }
 pub(super) fn admit(state: &mut WorldState, packet: wire::Packet) {
     match packet {
-        wire::Packet::GameMode(value) => state.status.mode = Some(mode(value)),
+        wire::Packet::GameMode(value) => {
+            let mode = mode(value);
+            state.status.mode = Some(mode);
+            if let Some(abilities) = state.player_dynamics.abilities.as_mut() {
+                abilities.apply_game_mode(mode);
+            }
+        }
         wire::Packet::Experience {
             progress,
             level,

@@ -4,6 +4,12 @@ use facts::Bootstrap;
 
 #[derive(Clone, Debug, serde::Serialize)]
 pub enum Event {
+    Abilities {
+        dimension_epoch: u64,
+        authority_revision: u64,
+        update: super::abilities::Update,
+    },
+    AbilitiesWritten(super::abilities::Written),
     Border {
         dimension_epoch: u64,
         packet: border::Packet,

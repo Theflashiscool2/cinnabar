@@ -65,6 +65,9 @@ pub struct WorldState {
     /// Private correction anchor from a reused LocalPlayer; never published as a new-world pose.
     login_motion: Option<world::java::player::Motion>,
     pub player_dynamics: world::java::dynamics::PlayerDynamics,
+    /// Revision originates at decoded capability/mode receipts, never local prediction.
+    pub player_ability_revision: u64,
+    pub last_ability_write: Option<java_protocol::session::abilities::Written>,
     pub player_pose_revision: u64,
     pub deferred_entity_dynamics: u64,
     pending_correction: Option<u64>,
@@ -238,6 +241,8 @@ impl WorldState {
                     self.player_motion = None;
                     self.login_motion = None;
                     self.player_dynamics = Default::default();
+                    self.player_ability_revision = 0;
+                    self.last_ability_write = None;
                     self.pending_correction = None;
                     self.pending_rotation = None;
                     self.pending_ping = None;
@@ -280,6 +285,8 @@ impl WorldState {
                 }
                 let spawn = facts.world.spawn.clone();
                 self.player_dynamics = dynamics::initial();
+                self.player_ability_revision = 0;
+                self.last_ability_write = None;
                 self.bootstrap = Some(facts);
                 if let Err(error) = terrain::begin(self, &spawn) {
                     self.terrain_error = Some(error);
@@ -328,6 +335,42 @@ impl WorldState {
                     return false;
                 }
             },
+            Event::Abilities {
+                dimension_epoch,
+                authority_revision,
+                update,
+            } => {
+                if !self.terrain.accepts(self.generation, dimension_epoch)
+                    || authority_revision <= self.player_ability_revision
+                {
+                    return false;
+                }
+                match update {
+                    java_protocol::session::abilities::Update::Mode(mode) => {
+                        hud::admit(self, java_protocol::session::hud::Packet::GameMode(mode))
+                    }
+                    java_protocol::session::abilities::Update::Values(values) => {
+                        if dynamics::admit(
+                            self,
+                            dimension_epoch,
+                            java_protocol::session::dynamics::Packet::Abilities(values),
+                        ) != Ok(true)
+                        {
+                            return false;
+                        }
+                    }
+                }
+                self.player_ability_revision = authority_revision;
+            }
+            Event::AbilitiesWritten(receipt) => {
+                if !self
+                    .terrain
+                    .accepts(self.generation, receipt.dimension_epoch)
+                {
+                    return false;
+                }
+                self.last_ability_write = Some(receipt);
+            }
             Event::Dynamics {
                 dimension_epoch,
                 packet,
@@ -377,6 +420,8 @@ impl WorldState {
                 keep_metadata,
             } => {
                 self.chat.overlay = None;
+                self.player_ability_revision = 0;
+                self.last_ability_write = None;
                 // ClientPacketListener.handleRespawn copies these only with KEEP_ENTITY_DATA.
                 // Do not publish the old position as movement authority in the new dimension.
                 let inherited = if keep_metadata {

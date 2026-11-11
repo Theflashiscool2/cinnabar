@@ -11,6 +11,32 @@ pub struct Abilities {
     pub walking_speed: f32,
 }
 
+impl Abilities {
+    /// Pinned GameType.updatePlayerAbilities mutates flags in place; speeds are retained.
+    pub fn apply_game_mode(&mut self, mode: super::hud::GameMode) {
+        use super::hud::GameMode;
+        match mode {
+            GameMode::Creative => {
+                self.may_fly = true;
+                self.creative = true;
+                self.invulnerable = true;
+            }
+            GameMode::Spectator => {
+                self.may_fly = true;
+                self.creative = false;
+                self.invulnerable = true;
+                self.flying = true;
+            }
+            GameMode::Survival | GameMode::Adventure => {
+                self.may_fly = false;
+                self.creative = false;
+                self.invulnerable = false;
+                self.flying = false;
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operation {
     Add,
@@ -144,5 +170,50 @@ mod tests {
         assert_eq!(a.value(), Ok(0.)); // Positive infinity multiplied by zero is sanitized NaN.
         a.base = f64::NAN;
         assert!(a.value().is_err());
+    }
+}
+
+#[cfg(test)]
+mod ability_mode_tests {
+    use super::*;
+    use crate::java::hud::GameMode;
+
+    #[test]
+    fn native_game_mode_updates_flags_in_place_and_retains_speeds() {
+        let rows: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/java-ability-modes.json"))
+                .unwrap();
+        for row in rows.as_array().unwrap() {
+            let flags = row["initial_flags"].as_u64().unwrap();
+            let mut abilities = Abilities {
+                invulnerable: flags & 1 != 0,
+                flying: flags & 2 != 0,
+                may_fly: flags & 4 != 0,
+                creative: flags & 8 != 0,
+                flying_speed: -0.01337,
+                walking_speed: 0.123,
+            };
+            let mode = match row["mode"].as_u64().unwrap() {
+                0 => GameMode::Survival,
+                1 => GameMode::Creative,
+                2 => GameMode::Adventure,
+                3 => GameMode::Spectator,
+                id => panic!("unknown native mode {id}"),
+            };
+            abilities.apply_game_mode(mode);
+            let flags = u8::from(abilities.invulnerable)
+                | u8::from(abilities.flying) << 1
+                | u8::from(abilities.may_fly) << 2
+                | u8::from(abilities.creative) << 3;
+            assert_eq!(u64::from(flags), row["flags"].as_u64().unwrap(), "{row}");
+            assert_eq!(
+                abilities.flying_speed,
+                row["flying_speed"].as_f64().unwrap() as f32
+            );
+            assert_eq!(
+                abilities.walking_speed,
+                row["walking_speed"].as_f64().unwrap() as f32
+            );
+        }
     }
 }

@@ -265,3 +265,61 @@ fn effects_have_local_scope_authoritative_replacement_and_simulation_expiry() {
     s.begin(8);
     assert!(s.player_dynamics.effects.is_empty());
 }
+
+#[test]
+fn decoded_capability_stamps_and_not_written_receipts_preserve_new_authority() {
+    use java_protocol::session::abilities::{Update, Written};
+    let mut state = state();
+    let values = |flying| {
+        Update::Values(wire::Abilities {
+            invulnerable: true,
+            flying,
+            may_fly: true,
+            creative: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        })
+    };
+    let envelope = |epoch, revision, update| Envelope {
+        generation: 7,
+        event: Event::Abilities {
+            dimension_epoch: epoch,
+            authority_revision: revision,
+            update,
+        },
+    };
+    assert!(state.admit(envelope(1, 1, values(true))));
+    assert!(state.admit(envelope(
+        1,
+        2,
+        Update::Mode(java_protocol::session::hud::GameMode::Spectator)
+    )));
+    assert!(state.admit(envelope(1, 3, values(true))));
+    assert!(
+        !state.admit(envelope(1, 2, values(false))),
+        "retired authority must not overwrite a grant"
+    );
+    assert!(
+        !state.admit(envelope(0, 4, values(false))),
+        "old epoch must not replace current capabilities"
+    );
+    assert!(state.admit(Envelope {
+        generation: 7,
+        event: Event::AbilitiesWritten(Written {
+            dimension_epoch: 1,
+            authority_revision: 1,
+            flying: false,
+            written: false,
+        })
+    }));
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+    assert!(!state.last_ability_write.unwrap().written);
+    // A repeated server value still overwrites local prediction and advances authority.
+    state.player_dynamics.abilities.as_mut().unwrap().flying = false;
+    assert!(state.admit(envelope(1, 4, values(true))));
+    assert_eq!(state.player_ability_revision, 4);
+    assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
+    state.begin(8);
+    assert_eq!(state.player_ability_revision, 0);
+    assert!(state.last_ability_write.is_none());
+}

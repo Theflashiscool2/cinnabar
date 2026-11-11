@@ -84,6 +84,20 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Stream<S> {
         self.read_offset = 0;
         decode(std::mem::take(&mut self.read_frame), self.threshold)
     }
+    /// Read a complete frame already available now. Pending preserves partial framing and
+    /// cipher state and returns immediately. Cooperative budget exhaustion is not mistaken
+    /// for absent bytes; this is used only for native capability ready-task ordering.
+    pub async fn read_ready(&mut self) -> Option<Result<Vec<u8>, Error>> {
+        use std::{future::Future, task::Poll};
+        let mut read = std::pin::pin!(tokio::task::unconstrained(self.read()));
+        std::future::poll_fn(|cx| {
+            Poll::Ready(match read.as_mut().poll(cx) {
+                Poll::Ready(value) => Some(value),
+                Poll::Pending => None,
+            })
+        })
+        .await
+    }
     pub async fn write(&mut self, body: &[u8]) -> Result<(), Error> {
         let mut frame = encode(body, self.threshold)?;
         if let Some(cipher) = &mut self.encrypt {
@@ -224,5 +238,49 @@ mod tests {
         assert_eq!(b.read().await.unwrap(), [1; 80]);
         assert_eq!(b.read().await.unwrap(), [2; 90]);
         writer.await.unwrap();
+    }
+}
+
+#[cfg(test)]
+mod ready_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn ready_poll_at_every_partial_encrypted_compressed_boundary_preserves_resume() {
+        let first: Vec<u8> = (0..64).map(|n| n % 17).collect();
+        let second = vec![5, 6, 7];
+        let first_frame = encode(&first, Some(0)).unwrap();
+        let mut ciphertext = first_frame.clone();
+        ciphertext.extend(encode(&second, Some(0)).unwrap());
+        let key = [0x13; 16];
+        let mut cipher = cfb8::Encryptor::<aes::Aes128>::new((&key).into(), (&key).into());
+        for byte in &mut ciphertext {
+            let mut block = [*byte].into();
+            cipher.encrypt_block_mut(&mut block);
+            *byte = block[0];
+        }
+        for split in 1..first_frame.len() {
+            let (socket, mut peer) = tokio::io::duplex(1024);
+            let mut wire = Stream::new(socket);
+            wire.encryption(&key);
+            wire.compression(0);
+            peer.write_all(&ciphertext[..split]).await.unwrap();
+            assert!(wire.read_ready().await.is_none(), "split {split}");
+            assert!(wire.read_ready().await.is_none(), "repeat split {split}");
+            // A concurrent outgoing ability does not change incoming cipher progress.
+            wire.write(&[9]).await.unwrap();
+            peer.write_all(&ciphertext[split..]).await.unwrap();
+            assert_eq!(
+                wire.read_ready().await.unwrap().unwrap(),
+                first,
+                "split {split}"
+            );
+            assert_eq!(
+                wire.read_ready().await.unwrap().unwrap(),
+                second,
+                "split {split}"
+            );
+            assert!(wire.read_ready().await.is_none());
+        }
     }
 }
