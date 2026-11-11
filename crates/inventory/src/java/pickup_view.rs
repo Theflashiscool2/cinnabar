@@ -28,6 +28,7 @@ impl State {
         {
             return false;
         }
+        self.adventure_pickup(&plan);
         self.pickup_view_identity = Some(plan.identity);
         for (index, stack) in plan.changed {
             let storage = match &self.menu(plan.identity.container).unwrap().slots[index] {

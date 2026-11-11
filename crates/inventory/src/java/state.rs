@@ -8,6 +8,8 @@ impl State {
             return;
         }
         self.retire_pending_block_uses();
+        let adventure_cache = std::mem::take(&mut self.adventure_cache);
+        let adventure_copied = std::mem::take(&mut self.adventure_copied);
         let storage = std::mem::take(&mut self.storage);
         let selected = self.selected;
         let projections = std::mem::take(&mut self.world_player_view);
@@ -15,6 +17,8 @@ impl State {
         let cooldowns = std::mem::take(&mut self.cooldowns);
         self.begin(session, epoch);
         self.storage = storage;
+        self.adventure_cache = adventure_cache;
+        self.adventure_copied = adventure_copied;
         self.selected = selected;
         self.world_player_view = projections;
         self.wire_revision = wire_revision;
@@ -112,6 +116,7 @@ impl State {
             self.pickup_player_view.remove(&storage);
             self.world_player_view.remove(&storage);
             self.block_uses.remove(&storage);
+            self.replace_adventure_slot(storage);
             self.storage[storage] = Cell::Known(stack);
         } else {
             self.pickup_menu_view.remove(&index);
@@ -141,6 +146,7 @@ impl State {
                 self.pickup_player_view.remove(&slot);
                 self.world_player_view.remove(&slot);
                 self.block_uses.remove(&slot);
+                self.replace_adventure_slot(slot);
                 self.storage[slot] = Cell::Known(stack);
             }
             Update::Content {
