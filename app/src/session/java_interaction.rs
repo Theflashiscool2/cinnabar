@@ -100,6 +100,10 @@ impl Interaction {
         release: bool,
     ) -> bool {
         let was_using = self.0.using_item();
+        let held_known = self
+            .0
+            .using_hand()
+            .is_some_and(|hand| hand.held(&state.inventory).is_some());
         self.0
             .maintain_use(state, state.inventory.cooldowns.client_tick(), release);
         if was_using
@@ -107,6 +111,12 @@ impl Interaction {
             && let Some(t) = java.telemetry()
         {
             use client_session::java::telemetry::Counter;
+            t.use_stopped(
+                self.0.use_stop_reason().unwrap_or("unclassified"),
+                state.player_visual.use_flags,
+                state.player_visual.use_revision,
+                held_known,
+            );
             let dead =
                 state.death.is_some() || state.vitals.as_ref().is_none_or(|v| v.health <= 0.);
             t.count(

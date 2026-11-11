@@ -142,6 +142,7 @@ struct State {
     recent_spikes: VecDeque<Value>,
     recent_hand_issues: VecDeque<Value>,
     recent_inventory_refusals: VecDeque<Value>,
+    recent_use_stops: VecDeque<Value>,
     input_bits: Option<u8>,
     on_ground: Option<bool>,
     sprinting: Option<bool>,
@@ -338,6 +339,20 @@ impl Recorder {
             s.count(c, amount);
         }
     }
+    /// Static controller branch labels only; no stack, account or server-text payloads.
+    pub fn use_stopped(&self, reason: &'static str, flags: u8, revision: u64, held_known: bool) {
+        let mut state = self.state();
+        if state.finished {
+            return;
+        }
+        if state.recent_use_stops.len() == RECENT {
+            state.recent_use_stops.pop_front();
+        }
+        state
+            .recent_use_stops
+            .push_back(json!({"reason":reason,"server_use_flags":flags,
+            "server_use_revision":revision,"held_known":held_known}));
+    }
     pub fn loading(&self, pending: [bool; 3]) {
         let mut s = self.state();
         if !s.finished {
@@ -376,7 +391,7 @@ impl Recorder {
         }
         let counts=Counter::ALL.iter().map(|c|(c.key().to_owned(),json!({"count":s.counts.get(c.key()).copied().unwrap_or(0),"checklist":c.items()}))).collect::<serde_json::Map<_,_>>();
         let times=Stage::ALL.iter().map(|stage| { let t=s.timings.get(stage.key());(stage.key().to_owned(),json!({"samples":t.map_or(0,|t|t.samples),"total_us":t.map_or(0,|t|t.total_us),"max_us":t.map_or(0,|t|t.max_us),"spikes":t.map_or(0,|t|t.spikes),"checklist":stage.items()})) }).collect::<serde_json::Map<_,_>>();
-        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"recent_hand_issues":s.recent_hand_issues,"recent_inventory_refusals":s.recent_inventory_refusals,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
+        json!({"schema":1,"enabled":true,"finished":s.finished,"scope":s.scope,"protocol":java_protocol::target::PROTOCOL,"game_version":java_protocol::target::GAME_VERSION,"counts":counts,"timings":times,"spike_threshold_ms":SPIKE.as_millis(),"correction_distance_m":{"samples":s.correction_samples,"total":s.correction_total,"max":s.correction_max},"recent":s.recent,"recent_spikes":s.recent_spikes,"recent_hand_issues":s.recent_hand_issues,"recent_inventory_refusals":s.recent_inventory_refusals,"recent_use_stops":s.recent_use_stops,"coverage":{"local_block_prediction":s.prediction_instrumented,"gpu_execution_timing":false,"server_transaction_acceptance_inferred":false},"interpretation":"Counters are observations, not automatic failures. Missing timing samples are unobserved, not passes. ACK/write receipts are not server acceptance."})
     }
 }
 /// CPU wall scope only; GPU submission/presentation time needs separate GPU evidence.

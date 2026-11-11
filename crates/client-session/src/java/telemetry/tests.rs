@@ -222,3 +222,17 @@ fn hand_loss_history_is_bounded_without_evicting_correction_context() {
     assert_eq!(snapshot["recent"].as_array().unwrap().len(), 1);
     assert_eq!(count(&t, Counter::AnimationLostPublication), 100);
 }
+
+#[test]
+fn use_stop_history_records_exact_static_branch_context_and_is_bounded() {
+    let t = recorder();
+    for revision in 0..(RECENT as u64 + 3) {
+        t.use_stopped("server_using_flag_cleared", 0, revision, true);
+    }
+    let snapshot = t.snapshot();
+    let recent = snapshot["recent_use_stops"].as_array().unwrap();
+    assert_eq!(recent.len(), RECENT);
+    assert_eq!(recent[0]["server_use_revision"], 3);
+    assert_eq!(recent[0]["reason"], "server_using_flag_cleared");
+    assert_eq!(recent[0]["held_known"], true);
+}

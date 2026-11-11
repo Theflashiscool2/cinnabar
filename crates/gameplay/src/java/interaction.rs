@@ -71,6 +71,7 @@ pub struct Controller {
     mining: Option<Mining>,
     creative: bool,
     active_use: Option<super::item_use::active::Using>,
+    use_stop_reason: Option<&'static str>,
     prepared_use: Option<(Hand, inventory::java::Stack, super::item_use::plan::Active)>,
     use_tick: u64,
     use_revision: u64,
@@ -236,13 +237,23 @@ impl Controller {
     }
     /// Called before movement and by the between-frame owner. A physical release is
     /// retained ahead of later movement/slot packets when transport is backpressured.
+    /// Exact branch that last stopped use during maintain_use; diagnostic only.
+    pub fn use_stop_reason(&self) -> Option<&'static str> {
+        self.use_stop_reason
+    }
     pub fn maintain_use(&mut self, state: &WorldState, tick: u64, release: bool) {
+        self.use_stop_reason = None;
         self.use_tick = tick;
         let scope = state.terrain.dimension().map(|d| (d.session, d.epoch));
         if scope != self.scope
             || state.death.is_some()
             || state.vitals.as_ref().is_none_or(|v| v.health <= 0.)
         {
+            self.use_stop_reason = Some(if scope != self.scope {
+                "world_boundary"
+            } else {
+                "dead_or_health_unknown"
+            });
             self.active_use = None;
             self.prepared_use = None;
             self.use_steps.clear();
@@ -253,6 +264,7 @@ impl Controller {
         if self.use_revision != state.player_visual.use_revision {
             self.use_revision = state.player_visual.use_revision;
             if state.player_visual.use_flags & 1 == 0 {
+                self.use_stop_reason = Some("server_using_flag_cleared");
                 self.active_use = None;
                 self.server_use = None;
             } else {
@@ -266,6 +278,7 @@ impl Controller {
                     .as_ref()
                     .is_none_or(|using| using.hand() != hand)
                 {
+                    self.use_stop_reason = Some("server_using_hand_changed");
                     self.active_use = None;
                     self.server_use = Some(hand);
                 }
@@ -274,7 +287,10 @@ impl Controller {
         if let Some(using) = self.active_use.as_mut() {
             match using.refresh(using.hand().held(&state.inventory)) {
                 Ok(true) => {}
-                Ok(false) => self.active_use = None,
+                Ok(false) => {
+                    self.use_stop_reason = Some("held_item_changed_or_unknown");
+                    self.active_use = None;
+                }
                 Err(error) => self.blocked = Some(error.into()),
             }
         }
