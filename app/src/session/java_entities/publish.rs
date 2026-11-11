@@ -19,7 +19,7 @@ pub(crate) fn update(
     presentation: Option<ResMut<Presentation>>,
     mut prepared: ResMut<PreparedActorPublication>,
     mut scene: ResMut<ActorRenderScene>,
-    mut heads: ResMut<super::super::java_items::Heads>,
+    heads: Option<ResMut<super::super::java_items::Heads>>,
     base: Option<Res<ActorArtworkResource>>,
     menu: Option<ResMut<client_shell::menu::MenuRuntime>>,
     time: Res<Time<bevy::time::Real>>,
@@ -58,6 +58,15 @@ pub(crate) fn update(
         prepared.replace_scene(empty(), state.generation(), 0., 0);
         return;
     };
+    const MISSING_HEADS: &str = "Native Java item-head resource owner is unavailable";
+    let Some(mut heads) = heads else {
+        p.failure = Some(MISSING_HEADS.into());
+        prepared.replace_scene(empty(), state.generation(), 0., 0);
+        return;
+    };
+    if p.failure.as_deref() == Some(MISSING_HEADS) {
+        p.failure = None;
+    }
     // Shared Bedrock hosts need no Java clock. An active Java host must still
     // report the missing owner, rather than silently sampling a fabricated tick.
     const MISSING_CLOCK: &str = "Native Java entity simulation clock is unavailable";

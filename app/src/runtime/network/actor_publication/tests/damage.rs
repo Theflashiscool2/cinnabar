@@ -164,3 +164,32 @@ fn local_actor_life_state_preserves_health_below_hud_precision_and_retires_with_
         None
     );
 }
+
+#[test]
+fn shared_actor_host_publishes_bedrock_without_native_java_head_resources() {
+    // Browser frame registration uses this same actor owner without native finish-system setup.
+    let mut app = App::new();
+    crate::game_frame::configure_client_frame_schedule(&mut app);
+    crate::game_frame::configure_actor_render_systems(&mut app);
+    let mut schedule = app
+        .world_mut()
+        .resource_mut::<bevy::ecs::schedule::Schedules>()
+        .remove(Update)
+        .unwrap();
+    let mut world = custom_emotes::fixture();
+    world.init_resource::<render_scene::ActorRenderFrame>();
+    world.init_resource::<render_scene::ActorRuntimeWitness>();
+    assert!(!world.contains_resource::<crate::session::SessionController>());
+    assert!(!world.contains_resource::<crate::session::java_items::Heads>());
+    schedule.run(&mut world);
+    let frame = world.resource::<render_scene::ActorRenderFrame>();
+    assert!(
+        frame
+            .rig
+            .manifest
+            .iter()
+            .any(|entry| entry.identity.runtime_id == 2),
+        "the shared production actor schedule must still publish the Bedrock remote player"
+    );
+    assert!(!world.contains_resource::<crate::session::java_items::Heads>());
+}
