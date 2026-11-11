@@ -100,6 +100,10 @@ impl Presentation {
             .get(&p.map(|n| n.div_euclid(16)))
             .is_some_and(|key| terrain.is_current(key))
     }
+    /// Successful append-only publications in this preparation; resets with replacement.
+    pub(super) fn graphics_extension_count(&self) -> usize {
+        self.growth.completed
+    }
     pub(super) fn special_inputs(
         &self,
     ) -> Option<(Dimension, Arc<::assets::registry::java::graphics::Graphics>)> {
