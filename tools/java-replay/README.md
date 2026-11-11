@@ -140,3 +140,29 @@ packet generation and state admission against a captured response; it is not a n
 purchase, damage or physics result. Neither establishes authenticated online, Hypixel, iOS
 simulator, physical-iPhone or complete Bed Wars acceptance. Extend scenarios with owning-lane
 fixtures and separate live authority checks before promoting those checklist items.
+
+Authored flight authority acceptance can run against an already running isolated harness
+server and a developer-control client at its menu:
+
+```sh
+python3 tools/java-replay/run_flight.py \
+  --endpoint /private/client-endpoint.json \
+  --fixture /private/flight-fixture/fixture-private.json \
+  --out /private/new-flight-evidence
+```
+
+This runner launches no processes. It uses native creative/spectator/survival commands and
+teleports, querying vanilla `data get entity` abilities/positions and `time query gametime`.
+It authors a stone landing pad and clear flight volume at110..118,68..90,110..118 in this
+private fixture only. It never changes `allow-flight`. Jump/sneak use persistent raw key
+holds and explicit releases observed across movement ticks, rather than one-render-frame taps.
+Double-Jump input sampling is bounded by client tick snapshots; receipt of an input command
+is not proof of a simulation sample or socket write. Only bounds entirely inside the native
+2..6 tick separation close that timing check. Ambiguous or out-of-window bounds produce an
+inconclusive result (exit2), never a widened debounce window. Other failures exit nonzero.
+The remaining checks use a native spectator grant independently of that timing trial.
+
+The private evidence includes native server receipts, client states, source hashes and
+screenshots for spectator/rise/correction/landing/reconnect. Inspect the screenshots and
+`flight-evidence.json` (`complete` must be true). This is authored graphical/vanilla evidence;
+it does not replay client actions or establish Hypixel, mobile, collision, or all-flight parity.
