@@ -88,12 +88,16 @@ async fn reconfiguration_reuses_encryption_cookies_identity_and_retires_old_inpu
             let client = tokio::spawn(session::run(options, tx, cancel.clone()));
             let (mut configurations, mut bootstraps, mut corrections) = (0, 0, 0);
             let mut identity = None;
+            let mut retired_abilities = 0;
             while let Some(envelope) = rx.recv().await {
                 assert_eq!(envelope.generation, 7);
                 match envelope.event {
                     Event::Phase(Phase::Configuration) => {
                         configurations += 1;
                         if configurations > 1 {
+                            commands.send(session::Command::Abilities {
+                                dimension_epoch: configurations - 1, authority_revision: 0, flying: true,
+                            }).await.unwrap();
                             commands.send(session::Command::Select {
                                 dimension_epoch: configurations - 1, sequence: 99, slot: 8,
                             }).await.unwrap();
@@ -125,12 +129,17 @@ async fn reconfiguration_reuses_encryption_cookies_identity_and_retires_old_inpu
                         }).await.unwrap();
                         commands.send(session::Command::PlayerLoaded { dimension_epoch }).await.unwrap();
                     }
+                    Event::AbilitiesWritten(receipt) => {
+                        assert!(!receipt.written, "retired play input must not become configuration bytes");
+                        retired_abilities += 1;
+                    }
                     Event::KeepAlive(321) => break,
                     Event::Phase(_) | Event::Tags(_) => {},
                     other => panic!("unexpected {other:?}"),
                 }
             }
             assert_eq!((configurations, bootstraps, corrections), (3, 3, 3));
+            assert_eq!(retired_abilities, 2);
             cancel.cancel();
             assert!(matches!(client.await.unwrap(), Err(session::Error::Cancelled)));
             server.await.unwrap();

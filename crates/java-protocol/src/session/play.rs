@@ -29,8 +29,15 @@ impl Connection {
                 || self.pending_rotation.is_some()
                 || self.pending_ping.is_some();
             let preparing_chat = self.chat_preparation.is_some() && !self.chat.has_roots();
-            let ready = if pending_ability.is_some() && !awaiting_authority && !preparing_chat {
-                self.ready_ability_packet().await?
+            let ready = if pending_ability.is_some() {
+                abilities::ready_packet(
+                    &mut self.stream,
+                    &mut self.ingress,
+                    &mut self.chat_pending,
+                    awaiting_authority,
+                    preparing_chat,
+                )
+                .await?
             } else {
                 None
             };
@@ -484,7 +491,22 @@ impl Connection {
                 }
                 "ClientboundStartConfigurationPacket" => {
                     r.finish().map_err(packet_error)?;
-                    self.reconfigure().await?;
+                    let retired_ability = if let Some(Command::Abilities {
+                        dimension_epoch,
+                        authority_revision,
+                        flying,
+                    }) = pending_ability.take()
+                    {
+                        Some(abilities::Written {
+                            dimension_epoch,
+                            authority_revision,
+                            flying,
+                            written: false,
+                        })
+                    } else {
+                        None
+                    };
+                    self.reconfigure(retired_ability).await?;
                     deadline = tokio::time::Instant::now() + Duration::from_secs(120);
                     continue;
                 }

@@ -3,7 +3,10 @@ use super::*;
 impl Connection {
     /// Reuse the authenticated encrypted stream and cookie store; retire play authority.
     /// Native reference net.rs at 59d8cc38a2627f5b7aa0c96fc91b013df70c45fc (MIT).
-    pub(super) async fn reconfigure(&mut self) -> Result<(), Error> {
+    pub(super) async fn reconfigure(
+        &mut self,
+        retired_ability: Option<abilities::Written>,
+    ) -> Result<(), Error> {
         tracing::info!(target: "java_session", generation=self.generation, dimension_epoch=self.dimension_epoch, "Java server requested configuration handoff; retiring play authority");
         let started = std::time::Instant::now();
         self.flush_chat_for_configuration().await?;
@@ -22,6 +25,11 @@ impl Connection {
         self.send("ServerboundConfigurationAcknowledgedPacket", &[])
             .await?;
         self.phase = Phase::Configuration;
+        // Receipt backpressure may read ahead. Publish only after the codec transition,
+        // before Phase(Configuration) retires the consumer's old play scope.
+        if let Some(receipt) = retired_ability {
+            self.emit(Event::AbilitiesWritten(receipt)).await?;
+        }
         self.emit(Event::Phase(self.phase)).await?;
         tokio::time::timeout(self.configuration_timeout, self.configure())
             .await

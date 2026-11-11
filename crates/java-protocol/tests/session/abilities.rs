@@ -10,6 +10,20 @@ async fn ability_edges_reach_wire_before_pending_correction_ack_and_stale_moveme
         let (done, completed) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(async move {
             let mut wire = through_initial_position(listener, true).await;
+            // New capability packets remain behind the outstanding correction. Ability
+            // commands retain the last admitted revision until the owner acknowledges it.
+            let mut replacement = Vec::new();
+            codec::write_varint(
+                java_protocol::target::game::clientbound::NAMES
+                    .iter()
+                    .position(|n| *n == "ClientboundPlayerAbilitiesPacket")
+                    .unwrap() as i32,
+                &mut replacement,
+            );
+            replacement.push(7);
+            replacement.extend(0.05_f32.to_be_bytes());
+            replacement.extend(0.1_f32.to_be_bytes());
+            wire.write(&replacement).await.unwrap();
             assert_eq!(
                 wire.read().await.unwrap(),
                 containers::outgoing("ServerboundPlayerAbilitiesPacket", &[0])
@@ -241,6 +255,117 @@ async fn replaced_grant_case(queue_before_mode_admission: bool) {
                 (4, false, true)
             ]
         );
+        completed.await.unwrap();
+        cancel.cancel();
+        assert!(matches!(
+            client.await.unwrap(),
+            Err(session::Error::Cancelled)
+        ));
+        server.await.unwrap();
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn game_thread_ping_defers_replacement_authority_without_overtaking_ability_fifo() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string().parse().unwrap();
+        let (done, completed) = tokio::sync::oneshot::channel();
+        let server = tokio::spawn(async move {
+            let mut wire = through_initial_position(listener, true).await;
+            let mut ack = vec![0, 7];
+            for value in [1_f64, 64., 2.] {
+                ack.extend(value.to_be_bytes());
+            }
+            ack.extend([0; 8]);
+            assert_eq!(wire.read().await.unwrap(), ack);
+            let incoming = |name: &str, payload: &[u8]| {
+                let id = java_protocol::target::game::clientbound::NAMES
+                    .iter()
+                    .position(|n| *n == name)
+                    .unwrap();
+                let mut bytes = Vec::new();
+                codec::write_varint(id as i32, &mut bytes);
+                bytes.extend(payload);
+                bytes
+            };
+            wire.write(&incoming("ClientboundPingPacket", &123_i32.to_be_bytes()))
+                .await
+                .unwrap();
+            let mut values = vec![7];
+            values.extend(0.05_f32.to_be_bytes());
+            values.extend(0.1_f32.to_be_bytes());
+            wire.write(&incoming("ClientboundPlayerAbilitiesPacket", &values))
+                .await
+                .unwrap();
+            assert_eq!(
+                wire.read().await.unwrap(),
+                containers::outgoing("ServerboundPlayerAbilitiesPacket", &[0])
+            );
+            assert_eq!(
+                wire.read().await.unwrap(),
+                containers::outgoing("ServerboundPongPacket", &123_i32.to_be_bytes())
+            );
+            done.send(()).unwrap();
+            assert!(wire.read().await.is_err());
+        });
+        let (tx, mut rx) = mpsc::channel(32);
+        let (commands, input) = mpsc::channel(8);
+        let cancel = CancellationToken::new();
+        let mut options = Options::fixture(address, "Fixture".into(), 7);
+        options.commands = Some(input);
+        let client = tokio::spawn(session::run(options, tx, cancel.clone()));
+        let mut written = false;
+        while let Some(envelope) = rx.recv().await {
+            match envelope.event {
+                Event::Teleport {
+                    dimension_epoch,
+                    sequence,
+                    correction,
+                } => {
+                    commands
+                        .send(Command::AcceptTeleport {
+                            dimension_epoch,
+                            sequence,
+                            id: correction.id,
+                            position: correction.position,
+                            yaw: correction.yaw,
+                            pitch: correction.pitch,
+                        })
+                        .await
+                        .unwrap();
+                }
+                Event::Ping { sequence, id } => {
+                    commands
+                        .send(Command::Abilities {
+                            dimension_epoch: 1,
+                            authority_revision: 0,
+                            flying: false,
+                        })
+                        .await
+                        .unwrap();
+                    commands.send(Command::Pong { sequence, id }).await.unwrap();
+                }
+                Event::AbilitiesWritten(receipt) => {
+                    assert_eq!(receipt.authority_revision, 0);
+                    assert!(receipt.written);
+                    written = true;
+                }
+                Event::Abilities {
+                    authority_revision: 1,
+                    ..
+                } => {
+                    assert!(
+                        written,
+                        "replacement authority may advance only after the head ability and Pong"
+                    );
+                    break;
+                }
+                _ => {}
+            }
+        }
         completed.await.unwrap();
         cancel.cancel();
         assert!(matches!(
