@@ -25,7 +25,7 @@ pub(crate) struct Presentation {
     pending: Option<Pending>,
     scene: BlockEntityScene,
     graphics: Option<Arc<Graphics>>,
-    graphics_extensions: usize,
+    graphics_extensions: u64,
     columns: BTreeMap<[i32; 2], (u64, Vec<([i32; 3], u32)>)>,
     banners: BTreeMap<[i32; 3], render_model::block_entity::java_banner::Model>,
     pots: BTreeMap<[i32; 3], render_model::block_entity::java_pot::Model>,

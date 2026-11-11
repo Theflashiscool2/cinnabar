@@ -101,7 +101,7 @@ impl Presentation {
             .is_some_and(|key| terrain.is_current(key))
     }
     /// Successful append-only publications in this preparation; resets with replacement.
-    pub(super) fn graphics_extension_count(&self) -> usize {
+    pub(super) fn graphics_extension_count(&self) -> u64 {
         self.growth.completed
     }
     pub(super) fn special_inputs(
