@@ -57,6 +57,9 @@ impl Authority {
             self.movement.1.controls.yaw = motion.yaw;
             self.movement.1.controls.pitch = motion.pitch;
         }
+        if !super::java_movement::flush_abilities(&self.java, &mut self.movement) {
+            return;
+        }
         let release_use =
             !self.interaction.1.use_button_down() || self.world.inventory.opened.is_some();
         if !self

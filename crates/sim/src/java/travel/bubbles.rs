@@ -24,6 +24,7 @@ pub(super) fn apply(
     pose: Body,
     scale: f32,
     weaving: bool,
+    flying: bool,
     terrain: &Terrain,
     physics: &Table,
 ) -> Result<(), Error> {
@@ -48,6 +49,7 @@ pub(super) fn apply(
                 body,
                 scale,
                 weaving,
+                flying,
                 terrain,
                 physics,
             )?;
@@ -64,6 +66,7 @@ pub(super) fn apply(
             body,
             scale,
             weaving,
+            flying,
             terrain,
             physics,
         )?;
@@ -79,6 +82,7 @@ pub(super) fn apply(
             body,
             scale,
             weaving,
+            flying,
             terrain,
             physics,
         )?;
@@ -95,6 +99,7 @@ fn segment(
     body: &mut Body,
     scale: f32,
     weaving: bool,
+    flying: bool,
     terrain: &Terrain,
     physics: &Table,
 ) -> Result<i32, Error> {
@@ -130,7 +135,8 @@ fn segment(
             _ => {}
         }
         // BubbleColumnBlock alone requires precise entity-inside contact.
-        if !is_column(physics, id)
+        if flying
+            || !is_column(physics, id)
             || (!precise
                 && !(0..3).all(|i| {
                     bounds.max[i] > f64::from(pos[i]) && bounds.min[i] < f64::from(pos[i]) + 1.

@@ -31,15 +31,22 @@ pub(super) fn fits(
     Ok(!query.boxes.iter().any(|b| collision::intersects(shape, *b)))
 }
 
+/// Raw shift selects collision context independently of the desired crouching pose.
+pub(super) struct PoseInput {
+    pub shift: bool,
+    pub crouch: bool,
+}
+
 pub(super) fn finish_pose(
     body: &mut Body,
     position: [f64; 3],
-    shift: bool,
+    input: PoseInput,
     scale: f32,
     terrain: &Terrain,
     physics: &Table,
     scope: (u64, u64),
 ) -> Result<(), Error> {
+    let shift = input.shift;
     if !fits(
         position,
         (true, false),
@@ -51,7 +58,7 @@ pub(super) fn finish_pose(
     )? {
         return Ok(());
     }
-    let desired = (body.swimming, !body.swimming && shift);
+    let desired = (body.swimming, !body.swimming && input.crouch);
     let pose = if fits(position, desired, scale, terrain, physics, scope, shift)? {
         desired
     } else if fits(

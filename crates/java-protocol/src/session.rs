@@ -156,6 +156,11 @@ pub enum Command {
         correction_sequence: u64,
         action: interaction::UseItem,
     },
+    /// Native ability edge; it is independent of movement correction acknowledgements.
+    Abilities {
+        dimension_epoch: u64,
+        flying: bool,
+    },
     Move {
         dimension_epoch: u64,
         sequence: u64,

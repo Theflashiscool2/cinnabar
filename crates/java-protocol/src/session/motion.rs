@@ -369,6 +369,19 @@ impl Connection {
                 tracing::debug!(target: "java_session", dimension_epoch, sequence=action.sequence, "Native item use written; awaiting server authority");
             }
             Command::UseItem { .. } => {}
+            Command::Abilities {
+                dimension_epoch,
+                flying,
+            } if dimension_epoch == self.dimension_epoch => {
+                // Native LocalPlayer emits this during aiStep, before sendChanges. A later
+                // correction can retire position prediction, but cannot cancel the ability edge.
+                self.send(
+                    "ServerboundPlayerAbilitiesPacket",
+                    &movement::abilities(flying),
+                )
+                .await?;
+            }
+            Command::Abilities { .. } => {}
             Command::Move {
                 dimension_epoch,
                 sequence,

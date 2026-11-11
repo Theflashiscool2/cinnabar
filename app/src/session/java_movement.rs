@@ -25,7 +25,7 @@ impl Movement {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
         serde_json::json!({"ticks":self.0.ticks,"between_frame_ticks":self.1.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
-            "pending_frame":self.0.pending().is_some(),"on_ground":self.0.body.on_ground,
+            "pending_frame":self.0.pending().is_some(),"pending_ability_update":self.0.pending_ability().map(|(_, flying)| flying),"on_ground":self.0.body.on_ground,
             "last_climbable_position":self.0.body.last_climbable_position,
             "swimming":self.0.body.swimming,"low_profile":self.0.body.low_profile,
             "eye_height":self.0.body.eye_height(1.),
@@ -68,6 +68,9 @@ pub(crate) fn update(
     if corrected && let Some(motion) = java_world.player_motion {
         view.set_rotation(super::java_look::view_rotation([motion.yaw, motion.pitch]));
         view.reanchor_camera();
+    }
+    if !flush_abilities(java, &mut movement) {
+        return;
     }
     let released = input.0.snapshot().is_some_and(|s| s.authority_released);
     if released {
@@ -128,6 +131,27 @@ pub(crate) fn update(
     advance(java, java_world, physics, &mut movement);
 }
 
+/// Transfer native ability edges independently of collision/correction frame readiness.
+pub(super) fn flush_abilities(
+    java: &client_session::java::Session,
+    movement: &mut Movement,
+) -> bool {
+    while let Some((dimension_epoch, flying)) = movement.0.pending_ability() {
+        match java.command(Command::Abilities {
+            dimension_epoch,
+            flying,
+        }) {
+            Ok(()) => movement.0.ability_queued(),
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => return false,
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
+                movement.0.blocked = Some("Java ability transport closed".into());
+                return false;
+            }
+        }
+    }
+    true
+}
+
 /// The frame and between-frame service share one simulation and outbound baseline owner.
 pub(super) fn advance(
     java: &client_session::java::Session,
@@ -135,12 +159,18 @@ pub(super) fn advance(
     physics: &assets::registry::java::physics::Table,
     movement: &mut Movement,
 ) {
+    if !flush_abilities(java, movement) {
+        return;
+    }
     // Four ticks bound each service slice; elapsed backlog remains explicit.
     for _ in 0..4 {
         if movement.0.pending().is_none()
             && !movement.0.tick(java_world, physics, movement.1.controls)
         {
             break;
+        }
+        if !flush_abilities(java, movement) {
+            return;
         }
         let Some(frame) = movement.0.pending() else {
             break;

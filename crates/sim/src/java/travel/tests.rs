@@ -3,6 +3,7 @@ mod bubbles;
 mod climbing;
 mod current_reference;
 mod dynamic;
+mod flight;
 mod liquid;
 mod rollback;
 mod sticky;
