@@ -41,6 +41,7 @@ impl State {
             return false;
         }
         if self.pickup_writes.remove(&receipt.sequence) && !receipt.written {
+            self.retire_adventure_pickup_view();
             self.pickup_player_view.clear();
             self.clear_pickup_menu_view();
         }
