@@ -56,7 +56,11 @@ Owner reports lobby, NPC/game menus, backend transitions, Bed Wars shops, ordina
 | Dropper portal transition leaves player floating/stuck | A/C/session | Open: separate collision, server transfer and loading gates from portal-surface rendering. |
 | Map loading remains very slow | streaming/presentation | Open: measure stages on owner's Mac; Linux lavapipe timings do not establish the Mac or iPhone cause. |
 
-Next: obtain private diagnostic archive for this run, reproduce safe controlled-server counterparts (inventory first), and propose fixes on unmerged candidate branches. No public automated gameplay. Gameplay merges retain owner approval gate; D remains parked pending that approval.
+Owner diagnostic confirms source284101dfd/protocol777:20 predictions confirmed/0 reverted;35 container-update admissions refused (reasons absent from summary);8 use stops without release;2 empty-geometry hand losses; max main schedule1.325433s/frame1.333175s. Packet-write counters do not prove server acceptance;35 corrections include large teleports across12 logins, not35 demonstrated movement failures.25 respawn packets do not establish death/respawn gameplay. Arrow/bobber spawns do not establish local bow/rod input correctness. Deferred packet counts are observations, not a list of proven missing features.
+
+Fresh assistant controlled graphical check on the exact same native executable: physical Shift+pointer moved one iron sword hotbar→main→hotbar; authoritative server slots0→9→0 and client inventory agreed; before/settled screenshots inspected. This ordinary vanilla case did NOT reproduce the Hypixel disappearance. Private evidence: runtime/evidence/ac-shift-click/{before,settled,returned,result}.json and PNGs; client exited normally. No gameplay code changed, no new Hypixel/device acceptance.
+
+Next: obtain private diagnostic archive/client log for the owner run (update refusal reasons and use lifecycle), reproduce remaining safe controlled-server counterparts, and propose fixes on unmerged candidate branches. No public automated gameplay. Gameplay merges retain owner approval gate; D remains parked pending that approval.
 
 ## Open handoff residuals
 
