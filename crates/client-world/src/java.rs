@@ -52,6 +52,8 @@ pub struct WorldState {
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
     pub block_updates: u64,
+    /// Successful play tag rebindings; initial configuration is the zero baseline.
+    pub tag_revision: u64,
     /// Processing receipt only; acceptance comes from ordered authoritative block updates.
     pub block_ack: Option<(u64, i32)>,
     /// Ordered ACK reconciliation candidates for the existing native movement owner.
@@ -89,6 +91,8 @@ impl WorldState {
     ) -> Result<(), &'static str> {
         assets::registry::java::prediction::builtin()
             .map_err(|_| "Invalid pinned Java block prediction facts")?;
+        assets::registry::java::adventure::builtin()
+            .map_err(|_| "Invalid pinned Java Adventure facts")?;
         self.terrain.install_block_types(registry.block_types());
         piston::initialize(&mut self.terrain, &registry, None)?;
         self.piston_registry = Some(registry);
@@ -96,10 +100,11 @@ impl WorldState {
     }
     /// Name from the same validated registry installed for this world, never a fallback.
     pub fn block_name(&self, state: u32) -> Option<&str> {
-        self.piston_registry
-            .as_ref()?
-            .state(state)
-            .map(|s| s.name.as_ref())
+        self.block_state(state).map(|state| state.name.as_ref())
+    }
+    /// Native state identity/properties from the already installed shared registry.
+    pub fn block_state(&self, state: u32) -> Option<&assets::registry::java::BlockState> {
+        self.piston_registry.as_ref()?.state(state)
     }
     /// Admits each ACK restore and its native collision/snap before restoring the next cell.
     /// The application supplies its existing movement owner; no simulation enters world storage.
@@ -387,6 +392,7 @@ impl WorldState {
                     self.terrain_error = Some(error);
                     return false;
                 }
+                self.tag_revision = self.tag_revision.saturating_add(1);
             }
             Event::Teleport {
                 dimension_epoch,

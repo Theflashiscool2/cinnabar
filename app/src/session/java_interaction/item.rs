@@ -169,8 +169,16 @@ pub(super) fn steps(
         }
         if let Some(hit) = hit {
             steps.push(UseStep::block(hit, hand));
-            if !block::at_hand(state, hit, secondary, hand)? {
-                break;
+            match block::at_hand(state, hit, secondary, hand) {
+                Ok(true) => {}
+                Ok(false) => break,
+                Err(error) => {
+                    // useItemOn's packet is unconditional once the target stage is
+                    // admitted. Unknown local permission blocks fallback prediction,
+                    // never the already resolved server interaction itself.
+                    bevy::log::debug!(target: "java_session", error, ?hand, "Native block local result unavailable; retaining target request");
+                    break;
+                }
             }
         }
         let plan = match plan_for(state, hand, false) {
