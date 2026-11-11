@@ -488,6 +488,7 @@ pub(crate) fn update(
                     &mut batch,
                     entry,
                     gear,
+                    &e.visual,
                     &body,
                     model,
                     posture,

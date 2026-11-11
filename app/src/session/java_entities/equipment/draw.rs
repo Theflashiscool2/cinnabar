@@ -3,10 +3,15 @@ use super::*;
 use client_presentation::presentation::actors::ActorPresentationBatch;
 use render_model::ActorRigSubmission;
 use render_model::{ActorGlint, HandItemAlphaMode, equipment::java_item};
+#[allow(
+    clippy::too_many_arguments,
+    reason = "binds one admitted body and its immutable held-item source"
+)]
 pub(in crate::session::java_entities) fn append(
     batch: &mut ActorPresentationBatch,
     entry: &Entry,
     gear: &client_world::java::equipment::Equipment,
+    visual: &world::java::entities::visual::Visual,
     body: &ActorRigSubmission,
     body_model: &render_model::actor::java_geometry::Model,
     posture: world::java::entities::animation::PlayerPosture,
@@ -17,7 +22,7 @@ pub(in crate::session::java_entities) fn append(
         if !draw
             .source
             .as_ref()
-            .is_some_and(|source| source.matches(gear))
+            .is_some_and(|source| source.matches(gear) && source.matches_use(gear, visual))
         {
             continue;
         }

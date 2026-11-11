@@ -15,7 +15,33 @@ enum Piece {
     Hand(java_item::Prepared),
     Skull(java_item::Prepared),
 }
-fn stack(s: &inventory::java::Stack) -> Stack {
+struct Cached {
+    selected: Option<Result<Selection, String>>,
+    result: Result<Option<Piece>, String>,
+}
+type Cache = BTreeMap<String, Cached>;
+/// Reuses preparation only when the complete generic selection (or its error) is unchanged.
+fn cached<'a>(
+    cache: &'a mut Cache,
+    key: String,
+    selected: Option<&Result<Selection, String>>,
+    prepare: impl FnOnce() -> Result<Option<Piece>, String>,
+) -> &'a Result<Option<Piece>, String> {
+    if cache
+        .get(&key)
+        .is_none_or(|entry| entry.selected.as_ref() != selected)
+    {
+        cache.insert(
+            key.clone(),
+            Cached {
+                selected: selected.cloned(),
+                result: prepare(),
+            },
+        );
+    }
+    &cache.get(&key).unwrap().result
+}
+pub(super) fn stack(s: &inventory::java::Stack) -> Stack {
     Stack {
         item: s.item.clone(),
         count: s.count,
@@ -38,7 +64,7 @@ pub(super) fn run(
         )
         .map_err(|e| e.to_string())
     });
-    let mut cache = BTreeMap::<String, Result<Option<Piece>, String>>::new();
+    let mut cache = Cache::new();
     loop {
         let request = {
             let mut w = shared.0.lock().unwrap();
@@ -72,7 +98,7 @@ fn prepare(
     models: &BTreeMap<String, Arc<render_model::actor::java_geometry::Model>>,
     base: &render_model::ActorArtworkPages,
     request: &Request,
-    cache: &mut BTreeMap<String, Result<Option<Piece>, String>>,
+    cache: &mut Cache,
     shared: &Arc<(Mutex<Shared>, Condvar)>,
 ) -> Result<Output, String> {
     let mut output = Output {
@@ -105,25 +131,26 @@ fn prepare(
                 request.heads.revision
             );
             used.insert(key.clone());
-            let piece = cache.entry(key).or_insert_with(|| {
+            let selected = player
+                .hands
+                .get(slot)
+                .and_then(Option::as_ref)
+                .map(|hand| &hand.selected);
+            let piece = cached(cache, key, selected, || {
                 if slot < 2 {
+                    let selected = selected
+                        .ok_or("native held selection missing")?
+                        .as_ref()
+                        .map_err(Clone::clone)?;
                     catalog
-                        .geometry_in(
-                            &s,
-                            &request.heads,
-                            if left {
-                                View::ThirdPersonLeft
-                            } else {
-                                View::ThirdPersonRight
-                            },
-                        )
+                        .geometry_selected(selected, &request.heads)
                         .map_err(|e| e.to_string())
-                        .and_then(|q| {
-                            java_item::prepare_with_ids(q, |i| {
-                                java_equipment_rig_id(65536 + i as u32)
+                        .and_then(|quads| {
+                            java_item::prepare_with_ids(quads, |index| {
+                                java_equipment_rig_id(65536 + index as u32)
                             })
                         })
-                        .map(|p| p.map(Piece::Hand))
+                        .map(|piece| piece.map(Piece::Hand))
                 } else if slot == 5 && s.item == "minecraft:player_head" {
                     catalog
                         .worn_player_head(&s, &request.heads)
@@ -216,6 +243,12 @@ fn prepare(
                 draw.source = Some(SlotSource {
                     slot: slot as u8,
                     item: Arc::from(s.item.as_str()),
+                    using_this_item: player
+                        .hands
+                        .get(slot)
+                        .and_then(Option::as_ref)
+                        .and_then(|hand| hand.owner.as_ref())
+                        .map(|owner| owner.using_this_item),
                 });
             }
             if draws.len() >= usize::from(render_model::ACTOR_LAYER_SKIN_BASE) {
@@ -242,7 +275,7 @@ fn prepare(
         let s = stack(&ground.stack);
         let key = format!("ground:{}:{}", s.key(), request.heads.revision);
         used.insert(key.clone());
-        let piece = cache.entry(key).or_insert_with(|| {
+        let piece = cached(cache, key, None, || {
             catalog
                 .geometry_in(&s, &request.heads, View::Ground)
                 .map_err(|e| e.to_string())
@@ -328,4 +361,90 @@ fn charge(total: &mut usize, more: usize, budget: usize) -> Result<(), String> {
         .filter(|n| *n <= budget)
         .ok_or("native equipment snapshot budget exhausted")?;
     Ok(())
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::*;
+    #[test]
+    fn native_selection_cache_reuses_same_pull_stage_and_retires_release_and_material_keys() {
+        let Some(root) = std::env::var_os("CINNABAR_JAVA_ASSETS") else {
+            eprintln!("missing fixture: CINNABAR_JAVA_ASSETS with verified client.jar");
+            return;
+        };
+        let mut source = Jar::open(
+            &std::path::PathBuf::from(root).join("client.jar"),
+            java_protocol::target::CLIENT_ASSETS_SHA256,
+            java_protocol::target::CLIENT_ASSETS_BYTES,
+        )
+        .unwrap();
+        let catalog = Catalog::load(&mut source, &["minecraft:bow"]).unwrap();
+        let stack = Stack {
+            item: "minecraft:bow".into(),
+            count: 1,
+            added: Default::default(),
+            removed: Default::default(),
+        };
+        let owner = OwnerObservations {
+            entity_type: "minecraft:player".into(),
+            main_arm_left: false,
+            using_this_item: true,
+            use_duration: Some(72000),
+            use_item_remaining_ticks: Some(72000),
+        };
+        let selected = |remaining| {
+            Ok(catalog
+                .select_in(
+                    &stack,
+                    View::ThirdPersonRight,
+                    Some(&OwnerObservations {
+                        use_item_remaining_ticks: Some(remaining),
+                        ..owner.clone()
+                    }),
+                )
+                .unwrap())
+        };
+        let early = selected(72000);
+        let same_stage = selected(71999);
+        let charged = selected(71940);
+        let released = Ok(catalog
+            .select_in(&stack, View::ThirdPersonRight, None)
+            .unwrap());
+        let prepares = std::cell::Cell::new(0);
+        let prepare = || {
+            prepares.set(prepares.get() + 1);
+            Ok(None)
+        };
+        let mut cache = Cache::new();
+        for selection in [&early, &same_stage, &charged, &released] {
+            assert!(
+                cached(
+                    &mut cache,
+                    "same native material".into(),
+                    Some(selection),
+                    prepare
+                )
+                .is_ok()
+            );
+        }
+        assert_eq!(
+            prepares.get(),
+            3,
+            "equal resource selections must not rebake within a pull stage"
+        );
+        assert!(
+            cached(
+                &mut cache,
+                "new authoritative material/head generation".into(),
+                Some(&released),
+                prepare
+            )
+            .is_ok()
+        );
+        assert_eq!(
+            prepares.get(),
+            4,
+            "other artwork/material inputs remain independent invalidators"
+        );
+    }
 }

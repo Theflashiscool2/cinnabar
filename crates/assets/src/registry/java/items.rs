@@ -81,6 +81,31 @@ pub struct HeadTextures {
     pub revision: u64,
     pub textures: BTreeMap<String, HeadTexture>,
 }
+/// Immutable observations for remote held-item selection. Missing active-use durations are
+/// explicit incompatibilities; callers never substitute an invented hand or charge clock.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OwnerObservations {
+    pub entity_type: Arc<str>,
+    pub main_arm_left: bool,
+    pub using_this_item: bool,
+    pub use_item_remaining_ticks: Option<i32>,
+    pub use_duration: Option<i32>,
+}
+/// The generic resolver's selected layers, tints and transforms in one display context.
+/// Equality permits reusing identical prepared artwork without encoding model thresholds.
+#[derive(Clone, Debug)]
+pub struct Selection {
+    origin: Arc<()>,
+    display: View,
+    selected: item_model::ResolvedItem,
+}
+impl PartialEq for Selection {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.origin, &other.origin)
+            && self.display == other.display
+            && self.selected == other.selected
+    }
+}
 /// Native item display context; GUI transforms are never reused as held geometry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum View {
@@ -133,6 +158,7 @@ pub fn glint(item: &str, added: &BTreeMap<String, Value>, removed: &BTreeSet<Str
 
 /// Immutable resource generation. Shared by cancellable presentation workers, never a game tick owner.
 pub struct Catalog {
+    origin: Arc<()>,
     definitions: ItemModels,
     models: ModelLibrary,
     sprites: BTreeMap<String, Arc<Sprite>>,
@@ -260,6 +286,7 @@ impl Catalog {
         grass.climate_color(0.5, 1.)?;
         let special = special::Resources::load(source, &definitions)?;
         Ok(Self {
+            origin: Arc::new(()),
             definitions,
             models,
             sprites,
@@ -272,6 +299,7 @@ impl Catalog {
     /// Model factories are supplied by the same hash-verified offline exporter used for world entities.
     pub fn with_entity_models(mut self, models: Arc<crate::entity::java::Models>) -> Self {
         self.special.models = Some(models);
+        self.origin = Arc::new(());
         self
     }
     /// Resolves a GUI stack through its real item model tree; missing/special layers remain explicit.
@@ -305,11 +333,44 @@ impl Catalog {
         heads: &HeadTextures,
         view: View,
     ) -> Result<Vec<Quad>, Error> {
-        let display = view.display();
+        let selected = self.select_in(stack, view, None)?;
+        self.geometry_selected(&selected, heads)
+    }
+    /// Selects resources using the existing native resolver; no texture decoding or baking occurs.
+    pub fn select_in(
+        &self,
+        stack: &Stack,
+        display: View,
+        owner: Option<&OwnerObservations>,
+    ) -> Result<Selection, Error> {
+        let owner = owner
+            .map(|owner| {
+                let (duration, remaining) = if owner.using_this_item {
+                    (
+                        owner
+                            .use_duration
+                            .ok_or_else(|| invalid("native item use duration unavailable"))?,
+                        owner.use_item_remaining_ticks.ok_or_else(|| {
+                            invalid("native item remaining use ticks unavailable")
+                        })?,
+                    )
+                } else {
+                    (0, 0)
+                };
+                Ok::<_, Error>(item_model::OwnerState {
+                    entity_type: owner.entity_type.to_string(),
+                    main_arm_left: owner.main_arm_left,
+                    using_this_item: owner.using_this_item,
+                    use_duration: duration,
+                    use_item_remaining_ticks: remaining,
+                    ..Default::default()
+                })
+            })
+            .transpose()?;
         let view = stack.view();
         let context = Context {
-            display,
-            owner: None,
+            display: display.display(),
+            owner: owner.as_ref(),
             level: None,
             seed: 0,
         };
@@ -320,11 +381,28 @@ impl Catalog {
         {
             return Err(invalid("unknown native potion/effect reference"));
         }
-        let selected = self.definitions.resolve(&view, &context, self);
+        Ok(Selection {
+            origin: Arc::clone(&self.origin),
+            display,
+            selected: self.definitions.resolve(&view, &context, self),
+        })
+    }
+    /// Bakes one immutable selection from this catalog through the shared material/geometry path.
+    pub fn geometry_selected(
+        &self,
+        selection: &Selection,
+        heads: &HeadTextures,
+    ) -> Result<Vec<Quad>, Error> {
+        if !Arc::ptr_eq(&self.origin, &selection.origin) {
+            return Err(invalid(
+                "native item selection belongs to another catalog generation",
+            ));
+        }
+        let display = selection.display.display();
         let mut quads = Vec::new();
-        for layer in selected.layers {
-            let (name, special) = match layer.content {
-                LayerContent::Model { model } => (model, None),
+        for layer in &selection.selected.layers {
+            let (name, special) = match &layer.content {
+                LayerContent::Model { model } => (model.as_str(), None),
                 LayerContent::Missing => {
                     return Err(invalid("item definition or model is missing"));
                 }
@@ -332,15 +410,18 @@ impl Catalog {
                     base,
                     model,
                     argument,
-                } => (base, Some(self.special.geometry(&model, &argument, heads)?)),
+                } => (
+                    base.as_str(),
+                    Some(self.special.geometry(model, argument, heads)?),
+                ),
             };
-            if let Some(error) = self.missing_models.get(&name) {
+            if let Some(error) = self.missing_models.get(name) {
                 return Err(Error::Model(format!("{name}: {error}")));
             }
             // The dependency's baker has a missing-model fallback; admission forbids using it here.
-            self.models.resolve(&name).map_err(model_error)?;
+            self.models.resolve(name).map_err(model_error)?;
             let baked =
-                item_bake::bake_item_model(&self.models, self, &name).map_err(model_error)?;
+                item_bake::bake_item_model(&self.models, self, name).map_err(model_error)?;
             let matrix = baked.layer_matrix(display, &layer.transform);
             if let Some(special) = special {
                 let normal_matrix =

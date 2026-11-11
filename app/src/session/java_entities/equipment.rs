@@ -1,6 +1,7 @@
 //! Change-driven equipment artwork. One replaceable worker; world/inventory remain authoritative.
 use super::assets;
-use ::assets::registry::java::items::{Catalog, Stack};
+use ::assets::registry::java::items::{Catalog, OwnerObservations, Selection, Stack, View};
+use client_world::java::equipment::model_using;
 use render_scene::ActorRenderScene;
 use std::sync::{Condvar, Mutex};
 use std::{collections::BTreeMap, sync::Arc};
@@ -14,10 +15,16 @@ pub(super) struct Signature {
     slim: bool,
     left: bool,
 }
+#[derive(Clone)]
+pub(super) struct Held {
+    owner: Option<OwnerObservations>,
+    selected: Result<Selection, String>,
+}
 pub(super) struct Player {
     id: Identity,
     signature: Signature,
     slots: [inventory::java::Slot; 8],
+    hands: [Option<Held>; 2],
 }
 pub(super) struct Ground {
     id: Identity,
@@ -27,8 +34,17 @@ pub(super) struct Ground {
 pub(super) struct SlotSource {
     pub slot: u8,
     pub item: Arc<str>,
+    pub using_this_item: Option<bool>,
 }
 impl SlotSource {
+    fn matches_use(
+        &self,
+        gear: &client_world::java::equipment::Equipment,
+        visual: &world::java::entities::visual::Visual,
+    ) -> bool {
+        self.using_this_item
+            .is_none_or(|expected| model_using(visual, gear, self.slot) == expected)
+    }
     fn matches(&self, gear: &client_world::java::equipment::Equipment) -> bool {
         gear.slots
             .get(usize::from(self.slot))
@@ -86,12 +102,39 @@ struct Shared {
     request: Option<Request>,
     result: Option<(u64, Result<Output, String>)>,
 }
+#[derive(Clone, PartialEq, Eq)]
+struct UseInput {
+    identity: Identity,
+    revision: u64,
+    remaining: Option<i32>,
+    using: [bool; 2],
+}
+#[derive(Clone, PartialEq, Eq)]
+struct Inputs {
+    equipment: u64,
+    models: Vec<(Identity, bool)>,
+    heads: u64,
+    uses: Vec<UseInput>,
+}
+#[derive(Clone, PartialEq)]
+struct SelectedHand {
+    selected: Result<Selection, String>,
+    using_this_item: Option<bool>,
+}
+#[derive(PartialEq)]
+struct Source {
+    equipment: u64,
+    models: Vec<(Identity, bool)>,
+    heads: u64,
+    selections: Vec<(Identity, [Option<SelectedHand>; 2])>,
+}
 pub(super) struct State {
     catalog: Arc<Catalog>,
     shared: Arc<(Mutex<Shared>, Condvar)>,
     installed: Option<Output>,
     error: Option<String>,
-    desired_source: Option<(u64, Vec<(Identity, bool)>, u64)>,
+    observed_source: Option<Inputs>,
+    desired_source: Option<Source>,
     sequence: u64,
 }
 impl Drop for State {
@@ -135,6 +178,7 @@ impl State {
             shared,
             installed: None,
             error: spawn.err().map(|e| e.to_string()),
+            observed_source: None,
             desired_source: None,
             sequence: 0,
         }
@@ -153,60 +197,129 @@ impl State {
             return;
         }
         let mut work = self.shared.0.lock().unwrap();
-        let source = (
-            state.equipment.revision(),
-            skins.model_key(),
-            heads.revision,
-        );
-        if self.desired_source.as_ref() != Some(&source) {
-            let Some(revision) = self.sequence.checked_add(1) else {
-                self.error = Some("Native equipment publication exhausted".into());
-                return;
-            };
-            self.sequence = revision;
-            self.desired_source = Some(source);
-            let players = state
+        let inputs = Inputs {
+            equipment: state.equipment.revision(),
+            models: skins.model_key(),
+            heads: heads.revision,
+            uses: state
                 .entities
                 .iter()
-                .filter(|e| e.visual.player.is_some())
-                .filter_map(|e| {
-                    let gear = state.equipment.get(e.identity)?;
+                .filter(|entity| entity.visual.player.is_some())
+                .filter_map(|entity| {
+                    let gear = state.equipment.get(entity.identity)?;
+                    Some(UseInput {
+                        identity: entity.identity,
+                        revision: entity.visual.use_revision,
+                        remaining: entity
+                            .visual
+                            .remote_use
+                            .as_ref()
+                            .and_then(|using| using.remaining),
+                        using: [0, 1].map(|slot| model_using(&entity.visual, gear, slot)),
+                    })
+                })
+                .collect(),
+        };
+        if self.observed_source.as_ref() != Some(&inputs) {
+            self.observed_source = Some(inputs.clone());
+            let players: Vec<_> = state
+                .entities
+                .iter()
+                .filter(|entity| entity.visual.player.is_some())
+                .filter_map(|entity| {
+                    let gear = state.equipment.get(entity.identity)?;
+                    let signature = signature(entity, gear, skins);
+                    let hands = [0, 1].map(|slot| {
+                        gear.slots[slot].as_ref().map(|stack| {
+                            let owner = client_world::java::equipment::model_owner(
+                                &entity.visual,
+                                gear,
+                                slot as u8,
+                                Arc::clone(&entity.kind),
+                            );
+                            let left = (slot == 0) == signature.left;
+                            let selected = self
+                                .catalog
+                                .select_in(
+                                    &work::stack(stack),
+                                    if left {
+                                        View::ThirdPersonLeft
+                                    } else {
+                                        View::ThirdPersonRight
+                                    },
+                                    owner.as_ref(),
+                                )
+                                .map_err(|error| error.to_string());
+                            Held { owner, selected }
+                        })
+                    });
                     Some(Player {
-                        id: e.identity,
-                        signature: signature(e, gear, skins),
+                        id: entity.identity,
+                        signature,
                         slots: gear.slots.clone(),
+                        hands,
                     })
                 })
                 .collect();
-            let grounds = state
-                .entities
-                .iter()
-                .filter(|e| e.kind.as_ref() == java_protocol::target::ENTITY_ITEM)
-                .filter_map(|e| {
-                    let ground = state.equipment.ground(e.identity)?;
-                    Some(Ground {
-                        id: e.identity,
-                        revision: ground.revision,
-                        stack: ground.stack.clone()?,
+            let source = Source {
+                equipment: inputs.equipment,
+                models: inputs.models,
+                heads: inputs.heads,
+                selections: players
+                    .iter()
+                    .map(|player| {
+                        (
+                            player.id,
+                            player.hands.each_ref().map(|hand| {
+                                hand.as_ref().map(|hand| SelectedHand {
+                                    selected: hand.selected.clone(),
+                                    using_this_item: hand
+                                        .owner
+                                        .as_ref()
+                                        .map(|owner| owner.using_this_item),
+                                })
+                            }),
+                        )
                     })
-                })
-                .chain(state.equipment.pickups().filter_map(|pickup| {
-                    Some(Ground {
-                        id: pickup.identity,
-                        revision: pickup.ground.revision,
-                        stack: pickup.ground.stack.clone()?,
+                    .collect(),
+            };
+            if self.desired_source.as_ref() != Some(&source) {
+                let Some(revision) = self.sequence.checked_add(1) else {
+                    self.error = Some("Native equipment publication exhausted".into());
+                    return;
+                };
+                self.sequence = revision;
+                self.desired_source = Some(source);
+                let grounds = state
+                    .entities
+                    .iter()
+                    .filter(|e| e.kind.as_ref() == java_protocol::target::ENTITY_ITEM)
+                    .filter_map(|e| {
+                        let ground = state.equipment.ground(e.identity)?;
+                        Some(Ground {
+                            id: e.identity,
+                            revision: ground.revision,
+                            stack: ground.stack.clone()?,
+                        })
                     })
-                }))
-                .collect();
-            work.desired = Some(revision);
-            work.request = Some(Request {
-                revision,
-                players,
-                grounds,
-                heads,
-            });
-            work.result = None;
-            self.shared.1.notify_one();
+                    .chain(state.equipment.pickups().filter_map(|pickup| {
+                        Some(Ground {
+                            id: pickup.identity,
+                            revision: pickup.ground.revision,
+                            stack: pickup.ground.stack.clone()?,
+                        })
+                    }))
+                    .collect();
+                work.desired = Some(revision);
+                work.request = Some(Request {
+                    revision,
+                    players,
+                    grounds,
+                    heads,
+                });
+                work.result = None;
+                self.shared.1.notify_one();
+            }
         }
         if let Some((ticket, result)) = work.result.take()
             && work.desired == Some(ticket)
@@ -283,10 +396,50 @@ mod continuity_tests {
         assert!(old.usable(old, true));
     }
     #[test]
+    fn retained_charged_draw_is_hidden_immediately_when_native_use_stops() {
+        let mut gear = client_world::java::equipment::Equipment::default();
+        gear.slots[0] = Some(inventory::java::Stack {
+            item: "minecraft:bow".into(),
+            count: 1,
+            added: Default::default(),
+            removed: Default::default(),
+        });
+        let mut visual = world::java::entities::visual::Visual::default();
+        visual.observe_use(1).unwrap();
+        visual.remote_use = Some(world::java::entities::visual::RemoteUse {
+            item: "minecraft:bow".into(),
+            item_token: (0, 0),
+            observed_item: Some("minecraft:bow".into()),
+            observed_token: Some((0, 0)),
+            remaining: Some(71940),
+        });
+        let charged = SlotSource {
+            slot: 0,
+            item: "minecraft:bow".into(),
+            using_this_item: Some(true),
+        };
+        assert!(charged.matches(&gear) && charged.matches_use(&gear, &visual));
+        visual.observe_use(0).unwrap();
+        assert!(
+            charged.matches(&gear),
+            "release retains the same authoritative item"
+        );
+        assert!(
+            !charged.matches_use(&gear, &visual),
+            "pending replacement artwork cannot retain a charged draw"
+        );
+        let idle = SlotSource {
+            using_this_item: Some(false),
+            ..charged
+        };
+        assert!(idle.matches_use(&gear, &visual));
+    }
+    #[test]
     fn retained_draws_retire_removed_or_replaced_authoritative_slots_immediately() {
         let source = SlotSource {
             slot: 0,
             item: "minecraft:diamond_sword".into(),
+            using_this_item: None,
         };
         let mut gear = client_world::java::equipment::Equipment::default();
         assert!(!source.matches(&gear));

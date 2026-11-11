@@ -55,6 +55,11 @@ fn remote_bow_use_requires_flag_receipt_and_preserves_duration_until_replacement
         "equipment is not a start-use event"
     );
     assert!(state.admit(event(1, flags(1))));
+    assert!(super::super::super::equipment::model_using(
+        &state.entities.get(99).unwrap().visual,
+        state.equipment.get(source).unwrap(),
+        0
+    ));
     let duration = state
         .entities
         .get(99)
@@ -84,6 +89,14 @@ fn remote_bow_use_requires_flag_receipt_and_preserves_duration_until_replacement
         .added
         .insert("minecraft:damage", serde_json::json!(3));
     assert!(state.admit(event(1, wire::Packet::Equipment(wear))));
+    assert!(
+        !super::super::super::equipment::model_using(
+            &state.entities.get(99).unwrap().visual,
+            state.equipment.get(source).unwrap(),
+            0
+        ),
+        "native using_item compares stack references before the next living tick"
+    );
     assert!(state.admit(event(1, flags(1))));
     assert_eq!(
         state
@@ -97,6 +110,15 @@ fn remote_bow_use_requires_flag_receipt_and_preserves_duration_until_replacement
             .remaining,
         Some(duration - 1),
         "same item and repeated flags must not restart native remaining time"
+    );
+    state.entities.tick_presentation();
+    assert!(
+        super::super::super::equipment::model_using(
+            &state.entities.get(99).unwrap().visual,
+            state.equipment.get(source).unwrap(),
+            0
+        ),
+        "same-item living tick refreshes the captured stack reference"
     );
     state
         .entities
@@ -147,6 +169,11 @@ fn remote_bow_use_requires_flag_receipt_and_preserves_duration_until_replacement
         Some(PlayerUse::Block { left: false })
     );
     assert!(state.admit(event(1, flags(0))));
+    assert!(!super::super::super::equipment::model_using(
+        &state.entities.get(99).unwrap().visual,
+        state.equipment.get(source).unwrap(),
+        0
+    ));
     assert!(state.entities.get(99).unwrap().visual.remote_use.is_none());
     assert!(state.admit(event(1, flags(1))));
     assert!(state.admit(event(1, wire::Packet::Remove(vec![99]))));
