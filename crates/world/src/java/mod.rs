@@ -10,7 +10,7 @@ pub mod player;
 pub mod roster;
 pub mod shulker;
 mod store;
-pub use store::{ChangedRegion, PublicationKey, Terrain};
+pub use store::{ChangedRegion, PublicationKey, Reconciliation, Terrain};
 #[cfg(test)]
 mod tests;
 use crate::NbtValue;

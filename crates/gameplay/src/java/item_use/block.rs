@@ -52,7 +52,14 @@ pub fn at_hand(
                 .get("minecraft:convertible_to_mud")
                 .is_some_and(|ids| ids.contains(&(facts.block as i32))),
         });
-    passes(name, held, secondary, target)
+    dispatch(name, held, secondary, target, || {
+        super::super::interaction::permission::check(
+            state,
+            hit,
+            hand,
+            assets::registry::java::adventure::Permission::PlaceOn,
+        )
+    })
 }
 
 /// Known target context for PotionItem's conditional useOn. None means that
@@ -62,11 +69,12 @@ pub struct Target {
     pub down: bool,
     pub convertible_to_mud: bool,
 }
-pub fn passes(
+fn dispatch(
     block: &str,
     held: &Slot,
     secondary: bool,
     potion_target: Option<Target>,
+    permission: impl FnOnce() -> Result<bool, &'static str>,
 ) -> Result<bool, &'static str> {
     let rules =
         assets::registry::java::use_rules::builtin().map_err(|_| "Invalid native use rules")?;
@@ -84,6 +92,9 @@ pub fn passes(
     if !(secondary || (block.item_default && block.empty_default)) {
         return Ok(false);
     }
+    if !permission()? {
+        return Ok(true);
+    } // Native ItemStack.useOn returns PASS on denial.
     if item.on_owner == "PotionItem" {
         let Some(target) = potion_target else {
             return Ok(false);
@@ -99,6 +110,17 @@ pub fn passes(
     Ok(item.on_owner == "Item" && component(stack, "minecraft:block_transformer").is_none())
 }
 
+/// Unit fixture entry with unrestricted build permission.
+#[cfg(test)]
+pub fn passes(
+    block: &str,
+    held: &Slot,
+    secondary: bool,
+    potion_target: Option<Target>,
+) -> Result<bool, &'static str> {
+    dispatch(block, held, secondary, potion_target, || Ok(true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -111,6 +133,35 @@ mod tests {
             added: [("minecraft:potion_contents".into(), contents)].into(),
             removed: Default::default(),
         })
+    }
+    #[test]
+    fn adventure_denial_is_item_pass_after_block_dispatch_and_is_not_an_air_use_ban() {
+        let wool = Some(Stack {
+            item: "minecraft:white_wool".into(),
+            count: 2,
+            added: Default::default(),
+            removed: Default::default(),
+        });
+        assert_eq!(
+            dispatch("minecraft:stone", &wool, false, None, || Ok(false)),
+            Ok(true)
+        );
+        assert_eq!(
+            dispatch("minecraft:stone", &wool, false, None, || Ok(true)),
+            Ok(false)
+        );
+        assert_eq!(
+            dispatch("minecraft:chest", &wool, false, None, || panic!(
+                "block interaction must precede item permission"
+            )),
+            Ok(false)
+        );
+        assert!(
+            dispatch("minecraft:stone", &wool, false, None, || Err(
+                "canonical NBT unavailable"
+            ))
+            .is_err()
+        );
     }
     #[test]
     fn known_empty_hands_only_pass_verified_base_block_dispatch() {

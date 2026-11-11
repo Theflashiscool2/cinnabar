@@ -5,7 +5,7 @@ impl State {
     pub fn player_slot_view(&self, index: usize) -> Option<&Slot> {
         self.pickup_player_view
             .get(&index)
-            .or_else(|| self.drop_predictions.get(&index))
+            .or_else(|| self.world_player_view.get(&index))
             .or_else(|| self.storage.get(index)?.value())
     }
     pub fn drop_written(&mut self, session: u64, epoch: u64, receipt: DropReceipt) -> bool {
@@ -42,8 +42,9 @@ impl State {
                 stack.count -= 1;
             }
         }
+        self.append_written_drop(slot, whole_stack);
         self.pickup_player_view.remove(&slot);
-        self.drop_predictions.insert(slot, projected);
+        self.world_player_view.insert(slot, projected);
         self.drop_notice = None;
         self.revision = self.revision.saturating_add(1);
         true
@@ -128,7 +129,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(count(&s), 5);
-        assert!(s.drop_predictions.is_empty());
+        assert!(s.world_player_view.is_empty());
     }
     #[test]
     fn rejected_stale_or_replaced_receipts_never_consume_and_retained_player_keeps_view() {
@@ -155,7 +156,7 @@ mod tests {
         assert_eq!(count(&s), 0);
         s.begin(7, 3);
         assert_eq!(s.held(), None);
-        assert!(s.drop_predictions.is_empty());
+        assert!(s.world_player_view.is_empty());
     }
     #[test]
     fn full_contents_replace_predictions_and_component_patches_survive_single_drop() {
@@ -192,7 +193,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(count(&s), 5);
-        assert!(s.drop_predictions.is_empty());
+        assert!(s.world_player_view.is_empty());
         assert_eq!(s.player.as_ref().unwrap().carried, Some(None));
     }
 }

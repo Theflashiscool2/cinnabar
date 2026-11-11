@@ -115,3 +115,33 @@ fn malformed_modifiers_fail_without_returning_partial_items() {
     assert!(stack(&mut Reader(&bad_identifier)).is_err());
     assert!(stack(&mut Reader(&[1, 55, 1, 0, 16, 255, 255, 127])).is_err());
 }
+
+#[test]
+fn adventure_property_ranges_keep_optional_bounds_and_following_fields_aligned() {
+    // StatePropertiesPredicate.RangedMatcher.STREAM_CODEC uses two optional strings.
+    for (min, max) in [
+        (None, None),
+        (Some("1"), None),
+        (None, Some("3")),
+        (Some("1"), Some("3")),
+    ] {
+        let mut bytes = vec![1, 0, 1, 1]; // One predicate, no blocks, properties present, one property.
+        crate::codec::write_string("age", 32767, &mut bytes).unwrap();
+        bytes.push(0); // Either.right(RangedMatcher), not ExactMatcher.
+        for bound in [min, max] {
+            bytes.push(u8::from(bound.is_some()));
+            if let Some(bound) = bound {
+                crate::codec::write_string(bound, 32767, &mut bytes).unwrap();
+            }
+        }
+        bytes.extend([0, 0, 0, 73]); // No NBT, no exact or partial components, following field.
+        let mut r = Reader(&bytes);
+        let predicates = equipment::predicates(&mut r, 0).unwrap();
+        assert_eq!(
+            predicates[0]["properties"][0],
+            json!({"name":"age","min":min,"max":max})
+        );
+        assert_eq!(r.var().unwrap(), 73);
+        r.finish().unwrap();
+    }
+}

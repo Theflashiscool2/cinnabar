@@ -1,5 +1,7 @@
 mod local_light;
+mod prediction;
 use super::*;
+pub use prediction::{Reconciliation, RetainedBlock};
 use std::collections::{BTreeMap, BTreeSet};
 /// A worker publication must match both the dimension and this column revision.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,6 +22,10 @@ pub struct ChangedRegion {
 #[derive(Debug, Default)]
 pub struct Terrain {
     dimension: Option<Dimension>,
+    predictions: BTreeMap<[i32; 3], RetainedBlock>,
+    prediction_sequence: i32,
+    prediction_order: prediction::Order,
+    last_teleport_sequence: Option<i32>,
     biome_seed: Option<i64>,
     columns: BTreeMap<[i32; 2], Arc<Column>>,
     dirty: BTreeSet<[i32; 2]>,

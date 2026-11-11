@@ -69,6 +69,8 @@ pub(super) fn admit(
     state.player_dynamics.unplaced_velocity = None;
     state.login_motion = None;
     state.respawn_rotation_velocity = None;
+    state.terrain.prediction_teleport();
+    state.block_reconciliations.clear();
     state.correction_sequence = revision;
     state.player_motion = Some(motion);
     state.teleport = Some(ResolvedTeleport {

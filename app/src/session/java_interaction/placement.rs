@@ -31,6 +31,29 @@ pub(super) fn preview(
 ) -> Option<Outcome> {
     eligible(state, request, context)
 }
+/// Returns exact native default-state placement facts only after all existing preview gates pass.
+pub(super) fn candidate(
+    state: &WorldState,
+    request: &Request,
+    context: Context<'_>,
+) -> Option<([i32; 3], u32)> {
+    if preview(state, request, context) != Some(Outcome::Clear) {
+        return None;
+    }
+    let Target::Block(hit) = request.target else {
+        return None;
+    };
+    let stack = request.hand.held(&state.inventory)?.as_ref()?;
+    let rules = assets::registry::java::use_rules::builtin().ok()?;
+    let block = rules.item(&stack.item)?.placement_block.as_deref()?;
+    Some((
+        offset(hit.block, hit.face)?,
+        context
+            .physics
+            .registry()?
+            .state_id(block, &Default::default())?,
+    ))
+}
 #[cfg(test)]
 fn predict(state: &WorldState, request: &Request, context: Context<'_>) -> bool {
     preview(state, request, context) == Some(Outcome::Clear)
@@ -39,7 +62,7 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
     use world::java::hud::GameMode;
     if !matches!(
         state.status.mode,
-        Some(GameMode::Survival | GameMode::Creative)
+        Some(GameMode::Survival | GameMode::Creative | GameMode::Adventure)
     ) {
         return None;
     }
@@ -82,6 +105,16 @@ fn eligible(state: &WorldState, request: &Request, context: Context<'_>) -> Opti
     // their existing request path, without inventing an ordinary placement result.
     if !target.item_default || !target.empty_default || !target.placement_surface {
         return None;
+    }
+    if !gameplay::java::interaction::permission::check(
+        state,
+        hit,
+        request.hand,
+        assets::registry::java::adventure::Permission::PlaceOn,
+    )
+    .ok()?
+    {
+        return Some(Outcome::Blocked);
     }
     let block = rules.item(&stack.item)?.placement_block.as_deref()?;
     if !rules.block(block)?.placement_default {
@@ -215,17 +248,32 @@ mod tests {
         use sha2::{Digest, Sha256};
         use std::sync::Arc;
         use world::java::{BiomeId, BlockStateId, Column, Dimension, Light, Palette, Section};
-        let bytes = br#"{"minecraft:air":{"states":[{"id":0,"default":true}]},"minecraft:stone":{"states":[{"id":1,"default":true}]},"minecraft:white_wool":{"states":[{"id":2,"default":true}]}}"#;
+        // Keep the exercised air/stone/wool state IDs native. Unread filler states
+        // only make the synthetic registry contiguous; they supply no prediction facts.
+        let facts = assets::registry::java::prediction::builtin().unwrap();
+        let wool = (0..java_protocol::target::BLOCK_STATE_COUNT as u32)
+            .find(|id| facts.state(*id).unwrap().0.name == "minecraft:white_wool")
+            .unwrap();
+        let fillers: Vec<_> = (2..wool)
+            .map(|id| serde_json::json!({"id":id,"default":id==2}))
+            .collect();
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "minecraft:air":{"states":[{"id":0,"default":true}]},
+            "minecraft:stone":{"states":[{"id":1,"default":true}]},
+            "minecraft:fixture_unused":{"states":fillers},
+            "minecraft:white_wool":{"states":[{"id":wool,"default":true}]}
+        }))
+        .unwrap();
         let registry = Arc::new(
             assets::registry::java::BlockRegistry::load(
-                bytes,
-                &format!("{:x}", Sha256::digest(bytes)),
+                &bytes,
+                &format!("{:x}", Sha256::digest(&bytes)),
             )
             .unwrap(),
         );
         let mut wire = b"CBJPHYS1".to_vec();
-        wire.extend(3_u32.to_be_bytes());
-        for id in 0_u32..3 {
+        wire.extend((wool + 1).to_be_bytes());
+        for id in 0_u32..=wool {
             wire.extend(id.to_be_bytes());
             wire.push(0);
             for n in [0.6_f32, 1., 1., 0.] {
@@ -242,10 +290,14 @@ mod tests {
                 }
             }
         }
-        let physics = Table::load(&wire, &format!("{:x}", Sha256::digest(&wire)), 3)
-            .unwrap()
-            .with_registry(registry.clone())
-            .unwrap();
+        let physics = Table::load(
+            &wire,
+            &format!("{:x}", Sha256::digest(&wire)),
+            wool as usize + 1,
+        )
+        .unwrap()
+        .with_registry(registry.clone())
+        .unwrap();
         let mut state = WorldState::default();
         state.begin(7);
         state.status.mode = Some(world::java::hud::GameMode::Survival);
@@ -323,6 +375,181 @@ mod tests {
             }),
         };
         (state, physics, request)
+    }
+    #[test]
+    fn native_direct_prediction_mutates_creative_placement_and_completed_break_only() {
+        use super::super::prediction::apply;
+        use gameplay::java::interaction::Kind;
+        use world::java::{BlockStateId, dynamics::Abilities, hud::GameMode};
+        let (mut state, physics, mut request) = fixture();
+        let context = Some(Context {
+            physics: &physics,
+            body: Body::default(),
+        });
+        assert!(
+            !apply(&mut state, &request, false, context),
+            "unknown native abilities cannot establish consumption behavior"
+        );
+        state.status.mode = Some(GameMode::Creative);
+        state.player_dynamics.abilities = Some(Abilities {
+            invulnerable: true,
+            flying: false,
+            may_fly: true,
+            creative: true,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        });
+        let destination = [-16, -59, 1];
+        let wool = physics
+            .registry()
+            .unwrap()
+            .state_id("minecraft:white_wool", &Default::default())
+            .unwrap();
+        assert!(apply(&mut state, &request, false, context));
+        assert_eq!(state.terrain.block(destination), Some(BlockStateId(wool)));
+        assert_eq!(
+            state.block_updates, 0,
+            "local prediction is not a server update"
+        );
+        assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 4);
+        assert!(
+            state.terrain.reconcile_blocks(1)[0].changed,
+            "ACK without server write restores air"
+        );
+        assert_eq!(state.terrain.block(destination), Some(BlockStateId(0)));
+        request.sequence = 2;
+        request.kind = Kind::Break;
+        state.status.mode = Some(GameMode::Survival);
+        assert!(
+            !apply(&mut state, &request, false, context),
+            "survival START is not completion"
+        );
+        request.kind = Kind::AbortBreak;
+        assert!(!apply(&mut state, &request, true, context));
+        request.kind = Kind::FinishBreak;
+        assert!(apply(&mut state, &request, true, context));
+        assert_eq!(state.terrain.block([-16, -60, 1]), Some(BlockStateId(0)));
+        assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 4);
+        assert!(state.terrain.reconcile_blocks(2)[0].changed);
+        assert_eq!(state.terrain.block([-16, -60, 1]), Some(BlockStateId(1)));
+        let facts = assets::registry::java::prediction::builtin().unwrap();
+        let grass = (0..java_protocol::target::BLOCK_STATE_COUNT as u32)
+            .find(|id| facts.state(*id).unwrap().0.name == "minecraft:grass_block")
+            .unwrap();
+        state.terrain.set_block([-15, -60, 1], BlockStateId(grass));
+        request.sequence = 3;
+        assert!(
+            !apply(&mut state, &request, true, context),
+            "SnowyBlock.updateShape is not an inert neighbor callback"
+        );
+    }
+    #[test]
+    fn survival_prediction_uses_existing_hand_working_view_and_receipts_do_not_accept_items() {
+        use super::super::prediction::apply;
+        use gameplay::java::item_use::plan::Hand;
+        use inventory::java::{Stack, Update};
+        use java_protocol::session::{Envelope, Event};
+        use world::java::{BlockStateId, dynamics::Abilities};
+        for hand in [Hand::Main, Hand::Off] {
+            let (mut state, physics, mut request) = fixture();
+            state.player_dynamics.abilities = Some(Abilities {
+                invulnerable: false,
+                flying: false,
+                may_fly: false,
+                creative: false,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            });
+            let slot = if hand == Hand::Main { 0 } else { 40 };
+            let stack = Stack {
+                item: "minecraft:white_wool".into(),
+                count: 1,
+                added: Default::default(),
+                removed: Default::default(),
+            };
+            state
+                .inventory
+                .admit(
+                    7,
+                    1,
+                    Update::PlayerSlot {
+                        slot,
+                        stack: Some(stack.clone()),
+                    },
+                )
+                .unwrap();
+            request.hand = hand;
+            let context = Some(Context {
+                physics: &physics,
+                body: Body::default(),
+            });
+            assert!(apply(&mut state, &request, false, context));
+            assert_eq!(hand.held(&state.inventory), Some(&None));
+            if hand == Hand::Off {
+                assert_eq!(state.inventory.held().unwrap().as_ref().unwrap().count, 4);
+            }
+            let mut repeat = request;
+            repeat.sequence = 2;
+            let Target::Block(mut hit) = repeat.target else {
+                unreachable!()
+            };
+            hit.face = Face::North;
+            hit.position = [-15.5, -59.5, 1.];
+            repeat.target = Target::Block(hit);
+            assert!(
+                !apply(&mut state, &repeat, false, context),
+                "count1 cannot predict a second cell"
+            );
+            assert_eq!(state.terrain.block([-16, -60, 0]), Some(BlockStateId(0)));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockActionWritten {
+                    dimension_epoch: 1,
+                    sequence: 1,
+                    written: false,
+                }
+            }));
+            assert_eq!(hand.held(&state.inventory), Some(&Some(stack.clone())));
+            assert_eq!(state.terrain.block([-16, -59, 1]), Some(BlockStateId(0)));
+            request.sequence = 3;
+            assert!(apply(&mut state, &request, false, context));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockActionWritten {
+                    dimension_epoch: 1,
+                    sequence: 3,
+                    written: true,
+                }
+            }));
+            assert!(state.admit(Envelope {
+                generation: 7,
+                event: Event::BlockAck {
+                    dimension_epoch: 1,
+                    sequence: 3,
+                }
+            }));
+            assert_eq!(
+                hand.held(&state.inventory),
+                Some(&None),
+                "ACK does not restore or grant an inventory stack"
+            );
+            state
+                .inventory
+                .admit(
+                    7,
+                    1,
+                    Update::PlayerSlot {
+                        slot,
+                        stack: Some(stack.clone()),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                hand.held(&state.inventory),
+                Some(&Some(stack)),
+                "server inventory denial is authoritative"
+            );
+        }
     }
     #[test]
     fn ordinary_placement_predicts_only_the_gesture_with_current_known_authority() {
@@ -511,4 +738,5 @@ mod tests {
         assert!(!rules.never_obstructs("minecraft:armor_stand"));
         assert!(!rules.never_obstructs("unknown:entity"));
     }
+    mod adventure;
 }

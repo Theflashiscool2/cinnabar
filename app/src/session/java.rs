@@ -83,7 +83,21 @@ pub(super) fn poll(menu: &mut MenuRuntime, session: &mut SessionResources<'_>) {
         let previous_inventory_error =
             matches!(event.event, java_protocol::session::Event::Inventory { .. })
                 .then(|| controller.java_world.inventory.error.clone());
-        let admitted = super::java_telemetry::admit(java, &mut controller.java_world, event);
+        let admitted = match (
+            session.java_movement.as_deref_mut(),
+            session
+                .java_presentation
+                .as_deref()
+                .and_then(|p| p.movement_physics()),
+        ) {
+            (Some(movement), Some(physics)) => super::java_telemetry::admit_reconciled(
+                java,
+                &mut controller.java_world,
+                event,
+                |state, candidate| movement.reconcile_candidate(state, physics, candidate),
+            ),
+            _ => super::java_telemetry::admit(java, &mut controller.java_world, event),
+        };
         if let Some(previous) = previous_inventory_error
             && controller.java_world.inventory.error != previous
             && let Some(error) = &controller.java_world.inventory.error

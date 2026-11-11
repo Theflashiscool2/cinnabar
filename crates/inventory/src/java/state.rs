@@ -7,15 +7,21 @@ impl State {
             self.begin(session, epoch);
             return;
         }
+        self.retire_pending_block_uses();
+        self.retire_adventure_pickup_view();
+        let adventure_cache = std::mem::take(&mut self.adventure_cache);
+        let adventure_copied = std::mem::take(&mut self.adventure_copied);
         let storage = std::mem::take(&mut self.storage);
         let selected = self.selected;
-        let projections = std::mem::take(&mut self.drop_predictions);
+        let projections = std::mem::take(&mut self.world_player_view);
         let wire_revision = self.wire_revision;
         let cooldowns = std::mem::take(&mut self.cooldowns);
         self.begin(session, epoch);
         self.storage = storage;
+        self.adventure_cache = adventure_cache;
+        self.adventure_copied = adventure_copied;
         self.selected = selected;
-        self.drop_predictions = projections;
+        self.world_player_view = projections;
         self.wire_revision = wire_revision;
         self.cooldowns = cooldowns;
     }
@@ -44,7 +50,7 @@ impl State {
             ..Self::default()
         };
     }
-    /// Outer None is unknown; Some(None) is an empty display view. Provisional drops
+    /// Outer None is unknown; Some(None) is an empty display view. Provisional local actions
     /// are separate from the last-server storage and never establish server acceptance.
     pub fn held(&self) -> Option<&Slot> {
         if self.error.is_some() {
@@ -109,7 +115,9 @@ impl State {
         };
         if let Some(storage) = storage {
             self.pickup_player_view.remove(&storage);
-            self.drop_predictions.remove(&storage);
+            self.world_player_view.remove(&storage);
+            self.block_uses.remove(&storage);
+            self.replace_adventure_slot(storage);
             self.storage[storage] = Cell::Known(stack);
         } else {
             self.pickup_menu_view.remove(&index);
@@ -137,7 +145,9 @@ impl State {
                     return Err("Java player inventory slot is out of range".into());
                 }
                 self.pickup_player_view.remove(&slot);
-                self.drop_predictions.remove(&slot);
+                self.world_player_view.remove(&slot);
+                self.block_uses.remove(&slot);
+                self.replace_adventure_slot(slot);
                 self.storage[slot] = Cell::Known(stack);
             }
             Update::Content {

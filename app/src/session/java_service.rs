@@ -31,7 +31,16 @@ impl Authority {
             let Some(event) = super::java::poll_event(&mut self.java, &mut self.world) else {
                 break;
             };
-            if !super::java_telemetry::admit(&self.java, &mut self.world, event) {
+            let admitted = match self.physics.as_deref() {
+                Some(physics) => super::java_telemetry::admit_reconciled(
+                    &self.java,
+                    &mut self.world,
+                    event,
+                    |state, candidate| self.movement.reconcile_candidate(state, physics, candidate),
+                ),
+                None => super::java_telemetry::admit(&self.java, &mut self.world, event),
+            };
+            if !admitted {
                 self.java.diagnostic_notice("world_event_not_admitted");
             }
         }
@@ -52,7 +61,17 @@ impl Authority {
                 Duration::ZERO
             },
         );
-        self.movement.1.corrected |= corrected;
+        let reconciled = match physics {
+            Some(physics) => match self.movement.reconcile_blocks(&mut self.world, physics) {
+                Ok(reconciled) => reconciled,
+                Err(error) => {
+                    self.movement.0.blocked = Some(error);
+                    return;
+                }
+            },
+            None => false,
+        };
+        self.movement.1.corrected |= corrected || reconciled;
         if corrected && let Some(motion) = self.world.player_motion {
             self.movement.1.controls.yaw = motion.yaw;
             self.movement.1.controls.pitch = motion.pitch;

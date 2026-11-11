@@ -52,8 +52,15 @@ pub struct WorldState {
     pub terrain_error: Option<&'static str>,
     pub decoded_chunks: u64,
     pub block_updates: u64,
+    /// Successful play tag rebindings; initial configuration is the zero baseline.
+    pub tag_revision: u64,
     /// Processing receipt only; acceptance comes from ordered authoritative block updates.
     pub block_ack: Option<(u64, i32)>,
+    /// Ordered ACK reconciliation candidates for the existing native movement owner.
+    pub block_reconciliations: std::collections::VecDeque<world::java::Reconciliation>,
+    pub block_predictions_confirmed: u64,
+    pub block_predictions_reverted: u64,
+    pub block_predictions_retired: u64,
     pub vitals: Option<java_protocol::session::facts::Vitals>,
     pub death: Option<(i32, java_protocol::nbt::Value)>,
     pub phase: Option<Phase>,
@@ -85,6 +92,10 @@ impl WorldState {
         &mut self,
         registry: std::sync::Arc<assets::registry::java::BlockRegistry>,
     ) -> Result<(), &'static str> {
+        assets::registry::java::prediction::builtin()
+            .map_err(|_| "Invalid pinned Java block prediction facts")?;
+        assets::registry::java::adventure::builtin()
+            .map_err(|_| "Invalid pinned Java Adventure facts")?;
         self.terrain.install_block_types(registry.block_types());
         piston::initialize(&mut self.terrain, &registry, None)?;
         self.piston_registry = Some(registry);
@@ -92,10 +103,80 @@ impl WorldState {
     }
     /// Name from the same validated registry installed for this world, never a fallback.
     pub fn block_name(&self, state: u32) -> Option<&str> {
-        self.piston_registry
-            .as_ref()?
-            .state(state)
-            .map(|s| s.name.as_ref())
+        self.block_state(state).map(|state| state.name.as_ref())
+    }
+    /// Native state identity/properties from the already installed shared registry.
+    pub fn block_state(&self, state: u32) -> Option<&assets::registry::java::BlockState> {
+        self.piston_registry.as_ref()?.state(state)
+    }
+    /// Admits each ACK restore and its native collision/snap before restoring the next cell.
+    /// The application supplies its existing movement owner; no simulation enters world storage.
+    pub fn admit_with_block_reconciliation(
+        &mut self,
+        envelope: Envelope,
+        reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        if let Event::BlockAck {
+            dimension_epoch,
+            sequence,
+        } = envelope.event
+        {
+            if envelope.generation != self.generation
+                || sequence < 0
+                || !self.terrain.accepts(self.generation, dimension_epoch)
+            {
+                return false;
+            }
+            // The ACK packet is admitted even when its local collision query is
+            // incomplete. Keep that rollback explicit; it is not a stale server event.
+            self.reconcile_block_ack(dimension_epoch, sequence, reconcile);
+            return true;
+        }
+        self.admit(envelope)
+    }
+    /// Resumes an ACK paused on unavailable collision facts before later packets are admitted.
+    pub fn resume_block_ack_reconciliation(
+        &mut self,
+        reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        let Some((epoch, sequence)) = self.block_ack else {
+            return true;
+        };
+        if !self.terrain.accepts(self.generation, epoch) {
+            return true;
+        }
+        self.reconcile_block_ack(epoch, sequence, reconcile)
+    }
+    fn reconcile_block_ack(
+        &mut self,
+        epoch: u64,
+        sequence: i32,
+        mut reconcile: impl FnMut(&mut Self, world::java::Reconciliation) -> Result<(), String>,
+    ) -> bool {
+        self.block_ack = Some((epoch, sequence));
+        for position in self.terrain.prediction_positions_up_to(sequence) {
+            let Some(outcome) = self.terrain.reconcile_block(position, sequence) else {
+                continue;
+            };
+            if !outcome.observed {
+                self.block_predictions_retired += 1;
+            } else if outcome.changed {
+                self.block_predictions_reverted += 1;
+            } else {
+                self.block_predictions_confirmed += 1;
+            }
+            if reconcile(self, outcome).is_err() {
+                self.block_reconciliations.push_back(outcome);
+                return false;
+            }
+        }
+        true
+    }
+    /// Shulker collision progress shares the existing logical world service tick.
+    pub fn tick_shulkers(&mut self) {
+        for state in self.terrain.shulkers.values_mut() {
+            state.motion.tick();
+        }
     }
     /// Shulker collision progress shares the existing logical world service tick.
     pub fn tick_shulkers(&mut self) {
@@ -217,6 +298,25 @@ impl WorldState {
                 self.inventory.wire_revision = wire_revision;
                 return inventory::admit(self, dimension_epoch, incarnation, packet);
             }
+            Event::BlockActionWritten {
+                dimension_epoch,
+                sequence,
+                written,
+            } => {
+                if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
+                    return false;
+                }
+                self.inventory.block_use_written(
+                    self.generation,
+                    dimension_epoch,
+                    sequence,
+                    written,
+                );
+                if !written {
+                    self.block_predictions_retired +=
+                        self.terrain.discard_prediction(sequence) as u64;
+                }
+            }
             Event::BlockAck {
                 dimension_epoch,
                 sequence,
@@ -224,7 +324,10 @@ impl WorldState {
                 if sequence < 0 || !self.terrain.accepts(self.generation, dimension_epoch) {
                     return false;
                 }
-                self.block_ack = Some((dimension_epoch, sequence));
+                return self.reconcile_block_ack(dimension_epoch, sequence, |state, outcome| {
+                    state.block_reconciliations.push_back(outcome);
+                    Ok(())
+                });
             }
             Event::ServerTransfer { .. } => {}
             Event::Phase(phase) => {
@@ -234,6 +337,7 @@ impl WorldState {
                     self.scoreboard.clear();
                     self.inventory = Default::default();
                     self.block_ack = None;
+                    self.block_reconciliations.clear();
                     self.status = Default::default();
                     self.bootstrap = None;
                     self.biomes.clear();
@@ -301,6 +405,7 @@ impl WorldState {
                     self.terrain_error = Some(error);
                     return false;
                 }
+                self.tag_revision = self.tag_revision.saturating_add(1);
             }
             Event::Teleport {
                 dimension_epoch,

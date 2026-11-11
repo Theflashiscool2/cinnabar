@@ -198,6 +198,7 @@ impl Report {
             }
             Event::InventorySent { written: true, .. } => "inventory_write_receipt",
             Event::InventorySent { written: false, .. } => "inventory_input_retired",
+            Event::BlockActionWritten { .. } => "block_action_written",
             Event::BlockAck { .. } => "block_ack",
             Event::Roster(_) => "roster",
             Event::Hud(_) => "hud",

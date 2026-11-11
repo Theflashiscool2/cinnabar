@@ -323,6 +323,8 @@ pub(crate) struct SessionResources<'w> {
     block_entity_scene: Option<ResMut<'w, render_scene::BlockEntitySceneResource>>,
     ui_catalog: Option<Res<'w, crate::runtime::network::PackUiCatalog>>,
     input: Option<Res<'w, client_state::SemanticInputSnapshot>>,
+    java_movement: Option<ResMut<'w, java_movement::Movement>>,
+    java_presentation: Option<Res<'w, java_render::Presentation>>,
     far_terrain: Option<ResMut<'w, crate::far_terrain::FarTerrain>>,
     packet_mods: Option<Res<'w, crate::modding::packets::PacketMods>>,
     mod_registration: Option<Res<'w, crate::modding::registration::Watcher>>,

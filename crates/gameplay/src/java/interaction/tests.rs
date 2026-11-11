@@ -76,6 +76,7 @@ fn press() -> ActionPhase {
 fn survival_use_is_buffered_and_does_not_predict_blocks_or_stack_consumption() {
     let mut state = state();
     state.status.mode = Some(GameMode::Survival);
+    state.player_dynamics.abilities.as_mut().unwrap().creative = false;
     state
         .inventory
         .admit(
@@ -185,6 +186,7 @@ fn use_and_break_share_sequence_and_authority_retirement() {
     c.use_on(&state, press(), Some(hit()));
     assert!(c.pending().is_none());
     state.status.mode = Some(GameMode::Survival);
+    state.player_dynamics.abilities.as_mut().unwrap().creative = false;
     c.use_on(&state, press(), Some(hit()));
     state.inventory = Default::default();
     begin(&mut c, &state, Duration::ZERO);
@@ -331,6 +333,7 @@ fn correction_input_release_and_replacement_cancel_unsent_actions() {
 fn survival_without_required_registry_and_death_never_emit_breaks() {
     let mut state = state();
     state.status.mode = Some(GameMode::Survival);
+    state.player_dynamics.abilities.as_mut().unwrap().creative = false;
     let mut c = Controller::default();
     begin(&mut c, &state, Duration::ZERO);
     c.advance(&state, press(), Some(hit()));
@@ -346,6 +349,7 @@ fn survival_without_required_registry_and_death_never_emit_breaks() {
 fn entity_or_air_target_does_not_report_an_unsupported_survival_block_break() {
     let mut s = state();
     s.status.mode = Some(GameMode::Survival);
+    s.player_dynamics.abilities.as_mut().unwrap().creative = false;
     let mut controller = Controller::default();
     begin(&mut controller, &s, Duration::ZERO);
     controller.advance(&s, press(), None);
@@ -394,6 +398,7 @@ fn mining_state() -> WorldState {
     use std::sync::Arc;
     let mut s = state();
     s.status.mode = Some(GameMode::Survival);
+    s.player_dynamics.abilities.as_mut().unwrap().creative = false;
     let blocks=br#"{"minecraft:air":{"states":[{"id":0,"default":true}]},"minecraft:stone":{"states":[{"id":1,"default":true}]}}"#;
     s.install_block_registry(Arc::new(
         assets::registry::java::BlockRegistry::load(
@@ -484,6 +489,7 @@ fn survival_start_finish_and_abort_are_ordered_without_local_block_or_item_chang
     c.contact = Some((true, false));
     c.advance(&s, press(), Some(h));
     assert_eq!(c.pending().unwrap().kind, Kind::Break);
+    assert!(!c.pending_destroys_block());
     c.queued();
     let held = ActionPhase {
         held: true,
@@ -498,6 +504,7 @@ fn survival_start_finish_and_abort_are_ordered_without_local_block_or_item_chang
     begin(&mut c, &s, simulation_clock::TICK_DURATION);
     c.advance(&s, held, Some(h));
     assert_eq!(c.pending().unwrap().kind, Kind::FinishBreak);
+    assert!(c.pending_destroys_block());
     assert_eq!(c.pending().unwrap().sequence, 2);
     c.queued();
     assert!(c.mining_progress().is_none());
@@ -1177,3 +1184,7 @@ fn selected_slot_change_still_orders_mainhand_release_ahead_of_selection() {
 }
 
 mod entity_chain;
+
+mod component_refresh;
+
+mod adventure;
