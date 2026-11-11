@@ -71,7 +71,7 @@ impl Trace {
             "columns":c.java_world.terrain.columns().count(),"block_updates":c.java_world.block_updates,
             "loading":terrain.map(|p|p.telemetry_progress()),"entities":entities.map(|p|p.telemetry_progress()),
             "special":special.map(|p|p.telemetry_progress()),"block_probes_below_feet_above":probes,
-            "movement":movement.map(|m|json!({"ticks":ticks,"between_frame_ticks":service_ticks,
+            "movement":movement.map(|m|json!({"ticks":ticks,"between_frame_ticks":service_ticks,"input_bits":m.1.controls.buttons,
                 "on_ground":m.0.body.on_ground,"horizontal_collision":m.0.body.horizontal_collision,
                 "crouched":m.0.body.crouched,"sprinting":m.0.body.sprinting,"swimming":m.0.body.swimming,
                 "pending":m.0.pending().is_some(),"backlog_ticks":m.0.backlog_ticks(),"blocked":m.0.blocked.is_some()})),
