@@ -3,12 +3,13 @@
 import argparse
 import collections
 import socket
+import struct
 import threading
 import time
 from pathlib import Path
 from tape import Writer, encoded, load
-from wire import (CLIENTBOUND, MAX_FRAME, FIXTURE_NAME, frame, login, loopback,
-                  name, read_vi, receive, transfer, validate_finish)
+from wire import (CLIENTBOUND, SERVERBOUND, MAX_FRAME, FIXTURE_NAME, frame, login, loopback,
+                  name, read_vi, receive, transfer, validate_finish, vi)
 
 
 def advance(phase, packet):
@@ -103,6 +104,18 @@ GATES = {'ServerboundFinishConfigurationPacket', 'ServerboundConfigurationAcknow
          'ServerboundSwingPacket', 'ServerboundSetCarriedItemPacket'}
 
 
+# Pinned 26.3 ServerCommonPacketListenerImpl.keepConnectionAlive: 15000 ms.
+SERVER_KEEPALIVE_SECONDS = 15
+MAX_PENDING_GATES = 4096
+MAX_PENDING_GATE_BYTES = 2 * MAX_FRAME
+
+
+def hold(finished, heartbeat):
+    """Preserve inspection state while servicing genuine fixture-server keepalive requests."""
+    while not finished.wait(SERVER_KEEPALIVE_SECONDS):
+        heartbeat()
+
+
 def replay(client, segment, port, speed):
     login(client)
     client.sendall(frame(segment['login_finish']))
@@ -110,6 +123,8 @@ def replay(client, segment, port, speed):
     if name(ack, 'login', False) != 'ServerboundLoginAcknowledgedPacket':
         raise ValueError('expected replay login acknowledgement')
     observed = collections.Counter()
+    pending = [0, 0]
+    heartbeat_key = [None]
     condition = threading.Condition()
     finished = threading.Event()
     errors = []
@@ -122,7 +137,15 @@ def replay(client, segment, port, speed):
                 packet = name(body, phase, False)
                 if packet in GATES:
                     with condition:
-                        observed[(phase, body)] += 1
+                        key = (phase, body)
+                        if key == heartbeat_key[0]:
+                            heartbeat_key[0] = None
+                        else:
+                            if pending[0] >= MAX_PENDING_GATES or pending[1] + len(body) > MAX_PENDING_GATE_BYTES:
+                                raise ValueError('fixture pending response limit')
+                            observed[key] += 1
+                            pending[0] += 1
+                            pending[1] += len(body)
                         condition.notify_all()
                 phase = advance(phase, packet)
         except (EOFError, ConnectionError):
@@ -153,6 +176,10 @@ def replay(client, segment, port, speed):
                         if not observed[key]:
                             raise ValueError('client ended before replay response: ' + packet)
                         observed[key] -= 1
+                        pending[0] -= 1
+                        pending[1] -= len(body)
+                        if not observed[key]:
+                            del observed[key]
                 continue
             remaining = (row['ns'] - origin) / 1e9 / speed - (time.monotonic() - start)
             if remaining > 0 and finished.wait(remaining):
@@ -162,7 +189,21 @@ def replay(client, segment, port, speed):
             client.sendall(frame(body))
             sent += 1
         print(f'Replay segment completed: server_packets={sent}; holding for state assertions/disconnect', flush=True)
-        finished.wait()  # Preserve final authoritative state until the operator disconnects.
+        final_phase = 'configuration'
+        if packets:
+            last = packets[-1]
+            final_phase = advance(last['phase'], name(last['body'], last['phase'], last['direction'] == 'server'))
+
+        def heartbeat():
+            with condition:
+                if heartbeat_key[0] is not None:
+                    raise ValueError('native client did not answer fixture keepalive')
+                identity = struct.pack('>q', time.monotonic_ns())
+                reply = vi(SERVERBOUND[final_phase].index('ServerboundKeepAlivePacket')) + identity
+                heartbeat_key[0] = (final_phase, reply)
+            client.sendall(frame(vi(CLIENTBOUND[final_phase].index('ClientboundKeepAlivePacket')) + identity))
+
+        hold(finished, heartbeat)
     finally:
         stop(client)
         worker.join(timeout=10)
