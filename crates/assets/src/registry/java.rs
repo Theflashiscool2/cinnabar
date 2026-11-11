@@ -1,4 +1,5 @@
 //! Java block-state identity and properties from a hash-pinned official data-generator report.
+pub mod adventure;
 pub mod banner;
 pub mod biome;
 pub mod catalog;

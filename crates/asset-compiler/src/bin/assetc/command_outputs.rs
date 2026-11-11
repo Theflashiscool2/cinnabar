@@ -16,7 +16,8 @@ pub(super) fn validate_command_outputs(command: &Command) -> Result<(), AssetErr
         | JavaFluids(options)
         | JavaMining(options)
         | JavaUseRules(options)
-        | JavaPrediction(options) => {
+        | JavaPrediction(options)
+        | JavaAdventure(options) => {
             inputs.extend([
                 options.server.as_path(),
                 options.java.as_path(),

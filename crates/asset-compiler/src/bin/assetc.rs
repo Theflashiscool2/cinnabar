@@ -56,6 +56,8 @@ mod lang_command;
 #[path = "assetc/output_bundle.rs"]
 mod output_bundle;
 use output_bundle::write_output_bundle;
+#[path = "assetc/java_adventure.rs"]
+mod java_adventure;
 #[path = "assetc/java_audit.rs"]
 mod java_audit;
 #[path = "assetc/java_entities.rs"]
@@ -533,6 +535,7 @@ fn run(command: Command) -> Result<(), Box<dyn std::error::Error>> {
         Command::JavaMining(options) => java_mining::generate(options)?,
         Command::JavaUseRules(options) => java_use_rules::generate(options)?,
         Command::JavaPrediction(options) => java_prediction::generate(options)?,
+        Command::JavaAdventure(options) => java_adventure::generate(options)?,
         Command::JavaFluids(options) => java_fluids::generate(options)?,
         Command::JavaPrepare(options) => java_prepare::prepare(options)?,
         Command::JavaAudit(options) => java_audit::run(options)?,
