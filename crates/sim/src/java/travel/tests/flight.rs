@@ -1,4 +1,5 @@
 use super::*;
+use crate::java::travel::flight::Trigger;
 use world::java::BlockStateId;
 
 #[test]
@@ -186,7 +187,7 @@ fn held_shift_selects_crouching_on_the_native_auto_land_tick() {
 #[test]
 fn manual_flight_requires_a_new_jump_edge_within_the_native_window() {
     for idle_ticks in 1..=6 {
-        let mut trigger = flight::Trigger::default();
+        let mut trigger = Trigger::default();
         assert_eq!(trigger.tick(true, true, false, false, false), None);
         for _ in 0..idle_ticks {
             assert_eq!(trigger.tick(false, true, false, false, false), None);
@@ -197,7 +198,7 @@ fn manual_flight_requires_a_new_jump_edge_within_the_native_window() {
             "{idle_ticks} intervening released ticks"
         );
     }
-    let mut trigger = flight::Trigger::default();
+    let mut trigger = Trigger::default();
     for _ in 0..20 {
         assert_eq!(trigger.tick(true, true, false, false, false), None);
     }
@@ -213,13 +214,13 @@ fn manual_flight_requires_a_new_jump_edge_within_the_native_window() {
 
 #[test]
 fn swimming_and_permission_use_physical_edges_without_resetting_the_timer() {
-    let mut trigger = flight::Trigger::default();
+    let mut trigger = Trigger::default();
     assert_eq!(trigger.tick(true, true, false, false, false), None);
     assert_eq!(trigger.tick(false, true, false, false, true), None);
     assert_eq!(trigger.tick(true, true, false, false, true), None);
     assert_eq!(trigger.tick(false, true, false, false, false), None);
     assert_eq!(trigger.tick(true, true, false, false, false), Some(true));
-    let mut trigger = flight::Trigger::default();
+    let mut trigger = Trigger::default();
     assert_eq!(trigger.tick(true, false, false, false, false), None);
     assert_eq!(trigger.tick(true, true, false, false, false), None);
     assert_eq!(trigger.tick(false, true, false, false, false), None);
