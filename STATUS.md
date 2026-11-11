@@ -39,6 +39,25 @@ Disk cleanup reclaimed9,596,280,892bytes of rebuildable metadata/alternate libra
 
 Scope: native Java26.3/protocol777, Linux hidden Xvfb/Mesa lavapipe controlled vanilla and inbound replay. No new authenticated-online, Hypixel, Mac, simulator or physical-iPhone acceptance. No new IPA. Full app/workspace/MCP suite remains incomplete. Full unfiltered client-ui test on ffef:1,760passed,0failed,4ignored,0filtered; named missing-fixture returns limit its coverage as listed below.
 
+## Owner-reported Hypixel repairs — unmerged candidate
+
+`candidate/java-hypixel-repairs` builds on source284101dfd; gameplay remains subject to owner merge approval. Exact native tested source **c392bf231ce74590ab31072a51c075346bd1e42e**, Linux Xvfb/lavapipe, controlled vanilla26.3/protocol777. Binary SHA-256 `d2f2a1520e286f6f9547322e60f4c46c7d8a29a856a748cdf8ecf4cb41d68b68`. Subsequent harness/status changes do not establish a new native build.
+
+| Report / owner | Current repair and evidence | Remaining gate |
+| --- | --- | --- |
+| B03/C denied-block fist swing | Retained ordered Punch after START when permitted, including Adventure mining denial. Current native controlled Adventure swing/Punch with no Dig; Survival START-before-Punch PASS. Old17ee fails the same Adventure assertion. | Owner Hypixel/device confirmation; no unauthorized mining or bypass. |
+| D/E placed-head and portal flicker | Separate content revision from light-only mesh revision; preserve current validated positions across budgeted rescans and append-only catalog growth; stage new special atlas against the last coherent catalog. Nine-column metadata burst, four ordinary extensions and one special extension preserve all108portal/108solid/648translucent vertices. Previous1ab/25c reproductions drop geometry; current screenshots inspected. | Full resource-pack replacement and owner Hypixel/iPhone observation remain unverified. No fallback/air substitution. |
+| C00 affected prediction path | Fresh live actual placement/mining accepted by vanilla; controlled stale-mode placement denied and reverted. Transfer and reconnect PASS; three native segments replayed with unchanged22/22 assertions at each comparison. Screenshots inspected. | Replay is inbound state coverage, not authoritative acceptance of replayed outbound actions. |
+| D/F special lifecycle | Authoritative removal/addition, unload/revisit and reconnect with new session identity PASS; deleted geometry does not return. Actual vanilla End entry/return also passes with server dimension evidence. | Not Hypixel Dropper plugin/portal-trigger acceptance. |
+| E Shift-click disappears | Older unchanged17ee controlled sword QuickMove in both directions agrees with server inventory and rendered slots. New passive telemetry records bounded numeric packet/container/slot/revision and itemID/count deltas, without item text or credentials. | Owner Hypixel failure remains unresolved: old capture records35admission refusals without individual reasons. Do not infer21written clicks means21failed ACKs. |
+| C bow/rod stop | Older unchanged17ee controlled bow fires a real arrow, ammo16→15; rod creates/retrieves a real bobber. Exact use-stop branches now recorded, plus held-known/revision context. | Hypixel-specific failure unresolved until new scoped evidence; no speculative use-state override. |
+| A/F launch plate, Dropper stuck | Actual local velocity-packet context and change-driven movement-block reason recorded. Vanilla End traversal works here. | Explosion packets are still deferred; narrow F/A implementation approval pending. No proof deferred explosions explain launch plate/Dropper. |
+| I03 slow map load | Preserve existing timing probes; owner source284 maxmain1.325433s/frame1.333175s retained. Special rescans no longer triggered by light-only updates. | No measured full-map speedup claim; tiny local fixture is not Hypixel load. |
+
+Focused tests: world Java9PASS, gameplay component refresh2PASS, session telemetry14PASS including bounded/privacy histories, contact assertions3PASS. Native c392 build3m53PASS, formatting and architecturePASS. Full workspace/app/MCP suite remains incomplete. Public isolated renderer regression drivers: `tools/java-replay/run_special_{metadata,growth,lifecycle}.py`; commands/scopes in its README. Private raw logs/captures/screenshots are preserved in the recovery workspace, not committed. New hooks omit chat text, tokens, account identifiers, item text and item-component payloads.
+
+Evidence directories: `runtime/evidence/contact-c392`, `special-metadata-c392`, `special-growth-c392`, `special-atlas-growth-c392`, `special-lifecycle-c392`, `end-portal-c392`, `hypixel-repairs-c392-prediction`. The current run has **no authenticated Hypixel, macOS, simulator or physical-iPhone execution, and no new IPA**. Existing B10/B11/I03 gaps remain open; a successful scoped regression does not complete all gameplay lanes.
+
 ## Open handoff residuals
 
 | ID | Type | Lane | State | Remaining behavior | Evidence / next gate |

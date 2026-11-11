@@ -209,3 +209,36 @@ packets. Tape timestamps are proxy frame-recording times before forwarding, not 
 client delivery, readability or admission. Even with NODELAY, a peer write/flush does not
 establish an atomic received batch. Preserve earlier failed evidence and compare original
 and repaired binaries using the corrected transport; never reinterpret it as arrival proof.
+
+## Special-block publication regressions
+
+With the isolated fixture server and native developer-control client running at the menu:
+
+```sh
+python3 tools/java-replay/run_special_metadata.py \
+  --endpoint /path/to/private/client-endpoint.json \
+  --fixture /path/to/private/new-fixture/fixture-private.json \
+  --out /path/to/private/new-metadata-evidence --keep-client
+python3 tools/java-replay/run_special_growth.py \
+  --endpoint /path/to/private/client-endpoint.json \
+  --fixture /path/to/private/new-fixture/fixture-private.json \
+  --out /path/to/private/new-growth-evidence
+python3 tools/java-replay/run_special_growth.py --special \
+  --endpoint /path/to/private/client-endpoint.json \
+  --fixture /path/to/private/new-fixture/fixture-private.json \
+  --out /path/to/private/new-special-growth-evidence
+python3 tools/java-replay/run_special_lifecycle.py \
+  --endpoint /path/to/private/client-endpoint.json \
+  --fixture /path/to/private/new-fixture/fixture-private.json \
+  --out /path/to/private/new-lifecycle-evidence
+```
+
+These destructive fixture commands require the offline numeric-loopback server. They
+place nine heads/portal surfaces across nine columns, make the fixture player Spectator,
+and inspect concurrent native publication during block-entity updates and actual graphics
+extensions. The lifecycle case removes blocks, unloads/revisits, disconnects/reconnects,
+and recreates them; it then closes the client. Each output directory must be new. Inspect
+the saved screenshots as well as `result.json`; vertex counts alone do not prove visual
+correctness. This does not exercise portal traversal, resource-pack replacement, custom
+head skins, authentication, Hypixel or iPhone execution. The bound-resource staging path
+must still invalidate resources on a full catalog replacement.
