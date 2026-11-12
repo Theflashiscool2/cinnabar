@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use client_runtime::world_service::{WorldServiceLaunch, WorldServiceReclaim};
 use std::sync::{Arc, Mutex};
 mod worker;
-use std::time::Duration;
 use web_time::Instant;
 use worker::Worker;
 
