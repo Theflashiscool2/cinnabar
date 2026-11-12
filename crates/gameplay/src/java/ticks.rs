@@ -44,6 +44,11 @@ impl Controller {
     }
 
     pub(super) fn defer_movement_time(&mut self) {
+        // A continuing logical timer must not cyclically replay the previous physical
+        // interpolation while the body is held. This changes no motion or wire baseline.
+        if let Some(current) = self.view.sample(1.) {
+            self.view.reset(current);
+        }
         let nanos = self.elapsed.as_nanos();
         self.deferred_idle_ticks = self
             .deferred_idle_ticks

@@ -188,3 +188,34 @@ fn unsent_motion_replaced_by_corrections_retains_only_one_consumed_boundary() {
     c.tick_queued();
     assert!(!c.game_tick(&mut state, None, Controls::default()));
 }
+
+#[test]
+fn idle_clock_holds_current_view_instead_of_replaying_old_movement_interpolation() {
+    let mut state = world(1);
+    let mut c = Controller::default();
+    c.begin_frame(&state, Duration::ZERO);
+    let before = view::Sample {
+        feet: [0., 69., 0.],
+        eye_height: 1.62,
+    };
+    let current = view::Sample {
+        feet: [0., 69., 0.2],
+        eye_height: 1.62,
+    };
+    state.player_motion = Some(Motion {
+        position: current.feet,
+        ..Default::default()
+    });
+    c.view.tick(before, current);
+    c.elapsed = TICK / 2;
+    assert!((c.view_sample(&state).unwrap().feet[2] - 0.1).abs() < 1e-10);
+    let authority = state.player_motion;
+    for elapsed in [Duration::ZERO, TICK / 2, TICK / 3, TICK] {
+        c.begin_frame(&state, elapsed);
+        c.game_tick(&mut state, None, Controls::default());
+        assert_eq!(c.view_sample(&state).unwrap().feet, current.feet);
+        assert_eq!(state.player_motion, authority);
+        assert!(c.pending().is_none());
+        c.tick_queued();
+    }
+}
