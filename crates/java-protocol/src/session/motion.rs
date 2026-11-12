@@ -474,7 +474,17 @@ impl Connection {
                     self.send(name, &payload).await?;
                 }
             }
-            Command::Move { .. } => {}
+            // A same-world correction/death may retire the pose after queue handoff,
+            // but not the already consumed logical tick. Replacement-world ticks retire.
+            Command::Move {
+                dimension_epoch, ..
+            }
+            | Command::ClientTickEnd { dimension_epoch }
+                if dimension_epoch == self.dimension_epoch && self.phase == Phase::Play =>
+            {
+                self.send(movement::TICK_END, &[]).await?;
+            }
+            Command::Move { .. } | Command::ClientTickEnd { .. } => {}
             Command::AcceptRotation {
                 dimension_epoch,
                 sequence,

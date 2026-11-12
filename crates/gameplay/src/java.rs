@@ -5,6 +5,7 @@ pub mod interaction;
 pub mod item_use;
 pub mod mining;
 mod sprint;
+mod ticks;
 pub mod view;
 use assets::registry::java::physics::Table;
 use client_world::java::WorldState;
@@ -47,6 +48,9 @@ pub struct Controller {
     pub use_effects: Option<item_use::plan::Effects>,
     elapsed: Duration,
     pending: Option<Frame>,
+    tick_end_pending: bool,
+    /// Prepared logical boundaries, distinct from simulated movement and wire receipts.
+    pub game_ticks: u64,
     pending_abilities: VecDeque<(u64, bool)>,
     last_position: Option<[f64; 3]>,
     last_rotation: Option<[f32; 2]>,
@@ -85,8 +89,10 @@ impl Controller {
         let corrected = self.sequence != state.motion_sequence();
         if corrected {
             self.sequence = state.motion_sequence();
-            self.pending = None;
-            self.elapsed = Duration::ZERO;
+            if self.pending.take().is_some() {
+                // The old pose is invalid, but its consumed tick still needs a boundary.
+                self.tick_end_pending = true;
+            }
             // A buffered old receipt may have been discarded by the socket owner. Re-send
             // pose and input intent so queued baselines cannot hide an unsent update.
             self.last_position = None;
@@ -105,11 +111,9 @@ impl Controller {
             // The pinned position handler updates kinematics, not entity pose/fluid history.
             // A new session/dimension retires Body above; same-world corrections retain it.
         }
-        if state.awaiting_correction_ack() {
-            self.elapsed = Duration::ZERO;
-        } else {
-            self.elapsed = self.elapsed.saturating_add(elapsed);
-        }
+        // The client game clock keeps ticking while placement/ACK/physics is waiting.
+        // game_tick closes those ticks without simulating or claiming a player pose.
+        self.elapsed = self.elapsed.saturating_add(elapsed);
         corrected
     }
 
@@ -266,6 +270,7 @@ impl Controller {
         let Some(frame) = self.pending.take() else {
             return;
         };
+        self.tick_end_pending = false;
         self.last_flags = Some((frame.on_ground, frame.horizontal_collision));
         if let Some(position) = frame.position {
             self.last_position = Some(position);

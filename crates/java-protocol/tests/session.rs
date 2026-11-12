@@ -16,6 +16,8 @@ mod batch;
 mod containers;
 #[path = "session/tags.rs"]
 mod tags;
+#[path = "session/tick_boundaries.rs"]
+mod tick_boundaries;
 #[path = "session/world_login.rs"]
 mod world_login;
 
@@ -172,7 +174,8 @@ async fn fixture(listener: TcpListener, done: tokio::sync::oneshot::Sender<()>, 
         wire.read().await.unwrap(),
         [0x20, 0x42, 0xc8, 0, 0, 0x41, 0xa0, 0, 0, 0]
     );
-    // Stale prediction is fenced by the correction receipt; only the current batch arrives.
+    // Stale pose/input is fenced; its already consumed logical tick still closes.
+    assert_eq!(wire.read().await.unwrap(), [0x0d]);
     assert_eq!(wire.read().await.unwrap(), [0x2b, 65]);
     assert_eq!(wire.read().await.unwrap(), [0x2a, 42, 1, 0]);
     assert_eq!(wire.read().await.unwrap(), [0x21, 1]);

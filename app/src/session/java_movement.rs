@@ -55,20 +55,15 @@ pub(crate) fn update(
     };
     let physics = presentation.movement_physics();
     let elapsed = movement.elapsed(java_world, web_time::Instant::now());
-    let corrected = movement.0.begin_frame(
-        java_world,
-        if physics.is_some() {
-            elapsed
-        } else {
-            std::time::Duration::ZERO
-        },
-    );
+    let corrected = movement.0.begin_frame(java_world, elapsed);
+    let mut physics = physics;
     let reconciled = match physics {
-        Some(physics) => match movement.reconcile_blocks(java_world, physics) {
+        Some(table) => match movement.reconcile_blocks(java_world, table) {
             Ok(reconciled) => reconciled,
             Err(error) => {
                 movement.0.blocked = Some(error);
-                return;
+                physics = None;
+                false
             }
         },
         None => false,
@@ -87,9 +82,6 @@ pub(crate) fn update(
     if released {
         movement.0.release_input();
     }
-    let Some(physics) = physics else {
-        return;
-    };
     if interaction
         .0
         .pending()
@@ -168,7 +160,7 @@ pub(super) fn flush_abilities(
 pub(super) fn advance(
     java: &client_session::java::Session,
     java_world: &mut client_world::java::WorldState,
-    physics: &assets::registry::java::physics::Table,
+    physics: Option<&assets::registry::java::physics::Table>,
     movement: &mut Movement,
 ) {
     if !flush_abilities(java, movement) {
@@ -177,32 +169,38 @@ pub(super) fn advance(
     // Four ticks bound each service slice; elapsed backlog remains explicit.
     for _ in 0..4 {
         if movement.0.pending().is_none()
-            && !movement.0.tick(java_world, physics, movement.1.controls)
+            && movement.0.pending_tick_end().is_none()
+            && !movement
+                .0
+                .game_tick(java_world, physics, movement.1.controls)
         {
             break;
         }
         if !flush_abilities(java, movement) {
             return;
         }
-        let Some(frame) = movement.0.pending() else {
+        let command = if let Some(frame) = movement.0.pending() {
+            Command::Move {
+                dimension_epoch: frame.dimension_epoch,
+                sequence: frame.sequence,
+                frame: Frame {
+                    entity: frame.entity,
+                    position: frame.position,
+                    rotation: frame.rotation,
+                    on_ground: frame.on_ground,
+                    status_changed: frame.status_changed,
+                    horizontal_collision: frame.horizontal_collision,
+                    input: frame.input,
+                    sprinting: frame.sprinting,
+                },
+            }
+        } else if let Some(dimension_epoch) = movement.0.pending_tick_end() {
+            Command::ClientTickEnd { dimension_epoch }
+        } else {
             break;
         };
-        let command = Command::Move {
-            dimension_epoch: frame.dimension_epoch,
-            sequence: frame.sequence,
-            frame: Frame {
-                entity: frame.entity,
-                position: frame.position,
-                rotation: frame.rotation,
-                on_ground: frame.on_ground,
-                status_changed: frame.status_changed,
-                horizontal_collision: frame.horizontal_collision,
-                input: frame.input,
-                sprinting: frame.sprinting,
-            },
-        };
         match java.command(command) {
-            Ok(()) => movement.0.queued(),
+            Ok(()) => movement.0.tick_queued(),
             Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => break,
             Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                 movement.0.blocked = Some("Java movement transport closed".into());

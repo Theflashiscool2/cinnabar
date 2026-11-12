@@ -49,24 +49,18 @@ impl Authority {
         let current = self.world.terrain.dimension().map(|d| (d.session, d.epoch));
         // A replacement world requires its own real PlayerLoaded/publication admission.
         // Corrections in the admitted world replace kinematics and fence queued old input.
-        let physics = self.physics.as_deref().filter(|_| {
+        let mut physics = self.physics.as_deref().filter(|_| {
             self.scope == current && self.world.terrain_error.is_none() && !self.java.is_finished()
         });
         super::java_cooldowns::advance_items(&mut self.world, physics, visual_ticks);
-        let corrected = self.movement.0.begin_frame(
-            &self.world,
-            if physics.is_some() {
-                elapsed
-            } else {
-                Duration::ZERO
-            },
-        );
+        let corrected = self.movement.0.begin_frame(&self.world, elapsed);
         let reconciled = match physics {
-            Some(physics) => match self.movement.reconcile_blocks(&mut self.world, physics) {
+            Some(table) => match self.movement.reconcile_blocks(&mut self.world, table) {
                 Ok(reconciled) => reconciled,
                 Err(error) => {
                     self.movement.0.blocked = Some(error);
-                    return;
+                    physics = None;
+                    false
                 }
             },
             None => false,
@@ -97,10 +91,10 @@ impl Authority {
             );
         }
         self.movement.0.use_effects = self.interaction.0.use_effects();
+        let before = self.movement.0.ticks;
+        super::java_movement::advance(&self.java, &mut self.world, physics, &mut self.movement);
+        self.movement.1.ticks += self.movement.0.ticks.saturating_sub(before);
         if let Some(physics) = physics {
-            let before = self.movement.0.ticks;
-            super::java_movement::advance(&self.java, &mut self.world, physics, &mut self.movement);
-            self.movement.1.ticks += self.movement.0.ticks.saturating_sub(before);
             self.interaction.service(
                 &self.java,
                 &mut self.world,

@@ -79,7 +79,7 @@ impl Trace {
             "special":special.map(|p|p.telemetry_progress()),
             "special_frame":special_frame.map(|f|json!({"solid_vertices":f.0.solid.len(),
                 "translucent_vertices":f.0.translucent.len(),"portal_vertices":f.0.portal.len(),"has_atlas":f.0.atlas.is_some()})),"block_probes_below_feet_above":probes,
-            "movement":movement.map(|m|json!({"ticks":ticks,"between_frame_ticks":service_ticks,"input_bits":m.1.controls.buttons,
+            "movement":movement.map(|m|json!({"ticks":ticks,"game_ticks":m.0.game_ticks,"tick_end_pending":m.0.pending_tick_end().is_some(),"between_frame_ticks":service_ticks,"input_bits":m.1.controls.buttons,
                 "on_ground":m.0.body.on_ground,"horizontal_collision":m.0.body.horizontal_collision,
                 "crouched":m.0.body.crouched,"sprinting":m.0.body.sprinting,"swimming":m.0.body.swimming,
                 "pending":m.0.pending().is_some(),"backlog_ticks":m.0.backlog_ticks(),"blocked":m.0.blocked.is_some()})),

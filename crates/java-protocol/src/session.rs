@@ -78,6 +78,10 @@ pub enum Identity {
 /// User intent and admitted player authority for this connection only.
 #[derive(Debug)]
 pub enum Command {
+    /// Closes a logical play tick without asserting a player pose or loaded terrain.
+    ClientTickEnd {
+        dimension_epoch: u64,
+    },
     CommandSuggestions {
         dimension_epoch: u64,
         id: i32,

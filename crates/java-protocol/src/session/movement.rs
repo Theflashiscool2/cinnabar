@@ -1,5 +1,6 @@
 //! Version-pinned outbound player movement schemas. Simulation and cadence are domain-owned.
 use crate::{ProtocolError, codec};
+pub(super) const TICK_END: &str = "ServerboundClientTickEndPacket";
 
 #[derive(Clone, Debug)]
 pub struct Frame {
@@ -64,7 +65,7 @@ pub(super) fn encode(frame: Frame) -> Result<Vec<(&'static str, Vec<u8>)>, Proto
         };
         packets.push((name, bytes));
     }
-    packets.push(("ServerboundClientTickEndPacket", vec![]));
+    packets.push((TICK_END, vec![]));
     Ok(packets)
 }
 

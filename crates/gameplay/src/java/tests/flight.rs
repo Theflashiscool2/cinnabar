@@ -3,7 +3,7 @@ use java_protocol::session::facts;
 use std::sync::Arc;
 use world::java::{BiomeId, BlockStateId, Column, Light, Palette, Section};
 
-fn flight_world() -> Option<(WorldState, Table)> {
+pub(super) fn flight_world() -> Option<(WorldState, Table)> {
     let physics = rollback_physics()?;
     let mut state = world(1);
     let spawn = facts::Spawn {
