@@ -38,6 +38,26 @@ class CollectionTests(unittest.TestCase):
             self.assertEqual(result[0]["provenance"], "pre_existing_not_verified_as_this_run")
             self.assertEqual(Path(result[0]["source"]).name, "client.log")
 
+    def test_rotated_attempts_keep_current_run_filter_and_exact_filename_allowlist(self):
+        import os
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            logs = root / "logs"
+            logs.mkdir()
+            for name in ["java-join-latest.json", "java-join-1.json", "java-join-2.json",
+                         "java-join-credentials.json", "java-join-1.json.secret",
+                         "java-join-1-auth.json", "java-join-0.json"]:
+                (logs / name).write_text("{}")
+                os.utime(logs / name, (3, 3))
+            os.utime(logs / "java-join-2.json", (1, 1))
+            result = collector.collect(root / "out", [logs], 2)
+            self.assertEqual([Path(p["source"]).name for p in result],
+                             ["java-join-latest.json", "java-join-1.json"])
+            result = collector.collect(root / "recovered", [logs], 2, recover_existing=True)
+            older = [p for p in result if Path(p["source"]).name == "java-join-2.json"]
+            self.assertEqual(len(older), 1)
+            self.assertEqual(older[0]["provenance"], "pre_existing_not_verified_as_this_run")
+
 
 if __name__ == "__main__":
     unittest.main()

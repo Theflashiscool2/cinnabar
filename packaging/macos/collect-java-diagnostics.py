@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import time
@@ -14,7 +15,11 @@ def collect(destination, roots, since, recover_existing=False):
     destination.mkdir(parents=True, exist_ok=True)
     copied = []
     for root in dict.fromkeys(roots):
-        for name in NAMES:
+        # Retained attempts keep their original modification times after rotation.
+        # Include them through the same current-run filter, never a broad JSON glob.
+        retained = sorted(p.name for p in root.glob("java-join-*.json")
+                          if re.fullmatch(r"java-join-[1-9][0-9]*\.json", p.name))
+        for name in (*NAMES, *retained):
             source = root / name
             if not source.is_file():
                 continue
