@@ -58,6 +58,20 @@ Focused tests: world Java9PASS, gameplay component refresh2PASS, session telemet
 
 Evidence directories: `runtime/evidence/contact-c392`, `special-metadata-c392`, `special-growth-c392`, `special-atlas-growth-c392`, `special-lifecycle-c392`, `end-portal-c392`, `hypixel-repairs-c392-prediction`. The current run has **no authenticated Hypixel, macOS, simulator or physical-iPhone execution, and no new IPA**. Existing B10/B11/I03 gaps remain open; a successful scoped regression does not complete all gameplay lanes.
 
+## Logical tick scheduling candidate — 2026-11-12
+
+Owner-approved narrow A/F implementation is on **candidate/java-tick-boundaries**, code **0d9f314b8** (ff2726ff2 plus an unused-import cleanup), pushed and unmerged. It reuses the existing controller/service clock to close logical ticks while physics awaits loading, collision data, correction acknowledgement or queue availability. Waiting deadlines cannot become future movement catch-up; old-world commands retire, and a stale same-world pose becomes end-only. Idle clock advancement holds the previous visual endpoint. No synthetic position, ground flag, teleport acknowledgement or server result is generated.
+
+Focused tests at ff2726ff2: **22 controller/timing tests and 32 plaintext/encrypted session transport tests PASS**; two unchanged movement-codec tests passed earlier. The existing flight rollback fixture now uses the production boundary API and retains its original flight/jump assertions. Final native build at 0d9f314b8, formatting and architecture checks **PASS**. No gameplay source changed after that native build.
+
+Controlled Linux graphical evidence at 0d9f314b8:
+
+- Real chunk delivery withheld for750ms at initial load, same-world400m teleport, and backend reconnect. Wire capture records **15 /15 /14 tick boundaries**, **zero movement packets across the applicable loading/correction fences**. Initial connections contain21boundaries each before PlayerLoaded. Earlier unchanged local baseline contained0before PlayerLoaded; its undelayed448/460ms windows are not directly comparable performance samples.
+- Walking/crouching, authored teleport, backend replacement and resumed movement agree with authoritative vanilla state. **Zero unexpected corrections**, two explicitly authored relocations. Destination world/HUD screenshot inspected.
+- Affected C00 live placement/mining accepted by server; denied prediction reverted with authoritative inventory count preserved; transfer/reconnect PASS. Three-segment replay preserves both unchanged **22/22** transfer and reconnect comparisons. Live/replay screenshots inspected; hand-issue observer records no issue in this scoped replay.
+
+Private recoverable evidence: `runtime/evidence/tick-boundaries-live`, `runtime/evidence/tick-boundaries-prediction`, and `tick-boundaries-built-binary.json` under the recovery workspace. Exact native ELF SHA256 **350f7cd3c1860c29826ac688ffff959d88f66fce8b7994e03f2fd9347b5b503e**. These local controlled results do not establish public-server or iPhone qualification or perfect tick cadence. Public-server testing remains suspended. A11/F05 beyond this narrow scheduling scope, B10/B11/I03 and other open gameplay items remain incomplete. The full app/workspace/MCP suite remains incomplete.
+
 ## Open handoff residuals
 
 | ID | Type | Lane | State | Remaining behavior | Evidence / next gate |
