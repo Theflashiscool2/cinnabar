@@ -25,7 +25,7 @@ impl Movement {
 impl Movement {
     #[cfg(feature = "developer-control")]
     pub(crate) fn diagnostic(&self) -> serde_json::Value {
-        serde_json::json!({"ticks":self.0.ticks,"between_frame_ticks":self.1.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
+        serde_json::json!({"ticks":self.0.ticks,"game_ticks":self.0.game_ticks,"pending_tick_end":self.0.pending_tick_end().is_some(),"between_frame_ticks":self.1.ticks,"blocked":self.0.blocked,"backlog_ticks":self.0.backlog_ticks(),
             "pending_frame":self.0.pending().is_some(),"pending_ability_update":self.0.pending_ability().map(|(_, _, flying)| flying),"on_ground":self.0.body.on_ground,
             "last_climbable_position":self.0.body.last_climbable_position,
             "swimming":self.0.body.swimming,"low_profile":self.0.body.low_profile,
@@ -164,6 +164,12 @@ pub(super) fn advance(
     movement: &mut Movement,
 ) {
     if !flush_abilities(java, movement) {
+        return;
+    }
+    // An older prepared pose is indivisible with its own boundary. If collision
+    // reconciliation is waiting, retain that batch rather than writing an unchecked pose.
+    // begin_frame reserves later waiting deadlines as idle; they cannot become movement.
+    if physics.is_none() && movement.0.pending().is_some() {
         return;
     }
     // Four ticks bound each service slice; elapsed backlog remains explicit.

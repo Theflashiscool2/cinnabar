@@ -57,7 +57,7 @@ async fn loading_and_retired_poses_close_once_and_replaced_world_ticks_are_disca
                     correction,
                 } = envelope.event
                 {
-                    for epoch in [0, dimension_epoch] {
+                    for epoch in [dimension_epoch.saturating_sub(1), dimension_epoch] {
                         commands
                             .send(session::Command::ClientTickEnd {
                                 dimension_epoch: epoch,

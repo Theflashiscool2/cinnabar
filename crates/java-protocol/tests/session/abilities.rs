@@ -24,6 +24,8 @@ async fn ability_edges_reach_wire_before_pending_correction_ack_and_stale_moveme
             replacement.extend(0.05_f32.to_be_bytes());
             replacement.extend(0.1_f32.to_be_bytes());
             wire.write(&replacement).await.unwrap();
+            // The earlier stale pose closes its logical tick without sending a pose.
+            assert_eq!(wire.read().await.unwrap(), [0x0d]);
             assert_eq!(
                 wire.read().await.unwrap(),
                 containers::outgoing("ServerboundPlayerAbilitiesPacket", &[0])

@@ -49,6 +49,7 @@ pub struct Controller {
     elapsed: Duration,
     pending: Option<Frame>,
     tick_end_pending: bool,
+    deferred_idle_ticks: u128,
     /// Prepared logical boundaries, distinct from simulated movement and wire receipts.
     pub game_ticks: u64,
     pending_abilities: VecDeque<(u64, bool)>,
@@ -114,6 +115,11 @@ impl Controller {
         // The client game clock keeps ticking while placement/ACK/physics is waiting.
         // game_tick closes those ticks without simulating or claiming a player pose.
         self.elapsed = self.elapsed.saturating_add(elapsed);
+        if self.tick_end_pending || self.pending.is_some() || state.awaiting_correction_ack() {
+            // No new kinematic step can be committed behind this boundary. Preserve
+            // those deadlines as idle ticks, never future movement catch-up.
+            self.defer_movement_time();
+        }
         corrected
     }
 
@@ -246,7 +252,8 @@ impl Controller {
         self.pending.as_ref()
     }
     pub fn backlog_ticks(&self) -> u128 {
-        self.elapsed.as_nanos() / TICK.as_nanos()
+        self.deferred_idle_ticks
+            .saturating_add(self.elapsed.as_nanos() / TICK.as_nanos())
     }
 
     pub fn eye_height(&self, state: &WorldState) -> f64 {

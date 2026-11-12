@@ -119,3 +119,72 @@ fn missing_collision_facts_close_ticks_without_predicting_a_position_or_flags() 
     }
     assert_eq!((c.game_ticks, c.backlog_ticks()), (2, 0));
 }
+
+#[test]
+fn queue_wait_cannot_turn_into_movement_when_physics_becomes_ready() {
+    let (mut state, physics) = super::flight::flight_world()
+        .expect("queue-wait test requires the existing pinned Java physics fixture");
+    let original = state.player_motion;
+    let mut c = Controller::default();
+    c.begin_frame(&state, TICK);
+    assert!(c.game_tick(&mut state, None, Controls::default()));
+    // The pending idle boundary cannot enter a full transport queue for three more ticks.
+    c.begin_frame(&state, TICK * 3);
+    assert!(!c.game_tick(&mut state, Some(&physics), Controls::default()));
+    c.tick_queued();
+    for _ in 0..3 {
+        assert!(c.game_tick(&mut state, Some(&physics), Controls::default()));
+        assert!(
+            c.pending().is_none(),
+            "old waiting time must not become physics"
+        );
+        assert_eq!(state.player_motion, original);
+        c.tick_queued();
+    }
+    assert_eq!((c.game_ticks, c.ticks, c.backlog_ticks()), (4, 0, 0));
+    assert!(!c.game_tick(&mut state, Some(&physics), Controls::default()));
+    c.begin_frame(&state, TICK);
+    assert!(c.game_tick(&mut state, Some(&physics), Controls::default()));
+    assert!(c.pending().is_some());
+    assert_eq!(c.ticks, 1);
+}
+
+#[test]
+fn unsent_motion_replaced_by_corrections_retains_only_one_consumed_boundary() {
+    use java_protocol::session::{Envelope, Event, facts::Teleport};
+    let (mut state, physics) = super::flight::flight_world()
+        .expect("correction test requires the existing pinned Java physics fixture");
+    let mut c = Controller::default();
+    c.begin_frame(&state, TICK * 2);
+    assert!(c.game_tick(&mut state, Some(&physics), Controls::default()));
+    assert!(c.pending().is_some());
+    for revision in 1..=2 {
+        assert!(state.admit(Envelope {
+            generation: 7,
+            event: Event::Teleport {
+                dimension_epoch: 1,
+                sequence: revision,
+                correction: Teleport {
+                    id: 7,
+                    position: [8.5, 2., 8.5],
+                    velocity: [0.; 3],
+                    yaw: 0.,
+                    pitch: 0.,
+                    relative: 0
+                }
+            }
+        }));
+        assert!(c.begin_frame(&state, Duration::ZERO));
+        assert!(c.pending().is_none());
+        assert_eq!(c.pending_tick_end(), Some(1));
+        assert_eq!(c.game_ticks, 1);
+    }
+    c.tick_queued();
+    let placed = state.player_motion;
+    assert!(c.game_tick(&mut state, Some(&physics), Controls::default()));
+    assert!(c.pending().is_none());
+    assert_eq!(state.player_motion, placed);
+    assert_eq!(c.game_ticks, 2);
+    c.tick_queued();
+    assert!(!c.game_tick(&mut state, None, Controls::default()));
+}

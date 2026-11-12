@@ -17,18 +17,38 @@ impl Controller {
         if self.scope != state.terrain.dimension().map(|d| (d.session, d.epoch)) {
             return false;
         }
-        if self.tick_end_pending || self.pending.is_some() || self.elapsed < TICK {
+        if physics.is_none() || state.awaiting_correction_ack() {
+            self.defer_movement_time();
+        }
+        if self.tick_end_pending || self.pending.is_some() {
             return false;
         }
-        let budget = self.elapsed;
-        if !physics.is_some_and(|physics| self.tick(state, physics, controls)) {
-            // tick() can discard kinematic backlog after missing collision facts. Those
-            // are still logical game ticks; consume exactly one, without moving the body.
-            self.elapsed = budget - TICK;
+        if self.deferred_idle_ticks > 0 {
+            self.deferred_idle_ticks -= 1;
+        } else {
+            if self.elapsed < TICK {
+                return false;
+            }
+            let budget = self.elapsed;
+            if !physics.is_some_and(|physics| self.tick(state, physics, controls)) {
+                // A failed collision transaction does not consume physical time. All
+                // elapsed waiting deadlines remain idle even if data becomes ready later.
+                self.elapsed = budget;
+                self.defer_movement_time();
+                self.deferred_idle_ticks -= 1;
+            }
         }
         self.tick_end_pending = true;
         self.game_ticks = self.game_ticks.saturating_add(1);
         true
+    }
+
+    pub(super) fn defer_movement_time(&mut self) {
+        let nanos = self.elapsed.as_nanos();
+        self.deferred_idle_ticks = self
+            .deferred_idle_ticks
+            .saturating_add(nanos / TICK.as_nanos());
+        self.elapsed = Duration::from_nanos((nanos % TICK.as_nanos()) as u64);
     }
 
     pub fn pending_tick_end(&self) -> Option<u64> {
