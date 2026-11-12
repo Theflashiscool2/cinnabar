@@ -265,7 +265,7 @@ fn restored_body_position_does_not_release_or_rearm_manual_flight_jump() {
         ..Default::default()
     };
     controller.begin_frame(&state, TICK);
-    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(true)));
     assert!(controller.pending_ability().is_none());
     let stone = physics
         .registry()
@@ -278,8 +278,12 @@ fn restored_body_position_does_not_release_or_rearm_manual_flight_jump() {
             .reconcile_block(&mut state, &physics, [8, 8, 8], stone, [8.5, 10., 8.5])
             .unwrap()
     );
+    // The rollback retires the old pose, not its already consumed logical boundary.
+    assert!(controller.pending().is_none());
+    assert_eq!(controller.pending_tick_end(), Some(1));
+    controller.tick_queued();
     controller.begin_frame(&state, TICK);
-    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(true)));
     assert!(
         controller.pending_ability().is_none(),
         "held Jump is not a second edge after rollback"
@@ -301,17 +305,31 @@ fn restored_body_position_does_not_release_or_rearm_manual_flight_jump() {
     }));
     state.correction_queued(1);
     assert!(controller.begin_frame(&state, TICK));
-    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(controller.pending().is_none());
+    assert_eq!(controller.pending_tick_end(), Some(1));
+    controller.tick_queued();
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(true)));
+    assert!(
+        controller.pending().is_none(),
+        "the queued waiting deadline remains idle"
+    );
+    assert!(
+        controller.pending_ability().is_none(),
+        "idle closure does not rearm Jump"
+    );
+    controller.tick_queued();
+    controller.begin_frame(&state, TICK);
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(true)));
     assert!(
         controller.pending_ability().is_none(),
         "held Jump survives an ordinary teleport"
     );
-    controller.queued();
+    controller.tick_queued();
     controller.begin_frame(&state, TICK);
-    assert!(controller.tick(&mut state, &physics, controls(false)));
-    controller.queued();
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(false)));
+    controller.tick_queued();
     controller.begin_frame(&state, TICK);
-    assert!(controller.tick(&mut state, &physics, controls(true)));
+    assert!(controller.game_tick(&mut state, Some(&physics), controls(true)));
     assert_eq!(controller.pending_ability(), Some((1, 0, true)));
     assert!(state.player_dynamics.abilities.as_ref().unwrap().flying);
 }
